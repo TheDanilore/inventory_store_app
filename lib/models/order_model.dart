@@ -17,6 +17,9 @@ class OrderModel {
   final DateTime? dueDate;
   final String? createdBy;
 
+  // NUEVO: Agregamos una propiedad para guardar la data relacionada del almacén
+  final WarehouseModel? warehouse;
+
   OrderModel({
     required this.id,
     this.customerId,
@@ -33,6 +36,7 @@ class OrderModel {
     this.amountPaid = 0.00,
     this.dueDate,
     this.createdBy,
+    this.warehouse, // Lo incluimos en el constructor
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -59,6 +63,14 @@ class OrderModel {
               ? DateTime.parse(json['due_date'] as String)
               : null,
       createdBy: json['created_by'] as String?,
+
+      // NUEVO: Supabase devuelve la info relacionada como un Map dentro de la llave de la tabla ('warehouses')
+      warehouse:
+          json['warehouses'] != null && json['warehouses'] is Map
+              ? WarehouseModel.fromJson(
+                Map<String, dynamic>.from(json['warehouses']),
+              )
+              : null,
     );
   }
 
@@ -80,6 +92,7 @@ class OrderModel {
       'amount_paid': amountPaid,
       if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
       'created_by': createdBy,
+      // Nota: No incluimos 'warehouse' aquí porque usualmente solo insertamos el 'warehouse_id'
     };
   }
 
@@ -89,9 +102,12 @@ class OrderModel {
   bool get isPendingPayment =>
       paymentStatus == 'PENDING' || paymentStatus == 'PARTIAL';
 
-  get displayCustomerName => customerName.isNotEmpty ? customerName : 'Cliente General';
+  // Le agregamos un tipado explícito (String) para evitar advertencias de Dart
+  String get displayCustomerName =>
+      customerName.isNotEmpty ? customerName : 'Cliente General';
 
-  get warehouseName => WarehouseModel.warehouseNames[warehouseId] ?? 'Almacén Desconocido';
+  // CORREGIDO: Ahora extrae el nombre directamente del objeto relacional, o usa un fallback
+  String get warehouseName => warehouse?.name ?? 'Almacén Desconocido';
 
   /// Método copyWith ideal para el manejo de estados (Bloc, Riverpod, etc.)
   OrderModel copyWith({
@@ -110,6 +126,7 @@ class OrderModel {
     double? amountPaid,
     DateTime? dueDate,
     String? createdBy,
+    WarehouseModel? warehouse,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -127,6 +144,7 @@ class OrderModel {
       amountPaid: amountPaid ?? this.amountPaid,
       dueDate: dueDate ?? this.dueDate,
       createdBy: createdBy ?? this.createdBy,
+      warehouse: warehouse ?? this.warehouse,
     );
   }
 }

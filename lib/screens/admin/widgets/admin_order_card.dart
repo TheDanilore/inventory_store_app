@@ -16,6 +16,7 @@ class AdminOrderCard extends StatelessWidget {
     required this.onUpdateStatus,
   });
 
+  // Badge de estado de orden (PENDING / COMPLETED / CANCELLED)
   Widget _buildStatusBadge(String status) {
     Color bgColor;
     Color textColor;
@@ -62,12 +63,70 @@ class AdminOrderCard extends StatelessWidget {
     );
   }
 
+  // Badge de estado de pago (PAID / PENDING / PARTIAL) — solo en pedidos COMPLETED
+  Widget _buildPaymentStatusBadge(
+    String paymentStatus,
+    double totalAmount,
+    double amountPaid,
+  ) {
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (paymentStatus) {
+      case 'PAID':
+        bgColor = Colors.teal.shade50;
+        textColor = Colors.teal.shade700;
+        label = 'Pagado';
+        break;
+      case 'PENDING':
+        bgColor = Colors.deepOrange.shade50;
+        textColor = Colors.deepOrange.shade700;
+        label = 'Por cobrar';
+        break;
+      case 'PARTIAL':
+        bgColor = Colors.amber.shade50;
+        textColor = Colors.amber.shade800;
+        label = 'Pago parcial';
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade600;
+        label = paymentStatus;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textColor.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = order.status;
     final date = (order.createdAt ?? DateTime.now()).toLocal();
     final dateString = DateFormat('dd MMM yyyy, hh:mm a').format(date);
     final customerName = order.displayCustomerName;
+
+    // Datos de pago
+    final paymentStatus = order.paymentStatus; // 'PAID', 'PENDING', 'PARTIAL'
+    final amountPaid = order.amountPaid;
+    final totalAmount = order.totalAmount;
+    final pendingAmount = totalAmount - amountPaid;
+    final isCredit = order.paymentMethod == 'CRÉDITO';
+    final warehouseName = order.warehouseName; // del join con warehouses
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -93,6 +152,7 @@ class AdminOrderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ─── FILA 1: Cliente + Badge de Estado ───
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,6 +161,7 @@ class AdminOrderCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Nombre cliente
                           Row(
                             children: [
                               Container(
@@ -133,6 +194,7 @@ class AdminOrderCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 6),
+                          // Fecha
                           Row(
                             children: [
                               const Icon(
@@ -152,18 +214,64 @@ class AdminOrderCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            'Método: ${order.paymentMethod}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          // Método de pago
+                          Row(
+                            children: [
+                              Icon(
+                                isCredit
+                                    ? Icons.credit_card_rounded
+                                    : Icons.payments_outlined,
+                                size: 14,
+                                color:
+                                    isCredit
+                                        ? Colors.deepOrange.shade400
+                                        : Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                order.paymentMethod,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isCredit
+                                          ? Colors.deepOrange.shade600
+                                          : Colors.grey.shade600,
+                                  fontWeight:
+                                      isCredit
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
+                          // Almacén (si existe)
+                          if (warehouseName != null &&
+                              warehouseName.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.warehouse_outlined,
+                                  size: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  warehouseName,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
+                    // Badge de estado de orden
                     _buildStatusBadge(status),
                   ],
                 ),
@@ -172,10 +280,12 @@ class AdminOrderCard extends StatelessWidget {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
+                // ─── FILA 2: Total + Estado de pago + Botones ───
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // Columna de montos
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -188,7 +298,7 @@ class AdminOrderCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                          'S/ ${totalAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 20,
@@ -196,9 +306,36 @@ class AdminOrderCard extends StatelessWidget {
                             letterSpacing: -0.5,
                           ),
                         ),
+                        // Estado de pago (solo en COMPLETED)
+                        if (status == 'COMPLETED') ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              _buildPaymentStatusBadge(
+                                paymentStatus,
+                                totalAmount,
+                                amountPaid,
+                              ),
+                              // Si hay deuda pendiente, mostrar monto
+                              if (paymentStatus == 'PENDING' ||
+                                  paymentStatus == 'PARTIAL') ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Debe S/ ${pendingAmount.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.deepOrange.shade600,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
                       ],
                     ),
-                    // --- NUEVA SECCIÓN DE BOTONES ---
+
+                    // Botones de acción
                     Row(
                       children: [
                         if (status == 'COMPLETED' || status == 'CANCELLED')

@@ -18,6 +18,9 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
+
+  // 1. Agregamos el controlador del nombre
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -42,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
+    _nameController.dispose(); // No olvides liberar el controlador
     _emailController.dispose();
     _passwordController.dispose();
     _fadeCtrl.dispose();
@@ -82,6 +86,14 @@ class _LoginScreenState extends State<LoginScreen>
   void _showMessage(String text, {SnackbarType type = SnackbarType.error}) {
     if (!mounted) return;
     AppSnackbar.show(context, message: text, type: type);
+  }
+
+  // 2. Validación para el nombre
+  String? _validateName(String? value) {
+    if (_isLoginMode) return null; // Si es login, no validamos el nombre
+    final name = (value ?? '').trim();
+    if (name.isEmpty) return 'Ingresa tu nombre completo';
+    return null;
   }
 
   String? _validateEmail(String? value) {
@@ -141,6 +153,8 @@ class _LoginScreenState extends State<LoginScreen>
       );
       return;
     }
+
+    final name = _nameController.text.trim(); // Obtenemos el nombre
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -152,14 +166,19 @@ class _LoginScreenState extends State<LoginScreen>
           password: password,
         );
       } else {
+        // 3. Enviamos los datos en signUp (opcional, guarda en auth metadata)
         final response = await _supabase.auth.signUp(
           email: email,
           password: password,
+          data: {'full_name': name},
         );
+
         if (response.user != null) {
           try {
+            // 4. Agregamos el "full_name" a la creación de la tabla profiles
             await _supabase.from('profiles').upsert({
               'auth_user_id': response.user!.id,
+              'full_name': name, // << CAMBIO CLAVE AQUÍ
               'role': AppRoles.customer,
               'is_active': true,
             }, onConflict: 'auth_user_id');
@@ -185,7 +204,11 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _toggleMode() {
-    setState(() => _isLoginMode = !_isLoginMode);
+    setState(() {
+      _isLoginMode = !_isLoginMode;
+      // Limpiamos los campos al cambiar de modo
+      if (_isLoginMode) _nameController.clear();
+    });
     _fadeCtrl.forward(from: 0);
   }
 
@@ -329,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     Text(
                                       _isLoginMode
                                           ? 'Ingresa para continuar comprando'
-                                          : 'Solo necesitas correo y contraseña',
+                                          : 'Completa tus datos para empezar',
                                       style: const TextStyle(
                                         color: AppColors.textSecondary,
                                         fontSize: 14,
@@ -364,6 +387,18 @@ class _LoginScreenState extends State<LoginScreen>
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
+                                    // 5. Agregamos el campo Nombre (Solo en Registro)
+                                    if (!_isLoginMode) ...[
+                                      AppTextField(
+                                        controller: _nameController,
+                                        label: 'Nombre completo',
+                                        icon: Icons.person_outline_rounded,
+                                        keyboardType: TextInputType.name,
+                                        validator: _validateName,
+                                      ),
+                                      const SizedBox(height: 14),
+                                    ],
+
                                     // Email
                                     AppTextField(
                                       controller: _emailController,
@@ -397,50 +432,6 @@ class _LoginScreenState extends State<LoginScreen>
                                       obscureText: _obscurePassword,
                                       validator: _validatePassword,
                                     ),
-
-                                    // Registro hint
-                                    if (!_isLoginMode) ...[
-                                      const SizedBox(height: 14),
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.info.withValues(
-                                            alpha: 0.06,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: AppColors.info.withValues(
-                                              alpha: 0.18,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Icon(
-                                              Icons.info_outline_rounded,
-                                              size: 15,
-                                              color: AppColors.info,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            const Expanded(
-                                              child: Text(
-                                                'Podrás completar nombre, teléfono, y otros datos desde tu perfil después.',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppColors.info,
-                                                  height: 1.4,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
 
                                     const SizedBox(height: 22),
 

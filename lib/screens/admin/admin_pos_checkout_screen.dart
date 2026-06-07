@@ -33,10 +33,14 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   int _clientSearchVersion = 0;
   Timer? _debounce;
 
-  bool _isDiscountPercentage = false; // NUEVO: Saber si es % o S/
+  bool _isDiscountPercentage = false;
 
   // Almacén
   List<WarehouseModel> _warehouseList = [];
+
+  // Crédito del cliente seleccionado
+  Map<String, dynamic>?
+  _creditInfo; // {id, credit_limit, current_debt, is_active}
 
   // Venta
   bool _isProcessingSale = false;
@@ -62,7 +66,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    // Recuperamos los datos guardados en el Provider al iniciar la pantalla
     final pos = Provider.of<PosProvider>(context, listen: false);
     _clienteCtrl.text = pos.selectedClientName ?? '';
     _puntosCtrl.text = pos.puntosAUsar.toString();
@@ -92,7 +95,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       if (mounted) {
         setState(() {
           _warehouseList = list;
-          // Si no hay un almacén seleccionado globalmente, autoselecciona el primero
           if (pos.selectedWarehouseId == null && list.isNotEmpty) {
             pos.setWarehouse(list.first.id);
           }
@@ -106,9 +108,9 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   void _onClientSearchChanged(String query) {
     final pos = context.read<PosProvider>();
     if (pos.selectedClientId != null) {
-      // Limpiamos globalmente si el usuario empieza a borrar
       pos.setClient(null, null, 0);
       _puntosCtrl.text = '0';
+      setState(() => _creditInfo = null);
     }
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(
@@ -131,10 +133,16 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     final currentVersion = ++_clientSearchVersion;
     setState(() => _searchingClients = true);
     try {
+      // CORRECCIÓN: filtramos clientes activos y por rol customer
       final response = await _supabase
           .from('profiles')
-          .select('id, full_name, phone, document_number, wallet_balance')
-          .or('full_name.ilike.%$text%,document_number.ilike.%$text%')
+          .select(
+            'id, full_name, phone, document_number, wallet_balance, role, is_active',
+          )
+          .eq('is_active', true)
+          .or(
+            'full_name.ilike.%$text%,document_number.ilike.%$text%,phone.ilike.%$text%',
+          )
           .limit(10);
       if (currentVersion == _clientSearchVersion && mounted) {
         setState(() {
@@ -149,7 +157,8 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     }
   }
 
-  void _selectClient(Map<String, dynamic> client) {
+  /// Seleccionar cliente y cargar su info de crédito en paralelo
+  Future<void> _selectClient(Map<String, dynamic> client) async {
     final pos = context.read<PosProvider>();
     pos.setClient(
       client['id'] as String,
@@ -160,9 +169,38 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     _puntosCtrl.text = '0';
     setState(() {
       _clientMatches = [];
-      FocusScope.of(context).unfocus();
+      _creditInfo = null;
     });
+    FocusScope.of(context).unfocus();
+
+    // Cargar crédito del cliente en segundo plano
+    try {
+      final creditResp =
+          await _supabase
+              .from('customer_credits')
+              .select('id, credit_limit, current_debt, is_active')
+              .eq('profile_id', client['id'] as String)
+              .maybeSingle();
+      if (mounted) {
+        setState(() => _creditInfo = creditResp);
+      }
+    } catch (e) {
+      debugPrint('Error cargando crédito: $e');
+    }
   }
+
+  // ─── HELPERS CRÉDITO ─────────────────────────────────────────────────────
+
+  double get _creditDisponible {
+    if (_creditInfo == null) return 0;
+    if (_creditInfo!['is_active'] != true) return 0;
+    final limit = (_creditInfo!['credit_limit'] as num).toDouble();
+    final debt = (_creditInfo!['current_debt'] as num).toDouble();
+    return (limit - debt).clamp(0.0, double.infinity);
+  }
+
+  bool get _creditActivo =>
+      _creditInfo != null && _creditInfo!['is_active'] == true;
 
   // ─── LÓGICA PUNTOS / TOTALES ────────────────────────────────────────────
 
@@ -193,7 +231,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     return requested;
   }
 
-  // --- NUEVO: Cálculo del descuento extra ---
   double _getCustomDiscountAmount(PosProvider pos) {
     double val = double.tryParse(_descuentoCtrl.text) ?? 0.0;
     if (val <= 0) return 0.0;
@@ -207,7 +244,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     final puntos = _clampPointsValue(pos.puntosAUsar, pos, ratio);
     final descuentoPuntos = puntos * ratio;
     final descuentoExtra = _getCustomDiscountAmount(pos);
-
     final total = pos.totalAmount - descuentoPuntos - descuentoExtra;
     return total < 0 ? 0.0 : total;
   }
@@ -215,12 +251,13 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   double _calcularGananciaTotal(PosProvider pos) {
     double profit = 0;
     for (final item in pos.items.values) {
+      // Usamos unitCost del item (igual que lo que se guarda en order_items.unit_cost)
       profit += (item.unitPrice - item.product.unitCost) * item.quantity;
     }
     return profit;
   }
 
-  // ─── PROCESAR VENTA (Logística FEFO + Kardex) ───────────────────────────
+  // ─── PROCESAR VENTA ─────────────────────────────────────────────────────
   Future<void> _processSale(PosProvider pos, {bool isDraft = false}) async {
     if (pos.selectedWarehouseId == null) {
       AppSnackbar.show(
@@ -239,6 +276,44 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       return;
     }
 
+    final isCredito = pos.paymentMethod == 'CRÉDITO';
+
+    // ── Validaciones previas para CRÉDITO ────────────────────────────────
+    if (isCredito && !isDraft) {
+      if (pos.selectedClientId == null) {
+        AppSnackbar.show(
+          context,
+          message: 'Debes seleccionar un cliente para ventas a crédito.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+      if (!_creditActivo) {
+        AppSnackbar.show(
+          context,
+          message: 'El cliente no tiene línea de crédito activa.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+      final config = context.read<AppConfigProvider>();
+      final ratio = config.getDouble('points_to_soles_ratio', 0.01);
+      final totalNecesario = _calcularTotalFinal(pos, ratio);
+      if (_creditDisponible < totalNecesario) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Crédito insuficiente. Disponible: S/ ${_creditDisponible.toStringAsFixed(2)}',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+    }
+
+    // No tiene sentido guardar un BORRADOR como crédito (el crédito se activa al completar)
+    // Así que si es borrador + crédito, lo guardamos como POR ACORDAR en el insert
+    // y mantenemos el método como CRÉDITO para cuando se active desde orders_screen.
+
     setState(() => _isProcessingSale = true);
 
     try {
@@ -256,10 +331,12 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       );
       final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
       final totalProfit = _calcularGananciaTotal(pos);
+      final puntosGanados =
+          isDraft ? 0 : (totalFinal * earningRate / pointsToSolesRatio).toInt();
 
       final orderStatus = isDraft ? 'PENDING' : 'COMPLETED';
 
-      // ─── 1. OBTENER USUARIO ──────────────────────────────────────────────
+      // ─── 1. OBTENER PERFIL DEL USUARIO ADMIN ────────────────────────────
       final authUserId = _supabase.auth.currentUser?.id;
       final profileResp =
           await _supabase
@@ -269,7 +346,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               .single();
       final String currentProfileId = profileResp['id'];
 
-      // ─── 2. LÓGICA DE STOCK (FEFO) ──────────────────────────────────────
+      // ─── 2. STOCK (FEFO) — solo en venta directa, no borrador ───────────
       List<Map<String, dynamic>> batchUpdates = [];
       List<Map<String, dynamic>> movementInserts = [];
 
@@ -277,7 +354,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         for (final item in pos.items.values) {
           final safeVariantId = item.variantId!;
 
-          // Buscamos los lotes disponibles para esta variante, ordenados por vencimiento (FEFO)
           final batches = await _supabase
               .from('warehouse_stock_batches')
               .select('id, available_quantity, batch_number')
@@ -289,7 +365,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           int remaining = item.quantity;
           for (final batch in (batches as List)) {
             if (remaining <= 0) break;
-
             final int available = (batch['available_quantity'] as num).toInt();
             final int take = (remaining > available) ? available : remaining;
 
@@ -297,12 +372,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               'id': batch['id'],
               'new_quantity': available - take,
             });
-
             movementInserts.add({
               'variant_id': safeVariantId,
               'warehouse_id': pos.selectedWarehouseId,
               'stock_batch_id': batch['id'],
-              'quantity': -take, // Salida
+              'quantity': -take,
               'previous_stock': available,
               'new_stock': available - take,
               'unit_cost': item.product.unitCost,
@@ -319,15 +393,46 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         }
       }
 
-      // ─── 3. GUARDAR ORDEN (Supabase Relaciones) ─────────────────────────
+      // ─── 3. CREAR ORDEN ──────────────────────────────────────────────────
+      // Determinamos payment_status y amount_paid según el método
+      String paymentStatus;
+      double amountPaid;
+
+      if (isDraft) {
+        // El borrador aún no se ha cobrado
+        paymentStatus = 'PENDING';
+        amountPaid = 0;
+      } else if (isCredito) {
+        // Crédito: el total va a deuda, no se cobró en caja
+        paymentStatus = 'PENDING';
+        amountPaid = 0;
+      } else {
+        // Todos los demás métodos: cobrado al contado
+        paymentStatus = 'PAID';
+        amountPaid = totalFinal;
+      }
+
       final orderResp =
           await _supabase
               .from('orders')
               .insert({
                 'customer_id': pos.selectedClientId,
+                // Si no hay cliente registrado pero se escribió un nombre libre, lo guardamos
+                'customer_name':
+                    pos.selectedClientId == null
+                        ? (_clienteCtrl.text.trim().isNotEmpty
+                            ? _clienteCtrl.text.trim()
+                            : null)
+                        : null,
                 'warehouse_id': pos.selectedWarehouseId,
                 'total_amount': totalFinal,
+                'total_profit': totalProfit,
+                'payment_method': pos.paymentMethod,
+                'payment_status': paymentStatus,
+                'amount_paid': amountPaid,
                 'status': orderStatus,
+                'points_used': isDraft ? 0 : puntosUsados,
+                'points_earned': puntosGanados,
                 'created_by': currentProfileId,
               })
               .select('id')
@@ -335,10 +440,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
       final orderId = orderResp['id'];
 
-      // ─── 4. GUARDAR ITEMS Y DESCONTAR STOCK ────────────────────────────
+      // ─── 4. GUARDAR ITEMS ────────────────────────────────────────────────
       for (final item in pos.items.values) {
         await _supabase.from('order_items').insert({
           'order_id': orderId,
+          'product_id': item.product.id, // CORRECCIÓN: faltaba product_id
           'variant_id': item.variantId,
           'quantity': item.quantity,
           'unit_cost': item.product.unitCost,
@@ -348,19 +454,107 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         });
       }
 
+      // ─── 5. ACTUALIZAR LOTES Y REGISTRAR KARDEX ─────────────────────────
       if (!isDraft) {
-        // Actualizar lotes
         for (final up in batchUpdates) {
           await _supabase
               .from('warehouse_stock_batches')
               .update({'available_quantity': up['new_quantity']})
               .eq('id', up['id']);
         }
-        // Registrar Kardex (Arco exclusivo: usamos order_id como referencia)
         for (final mov in movementInserts) {
           mov['order_id'] = orderId;
           await _supabase.from('inventory_movements').insert(mov);
         }
+      }
+
+      // ─── 6. PUNTOS (WALLET) — solo en venta directa con cliente ─────────
+      if (!isDraft && pos.selectedClientId != null) {
+        // 6a. Canjear puntos usados
+        if (puntosUsados > 0) {
+          // Descontar del saldo en profiles.wallet_balance
+          final profileData =
+              await _supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', pos.selectedClientId!)
+                  .single();
+          final currentBalance = (profileData['wallet_balance'] as num).toInt();
+          final newBalance = (currentBalance - puntosUsados).clamp(
+            0,
+            currentBalance,
+          );
+
+          await _supabase
+              .from('profiles')
+              .update({'wallet_balance': newBalance})
+              .eq('id', pos.selectedClientId!);
+
+          await _supabase.from('wallet_movements').insert({
+            'profile_id': pos.selectedClientId,
+            'order_id': orderId,
+            'points': -puntosUsados,
+            'movement_type': 'REDEEMED',
+            'description': 'Canje de monedas en venta POS #$orderId',
+          });
+        }
+
+        // 6b. Acumular puntos ganados
+        if (puntosGanados > 0) {
+          final profileData =
+              await _supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', pos.selectedClientId!)
+                  .single();
+          final currentBalance = (profileData['wallet_balance'] as num).toInt();
+
+          await _supabase
+              .from('profiles')
+              .update({'wallet_balance': currentBalance + puntosGanados})
+              .eq('id', pos.selectedClientId!);
+
+          await _supabase.from('wallet_movements').insert({
+            'profile_id': pos.selectedClientId,
+            'order_id': orderId,
+            'points': puntosGanados,
+            'movement_type': 'EARNED',
+            'description': 'Monedas ganadas en venta POS #$orderId',
+          });
+        }
+      }
+
+      // ─── 7. CRÉDITO — cargar deuda al cliente ───────────────────────────
+      if (!isDraft && isCredito && pos.selectedClientId != null) {
+        // Re-leemos la deuda actual en el momento de insertar (dato fresco)
+        final latestCredit =
+            await _supabase
+                .from('customer_credits')
+                .select('id, current_debt')
+                .eq('profile_id', pos.selectedClientId!)
+                .single();
+
+        final creditId = latestCredit['id'] as String;
+        final currentDebt = (latestCredit['current_debt'] as num).toDouble();
+        final newDebt = currentDebt + totalFinal;
+
+        await _supabase
+            .from('customer_credits')
+            .update({
+              'current_debt': newDebt,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', creditId);
+
+        await _supabase.from('credit_movements').insert({
+          'credit_id': creditId,
+          'order_id': orderId,
+          'movement_type': 'CHARGE',
+          'amount': totalFinal,
+          'payment_method': 'CRÉDITO',
+          'notes': 'Cargo por venta POS',
+          'created_by': currentProfileId,
+        });
       }
 
       pos.clearPos();
@@ -372,6 +566,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       if (mounted) setState(() => _isProcessingSale = false);
     }
   }
+
   // ─── BUILD ───────────────────────────────────────────────────────────────
 
   @override
@@ -385,13 +580,29 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       pos,
       pointsToSolesRatio,
     );
-
-    // ─── NUEVO: Calcular si el descuento es inválido para la UI ───
     final descuentoExtra = _getCustomDiscountAmount(pos);
     final descuentoExcedido =
         descuentoExtra >
         (pos.totalAmount - (puntosSeguros * pointsToSolesRatio));
-    // ──────────────────────────────────────────────────────────────
+
+    final isCredito = pos.paymentMethod == 'CRÉDITO';
+    final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
+
+    // CRÉDITO insuficiente bloquea el botón de venta directa
+    final creditoInsuficiente =
+        isCredito &&
+        pos.selectedClientId != null &&
+        _creditInfo != null &&
+        _creditDisponible < totalFinal;
+
+    // Sin cliente en modo crédito bloquea la venta
+    final creditoSinCliente = isCredito && pos.selectedClientId == null;
+
+    final puedeVender =
+        pos.itemCount > 0 &&
+        !descuentoExcedido &&
+        !creditoInsuficiente &&
+        !creditoSinCliente;
 
     return AdminLayout(
       title: 'Caja POS',
@@ -443,13 +654,17 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                       selectedClientId: pos.selectedClientId,
                       onClientTap: _selectClient,
                       saldoActualCliente: pos.saldoActualCliente,
+                      creditInfo: _creditInfo,
+                      isCredito: isCredito,
                     ),
 
                     // ── 3. PUNTOS ─────────────────────────────────────────
                     AdminSalePointsSection(
+                      // Solo mostrar puntos si NO es venta a crédito (no tiene sentido combinar)
                       show:
                           pos.selectedClientId != null &&
-                          pos.saldoActualCliente > 0,
+                          pos.saldoActualCliente > 0 &&
+                          !isCredito,
                       saldoActualCliente: pos.saldoActualCliente,
                       maxPuntosAplicables: _maxPuntosAplicables(
                         pos,
@@ -464,7 +679,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                           pointsToSolesRatio,
                         );
                         pos.setPuntosAUsar(next);
-                        // Aseguramos que el controlador se sincronice
                         _puntosCtrl.value = TextEditingValue(
                           text: next.toString(),
                           selection: TextSelection.collapsed(
@@ -487,234 +701,272 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                       paymentIcons: _paymentIcons,
                       warehouseList: _warehouseList,
                       selectedWarehouseId: pos.selectedWarehouseId,
-                      onPaymentChanged: (v) => pos.setPaymentMethod(v!),
+                      onPaymentChanged: (v) {
+                        pos.setPaymentMethod(v!);
+                        // Si cambia de crédito, limpiar puntos
+                        if (v != 'CRÉDITO') {
+                          // no-op, puntos se siguen mostrando
+                        } else {
+                          // Al seleccionar crédito, limpiamos puntos (incompatibles)
+                          pos.setPuntosAUsar(0);
+                          _puntosCtrl.text = '0';
+                        }
+                        setState(() {});
+                      },
                       onWarehouseChanged: (v) => pos.setWarehouse(v),
                     ),
                     const SizedBox(height: 20),
 
-                    // ── NUEVO: DESCUENTO EXTRA ────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppColors.radius),
-                        // Borde rojo si se excede el descuento
-                        border: Border.all(
-                          color:
-                              descuentoExcedido
-                                  ? AppColors.danger
-                                  : AppColors.border,
-                        ),
-                        boxShadow: AppColors.cardShadow(),
+                    // ── AVISO DE CRÉDITO ──────────────────────────────────
+                    if (isCredito)
+                      _CreditWarningCard(
+                        clienteSeleccionado: pos.selectedClientId != null,
+                        creditActivo: _creditActivo,
+                        creditDisponible: _creditDisponible,
+                        totalFinal: totalFinal,
+                        creditInfo: _creditInfo,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _SectionLabel(
-                            icon: Icons.discount_rounded,
-                            label: 'Descuento extra',
+                    if (isCredito) const SizedBox(height: 20),
+
+                    // ── DESCUENTO EXTRA (ocultar en crédito) ─────────────
+                    if (!isCredito)
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppColors.radius),
+                          border: Border.all(
+                            color:
+                                descuentoExcedido
+                                    ? AppColors.danger
+                                    : AppColors.border,
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.bg,
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radiusSm + 2,
-                                    ),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: TextField(
-                                    controller: _descuentoCtrl,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    onChanged: (_) => setState(() {}),
-                                    decoration: const InputDecoration(
-                                      hintText: '0.00',
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 12,
+                          boxShadow: AppColors.cardShadow(),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _SectionLabel(
+                              icon: Icons.discount_rounded,
+                              label: 'Descuento extra',
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bg,
+                                      borderRadius: BorderRadius.circular(
+                                        AppColors.radiusSm + 2,
                                       ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 1,
-                                child: Container(
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.bg,
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radiusSm + 2,
-                                    ),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap:
-                                              () => setState(
-                                                () =>
-                                                    _isDiscountPercentage =
-                                                        false,
-                                              ),
-                                          child: Container(
-                                            color:
-                                                !_isDiscountPercentage
-                                                    ? AppColors.teal.withValues(
-                                                      alpha: 0.1,
-                                                    )
-                                                    : Colors.transparent,
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'S/',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color:
-                                                    !_isDiscountPercentage
-                                                        ? AppColors.teal
-                                                        : AppColors.textMuted,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 1,
+                                      border: Border.all(
                                         color: AppColors.border,
                                       ),
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap:
-                                              () => setState(
-                                                () =>
-                                                    _isDiscountPercentage =
-                                                        true,
-                                              ),
-                                          child: Container(
-                                            color:
-                                                _isDiscountPercentage
-                                                    ? AppColors.teal.withValues(
-                                                      alpha: 0.1,
-                                                    )
-                                                    : Colors.transparent,
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              '%',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color:
-                                                    _isDiscountPercentage
-                                                        ? AppColors.teal
-                                                        : AppColors.textMuted,
+                                    ),
+                                    child: TextField(
+                                      controller: _descuentoCtrl,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                      onChanged: (_) => setState(() {}),
+                                      decoration: const InputDecoration(
+                                        hintText: '0.00',
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 1,
+                                  child: Container(
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bg,
+                                      borderRadius: BorderRadius.circular(
+                                        AppColors.radiusSm + 2,
+                                      ),
+                                      border: Border.all(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap:
+                                                () => setState(
+                                                  () =>
+                                                      _isDiscountPercentage =
+                                                          false,
+                                                ),
+                                            child: Container(
+                                              color:
+                                                  !_isDiscountPercentage
+                                                      ? AppColors.teal
+                                                          .withValues(
+                                                            alpha: 0.1,
+                                                          )
+                                                      : Colors.transparent,
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                'S/',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      !_isDiscountPercentage
+                                                          ? AppColors.teal
+                                                          : AppColors.textMuted,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          // ── NUEVO: Mensaje de error visual debajo del input ──
-                          if (descuentoExcedido)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warning_rounded,
-                                    size: 14,
-                                    color: AppColors.danger,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      'No puede superar los S/ ${(pos.totalAmount - (puntosSeguros * pointsToSolesRatio)).toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                        color: AppColors.danger,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                        Container(
+                                          width: 1,
+                                          color: AppColors.border,
+                                        ),
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap:
+                                                () => setState(
+                                                  () =>
+                                                      _isDiscountPercentage =
+                                                          true,
+                                                ),
+                                            child: Container(
+                                              color:
+                                                  _isDiscountPercentage
+                                                      ? AppColors.teal
+                                                          .withValues(
+                                                            alpha: 0.1,
+                                                          )
+                                                      : Colors.transparent,
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                '%',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      _isDiscountPercentage
+                                                          ? AppColors.teal
+                                                          : AppColors.textMuted,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                        ],
+                            if (descuentoExcedido)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.warning_rounded,
+                                      size: 14,
+                                      color: AppColors.danger,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'No puede superar los S/ ${(pos.totalAmount - (puntosSeguros * pointsToSolesRatio)).toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                          color: AppColors.danger,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                    if (!isCredito) const SizedBox(height: 16),
 
                     // ── 5. RESUMEN TOTAL ──────────────────────────────────
                     AdminSaleTotalSummarySection(
                       subtotalAntesDePuntos: pos.totalAmount,
-                      puntosAplicables: puntosSeguros,
-                      descuentoPuntos: puntosSeguros * pointsToSolesRatio,
-                      descuentoExtra: _getCustomDiscountAmount(pos),
-                      totalFinal: _calcularTotalFinal(pos, pointsToSolesRatio),
+                      puntosAplicables: isCredito ? 0 : puntosSeguros,
+                      descuentoPuntos:
+                          isCredito ? 0 : puntosSeguros * pointsToSolesRatio,
+                      descuentoExtra:
+                          isCredito ? 0 : _getCustomDiscountAmount(pos),
+                      totalFinal: totalFinal,
                       pointsToSolesRatio: pointsToSolesRatio,
                       earningRate: earningRate,
+                      isCredito: isCredito,
                     ),
                     const SizedBox(height: 16),
 
-                    // ── 6. BOTONES DE ACCIÓN ────────────────────────────────
+                    // ── 6. BOTONES DE ACCIÓN ──────────────────────────────
                     Row(
                       children: [
                         Expanded(
                           child: AdminSaleConfirmButton(
                             loading: _isProcessingSale,
-                            // NUEVO: El botón se apaga si hay error de descuento
-                            enabled: pos.itemCount > 0 && !descuentoExcedido,
+                            enabled: puedeVender,
+                            label:
+                                isCredito
+                                    ? 'Vender a crédito'
+                                    : 'Confirmar venta',
                             onPressed: () => _processSale(pos, isDraft: false),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: Tooltip(
-                            message: 'Guardar borrador',
-                            child: OutlinedButton(
-                              // NUEVO: Se bloquea el borrador si hay error de descuento
-                              onPressed:
-                                  (_isProcessingSale ||
-                                          pos.itemCount == 0 ||
-                                          descuentoExcedido)
-                                      ? null
-                                      : () => _processSale(pos, isDraft: true),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.teal,
-                                padding: EdgeInsets.zero,
-                                side: BorderSide(
-                                  color: AppColors.teal.withValues(alpha: 0.4),
-                                  width: 1.5,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppColors.radius,
+                        // El borrador NO se muestra si es crédito (no tiene sentido)
+                        if (!isCredito) ...[
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: Tooltip(
+                              message: 'Guardar borrador',
+                              child: OutlinedButton(
+                                onPressed:
+                                    (_isProcessingSale ||
+                                            pos.itemCount == 0 ||
+                                            descuentoExcedido)
+                                        ? null
+                                        : () =>
+                                            _processSale(pos, isDraft: true),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.teal,
+                                  padding: EdgeInsets.zero,
+                                  side: BorderSide(
+                                    color: AppColors.teal.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radius,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              child: const Icon(
-                                Icons.save_as_rounded,
-                                size: 22,
+                                child: const Icon(
+                                  Icons.save_as_rounded,
+                                  size: 22,
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
@@ -723,6 +975,195 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     );
   }
 }
+
+// ─── CREDIT WARNING CARD ─────────────────────────────────────────────────────
+
+class _CreditWarningCard extends StatelessWidget {
+  final bool clienteSeleccionado;
+  final bool creditActivo;
+  final double creditDisponible;
+  final double totalFinal;
+  final Map<String, dynamic>? creditInfo;
+
+  const _CreditWarningCard({
+    required this.clienteSeleccionado,
+    required this.creditActivo,
+    required this.creditDisponible,
+    required this.totalFinal,
+    required this.creditInfo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Sin cliente seleccionado
+    if (!clienteSeleccionado) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.deepOrange.shade50,
+          borderRadius: BorderRadius.circular(AppColors.radius),
+          border: Border.all(color: Colors.deepOrange.shade200),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.warning_rounded, color: Colors.deepOrange, size: 18),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Debes seleccionar un cliente para ventas a crédito.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.deepOrange,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Cliente sin crédito activo
+    if (!creditActivo) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(AppColors.radius),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.block_rounded, color: Colors.red, size: 18),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Este cliente no tiene línea de crédito activa.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final limit = (creditInfo!['credit_limit'] as num).toDouble();
+    final debt = (creditInfo!['current_debt'] as num).toDouble();
+    final insuficiente = creditDisponible < totalFinal;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: insuficiente ? Colors.red.shade50 : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(
+          color: insuficiente ? Colors.red.shade200 : Colors.green.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                insuficiente
+                    ? Icons.warning_rounded
+                    : Icons.check_circle_rounded,
+                color: insuficiente ? Colors.red : Colors.green,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                insuficiente ? 'Crédito insuficiente' : 'Crédito disponible',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: insuficiente ? Colors.red : Colors.green.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _CreditRow(
+                label: 'Límite',
+                value: 'S/ ${limit.toStringAsFixed(2)}',
+              ),
+              const SizedBox(width: 12),
+              _CreditRow(
+                label: 'Deuda actual',
+                value: 'S/ ${debt.toStringAsFixed(2)}',
+                valueColor: Colors.deepOrange,
+              ),
+              const SizedBox(width: 12),
+              _CreditRow(
+                label: 'Disponible',
+                value: 'S/ ${creditDisponible.toStringAsFixed(2)}',
+                valueColor: insuficiente ? Colors.red : Colors.green.shade800,
+                bold: true,
+              ),
+            ],
+          ),
+          if (insuficiente)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Necesitas S/ ${totalFinal.toStringAsFixed(2)} pero solo hay S/ ${creditDisponible.toStringAsFixed(2)} disponibles.',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool bold;
+
+  const _CreditRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.bold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── PROCESSING OVERLAY ───────────────────────────────────────────────────────
 
 class _ProcessingOverlay extends StatelessWidget {
@@ -827,7 +1268,6 @@ class _CartItemsList extends StatelessWidget {
             final index = entry.key;
             final item = entry.value;
             final isLast = index == pos.items.length - 1;
-
             return Column(
               children: [
                 _CartItemRow(item: item, pos: pos),
@@ -943,7 +1383,6 @@ class _CartItemRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // Info principal + Selector de cantidad
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -971,7 +1410,7 @@ class _CartItemRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    // --- NUEVO SELECTOR DE CANTIDAD ---
+                    // Selector de cantidad
                     Container(
                       height: 28,
                       decoration: BoxDecoration(
@@ -982,7 +1421,6 @@ class _CartItemRow extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Botón Menos
                           InkWell(
                             onTap:
                                 item.quantity > 1
@@ -1007,7 +1445,6 @@ class _CartItemRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // Cantidad central (Clickeable para abrir teclado)
                           Material(
                             color: AppColors.tealLight.withValues(alpha: 0.3),
                             child: InkWell(
@@ -1026,7 +1463,6 @@ class _CartItemRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // Botón Más
                           InkWell(
                             onTap:
                                 item.quantity < item.availableStock
@@ -1055,7 +1491,6 @@ class _CartItemRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Precio unitario
                     Text(
                       'S/ ${item.unitPrice.toStringAsFixed(2)} c/u',
                       style: const TextStyle(
@@ -1070,7 +1505,6 @@ class _CartItemRow extends StatelessWidget {
             ),
           ),
 
-          // Total + Eliminar (Manteniendo tu diseño original en la derecha)
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -1141,7 +1575,6 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Método de pago — chips horizontales
           const Text(
             'Método de pago',
             style: TextStyle(
@@ -1158,6 +1591,7 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
               children:
                   paymentMethods.map((method) {
                     final selected = paymentMethod == method;
+                    final isCredito = method == 'CRÉDITO';
                     return GestureDetector(
                       onTap: () => onPaymentChanged(method),
                       child: AnimatedContainer(
@@ -1165,10 +1599,20 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         decoration: BoxDecoration(
-                          color: selected ? AppColors.teal : AppColors.bg,
+                          color:
+                              selected
+                                  ? (isCredito
+                                      ? Colors.deepOrange
+                                      : AppColors.teal)
+                                  : AppColors.bg,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: selected ? AppColors.teal : AppColors.border,
+                            color:
+                                selected
+                                    ? (isCredito
+                                        ? Colors.deepOrange
+                                        : AppColors.teal)
+                                    : AppColors.border,
                           ),
                         ),
                         child: Row(
@@ -1180,7 +1624,9 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                               color:
                                   selected
                                       ? Colors.white
-                                      : AppColors.textSecondary,
+                                      : (isCredito
+                                          ? Colors.deepOrange
+                                          : AppColors.textSecondary),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -1191,7 +1637,9 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                                 color:
                                     selected
                                         ? Colors.white
-                                        : AppColors.textSecondary,
+                                        : (isCredito
+                                            ? Colors.deepOrange
+                                            : AppColors.textSecondary),
                               ),
                             ),
                           ],
@@ -1206,8 +1654,6 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
             const SizedBox(height: 14),
             const Divider(height: 1, color: AppColors.divider),
             const SizedBox(height: 14),
-
-            // Almacén
             const Text(
               'Almacén de origen',
               style: TextStyle(
@@ -1233,31 +1679,29 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                     color: AppColors.textSecondary,
                   ),
                   items:
-                      warehouseList
-                          .map(
-                            (w) => DropdownMenuItem<String>(
-                              value: w.id,
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warehouse_rounded,
-                                    size: 16,
-                                    color: AppColors.teal,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    w.name,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                      warehouseList.map((w) {
+                        return DropdownMenuItem<String>(
+                          value: w.id,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warehouse_rounded,
+                                size: 16,
+                                color: AppColors.teal,
                               ),
-                            ),
-                          )
-                          .toList(),
+                              const SizedBox(width: 8),
+                              Text(
+                                w.name,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                   onChanged: onWarehouseChanged,
                 ),
               ),
@@ -1281,6 +1725,8 @@ class AdminSaleClientSection extends StatelessWidget {
   final String? selectedClientId;
   final ClientTapCallback onClientTap;
   final int saldoActualCliente;
+  final Map<String, dynamic>? creditInfo; // NUEVO
+  final bool isCredito; // NUEVO
 
   const AdminSaleClientSection({
     super.key,
@@ -1291,6 +1737,8 @@ class AdminSaleClientSection extends StatelessWidget {
     required this.selectedClientId,
     required this.onClientTap,
     required this.saldoActualCliente,
+    required this.creditInfo,
+    required this.isCredito,
   });
 
   @override
@@ -1309,7 +1757,6 @@ class AdminSaleClientSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Buscador
           Container(
             height: 44,
             decoration: BoxDecoration(
@@ -1326,7 +1773,7 @@ class AdminSaleClientSection extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               decoration: const InputDecoration(
-                hintText: 'Buscar por nombre o documento…',
+                hintText: 'Buscar por nombre, teléfono o documento…',
                 hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 prefixIcon: Icon(
                   Icons.search_rounded,
@@ -1340,7 +1787,6 @@ class AdminSaleClientSection extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Estados
           if (searching)
             const _ClientSearchState(
               icon: null,
@@ -1348,18 +1794,21 @@ class AdminSaleClientSection extends StatelessWidget {
               message: 'Buscando clientes…',
             )
           else if (selectedClientId != null)
-            _SelectedClientBanner(saldo: saldoActualCliente)
+            _SelectedClientBanner(
+              saldo: saldoActualCliente,
+              creditInfo: creditInfo,
+              isCredito: isCredito,
+            )
           else if (controller.text.trim().isEmpty)
             const _ClientSearchState(
               icon: Icons.person_search_rounded,
               message: 'Busca un cliente o ingresa un nombre para el ticket.',
             )
           else if (matches.isEmpty)
-            // ─── NUEVO ESTADO: Confirma visualmente que se usará el nombre manual ───
             _ClientSearchState(
               icon: Icons.person_add_alt_1_rounded,
               message: 'Venta libre a nombre de: "${controller.text.trim()}"',
-              isHighlight: true, // Agregaremos esta propiedad abajo
+              isHighlight: true,
             )
           else
             _ClientMatchesList(
@@ -1377,20 +1826,18 @@ class _ClientSearchState extends StatelessWidget {
   final IconData? icon;
   final bool isLoading;
   final String message;
-  final bool isHighlight; // <-- NUEVO
+  final bool isHighlight;
 
   const _ClientSearchState({
     this.icon,
     this.isLoading = false,
     required this.message,
-    this.isHighlight = false, // <-- NUEVO
+    this.isHighlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Si es highlight, lo pintamos con el color principal (Teal) para que se vea como una acción válida
     final color = isHighlight ? AppColors.teal : AppColors.textMuted;
-
     return Row(
       children: [
         if (isLoading)
@@ -1422,10 +1869,67 @@ class _ClientSearchState extends StatelessWidget {
 
 class _SelectedClientBanner extends StatelessWidget {
   final int saldo;
-  const _SelectedClientBanner({required this.saldo});
+  final Map<String, dynamic>? creditInfo;
+  final bool isCredito;
+
+  const _SelectedClientBanner({
+    required this.saldo,
+    required this.creditInfo,
+    required this.isCredito,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // En modo crédito, mostramos info del crédito en vez de saldo de puntos
+    if (isCredito && creditInfo != null) {
+      final isActive = creditInfo!['is_active'] == true;
+      final limit = (creditInfo!['credit_limit'] as num).toDouble();
+      final debt = (creditInfo!['current_debt'] as num).toDouble();
+      final disponible = (limit - debt).clamp(0.0, double.infinity);
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+          borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isActive ? Icons.check_circle_rounded : Icons.block_rounded,
+              color: isActive ? AppColors.success : Colors.red,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Cliente seleccionado · ${isActive ? "Crédito activo" : "Sin crédito activo"}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isActive ? AppColors.success : Colors.red,
+                    ),
+                  ),
+                  if (isActive)
+                    Text(
+                      'Disponible: S/ ${disponible.toStringAsFixed(2)} de S/ ${limit.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: disponible > 0 ? AppColors.success : Colors.red,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Modo normal: mostrar saldo de monedas
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -1501,6 +2005,7 @@ class _ClientMatchesList extends StatelessWidget {
             final name = client['full_name'] as String? ?? 'Cliente';
             final doc = client['document_number'] as String?;
             final phone = client['phone'] as String?;
+            final wallet = (client['wallet_balance'] as num?)?.toInt() ?? 0;
             final isSelected = selectedClientId == client['id'];
 
             return GestureDetector(
@@ -1552,6 +2057,7 @@ class _ClientMatchesList extends StatelessWidget {
                               if (doc != null && doc.isNotEmpty) 'Doc: $doc',
                               if (phone != null && phone.isNotEmpty)
                                 'Tel: $phone',
+                              if (wallet > 0) '$wallet monedas',
                             ].join(' · '),
                             style: const TextStyle(
                               fontSize: 11,
@@ -1616,7 +2122,6 @@ class AdminSalePointsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -1644,8 +2149,6 @@ class AdminSalePointsSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-
-            // Info chips
             Row(
               children: [
                 _CoinInfoChip(
@@ -1672,12 +2175,9 @@ class AdminSalePointsSection extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // Input
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
               height: 48,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -1737,6 +2237,7 @@ class _CoinInfoChip extends StatelessWidget {
   final String label;
   final String value;
   final Color valueColor;
+
   const _CoinInfoChip({
     required this.label,
     required this.value,
@@ -1781,24 +2282,29 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
   final double subtotalAntesDePuntos;
   final int puntosAplicables;
   final double descuentoPuntos;
-  final double descuentoExtra; // NUEVO PARÁMETRO
+  final double descuentoExtra;
   final double totalFinal;
   final double pointsToSolesRatio;
   final double earningRate;
+  final bool isCredito; // NUEVO
 
   const AdminSaleTotalSummarySection({
     super.key,
     required this.subtotalAntesDePuntos,
     required this.puntosAplicables,
     required this.descuentoPuntos,
-    required this.descuentoExtra, // NUEVO PARÁMETRO
+    required this.descuentoExtra,
     required this.totalFinal,
     required this.pointsToSolesRatio,
     required this.earningRate,
+    required this.isCredito,
   });
 
   @override
   Widget build(BuildContext context) {
+    final puntosGanadosEstimados =
+        (totalFinal * earningRate / pointsToSolesRatio).toInt();
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppColors.radius),
@@ -1807,7 +2313,6 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Desglose de descuento (solo si aplica puntos o descuento extra)
           if (puntosAplicables > 0 || descuentoExtra > 0)
             Container(
               padding: const EdgeInsets.all(14),
@@ -1823,7 +2328,6 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
                     label: 'Subtotal',
                     value: 'S/ ${subtotalAntesDePuntos.toStringAsFixed(2)}',
                   ),
-
                   if (puntosAplicables > 0) ...[
                     const SizedBox(height: 6),
                     _SummaryRow(
@@ -1839,7 +2343,6 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
                       isBold: true,
                     ),
                   ],
-
                   if (descuentoExtra > 0) ...[
                     const SizedBox(height: 6),
                     _SummaryRow(
@@ -1849,7 +2352,6 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
                       isBold: true,
                     ),
                   ],
-
                   const SizedBox(height: 6),
                   _SummaryRow(
                     label: 'Tasa de acumulación',
@@ -1860,12 +2362,18 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
               ),
             ),
 
-          // Total final — bloque destacado con gradiente
+          // Total final
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
+              gradient: LinearGradient(
+                colors:
+                    isCredito
+                        ? [
+                          Colors.deepOrange.shade600,
+                          Colors.deepOrange.shade800,
+                        ]
+                        : const [Color(0xFF0D9488), Color(0xFF0F766E)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1879,23 +2387,41 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TOTAL A PAGAR',
-                      style: TextStyle(
+                      isCredito ? 'TOTAL A CRÉDITO' : 'TOTAL A PAGAR',
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         letterSpacing: 1.2,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Incluye todos los descuentos',
-                      style: TextStyle(fontSize: 11, color: Colors.white),
+                      isCredito
+                          ? 'Se cargará a la deuda del cliente'
+                          : 'Incluye todos los descuentos',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
                     ),
+                    // Puntos a ganar (no aplica en crédito)
+                    if (!isCredito && puntosGanadosEstimados > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '+$puntosGanadosEstimados monedas al cliente',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 Text(
@@ -1956,6 +2482,7 @@ class _SummaryRow extends StatelessWidget {
 class AdminSaleConfirmButton extends StatelessWidget {
   final bool loading;
   final bool enabled;
+  final String label; // NUEVO: texto configurable
   final VoidCallback? onPressed;
 
   const AdminSaleConfirmButton({
@@ -1963,6 +2490,7 @@ class AdminSaleConfirmButton extends StatelessWidget {
     required this.loading,
     required this.enabled,
     required this.onPressed,
+    this.label = 'Confirmar venta',
   });
 
   @override
@@ -2015,7 +2543,7 @@ class AdminSaleConfirmButton extends StatelessWidget {
               ),
             const SizedBox(width: 10),
             Text(
-              loading ? 'Procesando…' : 'Confirmar venta',
+              loading ? 'Procesando…' : label,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -2030,7 +2558,7 @@ class AdminSaleConfirmButton extends StatelessWidget {
   }
 }
 
-// ─── WIDGETS AUXILIARES (usados en otras pantallas, sin cambio de lógica) ────
+// ─── WIDGETS AUXILIARES ───────────────────────────────────────────────────────
 
 class AdminSaleStockSection extends StatelessWidget {
   final int currentStock;
@@ -2341,20 +2869,18 @@ class AdminSaleStoreSection extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
           items:
-              warehouses
-                  .map(
-                    (w) => DropdownMenuItem<String>(
-                      value: w.id,
-                      child: Text(
-                        w.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
+              warehouses.map((w) {
+                return DropdownMenuItem<String>(
+                  value: w.id,
+                  child: Text(
+                    w.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
                     ),
-                  )
-                  .toList(),
+                  ),
+                );
+              }).toList(),
           onChanged: onChanged,
         ),
       ),

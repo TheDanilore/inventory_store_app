@@ -75,44 +75,44 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen>
 
     _fetchCategories();
     _refreshProducts();
-    _fetchTopSelling();
+    // _fetchTopSelling();
   }
 
   // ─── RECOMENDACIONES ────────────────────────────────────────────────────────
 
-  Future<void> _fetchTopSelling() async {
-    setState(() => _loadingTop = true);
-    try {
-      final response = await _supabase
-          .from('mv_top_selling_products')
-          .select('*, product_images(*)')
-          .limit(10);
+  // Future<void> _fetchTopSelling() async {
+  //   setState(() => _loadingTop = true);
+  //   try {
+  //     final response = await _supabase
+  //         .from('mv_top_selling_products')
+  //         .select('*, product_images(*)')
+  //         .limit(10);
 
-      final rows = List<Map<String, dynamic>>.from(response);
+  //     final rows = List<Map<String, dynamic>>.from(response);
 
-      // 1. Extraer los IDs de los productos top
-      final ids =
-          rows.map((e) => e['id'] as String?).whereType<String>().toList();
+  //     // 1. Extraer los IDs de los productos top
+  //     final ids =
+  //         rows.map((e) => e['id'] as String?).whereType<String>().toList();
 
-      // 2. Consultar el stock real para estos IDs específicos
-      final stock = await _loadStockByProductIds(ids);
+  //     // 2. Consultar el stock real para estos IDs específicos
+  //     final stock = await _loadStockByProductIds(ids);
 
-      if (!mounted) return;
+  //     if (!mounted) return;
 
-      // 3. Asignar el stock al convertir el JSON al modelo Product
-      setState(() {
-        _topSelling =
-            rows
-                .map(ProductModel.fromJson)
-                .map((p) => p.copyWith(totalStock: (stock[p.id] ?? 0)))
-                .toList();
-      });
-    } catch (e) {
-      debugPrint('Top selling error: $e');
-    } finally {
-      if (mounted) setState(() => _loadingTop = false);
-    }
-  }
+  //     // 3. Asignar el stock al convertir el JSON al modelo Product
+  //     setState(() {
+  //       _topSelling =
+  //           rows
+  //               .map(ProductModel.fromJson)
+  //               .map((p) => p.copyWith(totalStock: (stock[p.id] ?? 0)))
+  //               .toList();
+  //     });
+  //   } catch (e) {
+  //     debugPrint('Top selling error: $e');
+  //   } finally {
+  //     if (mounted) setState(() => _loadingTop = false);
+  //   }
+  // }
 
   // ─── CATEGORÍAS ─────────────────────────────────────────────────────────────
 
@@ -155,7 +155,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen>
   Future<void> _onPullToRefresh() async {
     await Future.wait([
       _refreshProducts(),
-      _fetchTopSelling(),
+      // _fetchTopSelling(),
       _fetchCategories(),
     ]);
   }

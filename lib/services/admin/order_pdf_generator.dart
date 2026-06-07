@@ -7,11 +7,18 @@ import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 
 class OrderPdfGenerator {
+  /// Helper para convertir cualquier fecha de UTC a Hora de Perú (UTC-5)
+  static DateTime _toPeruTime(DateTime date) {
+    // Si la fecha ya es local (depende de cómo la parsees en el modelo),
+    // toUtc() la normaliza antes de aplicar el desfase peruano.
+    return date.toUtc().subtract(const Duration(hours: 5));
+  }
+
   static Future<void> generateTicket(
     OrderModel order, {
     List<OrderItemModel>? items,
   }) async {
-    // 1. Obtener los items si no se pasaron por parámetro (caso de la OrderCard)
+    // 1. Obtener los items si no se pasaron por parámetro
     List<OrderItemModel> orderItems = items ?? [];
 
     if (orderItems.isEmpty) {
@@ -35,12 +42,13 @@ class OrderPdfGenerator {
               .toList();
     }
 
-    // 2. Configurar el documento PDF (Formato Ticket de 80mm aprox)
+    // 2. Configurar el documento PDF y Fechas
     final pdf = pw.Document();
 
-    final dateString = DateFormat(
-      'dd/MM/yyyy HH:mm',
-    ).format(order.createdAt ?? DateTime.now());
+    // Aplicar la conversión a la fecha de creación
+    final rawDate = order.createdAt ?? DateTime.now();
+    final peruDate = _toPeruTime(rawDate);
+    final dateString = DateFormat('dd/MM/yyyy HH:mm').format(peruDate);
 
     pdf.addPage(
       pw.Page(
@@ -66,46 +74,57 @@ class OrderPdfGenerator {
               pw.Text('Cliente: ${order.displayCustomerName}'),
               pw.Text('Estado: ${order.status}'),
               pw.Text('Método Pago: ${order.paymentMethod}'),
-
               pw.Text('Estado de Pago: ${order.paymentStatus}'),
-
               pw.Text(
                 'Monto Pagado: S/ ${order.amountPaid.toStringAsFixed(2)}',
               ),
 
-              order.dueDate != null
-                  ? pw.Text(
-                    'Fecha de Vencimiento: ${DateFormat('dd/MM/yyyy').format(order.dueDate!)}',
-                  )
-                  : pw.Container(),
+              // Mostrar solo si hay fecha de vencimiento
+              if (order.dueDate != null)
+                pw.Text(
+                  'Vencimiento: ${DateFormat('dd/MM/yyyy').format(order.dueDate!.toLocal())}',
+                ),
 
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
 
               // ITEMS
               pw.Text(
                 'CANT  DESCRIPCION      TOTAL',
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 11,
+                ),
               ),
               pw.SizedBox(height: 5),
               ...orderItems.map((item) {
                 final itemName =
                     item.variantDisplayName ?? item.productName ?? 'Producto';
                 final subtotal = item.subtotal.toStringAsFixed(2);
+
                 return pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 4),
                   child: pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.SizedBox(
-                        width: 30,
-                        child: pw.Text('${item.quantity}x'),
+                        width: 28,
+                        child: pw.Text(
+                          '${item.quantity}x',
+                          style: const pw.TextStyle(fontSize: 11),
+                        ),
                       ),
-                      pw.Expanded(child: pw.Text(itemName)),
+                      pw.Expanded(
+                        child: pw.Text(
+                          itemName,
+                          style: const pw.TextStyle(fontSize: 11),
+                        ),
+                      ),
                       pw.SizedBox(
                         width: 50,
                         child: pw.Text(
                           'S/ $subtotal',
                           textAlign: pw.TextAlign.right,
+                          style: const pw.TextStyle(fontSize: 11),
                         ),
                       ),
                     ],
@@ -116,14 +135,24 @@ class OrderPdfGenerator {
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
 
               // TOTALES
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Monedas usadas:'),
-                  pw.Text('- ${order.pointsUsed} pts'),
-                ],
-              ),
-              pw.SizedBox(height: 4),
+              // Mostrar solo si se usaron monedas/puntos
+              if (order.pointsUsed > 0) ...[
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Monedas usadas:',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                    pw.Text(
+                      '- ${order.pointsUsed} pts',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 4),
+              ],
+
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -131,14 +160,14 @@ class OrderPdfGenerator {
                     'TOTAL FINAL:',
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                   ),
                   pw.Text(
                     'S/ ${order.totalAmount.toStringAsFixed(2)}',
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                   ),
                 ],

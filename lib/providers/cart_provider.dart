@@ -63,13 +63,24 @@ class CartProvider with ChangeNotifier {
     SupabaseClient supabase,
     String authUserId,
   ) async {
-    final profile =
-        await supabase
-            .from('profiles')
-            .select('id')
-            .eq('auth_user_id', authUserId)
-            .maybeSingle();
-    return profile?['id'] as String?;
+    // Intentamos buscar el perfil hasta 3 veces (para dar tiempo en registros nuevos)
+    for (int i = 0; i < 3; i++) {
+      final profile =
+          await supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
+
+      if (profile != null) {
+        return profile['id'] as String?; // Perfil encontrado con éxito
+      }
+
+      // Si no existe aún, esperamos 500 milisegundos antes del siguiente intento
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    return null; // Si después de 3 intentos no está, devolvemos null
   }
 
   // ── Obtener o crear cartId de forma segura ────────────────────────────────

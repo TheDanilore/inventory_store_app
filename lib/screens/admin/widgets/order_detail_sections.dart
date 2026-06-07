@@ -5,14 +5,14 @@ class OrderDetailHeaderRow extends StatelessWidget {
   final bool isCompleted;
   final bool isEditing;
   final VoidCallback onToggleEditing;
-  final VoidCallback onPrint; // <-- NUEVO PARÁMETRO
+  final VoidCallback onPrint;
 
   const OrderDetailHeaderRow({
     super.key,
     required this.isCompleted,
     required this.isEditing,
     required this.onToggleEditing,
-    required this.onPrint, // <-- NUEVO PARÁMETRO
+    required this.onPrint,
   });
 
   @override
@@ -26,7 +26,6 @@ class OrderDetailHeaderRow extends StatelessWidget {
         ),
         Row(
           children: [
-            // Botón de imprimir siempre visible (o puedes ocultarlo si es PENDING)
             IconButton(
               icon: const Icon(Icons.print_rounded, color: Colors.blueGrey),
               onPressed: onPrint,
@@ -242,29 +241,47 @@ class OrderDetailStatusSection extends StatelessWidget {
     required this.onChanged,
   });
 
+  String _label(String status) {
+    switch (status) {
+      case 'PENDING':
+        return 'Pendiente';
+      case 'COMPLETED':
+        return 'Completado';
+      case 'CANCELLED':
+        return 'Cancelado';
+      default:
+        return status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!isEditing) {
+      return OrderDetailSectionCard(
+        title: 'Estado',
+        child: OrderDetailInfoBox(value: _label(currentStatus)),
+      );
+    }
+
     return OrderDetailSectionCard(
       title: 'Estado',
       child: DropdownButtonFormField<String>(
         value: currentStatus,
         decoration: const InputDecoration(
-          labelText: 'Estado',
           border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         ),
         items:
-            [
-              'PENDING',
-              'COMPLETED',
-              'CANCELLED',
-            ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-        onChanged: isEditing ? onChanged : null,
+            ['PENDING', 'COMPLETED', 'CANCELLED']
+                .map((s) => DropdownMenuItem(value: s, child: Text(_label(s))))
+                .toList(),
+        onChanged: onChanged,
       ),
     );
   }
 }
 
-// --- NUEVA SECCIÓN PARA EL MÉTODO DE PAGO ---
+/// Incluye CRÉDITO en el listado de métodos de pago.
 class OrderDetailPaymentSection extends StatelessWidget {
   final String currentPaymentMethod;
   final bool isEditing;
@@ -277,17 +294,30 @@ class OrderDetailPaymentSection extends StatelessWidget {
     required this.onChanged,
   });
 
+  static const List<String> _paymentMethods = [
+    'EFECTIVO',
+    'YAPE',
+    'PLIN',
+    'TARJETA',
+    'TRANSFERENCIA',
+    'CRÉDITO', // ← CORREGIDO: faltaba en el listado original
+    'POR ACORDAR',
+  ];
+
   @override
   Widget build(BuildContext context) {
+    // Aseguramos que el valor actual sea válido en la lista
+    final safeValue =
+        _paymentMethods.contains(currentPaymentMethod)
+            ? currentPaymentMethod
+            : 'EFECTIVO';
+
     return OrderDetailSectionCard(
       title: 'Método de Pago',
       child:
           isEditing
               ? DropdownButtonFormField<String>(
-                value:
-                    currentPaymentMethod.isNotEmpty
-                        ? currentPaymentMethod
-                        : 'EFECTIVO',
+                value: safeValue,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
@@ -296,14 +326,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
                   ),
                 ),
                 items:
-                    [
-                          'EFECTIVO',
-                          'YAPE',
-                          'PLIN',
-                          'TARJETA',
-                          'TRANSFERENCIA',
-                          'POR ACORDAR',
-                        ]
+                    _paymentMethods
                         .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                         .toList(),
                 onChanged: onChanged,
@@ -409,6 +432,7 @@ class OrderDetailPointsSection extends StatelessWidget {
   }
 }
 
+/// Resumen de totales con cap del 50% en descuento por monedas.
 class OrderDetailTotalSummarySection extends StatelessWidget {
   final double subtotal;
   final int pointsUsed;
@@ -423,10 +447,17 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
     required this.pointsToSolesRatio,
   });
 
-  double get _discountValue => pointsUsed * pointsToSolesRatio;
+  /// Descuento bruto en soles (antes del cap)
+  double get _rawDiscount => pointsUsed * pointsToSolesRatio;
+
+  /// Descuento real aplicado — máximo 50% del subtotal
+  double get _appliedDiscount {
+    final maxDiscount = subtotal * 0.5;
+    return _rawDiscount > maxDiscount ? maxDiscount : _rawDiscount;
+  }
 
   double get _totalFinal {
-    final total = subtotal - _discountValue;
+    final total = subtotal - _appliedDiscount;
     return total < 0 ? 0 : total;
   }
 
@@ -435,18 +466,35 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
     String value, {
     bool isEmphasized = false,
     Color? valueColor,
+    String? hint,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isEmphasized ? FontWeight.w700 : FontWeight.w500,
-              color: Colors.grey.shade700,
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        isEmphasized ? FontWeight.w700 : FontWeight.w500,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                if (hint != null)
+                  Text(
+                    hint,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.orange.shade600,
+                    ),
+                  ),
+              ],
             ),
           ),
           Text(
@@ -464,6 +512,9 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Indicar si el cap fue aplicado
+    final capApplied = _rawDiscount > _appliedDiscount;
+
     return OrderDetailSectionCard(
       title: 'Resumen total',
       child: Column(
@@ -472,9 +523,15 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
           _buildRow('Monedas usadas', '$pointsUsed monedas'),
           _buildRow(
             'Descuento por monedas',
-            '- S/ ${_discountValue.toStringAsFixed(2)}',
+            '- S/ ${_appliedDiscount.toStringAsFixed(2)}',
             valueColor: Colors.green.shade800,
+            // Aviso si el cap truncó el descuento
+            hint:
+                capApplied
+                    ? 'Cap 50% aplicado (S/ ${_rawDiscount.toStringAsFixed(2)} → S/ ${_appliedDiscount.toStringAsFixed(2)})'
+                    : null,
           ),
+          const Divider(height: 16),
           _buildRow(
             'Total final',
             'S/ ${_totalFinal.toStringAsFixed(2)}',
@@ -524,6 +581,7 @@ class OrderDetailItemCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Imagen del producto
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child:
@@ -533,31 +591,12 @@ class OrderDetailItemCard extends StatelessWidget {
                         width: 52,
                         height: 52,
                         fit: BoxFit.cover,
-                        errorBuilder:
-                            (_, __, ___) => Container(
-                              width: 52,
-                              height: 52,
-                              color: Colors.teal.withValues(alpha: 0.1),
-                              child: const Icon(
-                                Icons.inventory_2_outlined,
-                                color: Colors.teal,
-                              ),
-                            ),
+                        errorBuilder: (_, __, ___) => _placeholderIcon(),
                       )
-                      : Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.teal.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.inventory_2_outlined,
-                          color: Colors.teal,
-                        ),
-                      ),
+                      : _placeholderIcon(),
             ),
             const SizedBox(width: 12),
+            // Datos del producto
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -579,10 +618,17 @@ class OrderDetailItemCard extends StatelessWidget {
                     'SKU: ${item.sku ?? 'N/A'}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
+                  const SizedBox(height: 4),
+                  // Precio unitario
+                  Text(
+                    'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
+            // Cantidad y subtotal
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -641,6 +687,18 @@ class OrderDetailItemCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _placeholderIcon() {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: Colors.teal.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.inventory_2_outlined, color: Colors.teal),
+    );
+  }
 }
 
 class OrderDetailItemsSection extends StatelessWidget {
@@ -666,10 +724,18 @@ class OrderDetailItemsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OrderDetailSectionCard(
-      title: 'Items',
+      title: 'Items (${items.length})',
       child:
           isLoading
               ? const Center(child: CircularProgressIndicator())
+              : items.isEmpty
+              ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Sin items registrados.',
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
+              )
               : ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
