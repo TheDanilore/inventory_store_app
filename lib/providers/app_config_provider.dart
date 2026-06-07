@@ -1,0 +1,214 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AppConfigProvider extends ChangeNotifier {
+  final _supabase = Supabase.instance.client;
+  bool _disposed = false;
+
+  final Map<String, double> _values = {};
+  String? _businessInfoId;
+  String _businessName = 'Cargando...';
+  String _businessTaxId = '';
+  String _businessAddress = '';
+  String _businessPhone = '';
+  String _businessLogoUrl = '';
+  bool _isLoading = false;
+  bool _isLoaded = false;
+  bool _businessInfoLoaded = false; // ← flag real para loadBusinessInfo
+
+  Map<String, double> get values => Map.unmodifiable(_values);
+  bool get isLoaded => _isLoaded;
+  String get businessName => _businessName;
+  String get businessTaxId => _businessTaxId;
+  String get businessAddress => _businessAddress;
+  String get businessPhone => _businessPhone;
+  String get businessLogoUrl => _businessLogoUrl;
+
+  double getDouble(String key, [double defaultValue = 0]) =>
+      _values[key] ?? defaultValue;
+
+  void _safeNotify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> loadConfig({bool force = false}) async {
+    if (_isLoading) return;
+    if (_isLoaded && !force) return;
+
+    _isLoading = true;
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Carga instantánea desde caché
+    final cachedString = prefs.getString('cached_app_settings');
+    if (cachedString != null) {
+      try {
+        final List decoded = jsonDecode(cachedString);
+        for (final item in decoded) {
+          final key = item['key'] as String?;
+          final value = item['value'];
+          if (key != null && value != null) {
+            _values[key] = (value as num).toDouble();
+          }
+        }
+        _isLoaded = true;
+        _safeNotify();
+      } catch (_) {}
+    }
+
+    // 2. Actualiza desde Supabase en segundo plano
+    try {
+      final response = await _supabase
+          .from('app_settings')
+          .select('key, value');
+
+      final nextValues = <String, double>{};
+      for (final item in List<Map<String, dynamic>>.from(response)) {
+        final key = item['key'] as String?;
+        final value = item['value'];
+        if (key != null && value != null) {
+          nextValues[key] = (value as num).toDouble();
+        }
+      }
+      _values
+        ..clear()
+        ..addAll(nextValues);
+      _isLoaded = true;
+      await prefs.setString('cached_app_settings', jsonEncode(response));
+    } catch (e) {
+      debugPrint('Error red AppSettings: $e');
+    } finally {
+      _isLoading = false;
+      _safeNotify();
+    }
+  }
+
+  Future<void> loadBusinessInfo({bool force = false}) async {
+    if (_businessInfoLoaded && !force) return;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Carga instantánea desde caché
+    final cachedString = prefs.getString('cached_business_info');
+    if (cachedString != null) {
+      try {
+        final decoded = jsonDecode(cachedString);
+        // El caché puede haberse guardado como Map o como List (según plataforma)
+        Map<String, dynamic>? cached;
+        if (decoded is Map) {
+          cached = Map<String, dynamic>.from(decoded);
+        } else if (decoded is List && decoded.isNotEmpty) {
+          cached = Map<String, dynamic>.from(decoded.first as Map);
+        }
+        if (cached != null) {
+          _applyBusinessInfo(cached);
+          _safeNotify();
+        }
+      } catch (_) {}
+    }
+
+    // 2. Actualiza desde Supabase
+    try {
+      // Normalizamos: puede llegar como List o Map según la plataforma
+      // Usamos select().limit(1) para traer un solo registro
+      final rawResponse = await _supabase
+          .from('business_info')
+          .select()
+          .limit(1);
+
+      // rawResponse ya es de tipo List<Map<String, dynamic>>
+      Map<String, dynamic>? response;
+
+      if (rawResponse.isNotEmpty) {
+        // Simplemente tomamos el primer elemento, que ya es un Map válido
+        response = rawResponse.first;
+      }
+
+      if (response != null) {
+        _applyBusinessInfo(response);
+        await prefs.setString('cached_business_info', jsonEncode(response));
+      } else {
+        _businessName = 'Sin configurar';
+        _businessInfoLoaded = true;
+      }
+    } catch (e) {
+      debugPrint('Error red BusinessInfo: $e');
+    } finally {
+      _safeNotify();
+    }
+  }
+
+  void _applyBusinessInfo(Map<String, dynamic> data) {
+    _businessInfoLoaded = true;
+    _businessInfoId = data['id']?.toString();
+    _businessName = data['business_name']?.toString() ?? 'Sin configurar';
+    _businessTaxId = data['tax_id']?.toString() ?? '';
+    _businessAddress = data['address']?.toString() ?? '';
+    _businessPhone = data['phone']?.toString() ?? '';
+    _businessLogoUrl = data['logo_url']?.toString() ?? '';
+  }
+
+  Future<void> saveBusinessInfo({
+    required String businessName,
+    String? taxId,
+    String? address,
+    String? phone,
+    String? logoUrl,
+  }) async {
+    final payload = <String, dynamic>{
+      'business_name': businessName.trim(),
+      'tax_id': taxId?.trim().isNotEmpty == true ? taxId!.trim() : null,
+      'address': address?.trim().isNotEmpty == true ? address!.trim() : null,
+      'phone': phone?.trim().isNotEmpty == true ? phone!.trim() : null,
+      'logo_url': logoUrl?.trim().isNotEmpty == true ? logoUrl!.trim() : null,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    payload.removeWhere((_, value) => value == null);
+
+    if (_businessInfoId != null) {
+      await _supabase
+          .from('business_info')
+          .update(payload)
+          .eq('id', _businessInfoId!);
+    } else {
+      final inserted =
+          await _supabase
+              .from('business_info')
+              .insert(payload)
+              .select('id')
+              .maybeSingle();
+      _businessInfoId = inserted?['id']?.toString();
+    }
+
+    _businessName =
+        businessName.trim().isNotEmpty ? businessName.trim() : 'Sin configurar';
+    _businessTaxId = taxId?.trim() ?? '';
+    _businessAddress = address?.trim() ?? '';
+    _businessPhone = phone?.trim() ?? '';
+    _businessLogoUrl = logoUrl?.trim() ?? '';
+
+    _safeNotify();
+    await loadBusinessInfo(force: true);
+  }
+
+  Future<void> saveValue(
+    String key,
+    double value, {
+    String? description,
+  }) async {
+    final payload = <String, dynamic>{'key': key, 'value': value};
+    if (description != null && description.isNotEmpty) {
+      payload['description'] = description;
+    }
+    await _supabase.from('app_settings').upsert(payload, onConflict: 'key');
+    _values[key] = value;
+    _safeNotify();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
