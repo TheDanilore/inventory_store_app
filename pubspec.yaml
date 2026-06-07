@@ -76,6 +76,9 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
+  web:
+    generate: true
+    image_path: "assets/app_icon.png"
   image_path: "assets/app_icon.png"
   # Opcional para Android 8.0+: define un color de fondo si tu icono tiene transparencia
   # adaptive_icon_background: "#008080"
