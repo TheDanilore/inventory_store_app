@@ -44,16 +44,19 @@ class _AdminCreditMovementsScreenState
   Future<void> _loadMovements() async {
     try {
       final response = await _supabase
-          .from('credit_movements')
+          .from('credit_movements_summary')
           .select()
           .eq('credit_id', widget.creditId)
           .order('created_at', ascending: false);
 
       final list =
-          response.map((e) => CreditMovementModel.fromJson(e)).toList();
+          (response as List)
+              .map((e) => CreditMovementModel.fromJson(e))
+              .toList();
 
       double charged = 0;
       double paid = 0;
+
       for (final m in list) {
         if (m.isCharge) {
           charged += m.amount;
@@ -82,6 +85,10 @@ class _AdminCreditMovementsScreenState
         widget.creditLimit > 0
             ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
             : 0.0;
+
+    debugPrint('currentDebt: ${widget.currentDebt}');
+    debugPrint('creditLimit: ${widget.creditLimit}');
+    debugPrint('debtPercent: $debtPercent');
 
     return AdminLayout(
       title: 'Historial de Crédito',
@@ -486,36 +493,78 @@ class _MovementCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isCharge ? 'Cargo por venta' : 'Abono / Pago',
+                    isCharge ? 'Cargo por venta' : 'Pago registrado',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 3),
+
+                  const SizedBox(height: 4),
+
+                  if (isCharge && movement.orderTotalAmount != null)
+                    Text(
+                      'Venta: S/ ${movement.orderTotalAmount!.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+
+                  if (movement.orderNumber != null)
+                    Text(
+                      'Pedido #${movement.orderNumber!.substring(0, 8)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textHint,
+                      ),
+                    ),
+
+                  if (!isCharge && movement.orderPaymentMethod != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: _MethodChip(method: movement.orderPaymentMethod!),
+                    ),
+
+                  if (movement.notes?.isNotEmpty == true)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        movement.notes!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+
+                  const SizedBox(height: 4),
+
                   Row(
                     children: [
-                      // Método de pago (solo en pagos)
-                      if (!isCharge && movement.paymentMethod != null) ...[
-                        _MethodChip(method: movement.paymentMethod!),
-                        const SizedBox(width: 6),
-                      ],
-                      // Notas
-                      if (movement.notes != null)
-                        Flexible(
-                          child: Text(
-                            movement.notes!,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      const Icon(
+                        Icons.person_outline,
+                        size: 12,
+                        color: AppColors.textHint,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          movement.createdByName ?? 'Sistema',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textHint,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
                     ],
                   ),
+
                   const SizedBox(height: 2),
+
                   Text(
                     timeStr,
                     style: const TextStyle(
@@ -526,7 +575,6 @@ class _MovementCard extends StatelessWidget {
                 ],
               ),
             ),
-
             // Monto
             Text(
               '$sign S/ ${movement.amount.toStringAsFixed(2)}',

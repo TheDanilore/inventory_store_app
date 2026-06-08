@@ -9,6 +9,13 @@ class CreditMovementModel {
   final DateTime? createdAt;
   final String? createdBy;
 
+  final String? createdByName;
+  final String? customerName;
+  final String? orderPaymentMethod;
+  final double? orderTotalAmount;
+
+  final String? orderNumber;
+
   CreditMovementModel({
     required this.id,
     required this.creditId,
@@ -19,6 +26,11 @@ class CreditMovementModel {
     this.notes,
     this.createdAt,
     this.createdBy,
+    this.createdByName,
+    this.customerName,
+    this.orderPaymentMethod,
+    this.orderTotalAmount,
+    this.orderNumber,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -32,10 +44,17 @@ class CreditMovementModel {
       amount: (json['amount'] as num).toDouble(),
       paymentMethod: json['payment_method'] as String?,
       notes: json['notes'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String) 
-          : null,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : null,
       createdBy: json['created_by'] as String?,
+
+      createdByName: json['created_by_name'] as String?,
+      customerName: json['customer_name'] as String?,
+      orderPaymentMethod: json['order_payment_method'] as String?,
+      orderTotalAmount: (json['order_total_amount'] as num?)?.toDouble(),
+      orderNumber: json['order_number'] as String?,
     );
   }
 
@@ -51,6 +70,11 @@ class CreditMovementModel {
       'notes': notes,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       'created_by': createdBy,
+      'created_by_name': createdByName,
+      'customer_name': customerName,
+      'order_payment_method': orderPaymentMethod,
+      'order_total_amount': orderTotalAmount,
+      'order_number': orderNumber,
     };
   }
 
@@ -69,6 +93,12 @@ class CreditMovementModel {
     String? notes,
     DateTime? createdAt,
     String? createdBy,
+
+    final String? createdByName,
+    final String? customerName,
+    final String? orderPaymentMethod,
+    final double? orderTotalAmount,
+    final String? orderNumber,
   }) {
     return CreditMovementModel(
       id: id ?? this.id,
@@ -80,6 +110,11 @@ class CreditMovementModel {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       createdBy: createdBy ?? this.createdBy,
+      createdByName: createdByName ?? this.createdByName,
+      customerName: customerName ?? this.customerName,
+      orderPaymentMethod: orderPaymentMethod ?? this.orderPaymentMethod,
+      orderTotalAmount: orderTotalAmount ?? this.orderTotalAmount,
+      orderNumber: orderNumber ?? this.orderNumber,
     );
   }
 }
