@@ -902,6 +902,9 @@ class AdminOrderCard extends StatelessWidget {
     final dateString = DateFormat('dd MMM yyyy, hh:mm a').format(date);
     final customerName = order.displayCustomerName;
 
+    // Extraemos los primeros 8 caracteres del ID para la vista rápida
+    final shortId = order.id.substring(0, 8).toUpperCase();
+
     // Lógica dinámica de pago en la tarjeta
     final isCredit = order.paymentMethod == 'CRÉDITO';
     String paymentStatus = order.paymentStatus;
@@ -933,7 +936,7 @@ class AdminOrderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── FILA 1: Info Cliente
+                // ── FILA 1: Info Cliente e ID
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -941,6 +944,42 @@ class AdminOrderCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // NUEVO: Etiqueta con el ID del pedido
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.tag_rounded,
+                                  size: 12,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  shortId,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.grey.shade700,
+                                    fontFamily: 'monospace',
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Cliente
                           Row(
                             children: [
                               Container(

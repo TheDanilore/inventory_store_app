@@ -52,7 +52,7 @@ class OrderPdfGenerator {
           .from('order_items')
           .select('''
             id, order_id, product_id, variant_id, quantity, unit_cost,
-            applied_price, net_profit, kardex_registered, created_at,
+            applied_price, net_profit, created_at,
             products ( name ),
             product_variants ( attributes, sku )
           ''')

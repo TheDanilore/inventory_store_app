@@ -5,21 +5,24 @@ class OrderModel {
   final String? customerId;
   final double totalAmount;
   final double totalProfit;
-  final String paymentMethod; // 'EFECTIVO', 'TARJETA', 'CREDITO', etc.
-  final String status; // 'COMPLETED', 'PENDING', 'CANCELLED', etc.
+  final String paymentMethod;
+  final String status;
   final DateTime? createdAt;
   final String? warehouseId;
   final int pointsUsed;
   final int pointsEarned;
   final String customerName;
-  final String paymentStatus; // 'PAID', 'PENDING', 'PARTIAL'
+  final String paymentStatus;
   final double amountPaid;
   final DateTime? dueDate;
   final String? createdBy;
   final double discountAmount;
 
-  // NUEVO: Agregamos una propiedad para guardar la data relacionada del almacén
   final WarehouseModel? warehouse;
+
+  // NUEVO: Agregamos propiedades para guardar la información del JOIN de 'profiles'
+  final String? profileFullName;
+  final String? profilePhone;
 
   OrderModel({
     required this.id,
@@ -37,12 +40,19 @@ class OrderModel {
     this.amountPaid = 0.00,
     this.dueDate,
     this.createdBy,
-    this.warehouse, 
+    this.warehouse,
     this.discountAmount = 0.00,
+    this.profileFullName,
+    this.profilePhone,
   });
 
-  /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // Extraemos el mapa anidado de perfiles si es que viene en la consulta
+    final profilesData =
+        json['profiles'] != null && json['profiles'] is Map
+            ? Map<String, dynamic>.from(json['profiles'])
+            : null;
+
     return OrderModel(
       id: json['id'] as String,
       customerId: json['customer_id'] as String?,
@@ -65,19 +75,20 @@ class OrderModel {
               ? DateTime.parse(json['due_date'] as String)
               : null,
       createdBy: json['created_by'] as String?,
-
-      // NUEVO: Supabase devuelve la info relacionada como un Map dentro de la llave de la tabla ('warehouses')
       warehouse:
           json['warehouses'] != null && json['warehouses'] is Map
               ? WarehouseModel.fromJson(
                 Map<String, dynamic>.from(json['warehouses']),
               )
               : null,
-              discountAmount: (json['discount_amount'] as num? ?? 0.00).toDouble(),
+      discountAmount: (json['discount_amount'] as num? ?? 0.00).toDouble(),
+
+      // NUEVO: Mapeamos los campos del perfil
+      profileFullName: profilesData?['full_name'] as String?,
+      profilePhone: profilesData?['phone'] as String?,
     );
   }
 
-  /// Método para convertir el modelo de Dart a un mapa estructurado para insertar/actualizar en SQL
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -95,25 +106,29 @@ class OrderModel {
       'amount_paid': amountPaid,
       if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
       'created_by': createdBy,
-      // Nota: No incluimos 'warehouse' aquí porque usualmente solo insertamos el 'warehouse_id'
       'discount_amount': discountAmount,
     };
   }
 
-  /// Getters de ayuda para control financiero rápido en el POS
   double get pendingAmount => totalAmount - amountPaid;
-  bool get isCreditOrder => paymentMethod == 'CREDITO';
+  bool get isCreditOrder =>
+      paymentMethod == 'CRÉDITO'; // Ojo con la tilde aquí si lo usas con ella
   bool get isPendingPayment =>
       paymentStatus == 'PENDING' || paymentStatus == 'PARTIAL';
 
-  // Le agregamos un tipado explícito (String) para evitar advertencias de Dart
-  String get displayCustomerName =>
-      customerName.isNotEmpty ? customerName : 'Cliente General';
+  // CORRECCIÓN: Ahora prioriza el nombre del perfil relacional por encima del nombre manual
+  String get displayCustomerName {
+    if (profileFullName != null && profileFullName!.trim().isNotEmpty) {
+      return profileFullName!;
+    }
+    if (customerName.trim().isNotEmpty) {
+      return customerName;
+    }
+    return 'Cliente General';
+  }
 
-  // CORREGIDO: Ahora extrae el nombre directamente del objeto relacional, o usa un fallback
   String get warehouseName => warehouse?.name ?? 'Almacén Desconocido';
 
-  /// Método copyWith ideal para el manejo de estados (Bloc, Riverpod, etc.)
   OrderModel copyWith({
     String? id,
     String? customerId,
@@ -132,6 +147,8 @@ class OrderModel {
     String? createdBy,
     WarehouseModel? warehouse,
     double? discountAmount,
+    String? profileFullName,
+    String? profilePhone,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -151,6 +168,8 @@ class OrderModel {
       createdBy: createdBy ?? this.createdBy,
       warehouse: warehouse ?? this.warehouse,
       discountAmount: discountAmount ?? this.discountAmount,
+      profileFullName: profileFullName ?? this.profileFullName,
+      profilePhone: profilePhone ?? this.profilePhone,
     );
   }
 }

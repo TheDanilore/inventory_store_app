@@ -1362,6 +1362,15 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
   String _paymentMethod = 'EFECTIVO';
   bool _isSaving = false;
 
+  // Pedidos con deuda pendiente de este cliente
+  List<Map<String, dynamic>> _pendingOrders = [];
+  bool _loadingOrders = true;
+  // null = distribuir automáticamente; non-null = pagar solo ese pedido
+  String? _selectedOrderId;
+
+  // NUEVO: Estado para el mensaje de error en tiempo real
+  String? _errorMessage;
+
   static const _paymentMethods = [
     'EFECTIVO',
     'YAPE',
@@ -1371,32 +1380,99 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadPendingOrders();
+  }
+
+  @override
   void dispose() {
     _amountCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _savePayment() async {
-    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0.0;
+  Future<void> _loadPendingOrders() async {
+    try {
+      final resp = await _supabase
+          .from('orders')
+          .select('id, total_amount, amount_paid, payment_status, created_at')
+          .eq('customer_id', widget.account.profileId)
+          .eq('payment_method', 'CRÉDITO')
+          .inFilter('payment_status', ['PENDING', 'PARTIAL'])
+          .eq('status', 'COMPLETED')
+          .order('created_at', ascending: true);
+
+      if (mounted) {
+        setState(() {
+          _pendingOrders = List<Map<String, dynamic>>.from(resp);
+          _loadingOrders = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingOrders = false);
+    }
+  }
+
+  double _pendingOf(Map<String, dynamic> order) {
+    final total = (order['total_amount'] as num).toDouble();
+    final paid = (order['amount_paid'] as num).toDouble();
+    return (total - paid).clamp(0.0, double.infinity);
+  }
+
+  // NUEVO: Función de validación en tiempo real
+  void _validarEntrada(String value) {
+    if (value.trim().isEmpty) {
+      setState(() => _errorMessage = null);
+      return;
+    }
+
+    final amount = double.tryParse(value.trim());
+
+    if (amount == null) {
+      setState(() => _errorMessage = 'Número inválido');
+      return;
+    }
     if (amount <= 0) {
-      AppSnackbar.show(
-        context,
-        message: 'Ingresa un monto válido mayor a 0.',
-        type: SnackbarType.error,
-      );
+      setState(() => _errorMessage = 'Debe ser mayor a 0');
       return;
     }
-    if (amount > widget.account.currentDebt) {
-      AppSnackbar.show(
-        context,
-        message:
-            'El abono (S/ ${amount.toStringAsFixed(2)}) supera la '
-            'deuda actual (S/ ${widget.account.currentDebt.toStringAsFixed(2)}).',
-        type: SnackbarType.error,
+
+    if (_selectedOrderId != null) {
+      // Validar límite específico del pedido seleccionado
+      final target = _pendingOrders.firstWhere(
+        (o) => o['id'] == _selectedOrderId,
       );
-      return;
+      final pendingOfOrder = _pendingOf(target);
+      if (amount > pendingOfOrder) {
+        setState(
+          () =>
+              _errorMessage =
+                  'Máx para este pedido: S/ ${pendingOfOrder.toStringAsFixed(2)}',
+        );
+        return;
+      }
+    } else {
+      // Validar límite de la deuda total general
+      if (amount > widget.account.currentDebt) {
+        setState(
+          () =>
+              _errorMessage =
+                  'Supera la deuda total (S/ ${widget.account.currentDebt.toStringAsFixed(2)})',
+        );
+        return;
+      }
     }
+
+    // Si pasa todas las reglas, no hay error
+    setState(() => _errorMessage = null);
+  }
+
+  Future<void> _savePayment() async {
+    // Barrera de seguridad final
+    if (_errorMessage != null || _amountCtrl.text.trim().isEmpty) return;
+
+    final amount = double.parse(_amountCtrl.text.trim());
 
     setState(() => _isSaving = true);
     try {
@@ -1412,17 +1488,50 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
         if (resp != null) adminProfileId = resp['id'] as String;
       }
 
-      // 1. Insertar movimiento PAYMENT en credit_movements
+      final String? linkedOrderId = _selectedOrderId;
+
       await _supabase.from('credit_movements').insert({
         'credit_id': widget.account.creditId,
+        if (linkedOrderId != null) 'order_id': linkedOrderId,
         'movement_type': 'PAYMENT',
         'amount': amount,
         'payment_method': _paymentMethod,
         'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
-        'created_by': adminProfileId,
+        if (adminProfileId != null) 'created_by': adminProfileId,
       });
 
-      // 2. Actualizar current_debt en customer_credits
+      final ordersToApply =
+          _selectedOrderId != null
+              ? _pendingOrders
+                  .where((o) => o['id'] == _selectedOrderId)
+                  .toList()
+              : List<Map<String, dynamic>>.from(_pendingOrders);
+
+      double remaining = amount;
+      for (final order in ordersToApply) {
+        if (remaining <= 0) break;
+
+        final orderId = order['id'] as String;
+        final total = (order['total_amount'] as num).toDouble();
+        final alreadyPaid = (order['amount_paid'] as num).toDouble();
+        final pendingOfOrder = _pendingOf(order);
+
+        final toApply =
+            remaining >= pendingOfOrder ? pendingOfOrder : remaining;
+        final newAmountPaid = alreadyPaid + toApply;
+        remaining -= toApply;
+
+        final newPaymentStatus = newAmountPaid >= total ? 'PAID' : 'PARTIAL';
+
+        await _supabase
+            .from('orders')
+            .update({
+              'amount_paid': newAmountPaid,
+              'payment_status': newPaymentStatus,
+            })
+            .eq('id', orderId);
+      }
+
       final newDebt = (widget.account.currentDebt - amount).clamp(
         0.0,
         double.infinity,
@@ -1462,101 +1571,318 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final debt = widget.account.currentDebt;
 
+    // Condición para habilitar el botón
+    final bool isButtonEnabled =
+        !_isSaving &&
+        _amountCtrl.text.trim().isNotEmpty &&
+        _errorMessage == null;
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-
-          // Encabezado
-          Row(
-            children: [
-              const Icon(Icons.payments_rounded, color: AppColors.success),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Registrar abono / pago',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      widget.account.partnerName,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Deuda actual
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.dangerLight,
-              borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
+
+            Row(
               children: [
-                const Icon(
-                  Icons.money_off_rounded,
-                  color: AppColors.danger,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Deuda actual',
-                    style: TextStyle(
-                      color: AppColors.danger,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Text(
-                  'S/ ${debt.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                const Icon(Icons.payments_rounded, color: AppColors.success),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Registrar abono / pago',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        widget.account.partnerName,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Botones de monto rápido
-          if (debt > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.dangerLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.money_off_rounded,
+                    color: AppColors.danger,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Deuda actual',
+                      style: TextStyle(
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'S/ ${debt.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             const Text(
-              'Monto rápido',
+              'Aplicar pago a',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_loadingOrders)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else ...[
+              _OrderSelectionTile(
+                label: 'Distribuir automáticamente',
+                sublabel: 'FIFO — salda los pedidos más antiguos primero',
+                amount: null,
+                isSelected: _selectedOrderId == null,
+                onTap: () {
+                  setState(() => _selectedOrderId = null);
+                  _validarEntrada(_amountCtrl.text); // Re-evaluar
+                },
+              ),
+              ..._pendingOrders.map((order) {
+                final orderId = order['id'] as String;
+                final shortId = orderId.substring(0, 8).toUpperCase();
+                final pending = _pendingOf(order);
+                final isParcial = order['payment_status'] == 'PARTIAL';
+                return _OrderSelectionTile(
+                  label: 'Pedido #$shortId',
+                  sublabel:
+                      isParcial
+                          ? 'Pago parcial · Pendiente S/ ${pending.toStringAsFixed(2)}'
+                          : 'Sin cobrar · S/ ${pending.toStringAsFixed(2)}',
+                  amount: pending,
+                  isSelected: _selectedOrderId == orderId,
+                  onTap: () {
+                    setState(() {
+                      _selectedOrderId = orderId;
+                      final valText = pending.toStringAsFixed(2);
+                      _amountCtrl.text = valText;
+                      _validarEntrada(valText); // Validar automáticamente
+                    });
+                  },
+                );
+              }),
+              if (_pendingOrders.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'No se encontraron pedidos a crédito pendientes. '
+                          'El pago se aplicará a la deuda general.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+            const SizedBox(height: 14),
+
+            if (debt > 0) ...[
+              const Text(
+                'Monto rápido',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (debt >= 50)
+                    _QuickAmountChip(
+                      label: 'S/ 50',
+                      onTap: () {
+                        _amountCtrl.text = '50.00';
+                        _validarEntrada('50.00');
+                      },
+                    ),
+                  if (debt >= 100)
+                    _QuickAmountChip(
+                      label: 'S/ 100',
+                      onTap: () {
+                        _amountCtrl.text = '100.00';
+                        _validarEntrada('100.00');
+                      },
+                    ),
+                  if (debt >= 200)
+                    _QuickAmountChip(
+                      label: 'S/ 200',
+                      onTap: () {
+                        _amountCtrl.text = '200.00';
+                        _validarEntrada('200.00');
+                      },
+                    ),
+                  _QuickAmountChip(
+                    label: 'Total (S/ ${debt.toStringAsFixed(2)})',
+                    onTap: () {
+                      final valText = debt.toStringAsFixed(2);
+                      _amountCtrl.text = valText;
+                      _validarEntrada(valText);
+                    },
+                    isHighlight: true,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            const Text(
+              'Monto del abono (S/)',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color:
+                      _errorMessage != null
+                          ? AppColors.danger
+                          : AppColors.border,
+                ),
+              ),
+              child: TextField(
+                controller: _amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: false, // Oculta tecla negativa
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
+                onChanged: _validarEntrada, // Evalúa en tiempo real
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Ej. 50.00',
+                  errorText: _errorMessage, // Muestra el texto en rojo
+                  errorMaxLines: 2,
+                  prefixIcon: Icon(
+                    Icons.attach_money_rounded,
+                    color:
+                        _errorMessage != null
+                            ? AppColors.danger
+                            : AppColors.textMuted,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+
+            // Aviso visual adicional
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 14,
+                  color: Colors.grey.shade600,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Ingresa un número mayor a 0. No se admiten montos negativos.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            const Text(
+              'Método de pago',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -1566,177 +1892,196 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              runSpacing: 6,
-              children: [
-                if (debt >= 50)
-                  _QuickAmountChip(
-                    label: 'S/ 50',
-                    onTap: () => _amountCtrl.text = '50.00',
-                  ),
-                if (debt >= 100)
-                  _QuickAmountChip(
-                    label: 'S/ 100',
-                    onTap: () => _amountCtrl.text = '100.00',
-                  ),
-                if (debt >= 200)
-                  _QuickAmountChip(
-                    label: 'S/ 200',
-                    onTap: () => _amountCtrl.text = '200.00',
-                  ),
-                _QuickAmountChip(
-                  label: 'Total (S/ ${debt.toStringAsFixed(2)})',
-                  onTap: () => _amountCtrl.text = debt.toStringAsFixed(2),
-                  isHighlight: true,
-                ),
-              ],
+              runSpacing: 8,
+              children:
+                  _paymentMethods.map((method) {
+                    final selected = _paymentMethod == method;
+                    return GestureDetector(
+                      onTap: () => setState(() => _paymentMethod = method),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected ? AppColors.teal : AppColors.bg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: selected ? AppColors.teal : AppColors.border,
+                          ),
+                        ),
+                        child: Text(
+                          method,
+                          style: TextStyle(
+                            color:
+                                selected
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 14),
-          ],
 
-          // Monto del abono
-          const Text(
-            'Monto del abono (S/)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.bg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: TextField(
-              controller: _amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-              style: const TextStyle(
-                fontSize: 18,
+            const Text(
+              'Notas (opcional)',
+              style: TextStyle(
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'Ej. 50.00',
-                prefixIcon: Icon(
-                  Icons.attach_money_rounded,
-                  color: AppColors.textMuted,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                color: AppColors.textSecondary,
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-
-          // Método de pago
-          const Text(
-            'Método de pago',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children:
-                _paymentMethods.map((method) {
-                  final selected = _paymentMethod == method;
-                  return GestureDetector(
-                    onTap: () => setState(() => _paymentMethod = method),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected ? AppColors.teal : AppColors.bg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: selected ? AppColors.teal : AppColors.border,
-                        ),
-                      ),
-                      child: Text(
-                        method,
-                        style: TextStyle(
-                          color:
-                              selected ? Colors.white : AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-          ),
-          const SizedBox(height: 14),
-
-          // Notas
-          const Text(
-            'Notas (opcional)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.bg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: TextField(
-              controller: _notesCtrl,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                hintText: 'Ej. Pago del pedido #123...',
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.all(14),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: _isSaving ? null : _savePayment,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.bg,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: TextField(
+                controller: _notesCtrl,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: 'Ej. Pago del pedido #123...',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(14),
+                ),
               ),
             ),
-            child:
-                _isSaving
-                    ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed:
+                  isButtonEnabled
+                      ? _savePayment
+                      : null, // Bloqueado si hay errores
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                disabledBackgroundColor: Colors.grey.shade300,
+                disabledForegroundColor: Colors.grey.shade500,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child:
+                  _isSaving
+                      ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : const Text(
+                        'Guardar pago',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    )
-                    : const Text(
-                      'Guardar pago',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderSelectionTile extends StatelessWidget {
+  final String label;
+  final String sublabel;
+  final double? amount; // null = opción "automático"
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _OrderSelectionTile({
+    required this.label,
+    required this.sublabel,
+    required this.amount,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.teal.withValues(alpha: 0.06)
+                  : AppColors.bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.5 : 1,
           ),
-        ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.teal : AppColors.border,
+                  width: 2,
+                ),
+                color: isSelected ? AppColors.teal : Colors.transparent,
+              ),
+              child:
+                  isSelected
+                      ? const Icon(Icons.check, size: 12, color: Colors.white)
+                      : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          isSelected
+                              ? AppColors.tealDark
+                              : AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    sublabel,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (amount != null)
+              Text(
+                'S/ ${amount!.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: isSelected ? AppColors.teal : AppColors.textSecondary,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

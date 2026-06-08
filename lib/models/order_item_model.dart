@@ -9,7 +9,6 @@ class OrderItemModel {
   final double unitCost;
   final double appliedPrice;
   final double netProfit;
-  final bool kardexRegistered;
   final DateTime? createdAt;
   final String? productName;
   final String? sku;
@@ -26,7 +25,6 @@ class OrderItemModel {
     required this.unitCost,
     required this.appliedPrice,
     required this.netProfit,
-    this.kardexRegistered = false,
     this.createdAt,
     this.productName,
     this.sku,
@@ -98,7 +96,6 @@ class OrderItemModel {
       unitCost: (json['unit_cost'] as num?)?.toDouble() ?? 0,
       appliedPrice: (json['applied_price'] as num?)?.toDouble() ?? 0,
       netProfit: (json['net_profit'] as num?)?.toDouble() ?? 0,
-      kardexRegistered: json['kardex_registered'] as bool? ?? false,
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
       productName: product?['name'] as String?,
       sku: variant?['sku'] as String?,
@@ -120,7 +117,6 @@ class OrderItemModel {
       'unit_cost': unitCost,
       'applied_price': appliedPrice,
       'net_profit': netProfit,
-      'kardex_registered': kardexRegistered,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };
   }

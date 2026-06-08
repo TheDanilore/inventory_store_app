@@ -446,7 +446,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       for (final item in pos.items.values) {
         await _supabase.from('order_items').insert({
           'order_id': orderId,
-          'product_id': item.product.id, // CORRECCIÓN: faltaba product_id
+          'product_id': item.product.id,
           'variant_id': item.variantId,
           'quantity': item.quantity,
           'unit_cost': item.product.unitCost,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
@@ -98,20 +99,52 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     super.dispose();
   }
 
+  /// Nombre a mostrar del cliente.
+  /// Prioridad:
+  ///  1. Nombre del perfil ya embebido en el modelo (del join SQL)
+  ///  2. Nombre manual (customer_name en la orden)
+  ///  3. Lista de perfiles cargada localmente (para cuando se edita y cambia cliente)
+  ///  4. "Cliente mostrador" como último recurso
   String _customerLabelFor(String? customerId) {
+    // Si no hay customer_id vinculado, usar el nombre manual de la orden
     if (customerId == null) {
-      // ─── NUEVO: Si no hay ID, mostramos el nombre manual de la orden ───
       final manualName = widget.order.displayCustomerName.trim();
-      return (manualName.isNotEmpty) ? manualName : 'Cliente mostrador';
+      return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
     }
 
-    try {
-      final profile = _profiles.firstWhere((p) => p['id'] == customerId);
-      final name = (profile['full_name'] as String?)?.trim();
-      return (name != null && name.isNotEmpty) ? name : 'Cliente mostrador';
-    } catch (_) {
-      return 'Cliente mostrador';
+    // Si el customer_id es el mismo que el original de la orden,
+    // usar directamente el nombre embebido en el modelo (ya viene del JOIN)
+    if (customerId == widget.order.customerId) {
+      final embeddedName = widget.order.profileFullName?.trim();
+      if (embeddedName != null && embeddedName.isNotEmpty) {
+        return embeddedName;
+      }
+      // Fallback al customer_name manual si el join no trajo nombre
+      final manualName = widget.order.displayCustomerName.trim();
+      if (manualName.isNotEmpty && manualName != 'Cliente mostrador') {
+        return manualName;
+      }
     }
+
+    // Si cambió el cliente en edición, buscar en la lista local de perfiles
+    if (_profiles.isNotEmpty) {
+      try {
+        final profile = _profiles.firstWhere((p) => p['id'] == customerId);
+        final name = (profile['full_name'] as String?)?.trim();
+        if (name != null && name.isNotEmpty) return name;
+      } catch (_) {
+        // No encontrado en la lista local
+      }
+    }
+
+    // Si los perfiles aún no cargaron y es el cliente original, mostrar algo
+    if (_isLoading && customerId == widget.order.customerId) {
+      return widget.order.displayCustomerName.trim().isNotEmpty
+          ? widget.order.displayCustomerName
+          : 'Cargando...';
+    }
+
+    return 'Cliente mostrador';
   }
 
   void _selectCustomer(String customerId) {
@@ -143,11 +176,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .from('order_items')
             .select('''
               id, order_id, product_id, variant_id, quantity, unit_cost,
-              applied_price, net_profit, kardex_registered, created_at,
+              applied_price, net_profit, created_at,
               products ( name, product_images(*) ),
               product_variants ( attributes, sku, product_images(*) )
             ''')
             .eq('order_id', widget.order.id),
+        // Solo clientes activos para el buscador de edición
         _supabase
             .from('profiles')
             .select('id, full_name, phone, document_number, role, is_active')
@@ -178,9 +212,33 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               )
               .toList();
 
+      List<Map<String, dynamic>> profiles = List<Map<String, dynamic>>.from(
+        results[1],
+      );
+
+      // Asegurarnos de que el cliente actual de la orden esté en la lista,
+      // incluso si fue desactivado (is_active = false). Lo añadimos si no está.
+      final currentCustomerId = _selectedCustomerId ?? widget.order.customerId;
+      if (currentCustomerId != null &&
+          !profiles.any((p) => p['id'] == currentCustomerId)) {
+        try {
+          final missingProfile =
+              await _supabase
+                  .from('profiles')
+                  .select(
+                    'id, full_name, phone, document_number, role, is_active',
+                  )
+                  .eq('id', currentCustomerId)
+                  .maybeSingle();
+          if (missingProfile != null) {
+            profiles = [missingProfile, ...profiles];
+          }
+        } catch (_) {}
+      }
+
       setState(() {
         _items = items;
-        _profiles = List<Map<String, dynamic>>.from(results[1]);
+        _profiles = profiles;
         if (results.length > 2) {
           _creditInfo = results[2] as Map<String, dynamic>?;
         }
@@ -821,6 +879,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             OrderDetailHeaderRow(
+              orderId: widget.order.id,
               isCompleted: _isCompleted,
               isEditing: _isEditing,
               canToggleEdit: _canToggleEdit,
@@ -873,23 +932,23 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             if (_paymentMethod == 'CRÉDITO')
               _CreditInfoSection(
                 creditInfo: _creditInfo,
-                totalAmount: _calculateOrderFinalAmount(),
-                isEditing: _isEditing,
-                orderId: widget.order.id,
                 customerId: _selectedCustomerId,
-                supabase: _supabase,
-                onPaymentRegistered: () {
-                  _fetchData();
-                  Navigator.pop(context, true);
-                },
               ),
 
             // ─── PAYMENT STATUS (siempre visible en COMPLETED) ───
             if (_isCompleted)
               _PaymentStatusSection(
-                paymentStatus: _currentPaymentStatus, // <-- Dinámico
-                totalAmount: _calculateOrderFinalAmount(), // <-- Dinámico
-                amountPaid: _currentAmountPaid, // <-- Dinámico
+                paymentStatus: _currentPaymentStatus,
+                totalAmount: _calculateOrderFinalAmount(),
+                amountPaid: _currentAmountPaid,
+                paymentMethod: _paymentMethod,
+                creditInfo: _creditInfo,
+                orderId: widget.order.id,
+                supabase: _supabase,
+                onPaymentRegistered: () {
+                  _fetchData();
+                  Navigator.pop(context, true);
+                },
               ),
 
             OrderDetailStatusSection(
@@ -954,6 +1013,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 }
 
 class OrderDetailHeaderRow extends StatelessWidget {
+  final String orderId; // NUEVO: Se recibe el ID del pedido
   final bool isCompleted;
   final bool isEditing;
   final bool canToggleEdit;
@@ -962,6 +1022,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
 
   const OrderDetailHeaderRow({
     super.key,
+    required this.orderId,
     required this.isCompleted,
     required this.isEditing,
     this.canToggleEdit = true,
@@ -973,10 +1034,30 @@ class OrderDetailHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start, // Alineado arriba
       children: [
-        const Text(
-          'Detalle del Pedido',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        // Usamos Expanded para evitar desbordamientos
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Detalle del Pedido',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 2),
+              // NUEVO: SelectableText permite copiar el ID fácilmente
+              SelectableText(
+                'ID: $orderId',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
         Row(
           children: [
@@ -1723,26 +1804,159 @@ class OrderDetailItemsSection extends StatelessWidget {
   }
 }
 
-// ─── PAYMENT STATUS SECTION (Lectura — visible en COMPLETED) ─────────────────
+// ─── PAYMENT STATUS SECTION ──────────────────────────────────────────────────
 
-class _PaymentStatusSection extends StatelessWidget {
+class _PaymentStatusSection extends StatefulWidget {
   final String paymentStatus;
   final double totalAmount;
   final double amountPaid;
+  final String paymentMethod;
+  final Map<String, dynamic>? creditInfo;
+  final String orderId;
+  final SupabaseClient supabase;
+  final VoidCallback onPaymentRegistered;
 
   const _PaymentStatusSection({
     required this.paymentStatus,
     required this.totalAmount,
     required this.amountPaid,
+    required this.paymentMethod,
+    required this.creditInfo,
+    required this.orderId,
+    required this.supabase,
+    required this.onPaymentRegistered,
   });
 
   @override
+  State<_PaymentStatusSection> createState() => _PaymentStatusSectionState();
+}
+
+class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
+  bool _isRegistering = false;
+  final _abonoCtrl = TextEditingController();
+
+  // NUEVO: Estado para guardar el mensaje de error en tiempo real
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _abonoCtrl.dispose();
+    super.dispose();
+  }
+
+  // NUEVO: Función que valida el texto mientras el usuario escribe
+  void _validarEntrada(String value) {
+    if (value.trim().isEmpty) {
+      setState(() => _errorMessage = null);
+      return;
+    }
+
+    final amount = double.tryParse(value.trim());
+    final pendingOrderAmount = widget.totalAmount - widget.amountPaid;
+
+    if (amount == null) {
+      setState(() => _errorMessage = 'Número inválido');
+    } else if (amount <= 0) {
+      setState(() => _errorMessage = 'Debe ser mayor a 0');
+    } else if (amount > pendingOrderAmount) {
+      setState(
+        () =>
+            _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}',
+      );
+    } else {
+      setState(() => _errorMessage = null);
+    }
+  }
+
+  Future<void> _registrarAbono() async {
+    // La validación fuerte ya se hace en tiempo real,
+    // pero mantenemos una barrera de seguridad aquí.
+    if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
+
+    final amount = double.parse(_abonoCtrl.text.trim());
+
+    setState(() => _isRegistering = true);
+    try {
+      final creditId = widget.creditInfo!['id'] as String;
+      final currentDebt =
+          (widget.creditInfo!['current_debt'] as num).toDouble();
+
+      // Descontamos a la deuda global de la línea de crédito
+      final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
+
+      await widget.supabase
+          .from('customer_credits')
+          .update({
+            'current_debt': newGeneralDebt,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', creditId);
+
+      final authUserId = widget.supabase.auth.currentUser?.id;
+      String? adminProfileId;
+      if (authUserId != null) {
+        final p =
+            await widget.supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+        adminProfileId = p?['id'] as String?;
+      }
+
+      await widget.supabase.from('credit_movements').insert({
+        'credit_id': creditId,
+        'order_id': widget.orderId,
+        'movement_type': 'PAYMENT',
+        'amount': amount,
+        'payment_method': 'EFECTIVO',
+        'notes': 'Abono registrado desde estado de pago',
+        if (adminProfileId != null) 'created_by': adminProfileId,
+      });
+
+      // Actualizamos los montos específicos de ESTA orden
+      final newOrderAmountPaid = widget.amountPaid + amount;
+      String newPaymentStatus =
+          newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
+
+      await widget.supabase
+          .from('orders')
+          .update({
+            'payment_status': newPaymentStatus,
+            'amount_paid': newOrderAmountPaid,
+          })
+          .eq('id', widget.orderId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Abono registrado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        widget.onPaymentRegistered();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al registrar abono: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRegistering = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final pendingAmount = totalAmount - amountPaid;
+    final pendingAmount = widget.totalAmount - widget.amountPaid;
     Color badgeColor;
     String badgeLabel;
 
-    switch (paymentStatus) {
+    switch (widget.paymentStatus) {
       case 'PAID':
         badgeColor = Colors.teal;
         badgeLabel = 'Pagado completo';
@@ -1756,6 +1970,12 @@ class _PaymentStatusSection extends StatelessWidget {
         badgeColor = Colors.deepOrange;
         badgeLabel = 'Pendiente de pago';
     }
+
+    // Condición para habilitar el botón: no debe estar cargando, el campo no debe estar vacío y no debe haber errores.
+    final bool isButtonEnabled =
+        !_isRegistering &&
+        _abonoCtrl.text.trim().isNotEmpty &&
+        _errorMessage == null;
 
     return OrderDetailSectionCard(
       title: 'Estado de Pago',
@@ -1791,17 +2011,17 @@ class _PaymentStatusSection extends StatelessWidget {
               Expanded(
                 child: _PStatRow(
                   label: 'Total',
-                  value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+                  value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}',
                 ),
               ),
               Expanded(
                 child: _PStatRow(
                   label: 'Pagado',
-                  value: 'S/ ${amountPaid.toStringAsFixed(2)}',
+                  value: 'S/ ${widget.amountPaid.toStringAsFixed(2)}',
                   valueColor: Colors.teal,
                 ),
               ),
-              if (paymentStatus != 'PAID')
+              if (widget.paymentStatus != 'PAID')
                 Expanded(
                   child: _PStatRow(
                     label: 'Pendiente',
@@ -1812,6 +2032,93 @@ class _PaymentStatusSection extends StatelessWidget {
                 ),
             ],
           ),
+
+          if (widget.paymentMethod == 'CRÉDITO' &&
+              pendingAmount > 0 &&
+              widget.creditInfo != null) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            const Text(
+              'Registrar abono',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _abonoCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: false,
+                    ),
+                    // ─── NUEVO: Bloquea teclas inválidas (solo deja pasar números y un punto) ───
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
+                    onChanged:
+                        _validarEntrada, // Sigue evaluando el límite máximo
+                    decoration: InputDecoration(
+                      hintText: 'Monto a abonar (S/)',
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
+                      errorText: _errorMessage,
+                      errorMaxLines: 2,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    disabledForegroundColor: Colors.grey.shade500,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 11,
+                    ),
+                  ),
+                  // Si no pasa las validaciones, el botón se bloquea solo (queda en gris)
+                  onPressed: isButtonEnabled ? _registrarAbono : null,
+                  child:
+                      _isRegistering
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text(
+                            'Abonar',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1852,128 +2159,20 @@ class _PStatRow extends StatelessWidget {
 
 // ─── CREDIT INFO SECTION ─────────────────────────────────────────────────────
 
-class _CreditInfoSection extends StatefulWidget {
+class _CreditInfoSection extends StatelessWidget {
   final Map<String, dynamic>? creditInfo;
-  final double totalAmount;
-  final bool isEditing;
-  final String orderId;
   final String? customerId;
-  final SupabaseClient supabase;
-  final VoidCallback onPaymentRegistered;
 
   const _CreditInfoSection({
     required this.creditInfo,
-    required this.totalAmount,
-    required this.isEditing,
-    required this.orderId,
     required this.customerId,
-    required this.supabase,
-    required this.onPaymentRegistered,
   });
 
   @override
-  State<_CreditInfoSection> createState() => _CreditInfoSectionState();
-}
-
-class _CreditInfoSectionState extends State<_CreditInfoSection> {
-  bool _isRegistering = false;
-  final _abonoCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _abonoCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _registrarAbono() async {
-    final amount = double.tryParse(_abonoCtrl.text.trim()) ?? 0;
-    if (amount <= 0) return;
-
-    setState(() => _isRegistering = true);
-    try {
-      final creditId = widget.creditInfo!['id'] as String;
-      final currentDebt =
-          (widget.creditInfo!['current_debt'] as num).toDouble();
-      final newDebt = (currentDebt - amount).clamp(0.0, currentDebt);
-
-      await widget.supabase
-          .from('customer_credits')
-          .update({
-            'current_debt': newDebt,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', creditId);
-
-      final authUserId = widget.supabase.auth.currentUser?.id;
-      String? adminProfileId;
-      if (authUserId != null) {
-        final p =
-            await widget.supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        adminProfileId = p?['id'] as String?;
-      }
-
-      await widget.supabase.from('credit_movements').insert({
-        'credit_id': creditId,
-        'order_id': widget.orderId,
-        'movement_type': 'PAYMENT',
-        'amount': amount,
-        'payment_method': 'EFECTIVO',
-        'notes': 'Abono registrado desde detalle de pedido',
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
-
-      // Actualizar payment_status de la orden
-      final remaining = newDebt;
-      String newPaymentStatus;
-      double amountPaid;
-      if (remaining <= 0) {
-        newPaymentStatus = 'PAID';
-        amountPaid = widget.totalAmount;
-      } else {
-        newPaymentStatus = 'PARTIAL';
-        amountPaid = widget.totalAmount - remaining;
-      }
-
-      await widget.supabase
-          .from('orders')
-          .update({
-            'payment_status': newPaymentStatus,
-            'amount_paid': amountPaid,
-          })
-          .eq('id', widget.orderId);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Abono registrado correctamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        widget.onPaymentRegistered();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al registrar abono: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isRegistering = false);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final info = widget.creditInfo;
+    final info = creditInfo;
 
-    if (widget.customerId == null) {
+    if (customerId == null) {
       return OrderDetailSectionCard(
         title: 'Crédito',
         child: Text(
@@ -2000,11 +2199,10 @@ class _CreditInfoSectionState extends State<_CreditInfoSection> {
     final debtColor = debt > 0 ? Colors.deepOrange : Colors.teal;
 
     return OrderDetailSectionCard(
-      title: 'Crédito del Cliente',
+      title: 'Resumen de Línea de Crédito',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Badge activo/inactivo
           Row(
             children: [
               Container(
@@ -2030,18 +2228,17 @@ class _CreditInfoSectionState extends State<_CreditInfoSection> {
             ],
           ),
           const SizedBox(height: 12),
-          // Fila de datos
           Row(
             children: [
               Expanded(
                 child: _CreditStatCell(
-                  label: 'Límite',
+                  label: 'Límite Global',
                   value: 'S/ ${limit.toStringAsFixed(2)}',
                 ),
               ),
               Expanded(
                 child: _CreditStatCell(
-                  label: 'Deuda actual',
+                  label: 'Deuda Total',
                   value: 'S/ ${debt.toStringAsFixed(2)}',
                   valueColor: debtColor,
                   bold: debt > 0,
@@ -2056,78 +2253,6 @@ class _CreditInfoSectionState extends State<_CreditInfoSection> {
               ),
             ],
           ),
-          // Registrar abono (solo si hay deuda)
-          if (debt > 0) ...[
-            const SizedBox(height: 14),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            const Text(
-              'Registrar abono',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _abonoCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Monto a abonar (S/)',
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 13,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 11,
-                    ),
-                  ),
-                  onPressed: _isRegistering ? null : _registrarAbono,
-                  child:
-                      _isRegistering
-                          ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                          : const Text(
-                            'Abonar',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
