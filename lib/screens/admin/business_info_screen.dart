@@ -25,17 +25,22 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_didInit) return;
 
-    final config = context.read<AppConfigProvider>();
-    _businessNameCtrl.text = config.businessName == 'Cargando...'
-        ? ''
-        : config.businessName;
-    _taxIdCtrl.text = config.businessTaxId;
-    _addressCtrl.text = config.businessAddress;
-    _phoneCtrl.text = config.businessPhone;
-    _logoUrlCtrl.text = config.businessLogoUrl;
-    _didInit = true;
+    // Escuchamos los cambios del proveedor
+    final config = context.watch<AppConfigProvider>();
+
+    // CORRECCIÓN: Solo inicializamos los controladores si no se ha hecho antes
+    // Y si los datos ya terminaron de cargar desde Supabase/Caché
+    if (!_didInit && config.businessName != 'Cargando...') {
+      _businessNameCtrl.text =
+          config.businessName == 'Sin configurar' ? '' : config.businessName;
+      _taxIdCtrl.text = config.businessTaxId;
+      _addressCtrl.text = config.businessAddress;
+      _phoneCtrl.text = config.businessPhone;
+      _logoUrlCtrl.text = config.businessLogoUrl;
+      _didInit =
+          true; // Bloqueamos para que no sobrescriba lo que el usuario escribe
+    }
   }
 
   @override
@@ -62,12 +67,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     setState(() => _isSaving = true);
     try {
       await context.read<AppConfigProvider>().saveBusinessInfo(
-            businessName: businessName,
-            taxId: _taxIdCtrl.text,
-            address: _addressCtrl.text,
-            phone: _phoneCtrl.text,
-            logoUrl: _logoUrlCtrl.text,
-          );
+        businessName: businessName,
+        taxId: _taxIdCtrl.text,
+        address: _addressCtrl.text,
+        phone: _phoneCtrl.text,
+        logoUrl: _logoUrlCtrl.text,
+      );
 
       if (!mounted) return;
       AppSnackbar.show(
@@ -148,11 +153,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                               child: Image.network(
                                 businessLogoUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.storefront_rounded,
-                                  color: Colors.white,
-                                  size: 34,
-                                ),
+                                errorBuilder:
+                                    (_, __, ___) => const Icon(
+                                      Icons.storefront_rounded,
+                                      color: Colors.white,
+                                      size: 34,
+                                    ),
                               ),
                             )
                           else

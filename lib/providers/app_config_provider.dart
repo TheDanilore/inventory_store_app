@@ -16,7 +16,7 @@ class AppConfigProvider extends ChangeNotifier {
   String _businessLogoUrl = '';
   bool _isLoading = false;
   bool _isLoaded = false;
-  bool _businessInfoLoaded = false; // ← flag real para loadBusinessInfo
+  bool _businessInfoLoaded = false;
 
   Map<String, double> get values => Map.unmodifiable(_values);
   bool get isLoaded => _isLoaded;
@@ -40,7 +40,6 @@ class AppConfigProvider extends ChangeNotifier {
     _isLoading = true;
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Carga instantánea desde caché
     final cachedString = prefs.getString('cached_app_settings');
     if (cachedString != null) {
       try {
@@ -57,7 +56,6 @@ class AppConfigProvider extends ChangeNotifier {
       } catch (_) {}
     }
 
-    // 2. Actualiza desde Supabase en segundo plano
     try {
       final response = await _supabase
           .from('app_settings')
@@ -89,12 +87,10 @@ class AppConfigProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Carga instantánea desde caché
     final cachedString = prefs.getString('cached_business_info');
     if (cachedString != null) {
       try {
         final decoded = jsonDecode(cachedString);
-        // El caché puede haberse guardado como Map o como List (según plataforma)
         Map<String, dynamic>? cached;
         if (decoded is Map) {
           cached = Map<String, dynamic>.from(decoded);
@@ -108,20 +104,17 @@ class AppConfigProvider extends ChangeNotifier {
       } catch (_) {}
     }
 
-    // 2. Actualiza desde Supabase
     try {
-      // Normalizamos: puede llegar como List o Map según la plataforma
-      // Usamos select().limit(1) para traer un solo registro
+      // CORRECCIÓN: Ordenamos de forma descendente por actualización por si existen registros duplicados huérfanos
       final rawResponse = await _supabase
           .from('business_info')
           .select()
+          .order('updated_at', ascending: false)
           .limit(1);
 
-      // rawResponse ya es de tipo List<Map<String, dynamic>>
       Map<String, dynamic>? response;
 
       if (rawResponse.isNotEmpty) {
-        // Simplemente tomamos el primer elemento, que ya es un Map válido
         response = rawResponse.first;
       }
 
@@ -165,6 +158,23 @@ class AppConfigProvider extends ChangeNotifier {
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
     payload.removeWhere((_, value) => value == null);
+
+    // CORRECCIÓN MEDIDA DE SEGURIDAD: Si el ID local está vacío, verificamos si existe alguna fila en la BD
+    // antes de arriesgarnos a un insert() para mitigar la creación de registros múltiples redundantes.
+    if (_businessInfoId == null) {
+      try {
+        final checkDb =
+            await _supabase
+                .from('business_info')
+                .select('id')
+                .order('updated_at', ascending: false)
+                .limit(1)
+                .maybeSingle();
+        if (checkDb != null) {
+          _businessInfoId = checkDb['id']?.toString();
+        }
+      } catch (_) {}
+    }
 
     if (_businessInfoId != null) {
       await _supabase

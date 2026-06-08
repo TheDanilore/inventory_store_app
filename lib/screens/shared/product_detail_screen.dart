@@ -84,7 +84,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // Para Decisiones Rápidas
   int _totalSold = 0;
-  double _historicalProfit = 0.0;
   double _reinvestmentNeeded = 0.0;
 
   double _averageRating = 0.0;
@@ -221,13 +220,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             .order('created_at', ascending: false),
       ];
 
-      // Añadimos la consulta histórica solo para Admins
+      // Se agrega el inner join para filtrar solo órdenes completadas
       if (widget.isAdmin) {
         queries.add(
           _supabase
               .from('order_items')
-              .select('quantity, unit_cost, net_profit')
-              .eq('product_id', widget.product.id),
+              .select('quantity, unit_cost, orders!inner(status)')
+              .eq('product_id', widget.product.id)
+              .eq('orders.status', 'COMPLETED'),
         );
       }
 
@@ -283,7 +283,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       // Parseo de Decisiones Rápidas (Histórico)
       int soldUnits = 0;
-      double historicalProf = 0.0;
       double reinvestment = 0.0;
 
       if (widget.isAdmin && results.length > 4) {
@@ -291,10 +290,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         for (final row in orderItemsData) {
           final q = (row['quantity'] as num?)?.toInt() ?? 0;
           final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-          final np = (row['net_profit'] as num?)?.toDouble() ?? 0.0;
 
           soldUnits += q;
-          historicalProf += np;
           reinvestment +=
               (q * uc); // Costo histórico exacto para reponer lo vendido
         }
@@ -309,7 +306,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             fetchedReviews.isEmpty ? 0.0 : totalRating / fetchedReviews.length;
 
         _totalSold = soldUnits;
-        _historicalProfit = historicalProf;
         _reinvestmentNeeded = reinvestment;
 
         _isLoadingExtra = false;
@@ -695,12 +691,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  // ─── REVIEWS ─────────────────────────────────────────────────────────────
+
   Future<void> _onAddReviewTapped() async {
     if (widget.isAdmin) {
       _showReviewDialog(isAdmin: true);
       return;
     }
-    // ... Lógica de reseñas de usuario se mantiene
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      _showSnack('Inicia sesión para opinar.');
+      return;
+    }
+    try {
+      final profile =
+          await _supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('auth_user_id', user.id)
+              .single();
+      final profileId = profile['id'];
+      final fullName = profile['full_name'] ?? 'Usuario';
+      final purchases = await _supabase
+          .from('order_items')
+          .select('id, orders!inner(customer_id)')
+          .eq('product_id', widget.product.id)
+          .eq('orders.customer_id', profileId)
+          .limit(1);
+      if (purchases.isEmpty) {
+        _showSnack('Debes haber comprado este producto para opinar.');
+        return;
+      }
+      _showReviewDialog(
+        isAdmin: false,
+        profileId: profileId,
+        defaultName: fullName,
+      );
+    } catch (e) {
+      _showSnack('Error al verificar: $e');
+    }
   }
 
   void _showReviewDialog({
@@ -708,7 +737,218 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     String? profileId,
     String? defaultName,
   }) {
-    // ... Dialogo de reseñas se mantiene igual
+    int selectedRating = 5;
+    final commentCtrl = TextEditingController();
+    final nameCtrl = TextEditingController(text: defaultName ?? '');
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (dialogCtx) => StatefulBuilder(
+            builder:
+                (ctx, setS) => Dialog(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(_DS.radiusXl),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _DS.amberLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.star_rounded,
+                            color: _DS.amber,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          '¿Qué te pareció?',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: _DS.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            5,
+                            (i) => GestureDetector(
+                              onTap: () => setS(() => selectedRating = i + 1),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: Icon(
+                                  i < selectedRating
+                                      ? Icons.star_rounded
+                                      : Icons.star_border_rounded,
+                                  color: _DS.amber,
+                                  size: 36,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        if (isAdmin)
+                          _InputField(
+                            controller: nameCtrl,
+                            hint: 'Nombre del cliente',
+                            label: 'Nombre',
+                          )
+                        else
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _DS.bg,
+                              borderRadius: BorderRadius.circular(_DS.radiusSm),
+                            ),
+                            child: Text(
+                              'Publicando como: $defaultName',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: _DS.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        _InputField(
+                          controller: commentCtrl,
+                          hint: 'Cuéntanos qué te pareció...',
+                          label: 'Comentario',
+                          maxLines: 3,
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed:
+                                    isSubmitting
+                                        ? null
+                                        : () => Navigator.pop(dialogCtx),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      _DS.radius,
+                                    ),
+                                    side: const BorderSide(color: _DS.border),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Cancelar',
+                                  style: TextStyle(
+                                    color: _DS.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed:
+                                    isSubmitting
+                                        ? null
+                                        : () async {
+                                          final name =
+                                              isAdmin
+                                                  ? nameCtrl.text.trim()
+                                                  : (defaultName ?? '');
+                                          if (name.isEmpty && isAdmin) {
+                                            _showSnack('Ingresa el nombre.');
+                                            return;
+                                          }
+                                          setS(() => isSubmitting = true);
+                                          try {
+                                            await _supabase
+                                                .from('product_reviews')
+                                                .insert({
+                                                  'product_id':
+                                                      widget.product.id,
+                                                  'profile_id': profileId,
+                                                  'user_name': name,
+                                                  'rating': selectedRating,
+                                                  'comment':
+                                                      commentCtrl.text
+                                                              .trim()
+                                                              .isEmpty
+                                                          ? null
+                                                          : commentCtrl.text
+                                                              .trim(),
+                                                });
+                                            if (!mounted) return;
+                                            // ignore: use_build_context_synchronously
+                                            Navigator.pop(dialogCtx);
+                                            _showSnack(
+                                              '¡Reseña publicada!',
+                                              isSuccess: true,
+                                            );
+                                            _fetchExtraData();
+                                          } catch (e) {
+                                            setS(() => isSubmitting = false);
+                                            _showSnack('Error: $e');
+                                          }
+                                        },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      _DS.radius,
+                                    ),
+                                  ),
+                                ),
+                                child:
+                                    isSubmitting
+                                        ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation(
+                                              Colors.white,
+                                            ),
+                                          ),
+                                        )
+                                        : const Text(
+                                          'Publicar',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+          ),
+    );
   }
 
   Map<String, int> get _stockByVariant {
@@ -844,7 +1084,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 // NUEVO COMPONENTE: DECISIONES RÁPIDAS
                 ProductQuickDecisionsCard(
                   totalSold: _totalSold,
-                  historicalProfit: _historicalProfit,
                   reinvestmentNeeded: _reinvestmentNeeded,
                 ),
                 const SizedBox(height: 16),
@@ -936,13 +1175,207 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildThumbnailRow(List<ProductVariantModel> thumbs) {
-    // Implementación original mantenida
-    return const SizedBox.shrink(); // Reemplaza con tu widget interno
+    // Imagen principal a mostrar en el primer cuadradito
+    final firstImg =
+        _galleryImages.isNotEmpty
+            ? _galleryImages.first.imageUrl
+            : widget.product.primaryImageUrl;
+
+    return SizedBox(
+      height: 64,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero, // Usa el padding del SliverList padre
+        children: [
+          // 1. CUADRADITO FIJO (GALERÍA DEL PRODUCTO)
+          GestureDetector(
+            onTap: () => setState(() => _showVariantImage = false),
+            child: Container(
+              width: 64,
+              height: 64,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: _DS.bg,
+                border: Border.all(
+                  color: !_showVariantImage ? AppColors.primary : _DS.border,
+                  width: !_showVariantImage ? 2 : 1,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                image:
+                    firstImg != null
+                        ? DecorationImage(
+                          image: NetworkImage(firstImg),
+                          fit: BoxFit.cover,
+                        )
+                        : null,
+              ),
+              // Iconito superpuesto para indicar que es la galería general
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(7),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 2. CUADRADITOS DE VARIANTES
+          ...thumbs.map((v) {
+            // Si no tiene imagen, cae por defecto a la principal
+            final imgUrl =
+                _variantImageUrl(v) ?? widget.product.primaryImageUrl;
+
+            // Verificamos si es la seleccionada
+            final isSelected =
+                _showVariantImage &&
+                (_attributeKeys.length == 1
+                    ? _selectedVariantId ==
+                        v
+                            .id // Coincidencia exacta si es 1 atributo
+                    : _selectedVariantImageUrl ==
+                        _variantImageUrl(
+                          v,
+                        )); // Coincidencia por foto si son múltiples
+
+            return GestureDetector(
+              onTap: () => _selectVariant(v),
+              child: Container(
+                width: 64,
+                height: 64,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: _DS.bg,
+                  border: Border.all(
+                    color: isSelected ? AppColors.primary : _DS.border,
+                    width: isSelected ? 2.5 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  image:
+                      imgUrl != null
+                          ? DecorationImage(
+                            image: NetworkImage(imgUrl),
+                            fit: BoxFit.cover,
+                          )
+                          : null,
+                ),
+                // Solo si es de 1 atributo, le ponemos un pequeño texto translúcido
+                // para que sepan qué variante es (ej. "Pikachu")
+                child:
+                    _attributeKeys.length == 1 && v.attributes.isNotEmpty
+                        ? Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 2,
+                              horizontal: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(6),
+                              ),
+                            ),
+                            child: Builder(
+                              builder: (context) {
+                                // Tomamos el texto y lo cortamos estrictamente si es muy largo
+                                final fullText =
+                                    v.attributes.values.first.toString();
+                                final displayText =
+                                    fullText.length > 8
+                                        ? '${fullText.substring(0, 7)}...'
+                                        : fullText;
+
+                                return Text(
+                                  displayText,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                );
+                              },
+                            ),
+                          ),
+                        )
+                        : null,
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
   Widget _buildWishlistButton() {
-    // Implementación original mantenida
-    return const SizedBox.shrink(); // Reemplaza con tu widget interno
+    if (_isWishlistLoading) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(_DS.danger),
+            ),
+          ),
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: _toggleWishlist,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _isWishlisted ? _DS.danger : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(
+          _isWishlisted
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
+          color: _isWishlisted ? Colors.white : _DS.danger,
+          size: 20,
+        ),
+      ),
+    );
   }
 }
 
@@ -950,13 +1383,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
 class ProductQuickDecisionsCard extends StatelessWidget {
   final int totalSold;
-  final double historicalProfit;
   final double reinvestmentNeeded;
 
   const ProductQuickDecisionsCard({
     super.key,
     required this.totalSold,
-    required this.historicalProfit,
     required this.reinvestmentNeeded,
   });
 
@@ -1019,16 +1450,6 @@ class ProductQuickDecisionsCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _DecisionRow(
-                  icon: Icons.trending_up_rounded,
-                  color: _DS.success,
-                  label: 'Ganancia neta acumulada',
-                  value: 'S/ ${historicalProfit.toStringAsFixed(2)}',
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(height: 1, color: Color(0xFFDCFCE7)),
-                ),
                 _DecisionRow(
                   icon: Icons.inventory_2_outlined,
                   color: _DS.amberDark,
