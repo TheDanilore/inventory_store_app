@@ -24,6 +24,11 @@ class CustomerSummary {
   final int orderCount;
   final DateTime? lastOrderAt;
 
+  // Crédito
+  final double currentDebt;
+  final double creditLimit;
+  final bool hasActiveCredit;
+
   const CustomerSummary({
     required this.id,
     required this.fullName,
@@ -37,6 +42,9 @@ class CustomerSummary {
     this.totalSpent = 0,
     this.orderCount = 0,
     this.lastOrderAt,
+    this.currentDebt = 0,
+    this.creditLimit = 0,
+    this.hasActiveCredit = false,
   });
 }
 
@@ -64,6 +72,7 @@ class _CustomersScreenState extends State<CustomersScreen>
   int _totalCustomers = 0;
   int _activeCustomers = 0;
   double _totalRevenue = 0;
+  double _totalDebt = 0;
 
   @override
   void initState() {
@@ -93,11 +102,10 @@ class _CustomersScreenState extends State<CustomersScreen>
           .eq('role', 'customer')
           .order('full_name');
 
-      // 2. Traer órdenes completadas agrupadas por cliente
+      // 2. Traer órdenes agrupadas por cliente (todos los estados)
       final orders = await _supabase
           .from('orders')
-          .select('customer_id, total_amount, created_at')
-          .eq('status', 'COMPLETED');
+          .select('customer_id, total_amount, created_at');
 
       // Agregar por cliente
       final Map<String, _OrderAgg> agg = {};
@@ -116,9 +124,25 @@ class _CustomersScreenState extends State<CustomersScreen>
         }
       }
 
+      // 3. Traer créditos activos de todos los clientes
+      final credits = await _supabase
+          .from('customer_credits')
+          .select('profile_id, current_debt, credit_limit, is_active');
+
+      final Map<String, _CreditInfo> creditMap = {};
+      for (final cr in (credits as List)) {
+        final pid = cr['profile_id'] as String;
+        creditMap[pid] = _CreditInfo(
+          currentDebt: (cr['current_debt'] as num).toDouble(),
+          creditLimit: (cr['credit_limit'] as num).toDouble(),
+          isActive: cr['is_active'] as bool,
+        );
+      }
+
       final customers =
           (profiles as List).map((p) {
             final a = agg[p['id'] as String];
+            final cr = creditMap[p['id'] as String];
             return CustomerSummary(
               id: p['id'] as String,
               fullName: p['full_name'] as String,
@@ -132,13 +156,18 @@ class _CustomersScreenState extends State<CustomersScreen>
               totalSpent: a?.total ?? 0,
               orderCount: a?.count ?? 0,
               lastOrderAt: a?.lastDate,
+              currentDebt: cr?.currentDebt ?? 0,
+              creditLimit: cr?.creditLimit ?? 0,
+              hasActiveCredit: cr?.isActive ?? false,
             );
           }).toList();
 
       double revenue = 0;
+      double debt = 0;
       int active = 0;
       for (final c in customers) {
         revenue += c.totalSpent;
+        debt += c.currentDebt;
         if (c.isActive) active++;
       }
 
@@ -149,6 +178,7 @@ class _CustomersScreenState extends State<CustomersScreen>
           _totalCustomers = customers.length;
           _activeCustomers = active;
           _totalRevenue = revenue;
+          _totalDebt = debt;
         });
       }
     } catch (e) {
@@ -182,7 +212,6 @@ class _CustomersScreenState extends State<CustomersScreen>
   List<CustomerSummary> get _currentList {
     final list = List<CustomerSummary>.from(_filtered);
     if (_tabCtrl.index == 1) {
-      // Tab "Top": ordenar por gasto desc
       list.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
     }
     return list;
@@ -215,6 +244,7 @@ class _CustomersScreenState extends State<CustomersScreen>
                         total: _totalCustomers,
                         active: _activeCustomers,
                         revenue: _totalRevenue,
+                        totalDebt: _totalDebt,
                       ),
                     ),
 
@@ -337,17 +367,30 @@ class _OrderAgg {
   DateTime? lastDate;
 }
 
+class _CreditInfo {
+  final double currentDebt;
+  final double creditLimit;
+  final bool isActive;
+  const _CreditInfo({
+    required this.currentDebt,
+    required this.creditLimit,
+    required this.isActive,
+  });
+}
+
 // ─── WIDGET: Barra de stats globales ─────────────────────────────────────────
 
 class _GlobalStatsBar extends StatelessWidget {
   final int total;
   final int active;
   final double revenue;
+  final double totalDebt;
 
   const _GlobalStatsBar({
     required this.total,
     required this.active,
     required this.revenue,
+    required this.totalDebt,
   });
 
   @override
@@ -389,6 +432,15 @@ class _GlobalStatsBar extends StatelessWidget {
             label: 'Ingresos',
             icon: Icons.attach_money_rounded,
           ),
+          if (totalDebt > 0) ...[
+            _VerticalDivider(),
+            _StatItem(
+              value: 'S/ ${_compact(totalDebt)}',
+              label: 'En crédito',
+              icon: Icons.credit_card_rounded,
+              valueColor: Colors.amber.shade200,
+            ),
+          ],
         ],
       ),
     );
@@ -405,11 +457,13 @@ class _StatItem extends StatelessWidget {
   final String value;
   final String label;
   final IconData icon;
+  final Color? valueColor;
 
   const _StatItem({
     required this.value,
     required this.label,
     required this.icon,
+    this.valueColor,
   });
 
   @override
@@ -421,17 +475,19 @@ class _StatItem extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+            style: TextStyle(
+              color: valueColor ?? Colors.white,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 11,
+              fontSize: 10,
             ),
           ),
         ],
@@ -515,7 +571,7 @@ class _TopCustomersSection extends StatelessWidget {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min, // ← AGREGA ESTO
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -537,7 +593,6 @@ class _TopCustomersSection extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 0),
                       Text(
                         'S/ ${c.totalSpent.toStringAsFixed(0)}',
                         style: const TextStyle(
@@ -600,6 +655,7 @@ class _CustomerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = customer;
     final hasOrders = c.orderCount > 0;
+    final hasDebt = c.hasActiveCredit && c.currentDebt > 0;
 
     return Material(
       color: Colors.white,
@@ -610,7 +666,13 @@ class _CustomerCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              // Resaltar borde si tiene deuda pendiente
+              color:
+                  hasDebt
+                      ? AppColors.danger.withValues(alpha: 0.4)
+                      : AppColors.border,
+            ),
           ),
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -678,28 +740,35 @@ class _CustomerCard extends StatelessWidget {
                       ),
                     const SizedBox(height: 8),
                     // Métricas
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         _MetricChip(
                           icon: Icons.shopping_bag_outlined,
                           label: '${c.orderCount} pedidos',
                           color: AppColors.primary,
                         ),
-                        const SizedBox(width: 6),
                         if (hasOrders)
                           _MetricChip(
                             icon: Icons.attach_money_rounded,
                             label: 'S/ ${c.totalSpent.toStringAsFixed(0)}',
                             color: AppColors.success,
                           ),
-                        if (c.walletBalance > 0) ...[
-                          const SizedBox(width: 6),
+                        if (c.walletBalance > 0)
                           _MetricChip(
                             icon: Icons.stars_rounded,
                             label: '${c.walletBalance} pts',
                             color: Colors.amber.shade700,
                           ),
-                        ],
+                        // Indicador de deuda pendiente
+                        if (hasDebt)
+                          _MetricChip(
+                            icon: Icons.credit_card_rounded,
+                            label:
+                                'Debe S/ ${c.currentDebt.toStringAsFixed(0)}',
+                            color: AppColors.danger,
+                          ),
                       ],
                     ),
                   ],
@@ -764,9 +833,9 @@ class _RankBadge extends StatelessWidget {
   const _RankBadge({required this.rank});
 
   static const _colors = [
-    Color(0xFFFFD700), // oro
-    Color(0xFFC0C0C0), // plata
-    Color(0xFFCD7F32), // bronce
+    Color(0xFFFFD700),
+    Color(0xFFC0C0C0),
+    Color(0xFFCD7F32),
   ];
 
   @override

@@ -25,17 +25,63 @@ class _RecentOrder {
   final String id;
   final DateTime createdAt;
   final double totalAmount;
+  final double amountPaid;
+  final double discountAmount;
   final String status;
   final String paymentStatus;
   final String paymentMethod;
+  final int pointsEarned;
+  final int pointsUsed;
+  final DateTime? dueDate;
 
   const _RecentOrder({
     required this.id,
     required this.createdAt,
     required this.totalAmount,
+    required this.amountPaid,
+    required this.discountAmount,
     required this.status,
     required this.paymentStatus,
     required this.paymentMethod,
+    required this.pointsEarned,
+    required this.pointsUsed,
+    this.dueDate,
+  });
+
+  double get pendingAmount => totalAmount - amountPaid;
+}
+
+class _UserAddress {
+  final String addressLine;
+  final String district;
+  final String province;
+  final String department;
+  final String? reference;
+  final bool isDefault;
+
+  const _UserAddress({
+    required this.addressLine,
+    required this.district,
+    required this.province,
+    required this.department,
+    this.reference,
+    required this.isDefault,
+  });
+}
+
+class _CreditMovement {
+  final String movementType; // 'CHARGE' | 'PAYMENT'
+  final double amount;
+  final String? paymentMethod;
+  final String? notes;
+  final DateTime createdAt;
+
+  const _CreditMovement({
+    required this.movementType,
+    required this.amount,
+    this.paymentMethod,
+    this.notes,
+    required this.createdAt,
   });
 }
 
@@ -56,21 +102,30 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   bool _isLoading = true;
   List<_TopProduct> _topProducts = [];
   List<_RecentOrder> _recentOrders = [];
+  List<_UserAddress> _addresses = [];
+  List<_CreditMovement> _creditMovements = [];
   double _avgOrderValue = 0;
   double _currentDebt = 0;
   double _creditLimit = 0;
   bool _hasCredit = false;
+  bool _creditIsActive = false;
+  String? _creditId;
 
-  @override
   @override
   void initState() {
     super.initState();
-    initializeDateFormatting('es', null).then((_) => _load()); // ← CAMBIO
+    initializeDateFormatting('es', null).then((_) => _load());
   }
 
   Future<void> _load() async {
+    setState(() => _isLoading = true);
     try {
-      await Future.wait([_loadOrders(), _loadTopProducts(), _loadCredit()]);
+      await Future.wait([
+        _loadOrders(),
+        _loadTopProducts(),
+        _loadCredit(),
+        _loadAddresses(),
+      ]);
     } catch (e) {
       debugPrint('Error: $e');
     } finally {
@@ -82,7 +137,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     final response = await _supabase
         .from('orders')
         .select(
-          'id, created_at, total_amount, status, payment_status, payment_method',
+          'id, created_at, total_amount, amount_paid, discount_amount, '
+          'status, payment_status, payment_method, points_earned, points_used, due_date',
         )
         .eq('customer_id', widget.customer.id)
         .order('created_at', ascending: false)
@@ -95,9 +151,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 id: o['id'] as String,
                 createdAt: DateTime.parse(o['created_at'] as String),
                 totalAmount: (o['total_amount'] as num).toDouble(),
+                amountPaid: (o['amount_paid'] as num).toDouble(),
+                discountAmount: (o['discount_amount'] as num).toDouble(),
                 status: o['status'] as String,
                 paymentStatus: o['payment_status'] as String,
                 paymentMethod: o['payment_method'] as String,
+                pointsEarned: (o['points_earned'] as num).toInt(),
+                pointsUsed: (o['points_used'] as num).toInt(),
+                dueDate:
+                    o['due_date'] != null
+                        ? DateTime.tryParse(o['due_date'] as String)
+                        : null,
               ),
             )
             .toList();
@@ -116,7 +180,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   Future<void> _loadTopProducts() async {
-    // Traer order_items de todos los pedidos del cliente
     final ordersResp = await _supabase
         .from('orders')
         .select('id')
@@ -132,7 +195,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         .select('quantity, applied_price, products(name)')
         .filter('order_id', 'in', '(${orderIds.map((e) => '"$e"').join(',')})');
 
-    // Agrupar por producto
     final Map<String, _MutableProduct> agg = {};
     for (final item in (itemsResp as List)) {
       final pName =
@@ -140,9 +202,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       final qty = (item['quantity'] as num).toInt();
       final price = (item['applied_price'] as num).toDouble();
 
-      if (!agg.containsKey(pName)) {
-        agg[pName] = _MutableProduct();
-      }
+      agg.putIfAbsent(pName, () => _MutableProduct());
       agg[pName]!.qty += qty;
       agg[pName]!.total += qty * price;
     }
@@ -172,15 +232,76 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     final resp =
         await _supabase
             .from('customer_credits')
-            .select('current_debt, credit_limit, is_active')
+            .select('id, current_debt, credit_limit, is_active')
             .eq('profile_id', widget.customer.id)
             .maybeSingle();
 
     if (resp != null && mounted) {
+      final creditId = resp['id'] as String;
+      final isActive = resp['is_active'] as bool;
       setState(() {
         _hasCredit = true;
+        _creditIsActive = isActive;
+        _creditId = creditId;
         _currentDebt = (resp['current_debt'] as num).toDouble();
         _creditLimit = (resp['credit_limit'] as num).toDouble();
+      });
+
+      // Cargar movimientos de crédito recientes
+      await _loadCreditMovements(creditId);
+    }
+  }
+
+  Future<void> _loadCreditMovements(String creditId) async {
+    final resp = await _supabase
+        .from('credit_movements')
+        .select('movement_type, amount, payment_method, notes, created_at')
+        .eq('credit_id', creditId)
+        .order('created_at', ascending: false)
+        .limit(10);
+
+    if (mounted) {
+      setState(() {
+        _creditMovements =
+            (resp as List)
+                .map(
+                  (m) => _CreditMovement(
+                    movementType: m['movement_type'] as String,
+                    amount: (m['amount'] as num).toDouble(),
+                    paymentMethod: m['payment_method'] as String?,
+                    notes: m['notes'] as String?,
+                    createdAt: DateTime.parse(m['created_at'] as String),
+                  ),
+                )
+                .toList();
+      });
+    }
+  }
+
+  Future<void> _loadAddresses() async {
+    final resp = await _supabase
+        .from('user_addresses')
+        .select(
+          'address_line, district, province, department, reference, is_default',
+        )
+        .eq('profile_id', widget.customer.id)
+        .order('is_default', ascending: false);
+
+    if (mounted) {
+      setState(() {
+        _addresses =
+            (resp as List)
+                .map(
+                  (a) => _UserAddress(
+                    addressLine: a['address_line'] as String,
+                    district: a['district'] as String,
+                    province: a['province'] as String,
+                    department: a['department'] as String,
+                    reference: a['reference'] as String?,
+                    isDefault: a['is_default'] as bool,
+                  ),
+                )
+                .toList();
       });
     }
   }
@@ -198,7 +319,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               : CustomScrollView(
                 slivers: [
                   // ── Header del cliente ──────────────────────────────
-                  SliverToBoxAdapter(child: _CustomerHeader(customer: c)),
+                  SliverToBoxAdapter(
+                    child: _CustomerHeader(
+                      customer: c,
+                      onEdit:
+                          () => CustomerFormSheet.show(
+                            context,
+                            customer: c,
+                            onSaved: _load,
+                          ),
+                    ),
+                  ),
 
                   // ── KPIs ────────────────────────────────────────────
                   SliverToBoxAdapter(
@@ -210,13 +341,21 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     ),
                   ),
 
-                  // ── Crédito (si tiene) ───────────────────────────────
+                  // ── Crédito ──────────────────────────────────────────
                   if (_hasCredit)
                     SliverToBoxAdapter(
                       child: _CreditSection(
                         debt: _currentDebt,
                         limit: _creditLimit,
+                        isActive: _creditIsActive,
+                        movements: _creditMovements,
                       ),
+                    ),
+
+                  // ── Direcciones ──────────────────────────────────────
+                  if (_addresses.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: _AddressesSection(addresses: _addresses),
                     ),
 
                   // ── Productos favoritos ──────────────────────────────
@@ -249,7 +388,8 @@ class _MutableProduct {
 
 class _CustomerHeader extends StatelessWidget {
   final CustomerSummary customer;
-  const _CustomerHeader({required this.customer});
+  final VoidCallback onEdit;
+  const _CustomerHeader({required this.customer, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -279,7 +419,6 @@ class _CustomerHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Avatar grande
           CircleAvatar(
             radius: 32,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
@@ -340,17 +479,9 @@ class _CustomerHeader extends StatelessWidget {
               ],
             ),
           ),
-          // 👇 AGREGA EL BOTÓN AQUÍ
           IconButton(
             icon: const Icon(Icons.edit_rounded, color: Colors.white),
-            onPressed:
-                () => CustomerFormSheet.show(
-                  context,
-                  customer: c, // Usas la variable local 'c' que ya definiste
-                  onSaved: () {
-                    /* recargar detalle */
-                  },
-                ),
+            onPressed: onEdit,
           ),
         ],
       ),
@@ -404,7 +535,7 @@ class _KpiRow extends StatelessWidget {
           _KpiCard(
             icon: Icons.attach_money_rounded,
             value: 'S/ ${totalSpent.toStringAsFixed(0)}',
-            label: 'Total gastado',
+            label: 'Total',
             color: AppColors.success,
           ),
           const SizedBox(width: 10),
@@ -495,8 +626,15 @@ class _KpiCard extends StatelessWidget {
 class _CreditSection extends StatelessWidget {
   final double debt;
   final double limit;
+  final bool isActive;
+  final List<_CreditMovement> movements;
 
-  const _CreditSection({required this.debt, required this.limit});
+  const _CreditSection({
+    required this.debt,
+    required this.limit,
+    required this.isActive,
+    required this.movements,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -507,22 +645,42 @@ class _CreditSection extends StatelessWidget {
     return _SectionCard(
       title: 'Línea de Crédito',
       icon: Icons.credit_card_rounded,
+      trailing:
+          !isActive
+              ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Inactivo',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+              : null,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Stats principales
           Row(
             children: [
               Expanded(
                 child: _CreditStat(
                   label: 'Deuda',
                   value: 'S/ ${debt.toStringAsFixed(2)}',
-                  color: AppColors.danger,
+                  color: debt > 0 ? AppColors.danger : AppColors.textMuted,
                 ),
               ),
               Expanded(
                 child: _CreditStat(
                   label: 'Disponible',
                   value: 'S/ ${available.toStringAsFixed(2)}',
-                  color: AppColors.success,
+                  color: isActive ? AppColors.success : AppColors.textMuted,
                 ),
               ),
               Expanded(
@@ -535,6 +693,7 @@ class _CreditSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          // Barra de progreso
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -557,6 +716,100 @@ class _CreditSection extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+
+          // Movimientos de crédito recientes
+          if (movements.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            const Text(
+              'Movimientos recientes',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...movements.take(5).map((m) => _CreditMovementRow(movement: m)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CreditMovementRow extends StatelessWidget {
+  final _CreditMovement movement;
+  const _CreditMovementRow({required this.movement});
+
+  @override
+  Widget build(BuildContext context) {
+    final isCharge = movement.movementType == 'CHARGE';
+    final color = isCharge ? AppColors.danger : AppColors.success;
+    final icon =
+        isCharge ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+    final prefix = isCharge ? '+' : '-';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCharge
+                      ? 'Cargo'
+                      : 'Pago${movement.paymentMethod != null ? ' (${movement.paymentMethod})' : ''}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (movement.notes != null && movement.notes!.isNotEmpty)
+                  Text(
+                    movement.notes!,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$prefix S/ ${movement.amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(
+                DateFormat('d MMM', 'es').format(movement.createdAt),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -591,6 +844,115 @@ class _CreditStat extends StatelessWidget {
           style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
         ),
       ],
+    );
+  }
+}
+
+// ─── WIDGET: Direcciones ──────────────────────────────────────────────────────
+
+class _AddressesSection extends StatelessWidget {
+  final List<_UserAddress> addresses;
+  const _AddressesSection({required this.addresses});
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Direcciones',
+      icon: Icons.location_on_rounded,
+      child: Column(
+        children: addresses.map((a) => _AddressRow(address: a)).toList(),
+      ),
+    );
+  }
+}
+
+class _AddressRow extends StatelessWidget {
+  final _UserAddress address;
+  const _AddressRow({required this.address});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color:
+                  address.isDefault
+                      ? AppColors.primary.withValues(alpha: 0.1)
+                      : AppColors.bg,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              address.isDefault
+                  ? Icons.home_rounded
+                  : Icons.location_on_outlined,
+              size: 14,
+              color:
+                  address.isDefault ? AppColors.primary : AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        address.addressLine,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (address.isDefault)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Principal',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                Text(
+                  '${address.district}, ${address.province} - ${address.department}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                if (address.reference != null && address.reference!.isNotEmpty)
+                  Text(
+                    'Ref: ${address.reference}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -738,72 +1100,161 @@ class _OrderRow extends StatelessWidget {
     }
   }
 
+  String _methodLabel(String method) {
+    switch (method.toUpperCase()) {
+      case 'EFECTIVO':
+        return 'Efectivo';
+      case 'CREDITO':
+      case 'CRÉDITO':
+        return 'Crédito';
+      case 'YAPE':
+        return 'Yape';
+      case 'TRANSFERENCIA':
+        return 'Transferencia';
+      default:
+        return method;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasPending = order.paymentStatus != 'PAID' && order.pendingAmount > 0;
+    final hasDiscount = order.discountAmount > 0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.bg,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.shopping_bag_outlined,
-              size: 16,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('d MMM yyyy', 'es').format(order.createdAt),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  order.paymentMethod,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: [
-              Text(
-                'S/ ${order.totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 16,
+                  color: AppColors.primary,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DateFormat('d MMM yyyy', 'es').format(order.createdAt),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          _methodLabel(order.paymentMethod),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        // Puntos ganados / usados
+                        if (order.pointsEarned > 0) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '+${order.pointsEarned}pts',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.amber,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        if (order.pointsUsed > 0) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '-${order.pointsUsed}pts',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    // Descuento
+                    if (hasDiscount)
+                      Text(
+                        'Descuento: S/ ${order.discountAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    // Vencimiento (solo si aplica crédito pendiente)
+                    if (hasPending && order.dueDate != null)
+                      Text(
+                        'Vence: ${DateFormat('d MMM yyyy', 'es').format(order.dueDate!)}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color:
+                              order.dueDate!.isBefore(DateTime.now())
+                                  ? AppColors.danger
+                                  : Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
                 ),
-                child: Text(
-                  _statusLabel,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _statusColor,
-                    fontWeight: FontWeight.bold,
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _statusLabel,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _statusColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  // Monto pendiente
+                  if (hasPending)
+                    Text(
+                      'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
               ),
             ],
+          ),
+          // Separador sutil entre pedidos
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Divider(height: 1, color: AppColors.border),
           ),
         ],
       ),
@@ -817,11 +1268,13 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
+  final Widget? trailing;
 
   const _SectionCard({
     required this.title,
     required this.icon,
     required this.child,
+    this.trailing,
   });
 
   @override
@@ -849,14 +1302,17 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
+                if (trailing != null) trailing!,
               ],
             ),
           ),

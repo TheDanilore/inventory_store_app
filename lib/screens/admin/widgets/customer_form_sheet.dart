@@ -19,7 +19,6 @@ class CustomerFormSheet extends StatefulWidget {
 
   const CustomerFormSheet({super.key, this.customer});
 
-  /// Abre el bottom sheet. Devuelve true si se guardó algo.
   static Future<bool?> show(
     BuildContext context, {
     CustomerSummary? customer,
@@ -43,29 +42,52 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores
+  // ── Controladores ──────────────────────────────────────────────────────────
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _docNumberCtrl = TextEditingController();
-  final _walletCtrl = TextEditingController();
   final _creditLimitCtrl = TextEditingController();
-  final _debtCtrl = TextEditingController();
 
+  // Ajuste de billetera: solo se usa para registrar el DELTA en wallet_movements
+  final _walletAdjustCtrl = TextEditingController(text: '0');
+
+  // ── Estado ─────────────────────────────────────────────────────────────────
   String _docType = 'DNI';
   bool _isActive = true;
-  bool _hasCredit = false;
-  bool _isSaving = false;
 
-  // Estado inicial del crédito (para saber si hay que insertar o actualizar)
+  // Crédito
+  bool _hasCredit = false;
+  bool _creditIsActive = false; // estado real del crédito en BD
   bool _creditExistsInDb = false;
   String? _creditId;
+  double _currentDebt = 0; // solo lectura, viene de BD
+  double _currentCreditLimit = 0; // valor original en BD para comparar
+
+  // Billetera
+  int _currentWalletBalance = 0; // saldo actual en BD
+
+  // UI
+  bool _isLoadingCredit = false;
+  bool _isSaving = false;
 
   bool get _isEditing => widget.customer != null;
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _prefill();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _docNumberCtrl.dispose();
+    _creditLimitCtrl.dispose();
+    _walletAdjustCtrl.dispose();
+    super.dispose();
   }
 
   void _prefill() {
@@ -76,45 +98,43 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     _phoneCtrl.text = c.phone ?? '';
     _docNumberCtrl.text = c.documentNumber ?? '';
     _docType = c.documentType ?? 'DNI';
-    _walletCtrl.text = c.walletBalance.toString();
     _isActive = c.isActive;
+    _currentWalletBalance = c.walletBalance;
 
-    // Cargar crédito
     _loadCredit();
   }
 
   Future<void> _loadCredit() async {
     if (!_isEditing) return;
-    final resp = await _supabase
-        .from('customer_credits')
-        .select('id, credit_limit, current_debt, is_active')
-        .eq('profile_id', widget.customer!.id)
-        .maybeSingle();
+    setState(() => _isLoadingCredit = true);
 
-    if (resp != null && mounted) {
-      setState(() {
-        _creditExistsInDb = true;
-        _creditId = resp['id'] as String;
-        _hasCredit = resp['is_active'] as bool;
-        _creditLimitCtrl.text =
-            (resp['credit_limit'] as num).toStringAsFixed(2);
-        _debtCtrl.text = (resp['current_debt'] as num).toStringAsFixed(2);
-      });
+    try {
+      final resp =
+          await _supabase
+              .from('customer_credits')
+              .select('id, credit_limit, current_debt, is_active')
+              .eq('profile_id', widget.customer!.id)
+              .maybeSingle();
+
+      if (resp != null && mounted) {
+        final limit = (resp['credit_limit'] as num).toDouble();
+        final isActive = resp['is_active'] as bool;
+        setState(() {
+          _creditExistsInDb = true;
+          _creditId = resp['id'] as String;
+          _creditIsActive = isActive;
+          _hasCredit = isActive;
+          _currentDebt = (resp['current_debt'] as num).toDouble();
+          _currentCreditLimit = limit;
+          _creditLimitCtrl.text = limit.toStringAsFixed(2);
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingCredit = false);
     }
   }
 
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _phoneCtrl.dispose();
-    _docNumberCtrl.dispose();
-    _walletCtrl.dispose();
-    _creditLimitCtrl.dispose();
-    _debtCtrl.dispose();
-    super.dispose();
-  }
-
-  // ─── GUARDAR ──────────────────────────────────────────────────────────────
+  // ── GUARDAR ────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -123,61 +143,88 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     try {
       final profileData = {
         'full_name': _nameCtrl.text.trim(),
-        'phone':
-            _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
         'document_type': _docType,
-        'document_number': _docNumberCtrl.text.trim().isEmpty
-            ? null
-            : _docNumberCtrl.text.trim(),
+        'document_number':
+            _docNumberCtrl.text.trim().isEmpty
+                ? null
+                : _docNumberCtrl.text.trim(),
         'is_active': _isActive,
-        'wallet_balance': int.tryParse(_walletCtrl.text.trim()) ?? 0,
       };
 
       String profileId;
 
       if (_isEditing) {
-        // Actualizar perfil
         await _supabase
             .from('profiles')
             .update(profileData)
             .eq('id', widget.customer!.id);
         profileId = widget.customer!.id;
+
+        // Ajuste de billetera: solo si el delta ≠ 0
+        final delta = int.tryParse(_walletAdjustCtrl.text.trim()) ?? 0;
+        if (delta != 0) {
+          // 1. Actualizar saldo
+          await _supabase
+              .from('profiles')
+              .update({'wallet_balance': _currentWalletBalance + delta})
+              .eq('id', profileId);
+
+          // 2. Registrar movimiento en wallet_movements
+          await _supabase.from('wallet_movements').insert({
+            'profile_id': profileId,
+            'points': delta,
+            'movement_type': delta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
+            'description':
+                delta > 0
+                    ? 'Ajuste manual (+$delta monedas)'
+                    : 'Ajuste manual ($delta monedas)',
+          });
+        }
       } else {
         // Insertar perfil nuevo (sin auth_user_id → cliente manual)
-        final inserted = await _supabase
-            .from('profiles')
-            .insert({...profileData, 'role': 'customer'})
-            .select('id')
-            .single();
+        final inserted =
+            await _supabase
+                .from('profiles')
+                .insert({...profileData, 'role': 'customer'})
+                .select('id')
+                .single();
         profileId = inserted['id'] as String;
       }
 
-      // ── Crédito ──────────────────────────────────────────────────────────
-      if (_hasCredit) {
-        final creditData = {
-          'profile_id': profileId,
-          'credit_limit':
-              double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0,
-          'current_debt': double.tryParse(_debtCtrl.text.trim()) ?? 0.0,
-          'is_active': true,
-        };
+      // ── Crédito ────────────────────────────────────────────────────────────
+      final newLimit = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
 
+      if (_hasCredit) {
         if (_creditExistsInDb && _creditId != null) {
+          // Actualizar: solo límite e is_active.
+          // current_debt NO se toca: se gestiona mediante credit_movements.
           await _supabase
               .from('customer_credits')
-              .update(creditData)
+              .update({
+                'credit_limit': newLimit,
+                'is_active': true,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
               .eq('id', _creditId!);
         } else {
+          // Crear crédito nuevo. Deuda inicial = 0 siempre.
           await _supabase.from('customer_credits').insert({
-            ...creditData,
+            'profile_id': profileId,
+            'credit_limit': newLimit,
+            'current_debt': 0.0,
+            'is_active': true,
             'created_by': _supabase.auth.currentUser?.id,
           });
         }
-      } else if (_creditExistsInDb && _creditId != null) {
-        // Desactivar crédito si ya existía
+      } else if (_creditExistsInDb && _creditId != null && _creditIsActive) {
+        // El crédito existía activo y el usuario lo desactivó
         await _supabase
             .from('customer_credits')
-            .update({'is_active': false})
+            .update({
+              'is_active': false,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
             .eq('id', _creditId!);
       }
 
@@ -192,14 +239,14 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   }
 
   String _pgError(PostgrestException e) {
-    final msg = e.message;
-    if (msg.contains('uq_profile_identity')) {
-      return 'Ya existe un cliente con ese tipo y número de documento.';
-    }
+    final msg = e.message.toLowerCase();
     if (msg.contains('profiles_auth_user_id_key')) {
-      return 'Este usuario ya tiene un perfil.';
+      return 'Este usuario ya tiene un perfil registrado.';
     }
-    return 'Error de base de datos: $msg';
+    if (msg.contains('unique') && msg.contains('document')) {
+      return 'Ya existe un cliente con ese número de documento.';
+    }
+    return 'Error al guardar: ${e.message}';
   }
 
   void _showError(String msg) {
@@ -213,7 +260,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     );
   }
 
-  // ─── BUILD ────────────────────────────────────────────────────────────────
+  // ── BUILD ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +279,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           ),
           child: Column(
             children: [
-              // ── Handle ──────────────────────────────────────────────────
+              // ── Handle ────────────────────────────────────────────────────
               const SizedBox(height: 12),
               Container(
                 width: 40,
@@ -244,10 +291,12 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
               ),
               const SizedBox(height: 4),
 
-              // ── Header ──────────────────────────────────────────────────
+              // ── Header ────────────────────────────────────────────────────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -269,7 +318,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _isEditing ? 'Editar cliente' : 'Nuevo',
+                          _isEditing ? 'Editar cliente' : 'Nuevo cliente',
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
@@ -299,7 +348,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
               const Divider(height: 1),
 
-              // ── Formulario ───────────────────────────────────────────────
+              // ── Formulario ────────────────────────────────────────────────
               Expanded(
                 child: Form(
                   key: _formKey,
@@ -307,27 +356,27 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                     controller: scrollCtrl,
                     padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 100),
                     children: [
-                      // ── Sección: Datos personales ──────────────────────
+                      // ══ SECCIÓN: Datos personales ══════════════════════════
                       _SectionHeader(
                         icon: Icons.person_rounded,
                         title: 'Datos personales',
                       ),
                       const SizedBox(height: 12),
 
-                      // Nombre completo
                       _FieldLabel('Nombre completo *'),
                       _StyledField(
                         controller: _nameCtrl,
                         hint: 'Ej: Juan Pérez López',
                         prefixIcon: Icons.badge_rounded,
                         textCapitalization: TextCapitalization.words,
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Ingresa el nombre'
-                            : null,
+                        validator:
+                            (v) =>
+                                (v == null || v.trim().isEmpty)
+                                    ? 'Ingresa el nombre'
+                                    : null,
                       ),
                       const SizedBox(height: 14),
 
-                      // Teléfono
                       _FieldLabel('Teléfono'),
                       _StyledField(
                         controller: _phoneCtrl,
@@ -341,14 +390,13 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       ),
                       const SizedBox(height: 14),
 
-                      // Tipo + Número de documento
                       _FieldLabel('Documento de identidad'),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Tipo
+                          // Tipo de documento
                           Container(
-                            width: 100,
+                            width: 110,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               color: AppColors.bg,
@@ -364,22 +412,29 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                                 ),
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'DNI', child: Text('DNI')),
+                                    value: 'DNI',
+                                    child: Text('DNI'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'RUC', child: Text('RUC')),
+                                    value: 'RUC',
+                                    child: Text('RUC'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'CE', child: Text('CE')),
+                                    value: 'CE',
+                                    child: Text('CE'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'Pasaporte',
-                                      child: Text('Pasaporte')),
+                                    value: 'Pasaporte',
+                                    child: Text('Pasaporte'),
+                                  ),
                                 ],
-                                onChanged: (v) =>
-                                    setState(() => _docType = v ?? 'DNI'),
+                                onChanged:
+                                    (v) =>
+                                        setState(() => _docType = v ?? 'DNI'),
                               ),
                             ),
                           ),
                           const SizedBox(width: 10),
-                          // Número
                           Expanded(
                             child: _StyledField(
                               controller: _docNumberCtrl,
@@ -396,146 +451,186 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ── Sección: Estado y billetera ────────────────────
-                      _SectionHeader(
-                        icon: Icons.tune_rounded,
-                        title: 'Estado y billetera',
-                      ),
+                      // ══ SECCIÓN: Estado ════════════════════════════════════
+                      _SectionHeader(icon: Icons.tune_rounded, title: 'Estado'),
                       const SizedBox(height: 12),
 
-                      // Toggle activo / inactivo
                       _ToggleRow(
                         icon: Icons.circle,
                         iconColor:
                             _isActive ? AppColors.success : AppColors.textMuted,
-                        title: _isActive ? 'Cliente activo' : 'Cliente inactivo',
-                        subtitle: _isActive
-                            ? 'Puede realizar compras'
-                            : 'No puede realizar compras',
+                        title:
+                            _isActive ? 'Cliente activo' : 'Cliente inactivo',
+                        subtitle:
+                            _isActive
+                                ? 'Puede realizar compras'
+                                : 'No puede realizar compras',
                         value: _isActive,
                         onChanged: (v) => setState(() => _isActive = v),
                       ),
-                      const SizedBox(height: 14),
-
-                      // Saldo billetera
-                      _FieldLabel('Saldo en billetera (monedas)'),
-                      _StyledField(
-                        controller: _walletCtrl,
-                        hint: '0',
-                        prefixIcon: Icons.stars_rounded,
-                        prefixIconColor: Colors.amber.shade700,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(8),
-                        ],
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return null;
-                          final n = int.tryParse(v.trim());
-                          if (n == null || n < 0) return 'Valor inválido';
-                          return null;
-                        },
-                      ),
                       const SizedBox(height: 24),
 
-                      // ── Sección: Línea de crédito ──────────────────────
+                      // ══ SECCIÓN: Billetera (solo edición) ═════════════════
+                      if (_isEditing) ...[
+                        _SectionHeader(
+                          icon: Icons.stars_rounded,
+                          title: 'Billetera de monedas',
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Saldo actual (solo lectura)
+                        _ReadOnlyInfoRow(
+                          icon: Icons.account_balance_wallet_rounded,
+                          iconColor: Colors.amber.shade700,
+                          label: 'Saldo actual',
+                          value: '$_currentWalletBalance monedas',
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Ajuste manual (delta, puede ser negativo)
+                        _FieldLabel('Ajuste manual (puede ser negativo)'),
+                        _StyledField(
+                          controller: _walletAdjustCtrl,
+                          hint: '0',
+                          prefixIcon: Icons.add_circle_outline_rounded,
+                          prefixIconColor: Colors.amber.shade700,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            signed: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^-?\d*'),
+                            ),
+                            LengthLimitingTextInputFormatter(6),
+                          ],
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty || v == '0') {
+                              return null; // sin cambio, OK
+                            }
+                            final delta = int.tryParse(v.trim());
+                            if (delta == null) return 'Valor inválido';
+                            final newBalance = _currentWalletBalance + delta;
+                            if (newBalance < 0) {
+                              return 'El saldo resultante no puede ser negativo';
+                            }
+                            return null;
+                          },
+                        ),
+                        // Preview del saldo resultante
+                        _WalletAdjustPreview(
+                          currentBalance: _currentWalletBalance,
+                          adjustCtrl: _walletAdjustCtrl,
+                        ),
+                        const SizedBox(height: 6),
+                        const _InfoNote(
+                          text:
+                              'El ajuste queda registrado en el historial de movimientos de billetera.',
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // ══ SECCIÓN: Línea de crédito ══════════════════════════
                       _SectionHeader(
                         icon: Icons.credit_card_rounded,
                         title: 'Línea de crédito',
                       ),
                       const SizedBox(height: 12),
 
-                      _ToggleRow(
-                        icon: Icons.credit_score_rounded,
-                        iconColor:
-                            _hasCredit ? AppColors.primary : AppColors.textMuted,
-                        title: 'Crédito habilitado',
-                        subtitle: _hasCredit
-                            ? 'El cliente puede comprar a crédito'
-                            : 'Sin línea de crédito',
-                        value: _hasCredit,
-                        onChanged: (v) => setState(() => _hasCredit = v),
-                      ),
+                      // Indicador de carga del crédito
+                      if (_isLoadingCredit)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        )
+                      else ...[
+                        _ToggleRow(
+                          icon: Icons.credit_score_rounded,
+                          iconColor:
+                              _hasCredit
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
+                          title:
+                              _hasCredit ? 'Crédito habilitado' : 'Sin crédito',
+                          subtitle:
+                              _hasCredit
+                                  ? 'El cliente puede comprar a crédito'
+                                  : 'Activa para asignar una línea de crédito',
+                          value: _hasCredit,
+                          onChanged: (v) => setState(() => _hasCredit = v),
+                        ),
 
-                      if (_hasCredit) ...[
-                        const SizedBox(height: 14),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _FieldLabel('Límite de crédito'),
-                                  _StyledField(
-                                    controller: _creditLimitCtrl,
-                                    hint: '0.00',
-                                    prefixIcon: Icons.account_balance_wallet_rounded,
-                                    prefixText: 'S/ ',
-                                    keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d+\.?\d{0,2}')),
-                                    ],
-                                    validator: (v) {
-                                      if (!_hasCredit) return null;
-                                      final n =
-                                          double.tryParse(v?.trim() ?? '');
-                                      if (n == null || n < 0) {
-                                        return 'Monto inválido';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
-                              ),
+                        if (_hasCredit) ...[
+                          const SizedBox(height: 14),
+
+                          // Deuda actual (solo lectura en edición)
+                          if (_isEditing && _creditExistsInDb) ...[
+                            _ReadOnlyInfoRow(
+                              icon: Icons.money_off_rounded,
+                              iconColor:
+                                  _currentDebt > 0
+                                      ? AppColors.danger
+                                      : AppColors.textMuted,
+                              label: 'Deuda actual',
+                              value: 'S/ ${_currentDebt.toStringAsFixed(2)}',
+                              note:
+                                  _currentDebt > 0
+                                      ? 'Registra pagos desde el detalle del cliente'
+                                      : null,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _FieldLabel('Deuda actual'),
-                                  _StyledField(
-                                    controller: _debtCtrl,
-                                    hint: '0.00',
-                                    prefixIcon: Icons.money_off_rounded,
-                                    prefixText: 'S/ ',
-                                    prefixIconColor: AppColors.danger,
-                                    keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d+\.?\d{0,2}')),
-                                    ],
-                                    validator: (v) {
-                                      if (!_hasCredit) return null;
-                                      final debt =
-                                          double.tryParse(v?.trim() ?? '') ??
-                                              0.0;
-                                      final limit = double.tryParse(
-                                              _creditLimitCtrl.text.trim()) ??
-                                          0.0;
-                                      if (debt < 0) return 'Inválido';
-                                      if (debt > limit && limit > 0) {
-                                        return 'Supera el límite';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
+                            const SizedBox(height: 14),
                           ],
-                        ),
 
-                        // Barra de uso de crédito (preview)
-                        const SizedBox(height: 10),
-                        _CreditPreview(
-                          limitCtrl: _creditLimitCtrl,
-                          debtCtrl: _debtCtrl,
-                        ),
+                          // Límite de crédito (editable)
+                          _FieldLabel('Límite de crédito'),
+                          _StyledField(
+                            controller: _creditLimitCtrl,
+                            hint: '0.00',
+                            prefixIcon: Icons.account_balance_wallet_rounded,
+                            prefixText: 'S/ ',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'^\d+\.?\d{0,2}'),
+                              ),
+                            ],
+                            validator: (v) {
+                              if (!_hasCredit) return null;
+                              final n = double.tryParse(v?.trim() ?? '');
+                              if (n == null || n < 0) {
+                                return 'Ingresa un límite válido';
+                              }
+                              // Advertir si el nuevo límite es menor a la deuda
+                              if (_isEditing &&
+                                  n < _currentDebt &&
+                                  _currentDebt > 0) {
+                                return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          // Preview de uso de crédito
+                          const SizedBox(height: 10),
+                          _CreditPreview(
+                            limitCtrl: _creditLimitCtrl,
+                            currentDebt: _isEditing ? _currentDebt : 0,
+                          ),
+
+                          // Nota aclaratoria
+                          const SizedBox(height: 8),
+                          const _InfoNote(
+                            text:
+                                'La deuda se actualiza automáticamente al registrar ventas y pagos. No se edita manualmente.',
+                          ),
+                        ],
                       ],
 
                       const SizedBox(height: 32),
@@ -544,13 +639,14 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                 ),
               ),
 
-              // ── Footer con botón guardar ────────────────────────────────
+              // ── Footer ────────────────────────────────────────────────────
               Container(
                 padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border(
-                      top: BorderSide(color: AppColors.border, width: 1)),
+                    top: BorderSide(color: AppColors.border, width: 1),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.06),
@@ -567,43 +663,45 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          AppColors.primary.withValues(alpha: 0.5),
+                      disabledBackgroundColor: AppColors.primary.withValues(
+                        alpha: 0.5,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                       elevation: 0,
                     ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _isEditing
-                                    ? Icons.save_rounded
-                                    : Icons.person_add_rounded,
-                                size: 20,
+                    child:
+                        _isSaving
+                            ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _isEditing
-                                    ? 'Guardar cambios'
-                                    : 'Crear cliente',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
+                            )
+                            : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _isEditing
+                                      ? Icons.save_rounded
+                                      : Icons.person_add_rounded,
+                                  size: 20,
                                 ),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isEditing
+                                      ? 'Guardar cambios'
+                                      : 'Crear cliente',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
                   ),
                 ),
               ),
@@ -645,7 +743,7 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(child: Divider(color: AppColors.border, thickness: 1)),
+        const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
       ],
     );
   }
@@ -667,6 +765,104 @@ class _FieldLabel extends StatelessWidget {
           color: AppColors.textSecondary,
         ),
       ),
+    );
+  }
+}
+
+/// Fila de información de solo lectura (no editable)
+class _ReadOnlyInfoRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final String? note;
+
+  const _ReadOnlyInfoRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    this.note,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (note != null)
+                  Text(
+                    note!,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 14,
+            color: AppColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Nota informativa pequeña
+class _InfoNote extends StatelessWidget {
+  final String text;
+  const _InfoNote({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.info_outline_rounded,
+          size: 12,
+          color: AppColors.textMuted,
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -719,8 +915,10 @@ class _StyledField extends StatelessWidget {
         ),
         filled: true,
         fillColor: AppColors.bg,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
@@ -731,8 +929,7 @@ class _StyledField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -810,13 +1007,96 @@ class _ToggleRow extends StatelessWidget {
   }
 }
 
-/// Muestra una barra de uso del crédito en tiempo real mientras el usuario
-/// escribe los montos.
+// ─── WIDGET: Preview de ajuste de billetera ───────────────────────────────────
+
+class _WalletAdjustPreview extends StatefulWidget {
+  final int currentBalance;
+  final TextEditingController adjustCtrl;
+
+  const _WalletAdjustPreview({
+    required this.currentBalance,
+    required this.adjustCtrl,
+  });
+
+  @override
+  State<_WalletAdjustPreview> createState() => _WalletAdjustPreviewState();
+}
+
+class _WalletAdjustPreviewState extends State<_WalletAdjustPreview> {
+  @override
+  void initState() {
+    super.initState();
+    widget.adjustCtrl.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.adjustCtrl.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = int.tryParse(widget.adjustCtrl.text.trim()) ?? 0;
+    final newBalance = widget.currentBalance + delta;
+    final isValid = newBalance >= 0;
+
+    if (delta == 0) return const SizedBox.shrink();
+
+    final color =
+        !isValid
+            ? AppColors.danger
+            : delta > 0
+            ? AppColors.success
+            : Colors.orange;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              delta > 0
+                  ? Icons.trending_up_rounded
+                  : Icons.trending_down_rounded,
+              size: 16,
+              color: color,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${widget.currentBalance}  →  ',
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            Text(
+              '$newBalance monedas',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── WIDGET: Preview de crédito ───────────────────────────────────────────────
+
 class _CreditPreview extends StatefulWidget {
   final TextEditingController limitCtrl;
-  final TextEditingController debtCtrl;
+  final double currentDebt;
 
-  const _CreditPreview({required this.limitCtrl, required this.debtCtrl});
+  const _CreditPreview({required this.limitCtrl, required this.currentDebt});
 
   @override
   State<_CreditPreview> createState() => _CreditPreviewState();
@@ -827,7 +1107,6 @@ class _CreditPreviewState extends State<_CreditPreview> {
   void initState() {
     super.initState();
     widget.limitCtrl.addListener(_rebuild);
-    widget.debtCtrl.addListener(_rebuild);
   }
 
   void _rebuild() => setState(() {});
@@ -835,47 +1114,44 @@ class _CreditPreviewState extends State<_CreditPreview> {
   @override
   void dispose() {
     widget.limitCtrl.removeListener(_rebuild);
-    widget.debtCtrl.removeListener(_rebuild);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final limit = double.tryParse(widget.limitCtrl.text.trim()) ?? 0.0;
-    final debt = double.tryParse(widget.debtCtrl.text.trim()) ?? 0.0;
+    final debt = widget.currentDebt;
     final pct = limit > 0 ? (debt / limit).clamp(0.0, 1.0) : 0.0;
+    final available = (limit - debt).clamp(0.0, double.infinity);
     final isRisk = pct >= 0.8;
+    final color = isRisk ? AppColors.danger : AppColors.success;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: (isRisk ? AppColors.danger : AppColors.success)
-            .withValues(alpha: 0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: (isRisk ? AppColors.danger : AppColors.success)
-              .withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Uso del crédito',
-                style: const TextStyle(
+              const Text(
+                'Vista previa del crédito',
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
               ),
               Text(
-                '${(pct * 100).toStringAsFixed(0)}%',
+                '${(pct * 100).toStringAsFixed(0)}% usado',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: isRisk ? AppColors.danger : AppColors.success,
+                  color: color,
                 ),
               ),
             ],
@@ -887,29 +1163,71 @@ class _CreditPreviewState extends State<_CreditPreview> {
               value: pct,
               minHeight: 6,
               backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isRisk ? AppColors.danger : AppColors.success,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Disponible: S/ ${(limit - debt).clamp(0, double.infinity).toStringAsFixed(2)}',
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textMuted),
+              Expanded(
+                child: _PreviewStat(
+                  label: 'Deuda',
+                  value: 'S/ ${debt.toStringAsFixed(2)}',
+                  color: debt > 0 ? AppColors.danger : AppColors.textMuted,
+                ),
               ),
-              Text(
-                'Límite: S/ ${limit.toStringAsFixed(2)}',
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textMuted),
+              Expanded(
+                child: _PreviewStat(
+                  label: 'Disponible',
+                  value: 'S/ ${available.toStringAsFixed(2)}',
+                  color: AppColors.success,
+                ),
+              ),
+              Expanded(
+                child: _PreviewStat(
+                  label: 'Límite',
+                  value: 'S/ ${limit.toStringAsFixed(2)}',
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PreviewStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _PreviewStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
