@@ -529,7 +529,7 @@ class _KardexScreenState extends State<KardexScreen> {
                                                   ),
                                                 ),
                                                 Text(
-                                                  '${item.isEntry ? '+' : '-'}${move.quantity}',
+                                                  '${item.isEntry ? '+' : ''}${move.quantity}',
                                                   style: TextStyle(
                                                     fontWeight: FontWeight.w900,
                                                     fontSize: 20,

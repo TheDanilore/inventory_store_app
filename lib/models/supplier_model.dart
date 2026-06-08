@@ -1,0 +1,77 @@
+class SupplierModel {
+  final String id;
+  final String name;
+  final String? taxId;
+  final String? contactName;
+  final String? phone;
+  final String? email;
+  final String? address;
+  final bool isActive;
+  final DateTime? createdAt;
+
+  SupplierModel({
+    required this.id,
+    required this.name,
+    this.taxId,
+    this.contactName,
+    this.phone,
+    this.email,
+    this.address,
+    this.isActive = true,
+    this.createdAt,
+  });
+
+  factory SupplierModel.fromJson(Map<String, dynamic> json) {
+    return SupplierModel(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      taxId: json['tax_id'] as String?,
+      contactName: json['contact_name'] as String?,
+      phone: json['phone'] as String?,
+      email: json['email'] as String?,
+      address: json['address'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id.isNotEmpty) 'id': id, // Se omite si está vacío (para inserts)
+      'name': name,
+      'tax_id': taxId,
+      'contact_name': contactName,
+      'phone': phone,
+      'email': email,
+      'address': address,
+      'is_active': isActive,
+    };
+  }
+
+  SupplierModel copyWith({
+    String? id,
+    String? name,
+    String? taxId,
+    String? contactName,
+    String? phone,
+    String? email,
+    String? address,
+    bool? isActive,
+    DateTime? createdAt,
+  }) {
+    return SupplierModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      taxId: taxId ?? this.taxId,
+      contactName: contactName ?? this.contactName,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      address: address ?? this.address,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}

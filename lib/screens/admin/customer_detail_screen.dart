@@ -109,7 +109,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   double _creditLimit = 0;
   bool _hasCredit = false;
   bool _creditIsActive = false;
-  String? _creditId;
 
   @override
   void initState() {
@@ -242,7 +241,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       setState(() {
         _hasCredit = true;
         _creditIsActive = isActive;
-        _creditId = creditId;
         _currentDebt = (resp['current_debt'] as num).toDouble();
         _creditLimit = (resp['credit_limit'] as num).toDouble();
       });

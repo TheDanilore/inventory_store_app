@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/admin_credit_movements_screen.dart';
 import 'package:inventory_store_app/screens/admin/admin_credits_screen.dart';
+import 'package:inventory_store_app/screens/admin/admin_suppliers_screen.dart';
 import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_entry_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
 import 'package:inventory_store_app/screens/admin/warehouses_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/screens/admin/users_management_screen.dart';
@@ -189,17 +191,67 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
 
-                  _buildItem(
+                  // // ── Crédito (con sub-ítems) ─────────────────────────
+                  _buildExpandableItem(
                     context,
                     _DrawerItem(
                       icon: Icons.inventory_2_outlined,
                       title: 'Kardex',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.article_outlined,
+                          title: 'Kardex',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const KardexScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.add_rounded,
+                          title: 'Registro Entrada',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const InventoryEntryScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.remove_rounded,
+                          title: 'Registro Salida',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const InventoryExitScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.local_shipping_outlined,
+                      title: 'Proveedores',
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const KardexScreen(),
+                            builder: (_) => const AdminSuppliersScreen(),
                           ),
                         );
                       },
