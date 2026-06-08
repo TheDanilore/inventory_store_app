@@ -141,6 +141,19 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     setState(() => _isSaving = true);
 
     try {
+      // 1. Obtener el profile_id del Administrador (NUEVO)
+      String? adminProfileId;
+      final authUserId = _supabase.auth.currentUser?.id;
+      if (authUserId != null) {
+        final adminResp =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+        if (adminResp != null) adminProfileId = adminResp['id'] as String;
+      }
+
       final profileData = {
         'full_name': _nameCtrl.text.trim(),
         'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
@@ -197,8 +210,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
       if (_hasCredit) {
         if (_creditExistsInDb && _creditId != null) {
-          // Actualizar: solo límite e is_active.
-          // current_debt NO se toca: se gestiona mediante credit_movements.
+          // Actualizar
           await _supabase
               .from('customer_credits')
               .update({
@@ -208,13 +220,13 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
               })
               .eq('id', _creditId!);
         } else {
-          // Crear crédito nuevo. Deuda inicial = 0 siempre.
+          // Crear crédito nuevo
           await _supabase.from('customer_credits').insert({
             'profile_id': profileId,
             'credit_limit': newLimit,
             'current_debt': 0.0,
             'is_active': true,
-            'created_by': _supabase.auth.currentUser?.id,
+            'created_by': adminProfileId, // 👈 ¡AQUÍ ESTÁ LA CORRECCIÓN!
           });
         }
       } else if (_creditExistsInDb && _creditId != null && _creditIsActive) {
@@ -598,7 +610,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                             ),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
-                                RegExp(r'^\d+\.?\d{0,2}'),
+                                RegExp(r'^\d*\.?\d{0,2}'),
                               ),
                             ],
                             validator: (v) {
