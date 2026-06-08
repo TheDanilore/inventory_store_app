@@ -346,7 +346,8 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
           id: '',
           exitId: exitId,
           productId: item.product.id,
-          variantId: variantId,
+          // SOLUCIÓN ERROR 2: Agregamos "?? ''" para asegurar que no sea nulo si el modelo exige String puro.
+          variantId: variantId ?? '',
           quantity: item.quantity,
         );
 
@@ -380,7 +381,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
             'variant_id': variantId,
             'warehouse_id': _selectedWarehouseId,
             'stock_batch_id': batchId,
-            'inventory_exit_id': exitId, // Trazabilidad directa a la salida
+            'inventory_exit_id': exitId,
             'quantity': -item.quantity,
             'previous_stock': available,
             'new_stock': newStock,
@@ -392,19 +393,26 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
           });
         } else {
           // Descuento automático FEFO (First Expired First Out)
+
+          // SOLUCIÓN ERROR 1: Construimos la consulta base SIN el .order() todavía
           var query = _supabase
               .from('warehouse_stock_batches')
               .select('id, available_quantity')
               .eq('warehouse_id', _selectedWarehouseId!)
               .eq('product_id', item.product.id)
-              .gt('available_quantity', 0)
-              .order('expiry_date', ascending: true, nullsFirst: false);
+              .gt('available_quantity', 0);
 
           if (variantId != null) {
             query = query.eq('variant_id', variantId);
           }
 
-          final batchesList = await query;
+          // Aplicamos el .order() al final, justo antes de ejecutar la consulta
+          final batchesList = await query.order(
+            'expiry_date',
+            ascending: true,
+            nullsFirst: false,
+          );
+
           double remaining = item.quantity;
 
           for (final batch in (batchesList as List)) {
