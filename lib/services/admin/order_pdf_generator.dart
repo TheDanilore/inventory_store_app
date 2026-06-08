@@ -9,9 +9,34 @@ import 'package:inventory_store_app/models/order_item_model.dart';
 class OrderPdfGenerator {
   /// Helper para convertir cualquier fecha de UTC a Hora de Perú (UTC-5)
   static DateTime _toPeruTime(DateTime date) {
-    // Si la fecha ya es local (depende de cómo la parsees en el modelo),
-    // toUtc() la normaliza antes de aplicar el desfase peruano.
     return date.toUtc().subtract(const Duration(hours: 5));
+  }
+
+  // --- Helpers de traducción para el ticket ---
+  static String _translateStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+        return 'Completado';
+      case 'PENDING':
+        return 'Pendiente';
+      case 'CANCELLED':
+        return 'Cancelado';
+      default:
+        return status;
+    }
+  }
+
+  static String _translatePaymentStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'PAID':
+        return 'Pagado';
+      case 'PENDING':
+        return 'Pendiente';
+      case 'PARTIAL':
+        return 'Parcial';
+      default:
+        return status;
+    }
   }
 
   static Future<void> generateTicket(
@@ -42,10 +67,15 @@ class OrderPdfGenerator {
               .toList();
     }
 
+    // Calculamos el subtotal sumando todos los items
+    final double subtotalItems = orderItems.fold<double>(
+      0.0,
+      (sum, item) => sum + item.subtotal,
+    );
+
     // 2. Configurar el documento PDF y Fechas
     final pdf = pw.Document();
 
-    // Aplicar la conversión a la fecha de creación
     final rawDate = order.createdAt ?? DateTime.now();
     final peruDate = _toPeruTime(rawDate);
     final dateString = DateFormat('dd/MM/yyyy HH:mm').format(peruDate);
@@ -72,14 +102,18 @@ class OrderPdfGenerator {
               pw.Text('ID Pedido: ${order.id.substring(0, 8).toUpperCase()}'),
               pw.Text('Fecha: $dateString'),
               pw.Text('Cliente: ${order.displayCustomerName}'),
-              pw.Text('Estado: ${order.status}'),
+
+              // Aplicamos las traducciones aquí
+              pw.Text('Estado: ${_translateStatus(order.status)}'),
               pw.Text('Método Pago: ${order.paymentMethod}'),
-              pw.Text('Estado de Pago: ${order.paymentStatus}'),
+              pw.Text(
+                'Estado de Pago: ${_translatePaymentStatus(order.paymentStatus)}',
+              ),
+
               pw.Text(
                 'Monto Pagado: S/ ${order.amountPaid.toStringAsFixed(2)}',
               ),
 
-              // Mostrar solo si hay fecha de vencimiento
               if (order.dueDate != null)
                 pw.Text(
                   'Vencimiento: ${DateFormat('dd/MM/yyyy').format(order.dueDate!.toLocal())}',
@@ -135,6 +169,42 @@ class OrderPdfGenerator {
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
 
               // TOTALES
+              // Mostrar Subtotal solo si se aplicó algún tipo de descuento
+              if (order.discountAmount > 0 || order.pointsUsed > 0) ...[
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Subtotal:',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                    pw.Text(
+                      'S/ ${subtotalItems.toStringAsFixed(2)}',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 4),
+              ],
+
+              // Descuento Adicional
+              if (order.discountAmount > 0) ...[
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Descuento:',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                    pw.Text(
+                      '- S/ ${order.discountAmount.toStringAsFixed(2)}',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 4),
+              ],
+
               // Mostrar solo si se usaron monedas/puntos
               if (order.pointsUsed > 0) ...[
                 pw.Row(

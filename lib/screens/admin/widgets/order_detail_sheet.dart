@@ -34,12 +34,29 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   String _paymentMethod = 'EFECTIVO';
   int _pointsUsed = 0;
   int _pointsEarned = 0;
-
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
   bool get _isCancelled => _currentStatus.toUpperCase() == 'CANCELLED';
-  // Los pedidos completados solo se pueden editar en campos de pago (abonos, etc.)
-  // Los cancelados no se pueden editar en absoluto.
   bool get _canToggleEdit => !_isCancelled;
+
+  String get _currentPaymentStatus {
+    if (_isEditing) {
+      if (_paymentMethod == 'CRÉDITO') return 'PENDING';
+      if (_currentStatus == 'CANCELLED') return 'PAID';
+      if (_currentStatus == 'COMPLETED') return 'PAID';
+      return 'PENDING';
+    }
+    return widget.order.paymentStatus;
+  }
+
+  double get _currentAmountPaid {
+    if (_isEditing) {
+      if (_paymentMethod == 'CRÉDITO' || _currentStatus != 'COMPLETED') {
+        return 0.0;
+      }
+      return _calculateOrderFinalAmount();
+    }
+    return widget.order.amountPaid;
+  }
 
   List<Map<String, dynamic>> get _filteredProfiles {
     final query = _customerSearchCtrl.text.trim().toLowerCase();
@@ -870,9 +887,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             // ─── PAYMENT STATUS (siempre visible en COMPLETED) ───
             if (_isCompleted)
               _PaymentStatusSection(
-                paymentStatus: widget.order.paymentStatus,
-                totalAmount: widget.order.totalAmount,
-                amountPaid: widget.order.amountPaid,
+                paymentStatus: _currentPaymentStatus, // <-- Dinámico
+                totalAmount: _calculateOrderFinalAmount(), // <-- Dinámico
+                amountPaid: _currentAmountPaid, // <-- Dinámico
               ),
 
             OrderDetailStatusSection(
