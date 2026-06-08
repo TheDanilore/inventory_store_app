@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_image_model.dart';
+import 'package:inventory_store_app/models/product_variant_model.dart';
+import 'package:inventory_store_app/models/warehouse_stock_batch_model.dart';
 
 class ProductModel {
   final String id;
@@ -38,6 +41,10 @@ class ProductModel {
     }
   }
 
+  final String? categoryName;
+  final List<ProductVariantModel> productVariants;
+  final List<WarehouseStockBatchModel> warehouseStockBatches;
+
   ProductModel({
     required this.id,
     required this.name,
@@ -58,10 +65,16 @@ class ProductModel {
     this.productType = 'good',
     this.images = const [],
     this.totalStock = 0,
+    this.categoryName,
+    this.productVariants = const [],
+    this.warehouseStockBatches = const [],
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    final categoriesMap = json['categories'] as Map<String, dynamic>?;
+    final variantsList = json['product_variants'] as List? ?? [];
+    final batchesList = json['warehouse_stock_batches'] as List? ?? [];
     return ProductModel(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -73,6 +86,8 @@ class ProductModel {
               ? DateTime.parse(json['created_at'] as String)
               : null,
       categoryId: json['category_id'] as String?,
+      // ¡Aquí obtenemos el nombre real desde la consulta de la base de datos!
+      categoryName: categoriesMap?['name'] as String? ?? 'Sin categoría',
       description: json['description'] as String?,
       wholesalePrice:
           json['wholesale_price'] != null
@@ -92,6 +107,23 @@ class ProductModel {
       stockControl: json['stock_control'] as bool? ?? true,
       usesBatches: json['uses_batches'] as bool? ?? false,
       productType: json['product_type'] as String? ?? 'good',
+      productVariants:
+          variantsList
+              .map(
+                (variantJson) => ProductVariantModel.fromJson(
+                  variantJson as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
+      warehouseStockBatches:
+          batchesList
+              .map(
+                (bJson) => WarehouseStockBatchModel.fromJson(
+                  bJson as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
+
       images:
           json['product_images'] != null
               ? (json['product_images'] as List)
@@ -103,9 +135,9 @@ class ProductModel {
               : const [],
       // totalStock no viene del JSON de Supabase; se inyecta externamente.
       totalStock:
-    json['total_stock'] != null
-        ? (json['total_stock'] as num).toInt()
-        : 0,
+          json['total_stock'] != null
+              ? (json['total_stock'] as num).toInt()
+              : 0,
     );
   }
 

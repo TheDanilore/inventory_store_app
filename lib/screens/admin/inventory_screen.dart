@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/models/product_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -33,7 +34,9 @@ class _InventoryScreenState extends State<InventoryScreen>
   }
 
   Future<List<Map<String, dynamic>>> _loadInventoryData() async {
-    return await Supabase.instance.client.from('warehouse_stock_batches').select();
+    return await Supabase.instance.client
+        .from('warehouse_stock_batches')
+        .select();
   }
 
   @override
@@ -120,83 +123,88 @@ class _StockTabState extends State<_StockTab>
     final response = await _supabase
         .from('products')
         .select('''
-      id, name, sale_price, unit_cost, wholesale_price, wholesale_min_quantity,
-      uses_batches, stock_control, product_type,
-      categories(name),
-      product_variants!inner(
-        id, sku, attributes, sale_price, wholesale_price,
-        wholesale_min_quantity, reorder_point, is_active
-      ),
-      warehouse_stock_batches(
-        variant_id, available_quantity, expiry_date, batch_number
-      )
-    ''')
+    id, name, sale_price, unit_cost, wholesale_price, wholesale_min_quantity,
+    uses_batches, stock_control, product_type,
+    categories(name),
+    product_variants!inner(
+      id, sku, attributes, sale_price, wholesale_price,
+      wholesale_min_quantity, reorder_point, is_active
+    ),
+    warehouse_stock_batches!variant_id(
+      variant_id, available_quantity, expiry_date, batch_number
+    )
+  ''') // Nota: Añadí !variant_id para evitar error de relación ambigua si falla la query
         .eq('is_active', true)
         .eq('product_variants.is_active', true);
 
-    debugPrint('Productos cargados: ${response.length}'); // Debug: cantidad de productos
+    debugPrint('Productos cargados: ${response.length}');
 
-    final products = List<Map<String, dynamic>>.from(response);
+    // 1. Mapear la respuesta de Supabase de manera segura a tus Modelos de Dart
+    final List<ProductModel> products =
+        (response as List)
+            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+
     final List<Map<String, dynamic>> result = [];
     final Set<String> cats = {};
 
     for (final prod in products) {
-      final variants = List<Map<String, dynamic>>.from(
-        prod['product_variants'] ?? [],
-      );
-      final batches = List<Map<String, dynamic>>.from(
-        prod['warehouse_stock_batches'] ?? [],
-      );
-      final usesBatches = prod['uses_batches'] as bool? ?? false;
-      final stockControl = prod['stock_control'] as bool? ?? true;
-      final catName =
-          (prod['categories'] as Map?)?['name'] as String? ?? 'Sin categoría';
+      // 2. Extraer propiedades directamente desde el modelo de forma segura
+      final usesBatches = prod.usesBatches;
+      final stockControl = prod.stockControl;
+
+      // Asumiendo que tu ProductModel parsea la categoría o la maneja internamente
+      final catName = prod.categoryName ?? 'Sin categoría';
       cats.add(catName);
 
+      // Acceder a la lista de variantes ya casteada por tu modelo
+      final variants = prod.productVariants ?? [];
+      // Acceder a la lista de lotes ya casteada por tu modelo
+      final batches = prod.warehouseStockBatches ?? [];
+
       for (final variant in variants) {
-        final variantId = variant['id'] as String;
+        final variantId = variant.id;
         int stock = 0;
 
         if (stockControl) {
+          // Filtrar los lotes utilizando las propiedades del modelo de lote
           final variantBatches =
-              batches.where((b) => b['variant_id'] == variantId).toList();
+              batches.where((b) => b.variantId == variantId).toList();
+
           stock = variantBatches.fold<int>(
             0,
-            (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
+            (sum, b) => sum + (b.availableQuantity?.toInt() ?? 0),
           );
+
           // Solo incluir si tiene stock
           if (stock <= 0) continue;
         }
 
-        final reorderPoint = (variant['reorder_point'] as num?)?.toInt() ?? 3;
+        final reorderPoint = variant.reorderPoint ?? 3;
         final variantBatches =
-            batches.where((b) => b['variant_id'] == variantId).toList();
+            batches.where((b) => b.variantId == variantId).toList();
+
+        // Convertir los objetos del lote de vuelta a mapa para tu 'result' final si la vista lo requiere
+        final mappedBatches = variantBatches.map((b) => b.toJson()).toList();
 
         result.add({
-          'product_id': prod['id'],
-          'product_name': prod['name'],
+          'product_id': prod.id,
+          'product_name': prod.name,
           'category': catName,
-          'product_type': prod['product_type'],
+          'product_type': prod.productType,
           'uses_batches': usesBatches,
           'stock_control': stockControl,
-          'unit_cost': (prod['unit_cost'] as num?)?.toDouble() ?? 0.0,
-          'sale_price':
-              (variant['sale_price'] as num?)?.toDouble() ??
-              (prod['sale_price'] as num?)?.toDouble() ??
-              0.0,
-          'wholesale_price':
-              (variant['wholesale_price'] as num?)?.toDouble() ??
-              (prod['wholesale_price'] as num?)?.toDouble(),
+          'unit_cost': prod.unitCost ?? 0.0,
+          'sale_price': variant.salePrice ?? prod.salePrice ?? 0.0,
+          'wholesale_price': variant.wholesalePrice ?? prod.wholesalePrice,
           'wholesale_min_qty':
-              (variant['wholesale_min_quantity'] as num?)?.toInt() ??
-              (prod['wholesale_min_quantity'] as num?)?.toInt() ??
-              3,
+              variant.wholesaleMinQuantity ?? prod.wholesaleMinQuantity ?? 3,
           'variant_id': variantId,
-          'sku': variant['sku'],
-          'attributes': variant['attributes'] as Map? ?? {},
+          'sku': variant.sku,
+          'attributes': variant.attributes ?? {},
           'reorder_point': reorderPoint,
           'stock': stock,
-          'batches': variantBatches,
+          'batches': mappedBatches,
           'is_low_stock': stockControl && stock <= reorderPoint,
         });
       }
@@ -219,8 +227,7 @@ class _StockTabState extends State<_StockTab>
       });
     }
 
-    debugPrint('Variantes con stock: ${result.length}'); // Debug: cantidad de variantes con stock
-
+    debugPrint('Variantes con stock: ${result.length}');
     return result;
   }
 
