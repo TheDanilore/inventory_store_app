@@ -18,25 +18,17 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  late Future<List<Map<String, dynamic>>> _inventoryFuture;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _inventoryFuture = _loadInventoryData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<List<Map<String, dynamic>>> _loadInventoryData() async {
-    return await Supabase.instance.client
-        .from('warehouse_stock_batches')
-        .select();
   }
 
   @override
@@ -158,9 +150,9 @@ class _StockTabState extends State<_StockTab>
       cats.add(catName);
 
       // Acceder a la lista de variantes ya casteada por tu modelo
-      final variants = prod.productVariants ?? [];
+      final variants = prod.productVariants;
       // Acceder a la lista de lotes ya casteada por tu modelo
-      final batches = prod.warehouseStockBatches ?? [];
+      final batches = prod.warehouseStockBatches;
 
       for (final variant in variants) {
         final variantId = variant.id;
@@ -173,14 +165,14 @@ class _StockTabState extends State<_StockTab>
 
           stock = variantBatches.fold<int>(
             0,
-            (sum, b) => sum + (b.availableQuantity?.toInt() ?? 0),
+            (sum, b) => sum + (b.availableQuantity.toInt()),
           );
 
           // Solo incluir si tiene stock
           if (stock <= 0) continue;
         }
 
-        final reorderPoint = variant.reorderPoint ?? 3;
+        final reorderPoint = variant.reorderPoint;
         final variantBatches =
             batches.where((b) => b.variantId == variantId).toList();
 
@@ -194,14 +186,14 @@ class _StockTabState extends State<_StockTab>
           'product_type': prod.productType,
           'uses_batches': usesBatches,
           'stock_control': stockControl,
-          'unit_cost': prod.unitCost ?? 0.0,
-          'sale_price': variant.salePrice ?? prod.salePrice ?? 0.0,
+          'unit_cost': prod.unitCost,
+          'sale_price': variant.salePrice ?? prod.salePrice,
           'wholesale_price': variant.wholesalePrice ?? prod.wholesalePrice,
           'wholesale_min_qty':
-              variant.wholesaleMinQuantity ?? prod.wholesaleMinQuantity ?? 3,
+              variant.wholesaleMinQuantity ?? prod.wholesaleMinQuantity,
           'variant_id': variantId,
           'sku': variant.sku,
-          'attributes': variant.attributes ?? {},
+          'attributes': variant.attributes,
           'reorder_point': reorderPoint,
           'stock': stock,
           'batches': mappedBatches,
