@@ -10,14 +10,16 @@ import 'package:inventory_store_app/shared/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
+  // 1. ESTO DEBE SER LA PRIMERA LÍNEA SÍ O SÍ
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Inicializa la conexión con Supabase
+  // 2. Luego inicializas Supabase u otros plugins que necesiten inicialización antes de correr la app.
   await Supabase.initialize(
     url: 'https://lvupdgdmlmzztjmydqak.supabase.co',
     publishableKey: 'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB',
   );
 
+  // 3. Finalmente corres la app
   runApp(const MyApp());
 }
 

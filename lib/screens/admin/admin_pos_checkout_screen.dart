@@ -331,6 +331,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       );
       final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
       final totalProfit = _calcularGananciaTotal(pos);
+      final descuentoExtra = _getCustomDiscountAmount(pos);
       final puntosGanados =
           isDraft ? 0 : (totalFinal * earningRate / pointsToSolesRatio).toInt();
 
@@ -427,6 +428,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                 'warehouse_id': pos.selectedWarehouseId,
                 'total_amount': totalFinal,
                 'total_profit': totalProfit,
+                'discount_amount': descuentoExtra,
                 'payment_method': pos.paymentMethod,
                 'payment_status': paymentStatus,
                 'amount_paid': amountPaid,

@@ -16,6 +16,7 @@ class OrderModel {
   final double amountPaid;
   final DateTime? dueDate;
   final String? createdBy;
+  final double discountAmount;
 
   // NUEVO: Agregamos una propiedad para guardar la data relacionada del almacén
   final WarehouseModel? warehouse;
@@ -36,7 +37,8 @@ class OrderModel {
     this.amountPaid = 0.00,
     this.dueDate,
     this.createdBy,
-    this.warehouse, // Lo incluimos en el constructor
+    this.warehouse, 
+    this.discountAmount = 0.00,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -71,6 +73,7 @@ class OrderModel {
                 Map<String, dynamic>.from(json['warehouses']),
               )
               : null,
+              discountAmount: (json['discount_amount'] as num? ?? 0.00).toDouble(),
     );
   }
 
@@ -93,6 +96,7 @@ class OrderModel {
       if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
       'created_by': createdBy,
       // Nota: No incluimos 'warehouse' aquí porque usualmente solo insertamos el 'warehouse_id'
+      'discount_amount': discountAmount,
     };
   }
 
@@ -127,6 +131,7 @@ class OrderModel {
     DateTime? dueDate,
     String? createdBy,
     WarehouseModel? warehouse,
+    double? discountAmount,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -145,6 +150,7 @@ class OrderModel {
       dueDate: dueDate ?? this.dueDate,
       createdBy: createdBy ?? this.createdBy,
       warehouse: warehouse ?? this.warehouse,
+      discountAmount: discountAmount ?? this.discountAmount,
     );
   }
 }

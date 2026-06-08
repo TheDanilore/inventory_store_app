@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_order_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_sheet.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -52,6 +53,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         customer_name,
         total_amount,
         total_profit,
+        discount_amount,
         payment_method,
         payment_status,
         amount_paid,
@@ -175,7 +177,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (confirm != true) return;
 
     try {
-      final currentUserId = _supabase.auth.currentUser?.id;
+      String? currentUserId;
+      final authUserId = _supabase.auth.currentUser?.id;
+
+      if (authUserId != null) {
+        final profileResp =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+
+        if (profileResp != null) {
+          currentUserId = profileResp['id'] as String;
+        }
+      }
 
       // ─── 1. PENDING → COMPLETED (Activar borrador) ───
       if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
@@ -355,7 +371,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
           await _supabase
               .from('customer_credits')
-              .update({'current_debt': newDebt})
+              .update({
+                'current_debt': newDebt,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
               .eq('id', creditId);
 
           await _supabase.from('credit_movements').insert({
@@ -363,9 +382,86 @@ class _OrdersScreenState extends State<OrdersScreen> {
             'order_id': order.id,
             'movement_type': 'CHARGE',
             'amount': order.totalAmount,
+            'payment_method': 'CRÉDITO',
             'notes': 'Activación de pedido desde panel de órdenes',
             if (currentUserId != null) 'created_by': currentUserId,
           });
+        }
+
+        // Registrar wallet_movements y actualizar wallet_balance si hay puntos
+        if (order.customerId != null) {
+          final puntosUsados = order.pointsUsed;
+          final puntosGanados = order.pointsEarned;
+
+          if (puntosUsados > 0) {
+            // Verificar que no se haya registrado ya (idempotente)
+            final redemptionExists =
+                await _supabase
+                    .from('wallet_movements')
+                    .select('id')
+                    .eq('order_id', order.id)
+                    .eq('movement_type', 'REDEEMED')
+                    .maybeSingle();
+
+            if (redemptionExists == null) {
+              final profileData =
+                  await _supabase
+                      .from('profiles')
+                      .select('wallet_balance')
+                      .eq('id', order.customerId!)
+                      .single();
+              final currentBal = (profileData['wallet_balance'] as num).toInt();
+              final newBal = (currentBal - puntosUsados).clamp(0, currentBal);
+
+              await _supabase
+                  .from('profiles')
+                  .update({'wallet_balance': newBal})
+                  .eq('id', order.customerId!);
+
+              await _supabase.from('wallet_movements').insert({
+                'profile_id': order.customerId,
+                'order_id': order.id,
+                'points': -puntosUsados,
+                'movement_type': 'REDEEMED',
+                'description':
+                    'Canje al activar pedido #${order.id.substring(0, 8)}',
+              });
+            }
+          }
+
+          if (puntosGanados > 0) {
+            final earnedExists =
+                await _supabase
+                    .from('wallet_movements')
+                    .select('id')
+                    .eq('order_id', order.id)
+                    .eq('movement_type', 'EARNED')
+                    .maybeSingle();
+
+            if (earnedExists == null) {
+              final profileData =
+                  await _supabase
+                      .from('profiles')
+                      .select('wallet_balance')
+                      .eq('id', order.customerId!)
+                      .single();
+              final currentBal = (profileData['wallet_balance'] as num).toInt();
+
+              await _supabase
+                  .from('profiles')
+                  .update({'wallet_balance': currentBal + puntosGanados})
+                  .eq('id', order.customerId!);
+
+              await _supabase.from('wallet_movements').insert({
+                'profile_id': order.customerId,
+                'order_id': order.id,
+                'points': puntosGanados,
+                'movement_type': 'EARNED',
+                'description':
+                    'Monedas al activar pedido #${order.id.substring(0, 8)}',
+              });
+            }
+          }
         }
       }
       // ─── 2. COMPLETED → CANCELLED (Cancelar un pedido ya completado) ───
@@ -469,7 +565,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
           if (creditResp != null) {
             final creditId = creditResp['id'];
             final currentDebt = (creditResp['current_debt'] as num).toDouble();
-            // La deuda no puede bajar de 0
             final newDebt =
                 (currentDebt - origAmount) < 0
                     ? 0.0
@@ -477,17 +572,93 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
             await _supabase
                 .from('customer_credits')
-                .update({'current_debt': newDebt})
+                .update({
+                  'current_debt': newDebt,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
                 .eq('id', creditId);
 
             await _supabase.from('credit_movements').insert({
               'credit_id': creditId,
               'order_id': order.id,
-              'movement_type': 'PAYMENT', // Reembolso virtual de deuda
+              'movement_type': 'PAYMENT',
               'amount': origAmount,
               'notes': 'Reembolso de deuda por cancelación de pedido',
               if (currentUserId != null) 'created_by': currentUserId,
             });
+          }
+        }
+
+        // Revertir puntos ganados y devolver puntos canjeados (si los hubo)
+        if (origCustomerId != null) {
+          // 1. Revertir puntos GANADOS al cancelar
+          final earnedMov =
+              await _supabase
+                  .from('wallet_movements')
+                  .select('id, points')
+                  .eq('order_id', order.id)
+                  .eq('movement_type', 'EARNED')
+                  .maybeSingle();
+
+          if (earnedMov != null) {
+            final ptsGanados = (earnedMov['points'] as num).toInt();
+            final profileData =
+                await _supabase
+                    .from('profiles')
+                    .select('wallet_balance')
+                    .eq('id', origCustomerId)
+                    .single();
+            final currentBal = (profileData['wallet_balance'] as num).toInt();
+            final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
+
+            await _supabase
+                .from('profiles')
+                .update({'wallet_balance': newBal})
+                .eq('id', origCustomerId);
+
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': origCustomerId,
+              'order_id': order.id,
+              'points': -ptsGanados,
+              'movement_type': 'ADJUSTMENT',
+              'description': 'Reversión de monedas por cancelación de pedido',
+            });
+          }
+
+          // 2. Devolver puntos CANJEADOS al cancelar
+          final redeemedMov =
+              await _supabase
+                  .from('wallet_movements')
+                  .select('id, points')
+                  .eq('order_id', order.id)
+                  .eq('movement_type', 'REDEEMED')
+                  .maybeSingle();
+
+          if (redeemedMov != null) {
+            final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
+            if (ptsCanjeados > 0) {
+              final profileData =
+                  await _supabase
+                      .from('profiles')
+                      .select('wallet_balance')
+                      .eq('id', origCustomerId)
+                      .single();
+              final currentBal = (profileData['wallet_balance'] as num).toInt();
+
+              await _supabase
+                  .from('profiles')
+                  .update({'wallet_balance': currentBal + ptsCanjeados})
+                  .eq('id', origCustomerId);
+
+              await _supabase.from('wallet_movements').insert({
+                'profile_id': origCustomerId,
+                'order_id': order.id,
+                'points': ptsCanjeados,
+                'movement_type': 'ADJUSTMENT',
+                'description':
+                    'Devolución de monedas canjeadas por cancelación',
+              });
+            }
           }
         }
       }
@@ -899,6 +1070,420 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class AdminOrderCard extends StatelessWidget {
+  final OrderModel order;
+  final VoidCallback onTap;
+  final Function(OrderModel order, String newStatus) onUpdateStatus;
+
+  const AdminOrderCard({
+    super.key,
+    required this.order,
+    required this.onTap,
+    required this.onUpdateStatus,
+  });
+
+  // Badge de estado de orden (PENDING / COMPLETED / CANCELLED)
+  Widget _buildStatusBadge(String status) {
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (status) {
+      case 'COMPLETED':
+        bgColor = Colors.green.shade50;
+        textColor = Colors.green.shade700;
+        label = 'Completado';
+        break;
+      case 'PENDING':
+        bgColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade800;
+        label = 'Pendiente';
+        break;
+      case 'CANCELLED':
+        bgColor = Colors.red.shade50;
+        textColor = Colors.red.shade700;
+        label = 'Cancelado';
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade700;
+        label = status;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
+  // Badge de estado de pago (PAID / PENDING / PARTIAL) — solo en pedidos COMPLETED
+  Widget _buildPaymentStatusBadge(
+    String paymentStatus,
+    double totalAmount,
+    double amountPaid,
+  ) {
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (paymentStatus) {
+      case 'PAID':
+        bgColor = Colors.teal.shade50;
+        textColor = Colors.teal.shade700;
+        label = 'Pagado';
+        break;
+      case 'PENDING':
+        bgColor = Colors.deepOrange.shade50;
+        textColor = Colors.deepOrange.shade700;
+        label = 'Por cobrar';
+        break;
+      case 'PARTIAL':
+        bgColor = Colors.amber.shade50;
+        textColor = Colors.amber.shade800;
+        label = 'Pago parcial';
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade600;
+        label = paymentStatus;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textColor.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = order.status;
+    final date = (order.createdAt ?? DateTime.now()).toLocal();
+    final dateString = DateFormat('dd MMM yyyy, hh:mm a').format(date);
+    final customerName = order.displayCustomerName;
+
+    // Datos de pago
+    final paymentStatus = order.paymentStatus; // 'PAID', 'PENDING', 'PARTIAL'
+    final amountPaid = order.amountPaid;
+    final totalAmount = order.totalAmount;
+    final pendingAmount = totalAmount - amountPaid;
+    final isCredit = order.paymentMethod == 'CRÉDITO';
+    final warehouseName = order.warehouseName; // del join con warehouses
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ─── FILA 1: Cliente + Badge de Estado ───
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Nombre cliente
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  customerName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: Color(0xFF1A1A1A),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          // Fecha
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time_rounded,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                dateString,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Método de pago
+                          Row(
+                            children: [
+                              Icon(
+                                isCredit
+                                    ? Icons.credit_card_rounded
+                                    : Icons.payments_outlined,
+                                size: 14,
+                                color:
+                                    isCredit
+                                        ? Colors.deepOrange.shade400
+                                        : Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                order.paymentMethod,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isCredit
+                                          ? Colors.deepOrange.shade600
+                                          : Colors.grey.shade600,
+                                  fontWeight:
+                                      isCredit
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Almacén (si existe)
+                          if (warehouseName.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.warehouse_outlined,
+                                  size: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  warehouseName,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Badge de estado de orden
+                    _buildStatusBadge(status),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // ─── FILA 2: Total + Estado de pago + Botones ───
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Columna de montos
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Total del pedido',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            color: AppColors.primary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+
+                        // <--- NUEVO: MOSTRAR SI HAY DESCUENTO EXTRA
+                        if (order.discountAmount > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2, bottom: 4),
+                            child: Text(
+                              'Incluye S/ ${order.discountAmount.toStringAsFixed(2)} de descuento',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        // Estado de pago (solo en COMPLETED)
+                        if (status == 'COMPLETED') ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              _buildPaymentStatusBadge(
+                                paymentStatus,
+                                totalAmount,
+                                amountPaid,
+                              ),
+                              // Si hay deuda pendiente, mostrar monto
+                              if (paymentStatus == 'PENDING' ||
+                                  paymentStatus == 'PARTIAL') ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Debe S/ ${pendingAmount.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.deepOrange.shade600,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+
+                    // Botones de acción
+                    Row(
+                      children: [
+                        if (status == 'COMPLETED' || status == 'CANCELLED')
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey.shade700,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.print_rounded, size: 18),
+                            label: const Text('Ticket'),
+                            onPressed:
+                                () => OrderPdfGenerator.generateTicket(order),
+                          ),
+                        if (status == 'PENDING') ...[
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 22),
+                            color: Colors.red.shade400,
+                            tooltip: 'Cancelar',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.red.shade50,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () => onUpdateStatus(order, 'CANCELLED'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade600,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Cobrar',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            onPressed: () => onUpdateStatus(order, 'COMPLETED'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
