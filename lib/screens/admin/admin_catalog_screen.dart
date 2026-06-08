@@ -179,19 +179,14 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   Future<List<ProductModel>> _loadProductsByIngredient(String term) async {
     final supabase = Supabase.instance.client;
 
-    // 1. Buscar ingredient_ids en active_ingredients por nombre
-    final aiResp = await supabase
-        .from('active_ingredients')
-        .select('id')
-        .ilike('name', '%$term%');
+    // 1. Buscar ingredient_ids invocando la función RPC de Supabase
+    final List<dynamic> aiResp = await supabase.rpc(
+      'search_ingredients_unaccent',
+      params: {'search_term': term},
+    );
 
     final ingredientIds =
-        (aiResp as List)
-            .map((r) => r['id'] as String?)
-            .whereType<String>()
-            .toList();
-
-    if (ingredientIds.isEmpty) return [];
+        aiResp.map((r) => r['id'] as String?).whereType<String>().toList();
 
     // 2. Buscar product_ids en product_active_ingredients
     final ingResp = await supabase

@@ -226,7 +226,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
             'credit_limit': newLimit,
             'current_debt': 0.0,
             'is_active': true,
-            'created_by': adminProfileId, // 👈 ¡AQUÍ ESTÁ LA CORRECCIÓN!
+            'created_by': adminProfileId, 
           });
         }
       } else if (_creditExistsInDb && _creditId != null && _creditIsActive) {
