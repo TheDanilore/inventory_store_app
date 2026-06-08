@@ -125,11 +125,11 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
               .map((item) => CreditAccountModel.fromView(item))
               .toList();
 
-      for (final item in response) {
-        debugPrint(
-          'limit=${item['credit_limit']} debt=${item['current_debt']}',
-        );
-      }
+      // for (final item in response) {
+      //   debugPrint(
+      //     'limit=${item['credit_limit']} debt=${item['current_debt']}',
+      //   );
+      // }
 
       double debt = 0;
       int active = 0;

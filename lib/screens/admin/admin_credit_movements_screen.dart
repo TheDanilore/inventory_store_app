@@ -86,9 +86,9 @@ class _AdminCreditMovementsScreenState
             ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
             : 0.0;
 
-    debugPrint('currentDebt: ${widget.currentDebt}');
-    debugPrint('creditLimit: ${widget.creditLimit}');
-    debugPrint('debtPercent: $debtPercent');
+    // debugPrint('currentDebt: ${widget.currentDebt}');
+    // debugPrint('creditLimit: ${widget.creditLimit}');
+    // debugPrint('debtPercent: $debtPercent');
 
     return AdminLayout(
       title: 'Historial de Crédito',
