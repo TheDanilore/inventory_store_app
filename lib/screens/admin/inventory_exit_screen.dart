@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
@@ -8,18 +9,22 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 
 // ─── Modelo de UI local ───────────────────────────────────────────────────────
-// Agrupa los datos de pantalla que NO pertenecen a InventoryExitItemModel
-// (modelo de BD). Usa campos mutables para el stepper in-place.
 class _ExitItemUI {
   final ProductModel product;
   final ProductVariantModel variant;
+  final Map<String, dynamic>? selectedBatch; // Lote específico seleccionado
   double quantity;
+  final double unitCost; // Para valorizar la pérdida en el Kardex
 
   _ExitItemUI({
     required this.product,
     required this.variant,
+    this.selectedBatch,
     required this.quantity,
+    required this.unitCost,
   });
+
+  double get totalCost => quantity * unitCost;
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -43,8 +48,8 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
 
   final Map<String, List<ProductVariantModel>> _variantsByProduct = {};
 
-  // Mapa de inventario: [warehouse_id][variant_id] 
-  final Map<String, Map<String, int>> _stockData = {};
+  // Mapa de inventario: [warehouse_id][variant_id] -> Lista de Lotes
+  final Map<String, Map<String, List<Map<String, dynamic>>>> _stockData = {};
 
   // Lista de ítems de UI (no de BD)
   final List<_ExitItemUI> _items = [];
@@ -84,12 +89,14 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
           .eq('is_active', true)
           .order('created_at', ascending: true);
 
-      // Cargar inventario actual para validar salidas
-      // Cargar inventario actual para validar salidas
-      // CORRECCIÓN: Apuntamos a warehouse_stock_batches y available_quantity
+      // Cargar inventario detallado para validar salidas y elegir lotes
       final inventoryResp = await _supabase
           .from('warehouse_stock_batches')
-          .select('warehouse_id, variant_id, available_quantity');
+          .select(
+            'id, warehouse_id, variant_id, batch_number, expiry_date, available_quantity',
+          )
+          .gt('available_quantity', 0)
+          .order('expiry_date', ascending: true, nullsFirst: false);
 
       if (!mounted) return;
 
@@ -101,18 +108,17 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
               )
               .toList();
 
-      final Map<String, Map<String, int>> newStockData = {};
+      final Map<String, Map<String, List<Map<String, dynamic>>>> newStockData =
+          {};
+
       for (final row in List<Map<String, dynamic>>.from(inventoryResp)) {
         final wId = row['warehouse_id'] as String;
-        final vId = row['variant_id'] as String?;
-        // CORRECCIÓN: Leemos available_quantity
-        final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-        
-        if (vId != null) {
-          // CORRECCIÓN: Sumamos el stock porque una variante puede estar dividida en múltiples lotes
-          final currentVariantStock = newStockData[wId]?[vId] ?? 0;
-          newStockData.putIfAbsent(wId, () => {})[vId] = currentVariantStock + stock;
-        }
+        // Si no tiene variante, usamos un string vacío como llave por defecto
+        final vId = row['variant_id'] as String? ?? '';
+        newStockData
+            .putIfAbsent(wId, () => {})
+            .putIfAbsent(vId, () => [])
+            .add(row);
       }
 
       setState(() {
@@ -125,6 +131,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
             (productsResp as List)
                 .map((p) => ProductModel.fromJson(Map<String, dynamic>.from(p)))
                 .toList();
+
         _variantsByProduct.clear();
         for (final variant in variants) {
           _variantsByProduct
@@ -177,16 +184,32 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
       final existingIdx = _items.indexWhere(
         (item) =>
             item.product.id == newItem.product.id &&
-            item.variant.id == newItem.variant.id,
+            item.variant.id == newItem.variant.id &&
+            item.selectedBatch?['id'] ==
+                newItem.selectedBatch?['id'], // Validar lote específico
       );
 
-      final maxStock = warehouseStock[newItem.variant.id] ?? 0;
+      // Calculamos el stock máximo disponible para la selección actual
+      double maxStock = 0;
+      final batches = warehouseStock[newItem.variant.id] ?? [];
+      if (newItem.selectedBatch != null) {
+        maxStock =
+            (newItem.selectedBatch!['available_quantity'] as num?)
+                ?.toDouble() ??
+            0.0;
+      } else {
+        maxStock = batches.fold(
+          0.0,
+          (sum, b) =>
+              sum + ((b['available_quantity'] as num?)?.toDouble() ?? 0.0),
+        );
+      }
 
       setState(() {
         if (existingIdx >= 0) {
           final nuevaCant = _items[existingIdx].quantity + newItem.quantity;
           _items[existingIdx].quantity =
-              nuevaCant > maxStock ? maxStock.toDouble() : nuevaCant;
+              nuevaCant > maxStock ? maxStock : nuevaCant;
         } else {
           _items.add(newItem);
         }
@@ -197,7 +220,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
   Future<void> _mostrarDialogoCantidadItem(
     int index,
     double cantidadActual,
-    int maxStock,
+    double maxStock,
   ) async {
     final qtyCtrl = TextEditingController(
       text: cantidadActual.toStringAsFixed(0),
@@ -213,7 +236,9 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
             ),
             content: TextField(
               controller: qtyCtrl,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               autofocus: true,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
@@ -246,7 +271,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                   if (newQty != null && newQty > 0) {
                     setState(() {
                       _items[index].quantity =
-                          newQty > maxStock ? maxStock.toDouble() : newQty;
+                          newQty > maxStock ? maxStock : newQty;
                     });
                   }
                   Navigator.pop(dialogContext);
@@ -286,6 +311,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
       final String reason = _reasonCtrl.text.trim();
       String? createdByProfileId;
       final currentUser = _supabase.auth.currentUser;
+
       if (currentUser != null) {
         final profile =
             await _supabase
@@ -296,6 +322,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
         createdByProfileId = profile?['id'] as String?;
       }
 
+      // 1. Guardar la cabecera
       final exitHeader =
           await _supabase
               .from('inventory_exits')
@@ -310,24 +337,121 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
 
       final exitId = exitHeader['id'] as String;
 
+      // 2. Procesar cada ítem: descontar stock FEFO o específico, y registrar historial (kardex)
       for (final item in _items) {
-        // Construir el modelo de BD y persistirlo
-        final exitItem = InventoryExitItemModel(
-          id: '', // generado por Supabase
+        final String? variantId =
+            item.variant.id.isEmpty ? null : item.variant.id;
+
+        final exitItemModel = InventoryExitItemModel(
+          id: '',
           exitId: exitId,
           productId: item.product.id,
-          variantId: item.variant.id,
+          variantId: variantId,
           quantity: item.quantity,
         );
+
         await _supabase.from('inventory_exit_items').insert({
-          ...exitItem.toJson()..remove('id'),
+          ...exitItemModel.toJson()..remove('id'),
         });
+
+        if (item.selectedBatch != null) {
+          // Descuento desde LOTE ESPECÍFICO
+          final batchId = item.selectedBatch!['id'];
+
+          final batchDb =
+              await _supabase
+                  .from('warehouse_stock_batches')
+                  .select('available_quantity')
+                  .eq('id', batchId)
+                  .single();
+
+          final available = (batchDb['available_quantity'] as num).toDouble();
+          final newStock = available - item.quantity;
+
+          await _supabase
+              .from('warehouse_stock_batches')
+              .update({
+                'available_quantity': newStock,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', batchId);
+
+          await _supabase.from('inventory_movements').insert({
+            'variant_id': variantId,
+            'warehouse_id': _selectedWarehouseId,
+            'stock_batch_id': batchId,
+            'inventory_exit_id': exitId, // Trazabilidad directa a la salida
+            'quantity': -item.quantity,
+            'previous_stock': available,
+            'new_stock': newStock,
+            'unit_cost': item.unitCost,
+            'total_cost': item.quantity * item.unitCost,
+            'reason': 'EXIT',
+            'notes': reason.isEmpty ? 'Salida manual' : reason,
+            'created_by': createdByProfileId,
+          });
+        } else {
+          // Descuento automático FEFO (First Expired First Out)
+          var query = _supabase
+              .from('warehouse_stock_batches')
+              .select('id, available_quantity')
+              .eq('warehouse_id', _selectedWarehouseId!)
+              .eq('product_id', item.product.id)
+              .gt('available_quantity', 0)
+              .order('expiry_date', ascending: true, nullsFirst: false);
+
+          if (variantId != null) {
+            query = query.eq('variant_id', variantId);
+          }
+
+          final batchesList = await query;
+          double remaining = item.quantity;
+
+          for (final batch in (batchesList as List)) {
+            if (remaining <= 0) break;
+            final double available =
+                (batch['available_quantity'] as num).toDouble();
+            final double take = (remaining > available) ? available : remaining;
+            final double newStock = available - take;
+
+            await _supabase
+                .from('warehouse_stock_batches')
+                .update({
+                  'available_quantity': newStock,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', batch['id']);
+
+            await _supabase.from('inventory_movements').insert({
+              'variant_id': variantId,
+              'warehouse_id': _selectedWarehouseId,
+              'stock_batch_id': batch['id'],
+              'inventory_exit_id': exitId,
+              'quantity': -take,
+              'previous_stock': available,
+              'new_stock': newStock,
+              'unit_cost': item.unitCost,
+              'total_cost': take * item.unitCost,
+              'reason': 'EXIT',
+              'notes': reason.isEmpty ? 'Salida manual' : reason,
+              'created_by': createdByProfileId,
+            });
+
+            remaining -= take;
+          }
+
+          if (remaining > 0) {
+            throw Exception(
+              'Stock insuficiente durante el procesamiento para ${item.product.name}',
+            );
+          }
+        }
       }
 
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Salida registrada correctamente',
+          message: 'Salida registrada correctamente en el Kardex',
           type: SnackbarType.success,
         );
         Navigator.pop(context, true);
@@ -341,9 +465,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -359,6 +481,10 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
       );
     }
 
+    final double totalCost = _items.fold(
+      0.0,
+      (sum, item) => sum + item.totalCost,
+    );
     final int totalUnits = _items.fold(
       0,
       (sum, item) => sum + item.quantity.toInt(),
@@ -459,7 +585,8 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                                 TextField(
                                   controller: _reasonCtrl,
                                   decoration: InputDecoration(
-                                    labelText: 'Motivo / Observación',
+                                    labelText:
+                                        'Motivo / Observación (Vencimiento, Pérdida...)',
                                     labelStyle: const TextStyle(
                                       color: AppColors.textSecondary,
                                     ),
@@ -597,6 +724,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                     ),
                   ),
 
+                  // ─── FOOTER CON TOTALES (Valorización de pérdida) ───
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                     decoration: BoxDecoration(
@@ -620,7 +748,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Resumen de salida',
+                                    'Pérdida valorizada estimada',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -629,7 +757,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '$totalVariants variantes',
+                                    '$totalVariants items · $totalUnits unds.',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
@@ -639,11 +767,11 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                                 ],
                               ),
                               Text(
-                                '$totalUnits unds.',
+                                'S/ ${totalCost.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w900,
-                                  color: AppColors.primary,
+                                  color: AppColors.danger,
                                   letterSpacing: -0.5,
                                 ),
                               ),
@@ -670,7 +798,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                                 color: Colors.white,
                               ),
                               label: const Text(
-                                'Registrar Salida',
+                                'Registrar Salida de Inventario',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
@@ -702,7 +830,22 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
               .imageUrl;
     }
 
-    final maxStock = _stockData[_selectedWarehouseId]?[item.variant.id] ?? 0;
+    // Calcula stock máximo dinámicamente si es lote o genérico
+    final batches = _stockData[_selectedWarehouseId]?[item.variant.id] ?? [];
+    double maxStock = 0;
+    if (item.selectedBatch != null) {
+      final b = batches.firstWhere(
+        (b) => b['id'] == item.selectedBatch!['id'],
+        orElse: () => {},
+      );
+      maxStock = (b['available_quantity'] as num?)?.toDouble() ?? 0.0;
+    } else {
+      maxStock = batches.fold(
+        0.0,
+        (sum, b) =>
+            sum + ((b['available_quantity'] as num?)?.toDouble() ?? 0.0),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -778,63 +921,107 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                     ),
                   ),
                 ],
+                // Info Lote Seleccionado
+                if (item.selectedBatch != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.blueLight.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.blueLight),
+                    ),
+                    child: Text(
+                      'Lote: ${item.selectedBatch!['batch_number'] ?? 'DEFAULT'}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.blue,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
 
-          // Stepper Vertical
+          // Total Cost y Precio Un.
           Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _stepperButton(
-                icon: Icons.add_rounded,
-                isDisabled: item.quantity >= maxStock,
-                onTap: () {
-                  setState(() => _items[index].quantity++);
-                },
+              Text(
+                'S/ ${item.totalCost.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              const SizedBox(height: 4),
-              Material(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  onTap:
-                      () => _mostrarDialogoCantidadItem(
-                        index,
-                        item.quantity,
-                        maxStock,
-                      ),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    child: Text(
-                      item.quantity.toStringAsFixed(0),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
+              Text(
+                'C. Unit: S/ ${item.unitCost.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 4),
-              _stepperButton(
-                icon: Icons.remove_rounded,
-                isDisabled: item.quantity <= 1,
-                onTap: () {
-                  if (item.quantity > 1) {
-                    setState(() => _items[index].quantity--);
-                  }
-                },
+              // Stepper Horizontal Pequeño
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _stepperButton(
+                    icon: Icons.remove_rounded,
+                    isRemove: true,
+                    isDisabled: item.quantity <= 1,
+                    onTap: () {
+                      if (item.quantity > 1)
+                        setState(() => _items[index].quantity--);
+                    },
+                  ),
+                  const SizedBox(width: 6),
+                  Material(
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(6),
+                    child: InkWell(
+                      onTap:
+                          () => _mostrarDialogoCantidadItem(
+                            index,
+                            item.quantity,
+                            maxStock,
+                          ),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 32,
+                        height: 28,
+                        alignment: Alignment.center,
+                        child: Text(
+                          item.quantity.toStringAsFixed(0),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  _stepperButton(
+                    icon: Icons.add_rounded,
+                    isDisabled: item.quantity >= maxStock,
+                    onTap: () => setState(() => _items[index].quantity++),
+                  ),
+                ],
               ),
             ],
           ),
 
-          const SizedBox(width: 6),
+          const SizedBox(width: 10),
 
           IconButton(
             icon: const Icon(
@@ -844,11 +1031,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
             ),
             padding: const EdgeInsets.all(4),
             constraints: const BoxConstraints(),
-            onPressed: () {
-              setState(() {
-                _items.removeAt(index);
-              });
-            },
+            onPressed: () => setState(() => _items.removeAt(index)),
           ),
         ],
       ),
@@ -867,24 +1050,24 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
               ? const Color(0xFFF1F5F9)
               : isRemove
               ? AppColors.error.withValues(alpha: 0.08)
-              : AppColors.primary,
-      borderRadius: BorderRadius.circular(10),
+              : AppColors.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(6),
       child: InkWell(
         onTap: isDisabled ? null : onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
-          width: 32,
-          height: 32,
+          width: 28,
+          height: 28,
           alignment: Alignment.center,
           child: Icon(
             icon,
-            size: 18,
+            size: 16,
             color:
                 isDisabled
                     ? AppColors.textMuted
                     : isRemove
                     ? AppColors.error
-                    : Colors.white,
+                    : AppColors.primary,
           ),
         ),
       ),
@@ -897,7 +1080,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
 class _AddExitProductSheet extends StatefulWidget {
   final List<ProductModel> allProducts;
   final Map<String, List<ProductVariantModel>> variantsByProduct;
-  final Map<String, int> warehouseStock;
+  final Map<String, List<Map<String, dynamic>>> warehouseStock;
 
   const _AddExitProductSheet({
     required this.allProducts,
@@ -912,12 +1095,14 @@ class _AddExitProductSheet extends StatefulWidget {
 class _AddExitProductSheetState extends State<_AddExitProductSheet> {
   ProductModel? _selectedProduct;
   ProductVariantModel? _selectedVariant;
-  int _quantity = 1;
+  Map<String, dynamic>? _selectedBatch; // Para productos con gestión de lotes
+  double _quantity = 1;
 
   void _onProductChanged(ProductModel? val) {
     setState(() {
       _selectedProduct = val;
       _selectedVariant = null;
+      _selectedBatch = null;
       _quantity = 1;
     });
   }
@@ -925,17 +1110,28 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
   void _onVariantChanged(ProductVariantModel? val) {
     setState(() {
       _selectedVariant = val;
+      _selectedBatch = null;
       _quantity = 1;
     });
   }
 
-  int get _maxStock {
-    if (_selectedVariant == null) return 0;
-    return widget.warehouseStock[_selectedVariant!.id] ?? 0;
+  double get _maxStock {
+    final variantId = _selectedVariant?.id ?? '';
+    final batches = widget.warehouseStock[variantId] ?? [];
+
+    if (_selectedProduct?.usesBatches == true) {
+      return (_selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
+    } else {
+      return batches.fold(
+        0.0,
+        (sum, b) =>
+            sum + ((b['available_quantity'] as num?)?.toDouble() ?? 0.0),
+      );
+    }
   }
 
   Future<void> _mostrarDialogoCantidadModal() async {
-    final qtyCtrl = TextEditingController(text: _quantity.toString());
+    final qtyCtrl = TextEditingController(text: _quantity.toStringAsFixed(0));
     await showDialog<void>(
       context: context,
       builder:
@@ -947,7 +1143,9 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
             ),
             content: TextField(
               controller: qtyCtrl,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               autofocus: true,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
@@ -976,7 +1174,7 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
                   backgroundColor: AppColors.primary,
                 ),
                 onPressed: () {
-                  final newQty = int.tryParse(qtyCtrl.text.trim());
+                  final newQty = double.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
                     setState(() {
                       _quantity = newQty > _maxStock ? _maxStock : newQty;
@@ -1019,6 +1217,17 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
       return;
     }
 
+    final bool usesBatches = _selectedProduct?.usesBatches == true;
+    if (usesBatches && _selectedBatch == null) {
+      AppSnackbar.show(
+        context,
+        message:
+            'Este producto gestiona lotes. Selecciona un lote para retirar.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
     final variantToUse =
         _selectedVariant ??
         ProductVariantModel(
@@ -1028,8 +1237,7 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
           salePrice: null,
         );
 
-    final max = widget.warehouseStock[variantToUse.id] ?? 0;
-    if (_quantity > max) {
+    if (_quantity > _maxStock) {
       AppSnackbar.show(
         context,
         message: 'No puedes retirar más del stock disponible',
@@ -1041,7 +1249,9 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
     final newItem = _ExitItemUI(
       product: _selectedProduct!,
       variant: variantToUse,
-      quantity: _quantity.toDouble(),
+      selectedBatch: usesBatches ? _selectedBatch : null,
+      quantity: _quantity,
+      unitCost: _selectedProduct!.unitCost,
     );
 
     Navigator.pop(context, newItem);
@@ -1053,6 +1263,13 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
         _selectedProduct == null
             ? const <ProductVariantModel>[]
             : (widget.variantsByProduct[_selectedProduct!.id] ?? []);
+
+    // Obtenemos los lotes para la variante seleccionada (o vacío si no usa variantes)
+    final String variantKey = _selectedVariant?.id ?? '';
+    final List<Map<String, dynamic>> availableBatches =
+        _selectedProduct != null
+            ? (widget.warehouseStock[variantKey] ?? [])
+            : [];
 
     String? currentImageUrl;
     if (_selectedVariant?.images.isNotEmpty == true) {
@@ -1182,6 +1399,64 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
               const SizedBox(height: 16),
             ],
 
+            // ─── NUEVO: SELECTOR DE LOTES (Obligatorio si usa lotes) ───
+            if (_selectedProduct?.usesBatches == true &&
+                (_selectedVariant != null || availableVariants.isEmpty)) ...[
+              DropdownButtonFormField<Map<String, dynamic>>(
+                value: _selectedBatch,
+                isExpanded: true,
+                icon: const Icon(Icons.expand_more_rounded),
+                decoration: InputDecoration(
+                  labelText: 'Selecciona el Lote de donde se retirará',
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: AppColors.blue,
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+                items:
+                    availableBatches.map((b) {
+                      final String batchNum = b['batch_number'] ?? 'N/A';
+                      final String? expStr = b['expiry_date'];
+                      final int qty = (b['available_quantity'] as num).toInt();
+
+                      String label = 'Lote: $batchNum | Stock: $qty';
+                      if (expStr != null) {
+                        final exp = DateTime.parse(expStr);
+                        label +=
+                            ' | Vence: ${exp.day}/${exp.month}/${exp.year}';
+                      }
+
+                      return DropdownMenuItem<Map<String, dynamic>>(
+                        value: b,
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedBatch = val;
+                    _quantity = 1;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
             if (_selectedProduct != null) ...[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1226,30 +1501,16 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
                           builder: (context) {
                             if (availableVariants.isNotEmpty &&
                                 _selectedVariant == null) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.textHint.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppColors.textHint.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Selecciona una variante',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
+                              return _InfoBadge(
+                                text: 'Selecciona una variante',
+                                isWarning: true,
+                              );
+                            }
+                            if (_selectedProduct?.usesBatches == true &&
+                                _selectedBatch == null) {
+                              return _InfoBadge(
+                                text: 'Selecciona un lote',
+                                isWarning: true,
                               );
                             }
 
@@ -1366,10 +1627,9 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
                 onPressed:
                     (_selectedProduct != null &&
                             (_selectedVariant != null ||
-                                (widget
-                                        .variantsByProduct[_selectedProduct!.id]
-                                        ?.isEmpty ??
-                                    true)) &&
+                                availableVariants.isEmpty) &&
+                            (!(_selectedProduct?.usesBatches == true) ||
+                                _selectedBatch != null) &&
                             _maxStock > 0)
                         ? _submit
                         : null,
@@ -1389,6 +1649,33 @@ class _AddExitProductSheetState extends State<_AddExitProductSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoBadge extends StatelessWidget {
+  final String text;
+  final bool isWarning;
+
+  const _InfoBadge({required this.text, this.isWarning = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.textHint.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.textHint.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textSecondary,
         ),
       ),
     );

@@ -763,9 +763,11 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       _selectedProduct = val;
       _selectedVariant = null;
       _quantity = 1;
+
+      // Limpiamos los campos de lote al cambiar de producto por seguridad
       _batchCtrl.clear();
       _expiryDate = null;
-      // Pre-cargar el COSTO unitario (no el precio de venta)
+
       if (val != null) {
         _costCtrl.text = val.unitCost.toStringAsFixed(2);
       } else {
@@ -777,8 +779,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   void _onVariantChanged(ProductVariantModel? val) {
     setState(() {
       _selectedVariant = val;
-      // No sobreescribir con salePrice — el costo de compra es independiente
-      // del precio de venta. Se mantiene el costo del producto padre.
       if (_selectedProduct != null && _costCtrl.text.isEmpty) {
         _costCtrl.text = _selectedProduct!.unitCost.toStringAsFixed(2);
       }
@@ -881,6 +881,20 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       return;
     }
 
+    final bool usesBatches = _selectedProduct?.usesBatches == true;
+
+    // Validación estricta SOLO para productos que gestionan lotes
+    if (usesBatches) {
+      if (_batchCtrl.text.trim().isEmpty) {
+        AppSnackbar.show(
+          context,
+          message: 'El número de lote es obligatorio para este producto.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+    }
+
     final variantToUse =
         _selectedVariant ??
         ProductVariantModel(
@@ -897,9 +911,9 @@ class _AddProductSheetState extends State<_AddProductSheet> {
         variant: variantToUse,
         quantity: _quantity,
         unitCost: cost,
-        batchNumber:
-            _batchCtrl.text.trim().isEmpty ? 'DEFAULT' : _batchCtrl.text.trim(),
-        expiryDate: _expiryDate,
+        // BLINDAJE LÓGICO: Si no gestiona lote, forzamos DEFAULT y null, ignorando los textfields.
+        batchNumber: usesBatches ? _batchCtrl.text.trim() : 'DEFAULT',
+        expiryDate: usesBatches ? _expiryDate : null,
       ),
     );
   }
@@ -923,6 +937,8 @@ class _AddProductSheetState extends State<_AddProductSheet> {
               )
               .imageUrl;
     }
+
+    final bool usesBatches = _selectedProduct?.usesBatches == true;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -1018,7 +1034,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
             ],
 
             if (_selectedProduct != null) ...[
-              // Imagen + Costo unitario
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -1041,9 +1056,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                         labelStyle: const TextStyle(
                           color: AppColors.textSecondary,
                         ),
-                        // Quitamos el "Actualiza el catálogo" engañoso —
-                        // si se quiere esa funcionalidad debe implementarse
-                        // explícitamente con un toggle.
                         filled: true,
                         fillColor: AppColors.background,
                         prefixText: 'S/ ',
@@ -1066,7 +1078,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
               ),
               const SizedBox(height: 20),
 
-              // Cantidad con stepper horizontal
               const _FieldLabel('Cantidad'),
               const SizedBox(height: 8),
               _HorizontalStepper(
@@ -1080,12 +1091,12 @@ class _AddProductSheetState extends State<_AddProductSheet> {
 
             const SizedBox(height: 24),
 
-            // Campos de lote (solo si uses_batches == true)
-            if (_selectedProduct?.usesBatches == true) ...[
+            // VISUALMENTE SE OCULTAN SI usesBatches ES FALSE
+            if (usesBatches) ...[
               TextField(
                 controller: _batchCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Nº de Lote (Opcional)',
+                  labelText: 'Nº de Lote (Obligatorio)',
                   labelStyle: const TextStyle(color: AppColors.textSecondary),
                   hintText: 'Ej: LOTE-2024-001',
                   filled: true,
@@ -1101,6 +1112,13 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -1140,9 +1158,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       ),
     );
   }
-}
-
-// ─── Helpers de decoración ────────────────────────────────────────────────────
+} // ─── Helpers de decoración ────────────────────────────────────────────────────
 
 InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
