@@ -5,6 +5,7 @@ import 'package:inventory_store_app/screens/admin/categories_management_screen.d
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_screen.dart';
 import 'package:inventory_store_app/screens/admin/warehouses_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/screens/admin/users_management_screen.dart';
@@ -196,8 +197,21 @@ class _AppDrawerState extends State<AppDrawer> {
                     context,
                     _DrawerItem(
                       icon: Icons.inventory_2_outlined,
-                      title: 'Kardex',
+                      title: 'Inventario',
                       children: [
+                        _DrawerSubItem(
+                          icon: Icons.grid_view_rounded,
+                          title: 'Inventario',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const InventoryScreen(),
+                              ),
+                            );
+                          },
+                        ),
                         _DrawerSubItem(
                           icon: Icons.article_outlined,
                           title: 'Kardex',

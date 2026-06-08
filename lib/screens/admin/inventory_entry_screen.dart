@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/models/warehouse_stock_batch_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_entry_item_model.dart';
@@ -154,6 +155,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
           (context) => _AddProductSheet(
             allProducts: _allProducts,
             variantsByProduct: _variantsByProduct,
+            warehouseId: _selectedWarehouseId,
           ),
     );
 
@@ -733,10 +735,12 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
 class _AddProductSheet extends StatefulWidget {
   final List<ProductModel> allProducts;
   final Map<String, List<ProductVariantModel>> variantsByProduct;
+  final String? warehouseId;
 
   const _AddProductSheet({
     required this.allProducts,
     required this.variantsByProduct,
+    this.warehouseId,
   });
 
   @override
@@ -750,6 +754,33 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   final _costCtrl = TextEditingController();
   final _batchCtrl = TextEditingController();
   DateTime? _expiryDate;
+
+  List<WarehouseStockBatchModel> _existingBatches = [];
+
+  Future<void> _fetchExistingBatches(String variantId) async {
+    if (widget.warehouseId == null) return;
+    try {
+      final response = await Supabase.instance.client
+          .from('warehouse_stock_batches')
+          .select(
+            '*',
+          ) // <-- Traemos todo para evitar errores de null en fromJson
+          .eq('variant_id', variantId)
+          .eq('warehouse_id', widget.warehouseId!)
+          .gt('available_quantity', 0);
+
+      if (mounted) {
+        setState(() {
+          _existingBatches =
+              response
+                  .map((e) => WarehouseStockBatchModel.fromJson(e))
+                  .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al obtener lotes: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -781,6 +812,11 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       _selectedVariant = val;
       if (_selectedProduct != null && _costCtrl.text.isEmpty) {
         _costCtrl.text = _selectedProduct!.unitCost.toStringAsFixed(2);
+      }
+
+      // <-- Dispara la búsqueda de lotes
+      if (val != null && _selectedProduct?.usesBatches == true) {
+        _fetchExistingBatches(val.id);
       }
     });
   }
@@ -1093,34 +1129,115 @@ class _AddProductSheetState extends State<_AddProductSheet> {
 
             // VISUALMENTE SE OCULTAN SI usesBatches ES FALSE
             if (usesBatches) ...[
-              TextField(
-                controller: _batchCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Nº de Lote (Obligatorio)',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  hintText: 'Ej: LOTE-2024-001',
-                  filled: true,
-                  fillColor: AppColors.background,
-                  prefixIcon: const Icon(
-                    Icons.tag_rounded,
-                    color: AppColors.textHint,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.5,
+              Autocomplete<WarehouseStockBatchModel>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<WarehouseStockBatchModel>.empty();
+                  }
+                  return _existingBatches.where(
+                    (option) => option.batchNumber.toLowerCase().contains(
+                      textEditingValue.text.toLowerCase(),
                     ),
-                  ),
-                ),
+                  );
+                },
+                displayStringForOption: (option) => option.batchNumber,
+                fieldViewBuilder: (
+                  context,
+                  textEditingController,
+                  focusNode,
+                  onFieldSubmitted,
+                ) {
+                  return TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    onChanged: (value) {
+                      _batchCtrl.text = value; // Guarda si es un lote nuevo
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Nº de Lote (Obligatorio)',
+                      hintText: 'Ej: LOTE-2024-001 o busca uno existente...',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      prefixIcon: const Icon(
+                        Icons.qr_code_scanner,
+                        color: AppColors.textHint,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      borderRadius: BorderRadius.circular(14),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxHeight: 220,
+                          maxWidth: 300,
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final option = options.elementAt(index);
+                            final dateStr =
+                                option.expiryDate != null
+                                    ? "${option.expiryDate!.day}/${option.expiryDate!.month}/${option.expiryDate!.year}"
+                                    : "Sin vencimiento";
+
+                            return ListTile(
+                              leading: const Icon(
+                                Icons.tag,
+                                color: AppColors.primary,
+                              ),
+                              title: Text(
+                                option.batchNumber,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text('Vence: $dateStr'),
+                              trailing: Text(
+                                'Stock: ${option.availableQuantity}',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                onSelected: (WarehouseStockBatchModel selection) {
+                  setState(() {
+                    _batchCtrl.text = selection.batchNumber;
+                    _expiryDate =
+                        selection.expiryDate; // ¡Autocompleta la fecha!
+                  });
+                },
               ),
               const SizedBox(height: 12),
               _DatePickerField(
