@@ -35,8 +35,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
   bool _isDiscountPercentage = false;
 
-  // Almacén
+  // Almacén, Cuentas y Caja
   List<WarehouseModel> _warehouseList = [];
+  List<Map<String, dynamic>> _accountsList = [];
+  String? _selectedAccountId;
+  Map<String, dynamic>? _activeShift;
 
   // Crédito del cliente seleccionado
   Map<String, dynamic>?
@@ -69,7 +72,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     final pos = Provider.of<PosProvider>(context, listen: false);
     _clienteCtrl.text = pos.selectedClientName ?? '';
     _puntosCtrl.text = pos.puntosAUsar.toString();
-    _loadWarehouses(pos);
+    _loadInitialData(pos);
   }
 
   @override
@@ -83,25 +86,58 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
   // ─── CARGA DE DATOS ──────────────────────────────────────────────────────
 
-  Future<void> _loadWarehouses(PosProvider pos) async {
+  Future<void> _loadInitialData(PosProvider pos) async {
     try {
-      final response = await _supabase
+      // 1. Almacenes
+      final whRes = await _supabase
           .from('warehouses')
           .select()
           .eq('is_active', true)
           .order('name');
       final list =
-          (response as List).map((w) => WarehouseModel.fromJson(w)).toList();
+          (whRes as List).map((w) => WarehouseModel.fromJson(w)).toList();
+
+      // 2. Cuentas Financieras
+      final accRes = await _supabase
+          .from('financial_accounts')
+          .select('id, name, balance')
+          .eq('is_active', true)
+          .order('name');
+      final accs = List<Map<String, dynamic>>.from(accRes);
+
       if (mounted) {
         setState(() {
           _warehouseList = list;
           if (pos.selectedWarehouseId == null && list.isNotEmpty) {
             pos.setWarehouse(list.first.id);
           }
+          _accountsList = accs;
+          if (accs.isNotEmpty) {
+            _selectedAccountId = accs.first['id'] as String;
+            _checkActiveShift();
+          }
         });
       }
     } catch (e) {
-      debugPrint('Error cargando almacenes: $e');
+      debugPrint('Error cargando datos iniciales: $e');
+    }
+  }
+
+  Future<void> _checkActiveShift() async {
+    if (_selectedAccountId == null) return;
+    try {
+      final shiftRes =
+          await _supabase
+              .from('cash_shifts')
+              .select('id, status')
+              .eq('account_id', _selectedAccountId!)
+              .eq('status', 'OPEN')
+              .maybeSingle();
+      if (mounted) {
+        setState(() => _activeShift = shiftRes);
+      }
+    } catch (e) {
+      debugPrint('Error verificando turno de caja: $e');
     }
   }
 
@@ -133,7 +169,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     final currentVersion = ++_clientSearchVersion;
     setState(() => _searchingClients = true);
     try {
-      // CORRECCIÓN: filtramos clientes activos y por rol customer
       final response = await _supabase
           .from('profiles')
           .select(
@@ -173,7 +208,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     });
     FocusScope.of(context).unfocus();
 
-    // Cargar crédito del cliente en segundo plano
     try {
       final creditResp =
           await _supabase
@@ -251,7 +285,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   double _calcularGananciaTotal(PosProvider pos) {
     double profit = 0;
     for (final item in pos.items.values) {
-      // Usamos unitCost del item (igual que lo que se guarda en order_items.unit_cost)
       profit += (item.unitPrice - item.product.unitCost) * item.quantity;
     }
     return profit;
@@ -277,6 +310,26 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     }
 
     final isCredito = pos.paymentMethod == 'CRÉDITO';
+
+    // ── Validaciones de CAJA FINANCIERA ─────────────────────────────────
+    if (!isDraft && !isCredito) {
+      if (_selectedAccountId == null) {
+        AppSnackbar.show(
+          context,
+          message: 'Selecciona una cuenta financiera para el ingreso.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+      if (_activeShift == null) {
+        AppSnackbar.show(
+          context,
+          message: 'La cuenta seleccionada no tiene un turno de caja abierto.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
+    }
 
     // ── Validaciones previas para CRÉDITO ────────────────────────────────
     if (isCredito && !isDraft) {
@@ -309,10 +362,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         return;
       }
     }
-
-    // No tiene sentido guardar un BORRADOR como crédito (el crédito se activa al completar)
-    // Así que si es borrador + crédito, lo guardamos como POR ACORDAR en el insert
-    // y mantenemos el método como CRÉDITO para cuando se active desde orders_screen.
 
     setState(() => _isProcessingSale = true);
 
@@ -395,20 +444,16 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
 
       // ─── 3. CREAR ORDEN ──────────────────────────────────────────────────
-      // Determinamos payment_status y amount_paid según el método
       String paymentStatus;
       double amountPaid;
 
       if (isDraft) {
-        // El borrador aún no se ha cobrado
         paymentStatus = 'PENDING';
         amountPaid = 0;
       } else if (isCredito) {
-        // Crédito: el total va a deuda, no se cobró en caja
         paymentStatus = 'PENDING';
         amountPaid = 0;
       } else {
-        // Todos los demás métodos: cobrado al contado
         paymentStatus = 'PAID';
         amountPaid = totalFinal;
       }
@@ -418,7 +463,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               .from('orders')
               .insert({
                 'customer_id': pos.selectedClientId,
-                // Si no hay cliente registrado pero se escribió un nombre libre, lo guardamos
                 'customer_name':
                     pos.selectedClientId == null
                         ? (_clienteCtrl.text.trim().isNotEmpty
@@ -470,11 +514,37 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         }
       }
 
+      // ─── 5.5 MOVIMIENTO FINANCIERO (CAJA) ───────────────────────────────
+      if (!isDraft && !isCredito && amountPaid > 0) {
+        await _supabase.from('account_movements').insert({
+          'account_id': _selectedAccountId,
+          'shift_id': _activeShift!['id'],
+          'movement_type': 'INCOME',
+          'amount': amountPaid,
+          'description': 'Ingreso por Venta POS - Orden #$orderId',
+          'reference_type': 'orders',
+          'reference_id': orderId,
+          'created_by': currentProfileId,
+        });
+
+        // Aseguramos que el balance de la cuenta se actualice en la DB.
+        final accResp =
+            await _supabase
+                .from('financial_accounts')
+                .select('balance')
+                .eq('id', _selectedAccountId!)
+                .single();
+
+        final currentBalance = (accResp['balance'] as num).toDouble();
+        await _supabase
+            .from('financial_accounts')
+            .update({'balance': currentBalance + amountPaid})
+            .eq('id', _selectedAccountId!);
+      }
+
       // ─── 6. PUNTOS (WALLET) — solo en venta directa con cliente ─────────
       if (!isDraft && pos.selectedClientId != null) {
-        // 6a. Canjear puntos usados
         if (puntosUsados > 0) {
-          // Descontar del saldo en profiles.wallet_balance
           final profileData =
               await _supabase
                   .from('profiles')
@@ -501,7 +571,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           });
         }
 
-        // 6b. Acumular puntos ganados
         if (puntosGanados > 0) {
           final profileData =
               await _supabase
@@ -528,7 +597,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
       // ─── 7. CRÉDITO — cargar deuda al cliente ───────────────────────────
       if (!isDraft && isCredito && pos.selectedClientId != null) {
-        // Re-leemos la deuda actual en el momento de insertar (dato fresco)
         final latestCredit =
             await _supabase
                 .from('customer_credits')
@@ -590,21 +658,22 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     final isCredito = pos.paymentMethod == 'CRÉDITO';
     final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
 
-    // CRÉDITO insuficiente bloquea el botón de venta directa
+    // Validaciones de botón confirmar
     final creditoInsuficiente =
         isCredito &&
         pos.selectedClientId != null &&
         _creditInfo != null &&
         _creditDisponible < totalFinal;
-
-    // Sin cliente en modo crédito bloquea la venta
     final creditoSinCliente = isCredito && pos.selectedClientId == null;
+    final noCajaAbierta =
+        !isCredito && _selectedAccountId != null && _activeShift == null;
 
     final puedeVender =
         pos.itemCount > 0 &&
         !descuentoExcedido &&
         !creditoInsuficiente &&
-        !creditoSinCliente;
+        !creditoSinCliente &&
+        !noCajaAbierta;
 
     return AdminLayout(
       title: 'Caja POS',
@@ -662,7 +731,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
                     // ── 3. PUNTOS ─────────────────────────────────────────
                     AdminSalePointsSection(
-                      // Solo mostrar puntos si NO es venta a crédito (no tiene sentido combinar)
                       show:
                           pos.selectedClientId != null &&
                           pos.saldoActualCliente > 0 &&
@@ -691,31 +759,35 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ── 4. PAGO Y ALMACÉN ─────────────────────────────────
-                    _SectionLabel(
+                    // ── 4. PAGO Y ALMACÉN Y CUENTA ─────────────────────────
+                    const _SectionLabel(
                       icon: Icons.tune_rounded,
                       label: 'Configuración de venta',
                     ),
                     const SizedBox(height: 8),
-                    _PaymentAndWarehouseCard(
+                    _PaymentWarehouseAccountCard(
                       paymentMethod: pos.paymentMethod,
                       paymentMethods: _paymentMethods,
                       paymentIcons: _paymentIcons,
                       warehouseList: _warehouseList,
                       selectedWarehouseId: pos.selectedWarehouseId,
+                      accountsList: _accountsList,
+                      selectedAccountId: _selectedAccountId,
+                      activeShift: _activeShift,
+                      isCredito: isCredito,
                       onPaymentChanged: (v) {
                         pos.setPaymentMethod(v!);
-                        // Si cambia de crédito, limpiar puntos
-                        if (v != 'CRÉDITO') {
-                          // no-op, puntos se siguen mostrando
-                        } else {
-                          // Al seleccionar crédito, limpiamos puntos (incompatibles)
+                        if (v == 'CRÉDITO') {
                           pos.setPuntosAUsar(0);
                           _puntosCtrl.text = '0';
                         }
                         setState(() {});
                       },
                       onWarehouseChanged: (v) => pos.setWarehouse(v),
+                      onAccountChanged: (v) {
+                        setState(() => _selectedAccountId = v);
+                        _checkActiveShift();
+                      },
                     ),
                     const SizedBox(height: 20),
 
@@ -930,7 +1002,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                             onPressed: () => _processSale(pos, isDraft: false),
                           ),
                         ),
-                        // El borrador NO se muestra si es crédito (no tiene sentido)
                         if (!isCredito) ...[
                           const SizedBox(width: 12),
                           SizedBox(
@@ -997,7 +1068,6 @@ class _CreditWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sin cliente seleccionado
     if (!clienteSeleccionado) {
       return Container(
         padding: const EdgeInsets.all(12),
@@ -1025,7 +1095,6 @@ class _CreditWarningCard extends StatelessWidget {
       );
     }
 
-    // Cliente sin crédito activo
     if (!creditActivo) {
       return Container(
         padding: const EdgeInsets.all(12),
@@ -1212,8 +1281,6 @@ class _ProcessingOverlay extends StatelessWidget {
   }
 }
 
-// ─── SECTION LABEL ────────────────────────────────────────────────────────────
-
 class _SectionLabel extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1358,7 +1425,6 @@ class _CartItemRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // Imagen
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child:
@@ -1384,7 +1450,6 @@ class _CartItemRow extends StatelessWidget {
                     ),
           ),
           const SizedBox(width: 12),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1412,7 +1477,6 @@ class _CartItemRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    // Selector de cantidad
                     Container(
                       height: 28,
                       decoration: BoxDecoration(
@@ -1506,7 +1570,6 @@ class _CartItemRow extends StatelessWidget {
               ],
             ),
           ),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -1543,25 +1606,35 @@ class _CartItemRow extends StatelessWidget {
   }
 }
 
-// ─── PAYMENT & WAREHOUSE CARD ────────────────────────────────────────────────
+// ─── PAYMENT & WAREHOUSE & ACCOUNT CARD ──────────────────────────────────────
 
-class _PaymentAndWarehouseCard extends StatelessWidget {
+class _PaymentWarehouseAccountCard extends StatelessWidget {
   final String paymentMethod;
   final List<String> paymentMethods;
   final Map<String, IconData> paymentIcons;
   final List<WarehouseModel> warehouseList;
   final String? selectedWarehouseId;
+  final List<Map<String, dynamic>> accountsList;
+  final String? selectedAccountId;
+  final Map<String, dynamic>? activeShift;
+  final bool isCredito;
   final ValueChanged<String?> onPaymentChanged;
   final ValueChanged<String?> onWarehouseChanged;
+  final ValueChanged<String?> onAccountChanged;
 
-  const _PaymentAndWarehouseCard({
+  const _PaymentWarehouseAccountCard({
     required this.paymentMethod,
     required this.paymentMethods,
     required this.paymentIcons,
     required this.warehouseList,
     required this.selectedWarehouseId,
+    required this.accountsList,
+    required this.selectedAccountId,
+    required this.activeShift,
+    required this.isCredito,
     required this.onPaymentChanged,
     required this.onWarehouseChanged,
+    required this.onAccountChanged,
   });
 
   @override
@@ -1593,7 +1666,7 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
               children:
                   paymentMethods.map((method) {
                     final selected = paymentMethod == method;
-                    final isCredito = method == 'CRÉDITO';
+                    final isCurrentCredito = method == 'CRÉDITO';
                     return GestureDetector(
                       onTap: () => onPaymentChanged(method),
                       child: AnimatedContainer(
@@ -1603,7 +1676,7 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color:
                               selected
-                                  ? (isCredito
+                                  ? (isCurrentCredito
                                       ? Colors.deepOrange
                                       : AppColors.teal)
                                   : AppColors.bg,
@@ -1611,7 +1684,7 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                           border: Border.all(
                             color:
                                 selected
-                                    ? (isCredito
+                                    ? (isCurrentCredito
                                         ? Colors.deepOrange
                                         : AppColors.teal)
                                     : AppColors.border,
@@ -1626,7 +1699,7 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                               color:
                                   selected
                                       ? Colors.white
-                                      : (isCredito
+                                      : (isCurrentCredito
                                           ? Colors.deepOrange
                                           : AppColors.textSecondary),
                             ),
@@ -1639,7 +1712,7 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
                                 color:
                                     selected
                                         ? Colors.white
-                                        : (isCredito
+                                        : (isCurrentCredito
                                             ? Colors.deepOrange
                                             : AppColors.textSecondary),
                               ),
@@ -1709,6 +1782,103 @@ class _PaymentAndWarehouseCard extends StatelessWidget {
               ),
             ),
           ],
+
+          if (!isCredito && accountsList.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: AppColors.divider),
+            const SizedBox(height: 14),
+            const Text(
+              'Cuenta Financiera (Destino del ingreso)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(AppColors.radius),
+                border: Border.all(
+                  color:
+                      activeShift == null ? AppColors.danger : AppColors.border,
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedAccountId,
+                  isExpanded: true,
+                  hint: const Text(
+                    'Selecciona una cuenta',
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  ),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary,
+                  ),
+                  items:
+                      accountsList.map((a) {
+                        return DropdownMenuItem<String>(
+                          value: a['id'],
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.account_balance_wallet_rounded,
+                                size: 16,
+                                color: AppColors.teal,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${a['name']} (S/ ${a['balance']})',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: onAccountChanged,
+                ),
+              ),
+            ),
+            if (selectedAccountId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      activeShift != null
+                          ? Icons.check_circle_rounded
+                          : Icons.warning_rounded,
+                      size: 14,
+                      color:
+                          activeShift != null
+                              ? AppColors.success
+                              : AppColors.danger,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      activeShift != null
+                          ? 'Turno de caja abierto'
+                          : 'Caja cerrada (Se requiere turno abierto)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            activeShift != null
+                                ? AppColors.success
+                                : AppColors.danger,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -1727,8 +1897,8 @@ class AdminSaleClientSection extends StatelessWidget {
   final String? selectedClientId;
   final ClientTapCallback onClientTap;
   final int saldoActualCliente;
-  final Map<String, dynamic>? creditInfo; // NUEVO
-  final bool isCredito; // NUEVO
+  final Map<String, dynamic>? creditInfo;
+  final bool isCredito;
 
   const AdminSaleClientSection({
     super.key,
@@ -1882,7 +2052,6 @@ class _SelectedClientBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // En modo crédito, mostramos info del crédito en vez de saldo de puntos
     if (isCredito && creditInfo != null) {
       final isActive = creditInfo!['is_active'] == true;
       final limit = (creditInfo!['credit_limit'] as num).toDouble();
@@ -1931,7 +2100,6 @@ class _SelectedClientBanner extends StatelessWidget {
       );
     }
 
-    // Modo normal: mostrar saldo de monedas
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -2288,7 +2456,7 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
   final double totalFinal;
   final double pointsToSolesRatio;
   final double earningRate;
-  final bool isCredito; // NUEVO
+  final bool isCredito;
 
   const AdminSaleTotalSummarySection({
     super.key,
@@ -2363,8 +2531,6 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
                 ],
               ),
             ),
-
-          // Total final
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
             decoration: BoxDecoration(
@@ -2411,7 +2577,6 @@ class AdminSaleTotalSummarySection extends StatelessWidget {
                         color: Colors.white70,
                       ),
                     ),
-                    // Puntos a ganar (no aplica en crédito)
                     if (!isCredito && puntosGanadosEstimados > 0)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -2484,7 +2649,7 @@ class _SummaryRow extends StatelessWidget {
 class AdminSaleConfirmButton extends StatelessWidget {
   final bool loading;
   final bool enabled;
-  final String label; // NUEVO: texto configurable
+  final String label;
   final VoidCallback? onPressed;
 
   const AdminSaleConfirmButton({

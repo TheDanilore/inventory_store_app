@@ -273,6 +273,42 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
                   ),
 
+                  _buildExpandableItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.people_outline_rounded,
+                      title: 'Clientes y Créditos',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.person_outline_rounded,
+                          title: 'Clientes',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CustomersScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos',
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AdminCreditsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
                   _buildItem(
                     context,
                     _DrawerItem(
@@ -284,40 +320,6 @@ class _AppDrawerState extends State<AppDrawer> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const AdminSuppliersScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.people_outline_rounded,
-                      title: 'Clientes',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CustomersScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.credit_score_rounded,
-                      title: 'Créditos',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AdminCreditsScreen(),
                           ),
                         );
                       },

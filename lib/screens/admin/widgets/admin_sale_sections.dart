@@ -151,14 +151,14 @@ class AdminSaleWholesaleHint extends StatelessWidget {
           ),
           child: Text(
             !hasWholesalePrice
-              ? 'ℹ️ No hay precio por mayor configurado en esta variante ni en el producto'
+              ? 'No hay precio por mayor configurado en esta variante ni en el producto'
               : !canUseWholesalePrice
-                ? 'ℹ️ Sí hay precio por mayor, pero necesitas $minQty unidades para aplicarlo'
+                ? 'Sí hay precio por mayor, pero necesitas $minQty unidades para aplicarlo'
                 : useWholesalePrice
                     ? (quantity >= minQty
-                        ? '✅ Precio por mayor habilitado (Min: $minQty)'
-                        : 'ℹ️ Precio por mayor habilitado, pero necesitas $minQty unidades')
-                    : 'ℹ️ Precio base activo. Activa el switch para precio por mayor',
+                        ? ' Precio por mayor habilitado (Min: $minQty)'
+                        : 'Precio por mayor habilitado, pero necesitas $minQty unidades')
+                    : 'Precio base activo. Activa el switch para precio por mayor',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
