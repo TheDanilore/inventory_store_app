@@ -118,10 +118,10 @@ class _AccountsTabState extends State<_AccountsTab>
     _future = _load();
   }
 
-  // CORRECCIÓN: Devolver el Future para que el RefreshIndicator funcione correctamente
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final next = _load();
+    setState(() => _future = next);
+    await next;
   }
 
   Future<List<FinancialAccountModel>> _load() async {
@@ -148,7 +148,7 @@ class _AccountsTabState extends State<_AccountsTab>
       backgroundColor: Colors.transparent,
       builder: (_) => _AccountFormSheet(account: account),
     );
-    if (saved == true) _refresh();
+    if (saved == true) await _refresh();
   }
 
   @override
@@ -722,8 +722,9 @@ class _MovementsTabState extends State<_MovementsTab>
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final next = _load();
+    setState(() => _future = next);
+    await next;
   }
 
   Future<List<AccountMovementModel>> _load() async {
@@ -1093,8 +1094,9 @@ class _ShiftsTabState extends State<_ShiftsTab>
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final next = _load();
+    setState(() => _future = next);
+    await next;
   }
 
   Future<_ShiftsData> _load() async {
@@ -1199,7 +1201,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
       backgroundColor: Colors.transparent,
       builder: (_) => _OpenShiftSheet(accounts: availableAccounts),
     );
-    if (saved == true) _refresh();
+    if (saved == true) await _refresh();
   }
 
   Future<void> _openCloseShiftSheet(CashShiftModel shift) async {
@@ -1216,7 +1218,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
       backgroundColor: Colors.transparent,
       builder: (_) => _CloseShiftSheet(shift: shift, expectedAmount: expected),
     );
-    if (saved == true) _refresh();
+    if (saved == true) await _refresh();
   }
 
   List<CashShiftModel> _applyFilters(List<CashShiftModel> shifts) {

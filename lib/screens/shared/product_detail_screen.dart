@@ -78,6 +78,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _showVariantImage = false;
 
   List<dynamic> _warehouseStocks = [];
+  List<Map<String, dynamic>> _batchesList =
+      []; // <-- NUEVO: Lista de lotes detallados
   List<ProductImageModel> _images = [];
   List<ProductVariantModel> _variants = [];
   List<Map<String, dynamic>> _reviewsList = [];
@@ -195,9 +197,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _supabase
             .from('warehouse_stock_batches')
             .select(
-              'available_quantity, variant_id, warehouse_id, warehouses(name)',
+              // <-- NUEVO: Agregamos batch_number y expiry_date a la consulta
+              'id, available_quantity, variant_id, warehouse_id, batch_number, expiry_date, warehouses(name)',
             )
-            .eq('product_id', widget.product.id),
+            .eq('product_id', widget.product.id)
+            .gt(
+              'available_quantity',
+              0,
+            ) // <-- Solo traemos lotes con stock para la UI
+            .order('expiry_date', ascending: true, nullsFirst: false),
         _supabase
             .from('product_images')
             .select(
@@ -237,12 +245,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       final rawStocks = results[0] as List<dynamic>;
 
-      // AGREGAR LOS LOTES POR ALMACÉN Y VARIANTE PARA LA VISTA
+      // AGREGAR LOS LOTES POR ALMACÉN Y VARIANTE PARA LA VISTA RESUMIDA
       final aggregatedStocks = <String, Map<String, dynamic>>{};
+      final validBatches = <Map<String, dynamic>>[];
+
       for (final row in rawStocks) {
         final wId = row['warehouse_id']?.toString() ?? 'unknown';
         final vId = row['variant_id']?.toString() ?? 'none';
         final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+
+        if (stock > 0) {
+          validBatches.add(Map<String, dynamic>.from(row as Map));
+        }
 
         final key = '${wId}_$vId';
         if (aggregatedStocks.containsKey(key)) {
@@ -299,6 +313,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       setState(() {
         _warehouseStocks = fetchedStocks;
+        _batchesList = validBatches; // <-- Guardamos los lotes detallados
         _images = fetchedImages;
         _variants = fetchedVariants;
         _reviewsList = fetchedReviews;
@@ -396,6 +411,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         .where((row) => (row['variant_id'] as String?) == vid)
         .map((row) => Map<String, dynamic>.from(row as Map))
         .toList();
+  }
+
+  // <-- NUEVO: Filtra los lotes específicos de la variante seleccionada
+  List<Map<String, dynamic>> get _selectedVariantBatchesRows {
+    final vid = _selectedVariantIdSafe;
+    if (vid == null) return _batchesList;
+    return _batchesList.where((row) => row['variant_id'] == vid).toList();
   }
 
   List<String> get _attributeKeys {
@@ -604,7 +626,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       context: context,
       builder:
           (ctx) => Dialog(
-            // ... Contenido del dialogo se mantiene idéntico
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(_DS.radiusXl),
@@ -1081,7 +1102,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // NUEVO COMPONENTE: DECISIONES RÁPIDAS
+                // COMPONENTE: DECISIONES RÁPIDAS
                 ProductQuickDecisionsCard(
                   totalSold: _totalSold,
                   reinvestmentNeeded: _reinvestmentNeeded,
@@ -1098,6 +1119,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               if ((widget.product.description ?? '').trim().isNotEmpty)
                 const SizedBox(height: 16),
 
+              // RESUMEN DE STOCK
               if (widget.isAdmin)
                 ProductAvailabilityCard(
                   isActive: _isActive,
@@ -1112,6 +1134,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   onIncrement: null,
                 ),
               if (widget.isAdmin) const SizedBox(height: 16),
+
+              // <-- NUEVO: TARJETA DETALLADA DE LOTES (Solo visible para Admin si el producto usa lotes) -->
+              if (widget.isAdmin && widget.product.usesBatches) ...[
+                ProductBatchesCard(
+                  isLoading: _isLoadingExtra,
+                  batches: _selectedVariantBatchesRows,
+                ),
+                const SizedBox(height: 16),
+              ],
 
               ProductReviewsCard(
                 averageRating: _averageRating,
@@ -3089,7 +3120,6 @@ class ProductAvailabilityCard extends StatelessWidget {
               final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
               final ok = stock > 0;
               return Container(
-                // ... el resto de este Container se mantiene igual
                 margin: const EdgeInsets.only(bottom: 7),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -3145,6 +3175,227 @@ class ProductAvailabilityCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color: ok ? AppColors.primary : _DS.danger,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── NUEVO COMPONENTE: PRODUCT BATCHES CARD ──────────────────────────────────
+
+class ProductBatchesCard extends StatelessWidget {
+  final bool isLoading;
+  final List<Map<String, dynamic>> batches;
+
+  const ProductBatchesCard({
+    super.key,
+    required this.isLoading,
+    required this.batches,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _DS.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _CardHeader(
+            icon: Icons.calendar_month_rounded,
+            iconColor: Color(0xFFD97706),
+            iconBg: Color(0xFFFEF3C7),
+            title: 'Lotes y Vencimientos',
+          ),
+          const SizedBox(height: 14),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+                strokeWidth: 2,
+              ),
+            )
+          else if (batches.isEmpty)
+            const Text(
+              'No hay lotes con stock para esta variante.',
+              style: TextStyle(fontSize: 12, color: _DS.textMuted),
+            )
+          else
+            ...batches.map((row) {
+              final batchNum = row['batch_number']?.toString() ?? 'Sin Lote';
+              final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+              final whName =
+                  row['warehouses']?['name']?.toString() ?? 'Almacén';
+              final String? expStr = row['expiry_date'];
+
+              DateTime? expDate;
+              int daysRemaining = 999;
+
+              if (expStr != null) {
+                expDate = DateTime.tryParse(expStr);
+                if (expDate != null) {
+                  daysRemaining = expDate.difference(DateTime.now()).inDays;
+                }
+              }
+
+              // Lógica de semáforo de colores
+              Color statusColor = _DS.success;
+              Color statusBg = _DS.successLight;
+              String statusLabel = 'OK';
+              IconData statusIcon = Icons.check_circle_outline_rounded;
+
+              if (expDate != null) {
+                if (daysRemaining < 0) {
+                  statusColor = _DS.danger;
+                  statusBg = _DS.dangerLight;
+                  statusLabel = 'Vencido';
+                  statusIcon = Icons.warning_rounded;
+                } else if (daysRemaining <= 30) {
+                  statusColor = _DS.amberDark;
+                  statusBg = _DS.amberLight;
+                  statusLabel = 'Vence pronto';
+                  statusIcon = Icons.info_outline_rounded;
+                }
+              }
+
+              String dateLabel = 'Sin fecha';
+              if (expDate != null) {
+                dateLabel =
+                    '${expDate.day.toString().padLeft(2, '0')}/${expDate.month.toString().padLeft(2, '0')}/${expDate.year}';
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _DS.bg,
+                  borderRadius: BorderRadius.circular(_DS.radiusSm + 2),
+                  border: Border.all(color: _DS.border),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(statusIcon, size: 16, color: statusColor),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                batchNum,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: _DS.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusBg,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  statusLabel,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: statusColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 12,
+                                color: _DS.textMuted,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                whName,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: _DS.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.event_rounded,
+                                size: 12,
+                                color: _DS.textMuted,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                dateLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color:
+                                      expDate != null && daysRemaining <= 30
+                                          ? statusColor
+                                          : _DS.textSecondary,
+                                  fontWeight:
+                                      expDate != null && daysRemaining <= 30
+                                          ? FontWeight.w700
+                                          : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '$stock',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const Text(
+                            'unds',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
