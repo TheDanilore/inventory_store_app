@@ -4,59 +4,43 @@ class FinancialAccountModel {
   final String type;
   final double balance;
   final bool isActive;
-  final DateTime? createdAt;
+  final DateTime createdAt;
 
   FinancialAccountModel({
     required this.id,
     required this.name,
     required this.type,
-    this.balance = 0.00,
-    this.isActive = true,
-    this.createdAt,
+    required this.balance,
+    required this.isActive,
+    required this.createdAt,
   });
 
-  factory FinancialAccountModel.fromJson(Map<String, dynamic> json) {
+  /// ¡Agrega o reemplaza este método en tu modelo!
+  factory FinancialAccountModel.fromMap(Map<String, dynamic> map) {
     return FinancialAccountModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      type: json['type'] as String,
-      // Manejo seguro del parseo numérico de Supabase
-      balance: (json['balance'] as num?)?.toDouble() ?? 0.00,
-      isActive: json['is_active'] as bool? ?? true,
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+      type: map['type'] as String? ?? '',
+      // Mapeo ultra seguro para números (acepta int y double desde Postgres)
+      balance: (map['balance'] as num?)?.toDouble() ?? 0.0,
+      isActive: map['is_active'] as bool? ?? true,
+      // Parseo seguro de la fecha ISO de Supabase a DateTime de Dart
       createdAt:
-          json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String).toLocal()
-              : null,
+          map['created_at'] != null
+              ? DateTime.parse(map['created_at'] as String)
+              : DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toJson() {
+  /// Opcional: Por si necesitas enviar datos de vuelta a Supabase
+  Map<String, dynamic> toMap() {
     return {
-      if (id.isNotEmpty)
-        'id': id, // Omitir si es nuevo (para que Supabase genere el UUID)
+      'id': id,
       'name': name,
       'type': type,
       'balance': balance,
       'is_active': isActive,
-      // No solemos enviar created_at en los inserts/updates a menos que sea estrictamente necesario
+      'created_at': createdAt.toIso8601String(),
     };
-  }
-
-  FinancialAccountModel copyWith({
-    String? id,
-    String? name,
-    String? type,
-    double? balance,
-    bool? isActive,
-    DateTime? createdAt,
-  }) {
-    return FinancialAccountModel(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      balance: balance ?? this.balance,
-      isActive: isActive ?? this.isActive,
-      createdAt: createdAt ?? this.createdAt,
-    );
   }
 }

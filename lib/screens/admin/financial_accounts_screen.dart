@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:inventory_store_app/models/financial_account_model.dart';
+import 'package:inventory_store_app/models/account_movement_model.dart';
+import 'package:inventory_store_app/models/cash_shift_model.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FINANCIAL ACCOUNTS SCREEN — Cuentas · Movimientos · Turnos de Caja
@@ -107,7 +110,7 @@ class _AccountsTab extends StatefulWidget {
 class _AccountsTabState extends State<_AccountsTab>
     with AutomaticKeepAliveClientMixin {
   final _supabase = Supabase.instance.client;
-  late Future<List<Map<String, dynamic>>> _future;
+  late Future<List<FinancialAccountModel>> _future;
 
   @override
   void initState() {
@@ -117,18 +120,22 @@ class _AccountsTabState extends State<_AccountsTab>
 
   void _refresh() => setState(() => _future = _load());
 
-  Future<List<Map<String, dynamic>>> _load() async {
+  Future<List<FinancialAccountModel>> _load() async {
     final response = await _supabase
         .from('financial_accounts')
         .select('id, name, type, balance, is_active, created_at')
         .order('is_active', ascending: false)
         .order('name');
     return (response as List)
-        .map((e) => Map<String, dynamic>.from(e as Map))
+        .map(
+          (e) => FinancialAccountModel.fromMap(
+            Map<String, dynamic>.from(e as Map),
+          ),
+        )
         .toList();
   }
 
-  Future<void> _openAccountSheet({Map<String, dynamic>? account}) async {
+  Future<void> _openAccountSheet({FinancialAccountModel? account}) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -144,17 +151,16 @@ class _AccountsTabState extends State<_AccountsTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<FinancialAccountModel>>(
       future: _future,
       builder: (context, snapshot) {
         final accounts = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
         final totalBalance = accounts
-            .where((a) => a['is_active'] == true)
-            .fold<double>(0, (s, a) => s + (a['balance'] as num).toDouble());
-        final activeCount =
-            accounts.where((a) => a['is_active'] == true).length;
+            .where((a) => a.isActive)
+            .fold<double>(0, (s, a) => s + a.balance);
+        final activeCount = accounts.where((a) => a.isActive).length;
 
         return Stack(
           children: [
@@ -242,7 +248,7 @@ class _AccountsTabState extends State<_AccountsTab>
 // ── Bottom Sheet: Crear / Editar cuenta ──────────────────────────────────────
 
 class _AccountFormSheet extends StatefulWidget {
-  final Map<String, dynamic>? account; // null = crear
+  final FinancialAccountModel? account; // null = crear
   const _AccountFormSheet({this.account});
 
   @override
@@ -267,9 +273,9 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
   void initState() {
     super.initState();
     if (_isEditing) {
-      _nameCtrl.text = widget.account!['name'] as String? ?? '';
-      _type = widget.account!['type'] as String? ?? 'CAJA';
-      _isActive = widget.account!['is_active'] as bool? ?? true;
+      _nameCtrl.text = widget.account!.name;
+      _type = widget.account!.type;
+      _isActive = widget.account!.isActive;
       // El balance no se edita directamente en edición (se mueve via movimientos)
     }
   }
@@ -294,7 +300,7 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
               'type': _type,
               'is_active': _isActive,
             })
-            .eq('id', widget.account!['id'] as String);
+            .eq('id', widget.account!.id);
       } else {
         final balance =
             double.tryParse(_balanceCtrl.text.replaceAll(',', '.')) ?? 0.0;
@@ -539,6 +545,7 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
   );
 }
 
+// ignore: non_constant_identifier_names
 Widget _FieldLabel(String text) => Padding(
   padding: const EdgeInsets.only(bottom: 6),
   child: Text(
@@ -550,16 +557,16 @@ Widget _FieldLabel(String text) => Padding(
 // ── Card de cuenta ───────────────────────────────────────────────────────────
 
 class _AccountCard extends StatelessWidget {
-  final Map<String, dynamic> account;
+  final FinancialAccountModel account;
   final VoidCallback onTap;
   const _AccountCard({required this.account, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final name = account['name'] as String;
-    final type = account['type'] as String;
-    final balance = (account['balance'] as num).toDouble();
-    final isActive = account['is_active'] as bool? ?? true;
+    final name = account.name;
+    final type = account.type;
+    final balance = account.balance;
+    final isActive = account.isActive;
 
     Color typeColor;
     IconData typeIcon;
@@ -701,7 +708,7 @@ class _MovementsTab extends StatefulWidget {
 class _MovementsTabState extends State<_MovementsTab>
     with AutomaticKeepAliveClientMixin {
   final _supabase = Supabase.instance.client;
-  late Future<List<Map<String, dynamic>>> _future;
+  late Future<List<AccountMovementModel>> _future;
   String _filterType = 'Todos';
   String _filterAccount = 'Todas';
   List<String> _accountNames = ['Todas'];
@@ -716,7 +723,7 @@ class _MovementsTabState extends State<_MovementsTab>
 
   void _refresh() => setState(() => _future = _load());
 
-  Future<List<Map<String, dynamic>>> _load() async {
+  Future<List<AccountMovementModel>> _load() async {
     final response = await _supabase
         .from('account_movements')
         .select(
@@ -727,36 +734,27 @@ class _MovementsTabState extends State<_MovementsTab>
 
     final list =
         (response as List)
-            .map((e) => Map<String, dynamic>.from(e as Map))
+            .map(
+              (e) => AccountMovementModel.fromMap(
+                Map<String, dynamic>.from(e as Map),
+              ),
+            )
             .toList();
 
     final names =
-        list
-            .map(
-              (m) =>
-                  (m['financial_accounts'] as Map<String, dynamic>?)?['name']
-                      as String? ??
-                  '–',
-            )
-            .toSet()
-            .toList()
-          ..sort();
+        list.map((m) => m.accountName ?? '–').toSet().toList()..sort();
     if (mounted) setState(() => _accountNames = ['Todas', ...names]);
 
     return list;
   }
 
-  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> data) {
+  List<AccountMovementModel> _applyFilters(List<AccountMovementModel> data) {
     return data.where((m) {
-      final desc = (m['description'] as String? ?? '').toLowerCase();
+      final desc = (m.description).toLowerCase();
       final matchSearch =
           _searchText.isEmpty || desc.contains(_searchText.toLowerCase());
-      final type = m['movement_type'] as String? ?? '';
-      final matchType = _filterType == 'Todos' || type == _filterType;
-      final accName =
-          (m['financial_accounts'] as Map<String, dynamic>?)?['name']
-              as String? ??
-          '–';
+      final matchType = _filterType == 'Todos' || m.movementType == _filterType;
+      final accName = m.accountName ?? '–';
       final matchAccount =
           _filterAccount == 'Todas' || accName == _filterAccount;
       return matchSearch && matchType && matchAccount;
@@ -769,7 +767,7 @@ class _MovementsTabState extends State<_MovementsTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<AccountMovementModel>>(
       future: _future,
       builder: (context, snapshot) {
         final allMovements = snapshot.data ?? [];
@@ -777,11 +775,11 @@ class _MovementsTabState extends State<_MovementsTab>
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
         final totalIncome = movements
-            .where((m) => m['movement_type'] == 'INCOME')
-            .fold<double>(0, (s, m) => s + (m['amount'] as num).toDouble());
+            .where((m) => m.movementType == 'INCOME')
+            .fold<double>(0, (s, m) => s + m.amount);
         final totalExpense = movements
-            .where((m) => m['movement_type'] == 'EXPENSE')
-            .fold<double>(0, (s, m) => s + (m['amount'] as num).toDouble());
+            .where((m) => m.movementType == 'EXPENSE')
+            .fold<double>(0, (s, m) => s + m.amount);
 
         return Column(
           children: [
@@ -935,23 +933,18 @@ class _MovementsTabState extends State<_MovementsTab>
 }
 
 class _MovementCard extends StatelessWidget {
-  final Map<String, dynamic> movement;
+  final AccountMovementModel movement;
   const _MovementCard({required this.movement});
 
   @override
   Widget build(BuildContext context) {
-    final type = movement['movement_type'] as String? ?? '';
-    final amount = (movement['amount'] as num).toDouble();
-    final description = movement['description'] as String? ?? '–';
-    final referenceType = movement['reference_type'] as String?;
-    final createdAt = movement['created_at'] as String?;
-    final accountName =
-        (movement['financial_accounts'] as Map<String, dynamic>?)?['name']
-            as String? ??
-        '–';
-    final createdBy =
-        (movement['profiles'] as Map<String, dynamic>?)?['full_name']
-            as String?;
+    final type = movement.movementType;
+    final amount = movement.amount;
+    final description = movement.description;
+    final referenceType = movement.referenceType;
+    final createdAt = movement.createdAt;
+    final accountName = movement.accountName ?? '–';
+    final createdBy = movement.createdByName;
 
     Color typeColor;
     IconData typeIcon;
@@ -979,12 +972,9 @@ class _MovementCard extends StatelessWidget {
     }
 
     String dateLabel = '–';
-    if (createdAt != null) {
-      final dt = DateTime.tryParse(createdAt)?.toLocal();
-      if (dt != null)
-        dateLabel =
-            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    }
+    final dt = createdAt.toLocal();
+    dateLabel =
+        '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     return Container(
       decoration: BoxDecoration(
@@ -1039,11 +1029,10 @@ class _MovementCard extends StatelessWidget {
                         icon: Icons.schedule_rounded,
                         label: dateLabel,
                       ),
-                      if (createdBy != null)
-                        _DetailPill(
-                          icon: Icons.person_outline_rounded,
-                          label: createdBy,
-                        ),
+                      _DetailPill(
+                        icon: Icons.person_outline_rounded,
+                        label: createdBy,
+                      ),
                     ],
                   ),
                 ],
@@ -1103,7 +1092,6 @@ class _ShiftsTabState extends State<_ShiftsTab>
   void _refresh() => setState(() => _future = _load());
 
   Future<_ShiftsData> _load() async {
-    // Turnos
     final shiftsRes = await _supabase
         .from('cash_shifts')
         .select('''
@@ -1118,10 +1106,12 @@ class _ShiftsTabState extends State<_ShiftsTab>
 
     final shifts =
         (shiftsRes as List)
-            .map((e) => Map<String, dynamic>.from(e as Map))
+            .map(
+              (e) =>
+                  CashShiftModel.fromMap(Map<String, dynamic>.from(e as Map)),
+            )
             .toList();
 
-    // Cuentas activas (para el selector al abrir turno)
     final accountsRes = await _supabase
         .from('financial_accounts')
         .select('id, name, type')
@@ -1130,14 +1120,18 @@ class _ShiftsTabState extends State<_ShiftsTab>
 
     final accounts =
         (accountsRes as List)
-            .map((e) => Map<String, dynamic>.from(e as Map))
+            .map(
+              (e) => FinancialAccountModel.fromMap(
+                Map<String, dynamic>.from(e as Map),
+              ),
+            )
             .toList();
 
-    // IDs de cuentas con turno abierto actualmente
     final openAccountIds =
         shifts
-            .where((s) => s['status'] == 'OPEN')
-            .map((s) => s['account_id'] as String)
+            .where((s) => s.status == 'OPEN')
+            .map((s) => s.accountId)
+            .whereType<String>()
             .toSet();
 
     return _ShiftsData(
@@ -1153,7 +1147,6 @@ class _ShiftsTabState extends State<_ShiftsTab>
     String shiftId,
     String accountId,
     double openingAmount,
-    String openedAt,
   ) async {
     final movRes = await _supabase
         .from('account_movements')
@@ -1176,13 +1169,11 @@ class _ShiftsTabState extends State<_ShiftsTab>
   }
 
   Future<void> _openOpenShiftSheet(
-    List<Map<String, dynamic>> accounts,
+    List<FinancialAccountModel> accounts,
     Set<String> openAccountIds,
   ) async {
     final availableAccounts =
-        accounts
-            .where((a) => !openAccountIds.contains(a['id'] as String))
-            .toList();
+        accounts.where((a) => !openAccountIds.contains(a.id)).toList();
     if (availableAccounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1201,17 +1192,11 @@ class _ShiftsTabState extends State<_ShiftsTab>
     if (saved == true) _refresh();
   }
 
-  Future<void> _openCloseShiftSheet(Map<String, dynamic> shift) async {
-    final openingAmount = (shift['opening_amount'] as num).toDouble();
-    final openedAt = shift['opened_at'] as String;
-    final accountId = shift['account_id'] as String;
-    final shiftId = shift['id'] as String;
-
+  Future<void> _openCloseShiftSheet(CashShiftModel shift) async {
     final expected = await _calcExpected(
-      shiftId,
-      accountId,
-      openingAmount,
-      openedAt,
+      shift.id,
+      shift.accountId ?? '',
+      shift.openingAmount,
     );
 
     if (!mounted) return;
@@ -1224,9 +1209,9 @@ class _ShiftsTabState extends State<_ShiftsTab>
     if (saved == true) _refresh();
   }
 
-  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> shifts) {
+  List<CashShiftModel> _applyFilters(List<CashShiftModel> shifts) {
     if (_filterStatus == 'Todos') return shifts;
-    return shifts.where((s) => s['status'] == _filterStatus).toList();
+    return shifts.where((s) => s.status == _filterStatus).toList();
   }
 
   @override
@@ -1245,13 +1230,11 @@ class _ShiftsTabState extends State<_ShiftsTab>
         final shifts = _applyFilters(allShifts);
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-        final openCount = allShifts.where((s) => s['status'] == 'OPEN').length;
-        final closedCount =
-            allShifts.where((s) => s['status'] == 'CLOSED').length;
+        final openCount = allShifts.where((s) => s.status == 'OPEN').length;
+        final closedCount = allShifts.where((s) => s.status == 'CLOSED').length;
 
         // Turnos abiertos (puede haber uno por cuenta)
-        final openShifts =
-            allShifts.where((s) => s['status'] == 'OPEN').toList();
+        final openShifts = allShifts.where((s) => s.status == 'OPEN').toList();
 
         return Stack(
           children: [
@@ -1350,7 +1333,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
                                   (_, i) => _ShiftCard(
                                     shift: shifts[i],
                                     onClose:
-                                        shifts[i]['status'] == 'OPEN'
+                                        shifts[i].status == 'OPEN'
                                             ? () =>
                                                 _openCloseShiftSheet(shifts[i])
                                             : null,
@@ -1392,8 +1375,8 @@ class _ShiftsTabState extends State<_ShiftsTab>
 // ── Data holder ──────────────────────────────────────────────────────────────
 
 class _ShiftsData {
-  final List<Map<String, dynamic>> shifts;
-  final List<Map<String, dynamic>> accounts;
+  final List<CashShiftModel> shifts;
+  final List<FinancialAccountModel> accounts;
   final Set<String> openAccountIds;
   const _ShiftsData({
     required this.shifts,
@@ -1405,7 +1388,7 @@ class _ShiftsData {
 // ── Bottom Sheet: Abrir turno ─────────────────────────────────────────────────
 
 class _OpenShiftSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> accounts;
+  final List<FinancialAccountModel> accounts;
   const _OpenShiftSheet({required this.accounts});
 
   @override
@@ -1423,7 +1406,7 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
   void initState() {
     super.initState();
     if (widget.accounts.isNotEmpty) {
-      _selectedAccountId = widget.accounts.first['id'] as String;
+      _selectedAccountId = widget.accounts.first.id;
     }
   }
 
@@ -1434,20 +1417,25 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _selectedAccountId == null)
+    if (!_formKey.currentState!.validate() || _selectedAccountId == null) {
       return;
+    }
     setState(() => _saving = true);
 
     try {
       final user = _supabase.auth.currentUser;
-      // Obtener el profile_id del usuario actual
+      if (user == null) throw Exception('No hay sesión activa');
+
+      // Buscar profile por user_id (columna estándar de Supabase Auth)
       final profileRes =
           await _supabase
               .from('profiles')
               .select('id')
-              .eq('auth_user_id', user!.id)
-              .single();
-      final profileId = profileRes['id'] as String;
+              .eq('id', user.id)
+              .maybeSingle();
+
+      // Si no existe columna auth_user_id, intentar con id directo
+      final profileId = profileRes?['id'] as String? ?? user.id;
 
       final amount =
           double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
@@ -1539,19 +1527,17 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
                       widget.accounts
                           .map(
                             (a) => DropdownMenuItem<String>(
-                              value: a['id'] as String,
+                              value: a.id,
                               child: Row(
                                 children: [
                                   Icon(
-                                    _accountTypeIcon(
-                                      a['type'] as String? ?? '',
-                                    ),
+                                    _accountTypeIcon(a.type),
                                     size: 16,
                                     color: AppColors.textSecondary,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    a['name'] as String,
+                                    a.name,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
@@ -1597,8 +1583,9 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
               ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Ingresa un monto';
-                if (double.tryParse(v.replaceAll(',', '.')) == null)
+                if (double.tryParse(v.replaceAll(',', '.')) == null) {
                   return 'Monto inválido';
+                }
                 return null;
               },
             ),
@@ -1658,7 +1645,7 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
 // ── Bottom Sheet: Cerrar turno ────────────────────────────────────────────────
 
 class _CloseShiftSheet extends StatefulWidget {
-  final Map<String, dynamic> shift;
+  final CashShiftModel shift;
   final double expectedAmount;
   const _CloseShiftSheet({required this.shift, required this.expectedAmount});
 
@@ -1687,13 +1674,17 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
 
     try {
       final user = _supabase.auth.currentUser;
+      if (user == null) throw Exception('No hay sesión activa');
+
+      // Buscar profile por id directo (evitar congelamiento con .single())
       final profileRes =
           await _supabase
               .from('profiles')
               .select('id')
-              .eq('auth_user_id', user!.id)
-              .single();
-      final profileId = profileRes['id'] as String;
+              .eq('id', user.id)
+              .maybeSingle();
+
+      final profileId = profileRes?['id'] as String? ?? user.id;
 
       final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
       final diff = actual - widget.expectedAmount;
@@ -1712,7 +1703,7 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
                     ? _notesCtrl.text.trim()
                     : null,
           })
-          .eq('id', widget.shift['id'] as String);
+          .eq('id', widget.shift.id);
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -1739,11 +1730,8 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final accountName =
-        (widget.shift['financial_accounts'] as Map<String, dynamic>?)?['name']
-            as String? ??
-        '–';
-    final openingAmount = (widget.shift['opening_amount'] as num).toDouble();
+    final accountName = widget.shift.accountName;
+    final openingAmount = widget.shift.openingAmount;
 
     Color diffColor = AppColors.textSecondary;
     String diffLabel = '–';
@@ -1878,8 +1866,9 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
               ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Ingresa el monto contado';
-                if (double.tryParse(v.replaceAll(',', '.')) == null)
+                if (double.tryParse(v.replaceAll(',', '.')) == null) {
                   return 'Monto inválido';
+                }
                 return null;
               },
             ),
@@ -1986,30 +1975,21 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
 // ── Banner de turno activo (con botón cerrar) ─────────────────────────────────
 
 class _ActiveShiftBanner extends StatelessWidget {
-  final Map<String, dynamic> shift;
+  final CashShiftModel shift;
   final VoidCallback onClose;
   const _ActiveShiftBanner({required this.shift, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
-    final accountName =
-        (shift['financial_accounts'] as Map<String, dynamic>?)?['name']
-            as String? ??
-        '–';
-    final openedBy =
-        (shift['opened_by_profile'] as Map<String, dynamic>?)?['full_name']
-            as String? ??
-        '–';
-    final openingAmount = (shift['opening_amount'] as num?)?.toDouble() ?? 0.0;
-    final openedAtStr = shift['opened_at'] as String?;
+    final accountName = shift.accountName;
+    final openedBy = shift.openedByName;
+    final openingAmount = shift.openingAmount;
+    final openedAt = shift.openedAt;
 
     String openedLabel = '–';
-    if (openedAtStr != null) {
-      final dt = DateTime.tryParse(openedAtStr)?.toLocal();
-      if (dt != null)
-        openedLabel =
-            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    }
+    final dt = openedAt.toLocal();
+    openedLabel =
+        '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -2078,48 +2058,35 @@ class _ActiveShiftBanner extends StatelessWidget {
 // ── Card de turno ─────────────────────────────────────────────────────────────
 
 class _ShiftCard extends StatelessWidget {
-  final Map<String, dynamic> shift;
+  final CashShiftModel shift;
   final VoidCallback? onClose;
   const _ShiftCard({required this.shift, this.onClose});
 
   @override
   Widget build(BuildContext context) {
-    final status = shift['status'] as String? ?? 'CLOSED';
+    final status = shift.status;
     final isOpen = status == 'OPEN';
-    final accountName =
-        (shift['financial_accounts'] as Map<String, dynamic>?)?['name']
-            as String? ??
-        '–';
-    final openedBy =
-        (shift['opened_by_profile'] as Map<String, dynamic>?)?['full_name']
-            as String? ??
-        '–';
-    final closedBy =
-        (shift['closed_by_profile'] as Map<String, dynamic>?)?['full_name']
-            as String?;
-    final openingAmount = (shift['opening_amount'] as num?)?.toDouble() ?? 0.0;
-    final expectedAmount = (shift['expected_amount'] as num?)?.toDouble();
-    final actualAmount = (shift['actual_amount'] as num?)?.toDouble();
-    final differenceAmount = (shift['difference_amount'] as num?)?.toDouble();
-    final notes = shift['notes'] as String?;
-    final openedAtStr = shift['opened_at'] as String?;
-    final closedAtStr = shift['closed_at'] as String?;
+    final accountName = shift.accountName;
+    final openedBy = shift.openedByName;
+    final closedBy = shift.closedByName;
+    final openingAmount = shift.openingAmount;
+    final expectedAmount = shift.expectedAmount;
+    final actualAmount = shift.actualAmount;
+    final differenceAmount = shift.differenceAmount;
+    final notes = shift.notes;
+    final openedAt = shift.openedAt;
+    final closedAt = shift.closedAt;
 
-    String fmtDate(String? s) {
-      if (s == null) return '–';
-      final dt = DateTime.tryParse(s)?.toLocal();
+    String fmtDate(DateTime? dt) {
       if (dt == null) return '–';
-      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      final local = dt.toLocal();
+      return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     }
 
     String durationLabel = '';
-    if (openedAtStr != null && closedAtStr != null) {
-      final open = DateTime.tryParse(openedAtStr);
-      final close = DateTime.tryParse(closedAtStr);
-      if (open != null && close != null) {
-        final diff = close.difference(open);
-        durationLabel = '${diff.inHours}h ${diff.inMinutes % 60}m';
-      }
+    if (closedAt != null) {
+      final diff = closedAt.difference(openedAt);
+      durationLabel = '${diff.inHours}h ${diff.inMinutes % 60}m';
     }
 
     final statusColor = isOpen ? AppColors.success : AppColors.textSecondary;
@@ -2258,13 +2225,13 @@ class _ShiftCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      fmtDate(openedAtStr),
+                      fmtDate(openedAt),
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    if (closedAtStr != null) ...[
+                    if (closedAt != null) ...[
                       const SizedBox(width: 8),
                       Icon(
                         Icons.logout_rounded,
@@ -2273,7 +2240,7 @@ class _ShiftCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        fmtDate(closedAtStr),
+                        fmtDate(closedAt),
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
