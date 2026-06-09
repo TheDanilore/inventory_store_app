@@ -12,6 +12,42 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
+// ─── Modelo interno: segmento de lote asignado a un ítem del carrito ─────────
+class _BatchAssignment {
+  final String batchId;
+  final String batchNumber;
+  final DateTime? expiryDate;
+  final int available; // stock real disponible
+  int assigned; // cantidad a descontar de este lote (editable)
+
+  _BatchAssignment({
+    required this.batchId,
+    required this.batchNumber,
+    this.expiryDate,
+    required this.available,
+    required this.assigned,
+  });
+
+  _BatchAssignment copyWith({int? assigned}) => _BatchAssignment(
+    batchId: batchId,
+    batchNumber: batchNumber,
+    expiryDate: expiryDate,
+    available: available,
+    assigned: assigned ?? this.assigned,
+  );
+
+  String get expiryLabel {
+    if (expiryDate == null) return 'Sin vto.';
+    final d = expiryDate!;
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  bool get isExpiringSoon {
+    if (expiryDate == null) return false;
+    return expiryDate!.isBefore(DateTime.now().add(const Duration(days: 30)));
+  }
+}
+
 class AdminPosCheckoutScreen extends StatefulWidget {
   const AdminPosCheckoutScreen({super.key});
 
@@ -47,6 +83,14 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
   // Venta
   bool _isProcessingSale = false;
+
+  // Los overrides de lotes viven en PosProvider (pos.setBatchOverride/batchOverrides).
+  // Helper tipado para leer sin cast en cada uso.
+  List<_BatchAssignment>? _batchOverrideFor(PosProvider pos, String cartKey) {
+    final raw = pos.batchOverrides[cartKey];
+    if (raw == null) return null;
+    return raw.cast<_BatchAssignment>();
+  }
 
   final List<String> _paymentMethods = [
     'EFECTIVO',
@@ -125,15 +169,31 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
   Future<void> _checkActiveShift() async {
     if (_selectedAccountId == null) return;
+
     try {
+      // 1. Primero verificamos si la cuenta seleccionada es de tipo CAJA
+      final accountData = _accountsList.firstWhere(
+        (a) => a['id'] == _selectedAccountId,
+        orElse: () => {},
+      );
+
+      // Si no es una cuenta CAJA, no requiere turno. Limpiamos el estado y salimos.
+      if (accountData['type'] != 'CAJA') {
+        if (mounted) {
+          setState(() => _activeShift = null);
+        }
+        return;
+      }
+
+      // 2. Si ES una CAJA, buscamos si tiene un turno abierto
       final shiftRes =
           await _supabase
               .from('cash_shifts')
               .select('id, status')
               .eq('account_id', _selectedAccountId!)
               .eq('status', 'OPEN')
-              .eq('type', 'CAJA')
               .maybeSingle();
+
       if (mounted) {
         setState(() => _activeShift = shiftRes);
       }
@@ -322,10 +382,18 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         );
         return;
       }
-      if (_activeShift == null) {
+
+      // Verificamos si la cuenta elegida es de tipo CAJA
+      final accountData = _accountsList.firstWhere(
+        (a) => a['id'] == _selectedAccountId,
+        orElse: () => {},
+      );
+
+      // SOLO bloqueamos si es CAJA y no tiene turno
+      if (accountData['type'] == 'CAJA' && _activeShift == null) {
         AppSnackbar.show(
           context,
-          message: 'La cuenta seleccionada no tiene un turno de caja abierto.',
+          message: 'La caja seleccionada no tiene un turno abierto.',
           type: SnackbarType.error,
         );
         return;
@@ -397,49 +465,90 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               .single();
       final String currentProfileId = profileResp['id'];
 
-      // ─── 2. STOCK (FEFO) — solo en venta directa, no borrador ───────────
+      // ─── 2. STOCK (FEFO o override manual) — solo venta directa ────────
       List<Map<String, dynamic>> batchUpdates = [];
       List<Map<String, dynamic>> movementInserts = [];
 
       if (!isDraft) {
         for (final item in pos.items.values) {
           final safeVariantId = item.variantId!;
+          final cartKey = item.cartKey;
 
-          final batches = await _supabase
-              .from('warehouse_stock_batches')
-              .select('id, available_quantity, batch_number')
-              .eq('variant_id', safeVariantId)
-              .eq('warehouse_id', pos.selectedWarehouseId!)
-              .gt('available_quantity', 0)
-              .order('expiry_date', ascending: true, nullsFirst: false);
+          // Si el usuario editó los lotes manualmente, usamos ese override.
+          // Si no, aplicamos FEFO automático consultando la BD.
+          List<({String id, int take, int available, String batchNumber})>
+          segments = [];
 
-          int remaining = item.quantity;
-          for (final batch in (batches as List)) {
-            if (remaining <= 0) break;
-            final int available = (batch['available_quantity'] as num).toInt();
-            final int take = (remaining > available) ? available : remaining;
+          final _batchAssigned = _batchOverrideFor(pos, cartKey);
+          if (_batchAssigned != null) {
+            // ── Override manual ──────────────────────────────────────────
+            final overrides = _batchAssigned;
+            final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
+            if (totalAssigned != item.quantity) {
+              throw Exception(
+                'La asignación de lotes para "${item.product.name}" '
+                'suma $totalAssigned pero la cantidad vendida es ${item.quantity}.',
+              );
+            }
+            for (final b in overrides) {
+              if (b.assigned > 0) {
+                segments.add((
+                  id: b.batchId,
+                  take: b.assigned,
+                  available: b.available,
+                  batchNumber: b.batchNumber,
+                ));
+              }
+            }
+          } else {
+            // ── FEFO automático ──────────────────────────────────────────
+            final batches = await _supabase
+                .from('warehouse_stock_batches')
+                .select('id, available_quantity, batch_number, expiry_date')
+                .eq('variant_id', safeVariantId)
+                .eq('warehouse_id', pos.selectedWarehouseId!)
+                .gt('available_quantity', 0)
+                .order('expiry_date', ascending: true, nullsFirst: false);
 
+            int remaining = item.quantity;
+            for (final batch in (batches as List)) {
+              if (remaining <= 0) break;
+              final int available =
+                  (batch['available_quantity'] as num).toInt();
+              final int take = (remaining > available) ? available : remaining;
+              segments.add((
+                id: batch['id'] as String,
+                take: take,
+                available: available,
+                batchNumber: batch['batch_number'] as String,
+              ));
+              remaining -= take;
+            }
+
+            if (remaining > 0) {
+              throw Exception('Stock insuficiente para "${item.product.name}"');
+            }
+          }
+
+          // Construir batchUpdates y movementInserts a partir de segments
+          for (final seg in segments) {
             batchUpdates.add({
-              'id': batch['id'],
-              'new_quantity': available - take,
+              'id': seg.id,
+              'new_quantity': seg.available - seg.take,
             });
             movementInserts.add({
               'variant_id': safeVariantId,
               'warehouse_id': pos.selectedWarehouseId,
-              'stock_batch_id': batch['id'],
-              'quantity': -take,
-              'previous_stock': available,
-              'new_stock': available - take,
+              'stock_batch_id': seg.id,
+              'quantity': -seg.take,
+              'previous_stock': seg.available,
+              'new_stock': seg.available - seg.take,
               'unit_cost': item.product.unitCost,
               'reason': 'SALE',
-              'notes': 'Venta POS - ${pos.paymentMethod}',
+              'notes':
+                  'Venta POS - ${pos.paymentMethod} · Lote: ${seg.batchNumber}',
               'created_by': currentProfileId,
             });
-            remaining -= take;
-          }
-
-          if (remaining > 0) {
-            throw Exception('Stock insuficiente para ${item.product.name}');
           }
         }
       }
@@ -515,11 +624,23 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         }
       }
 
-      // ─── 5.5 MOVIMIENTO FINANCIERO (CAJA) ───────────────────────────────
+      // ─── 5.5 MOVIMIENTO FINANCIERO ───────────────────────────────────────
+      // shift_id solo aplica cuando la cuenta es de tipo CAJA y tiene turno abierto.
+      // Para cuentas bancarias / billeteras digitales se deja null.
       if (!isDraft && !isCredito && amountPaid > 0) {
+        final accountData = _accountsList.firstWhere(
+          (a) => a['id'] == _selectedAccountId,
+          orElse: () => <String, dynamic>{},
+        );
+        final isCaja = accountData['type'] == 'CAJA';
+        final shiftId =
+            isCaja && _activeShift != null
+                ? _activeShift!['id'] as String?
+                : null;
+
         await _supabase.from('account_movements').insert({
           'account_id': _selectedAccountId,
-          'shift_id': _activeShift!['id'],
+          if (shiftId != null) 'shift_id': shiftId,
           'movement_type': 'INCOME',
           'amount': amountPaid,
           'description': 'Ingreso por Venta POS - Orden #$orderId',
@@ -638,6 +759,102 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     }
   }
 
+  // ─── EDITAR LOTES DE UN ÍTEM ──────────────────────────────────────────────
+  /// Carga los lotes disponibles en FEFO, aplica el override guardado si existe,
+  /// y muestra el bottom sheet para que el usuario ajuste manualmente.
+  Future<void> _showBatchEditSheet(CartItemModel item, PosProvider pos) async {
+    if (pos.selectedWarehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Selecciona un almacén primero',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    // 1. Cargar todos los lotes con stock disponible (orden FEFO)
+    List<_BatchAssignment> batches;
+    try {
+      final resp = await _supabase
+          .from('warehouse_stock_batches')
+          .select('id, batch_number, expiry_date, available_quantity')
+          .eq('variant_id', item.variantId!)
+          .eq('warehouse_id', pos.selectedWarehouseId!)
+          .gt('available_quantity', 0)
+          .order('expiry_date', ascending: true, nullsFirst: false);
+
+      batches =
+          (resp as List).map((b) {
+            return _BatchAssignment(
+              batchId: b['id'] as String,
+              batchNumber: b['batch_number'] as String,
+              expiryDate:
+                  b['expiry_date'] != null
+                      ? DateTime.tryParse(b['expiry_date'] as String)
+                      : null,
+              available: (b['available_quantity'] as num).toInt(),
+              assigned: 0,
+            );
+          }).toList();
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error cargando lotes: $e',
+          type: SnackbarType.error,
+        );
+      }
+      return;
+    }
+
+    if (batches.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'No hay lotes con stock para este producto.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    // 2. Aplicar override guardado o calcular FEFO automáticamente
+    final saved = _batchOverrideFor(pos, item.cartKey);
+    if (saved != null) {
+      for (final s in saved) {
+        final idx = batches.indexWhere((b) => b.batchId == s.batchId);
+        if (idx >= 0) batches[idx].assigned = s.assigned;
+      }
+    } else {
+      // Distribuir automáticamente según FEFO
+      int remaining = item.quantity;
+      for (final b in batches) {
+        if (remaining <= 0) break;
+        b.assigned = (remaining > b.available) ? b.available : remaining;
+        remaining -= b.assigned;
+      }
+    }
+
+    // 3. Mostrar bottom sheet
+    if (!mounted) return;
+    final result = await showModalBottomSheet<List<_BatchAssignment>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (_) => _BatchEditSheet(
+            productName: item.product.name,
+            variantLabel: item.variantLabel,
+            totalRequired: item.quantity,
+            batches: batches,
+          ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        pos.setBatchOverride(item.cartKey, result);
+      });
+    }
+  }
+
   // ─── BUILD ───────────────────────────────────────────────────────────────
 
   @override
@@ -666,8 +883,18 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         _creditInfo != null &&
         _creditDisponible < totalFinal;
     final creditoSinCliente = isCredito && pos.selectedClientId == null;
+
+    // Verificamos si la cuenta actual es de tipo CAJA
+    final isCajaAccount = _accountsList.any(
+      (a) => a['id'] == _selectedAccountId && a['type'] == 'CAJA',
+    );
+
+    // Solo hay "Caja no abierta" si es pago directo, seleccionó una CAJA y no hay turno
     final noCajaAbierta =
-        !isCredito && _selectedAccountId != null && _activeShift == null;
+        !isCredito &&
+        _selectedAccountId != null &&
+        isCajaAccount &&
+        _activeShift == null;
 
     final puedeVender =
         pos.itemCount > 0 &&
@@ -701,7 +928,21 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _CartItemsList(pos: pos),
+                    _CartItemsList(
+                      pos: pos,
+                      batchOverrides:
+                          Map<String, List<_BatchAssignment>>.fromEntries(
+                            pos.batchOverrides.entries
+                                .where((e) => e.value.isNotEmpty)
+                                .map(
+                                  (e) => MapEntry(
+                                    e.key,
+                                    e.value.cast<_BatchAssignment>(),
+                                  ),
+                                ),
+                          ),
+                      onEditBatches: _showBatchEditSheet,
+                    ),
                     const SizedBox(height: 20),
 
                     // ── 2. CLIENTE ────────────────────────────────────────
@@ -1321,7 +1562,14 @@ class _SectionLabel extends StatelessWidget {
 
 class _CartItemsList extends StatelessWidget {
   final PosProvider pos;
-  const _CartItemsList({required this.pos});
+  final Map<String, List<_BatchAssignment>> batchOverrides;
+  final Future<void> Function(CartItemModel, PosProvider) onEditBatches;
+
+  const _CartItemsList({
+    required this.pos,
+    required this.batchOverrides,
+    required this.onEditBatches,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1340,7 +1588,13 @@ class _CartItemsList extends StatelessWidget {
             final isLast = index == pos.items.length - 1;
             return Column(
               children: [
-                _CartItemRow(item: item, pos: pos),
+                _CartItemRow(
+                  item: item,
+                  pos: pos,
+                  batchAssignments: batchOverrides[item.cartKey],
+                  onEditBatches:
+                      item.usesBatches ? () => onEditBatches(item, pos) : null,
+                ),
                 if (!isLast)
                   const Divider(
                     height: 1,
@@ -1359,8 +1613,16 @@ class _CartItemsList extends StatelessWidget {
 class _CartItemRow extends StatelessWidget {
   final CartItemModel item;
   final PosProvider pos;
+  // null si el producto no maneja lotes
+  final List<_BatchAssignment>? batchAssignments;
+  final VoidCallback? onEditBatches;
 
-  const _CartItemRow({required this.item, required this.pos});
+  const _CartItemRow({
+    required this.item,
+    required this.pos,
+    this.batchAssignments,
+    this.onEditBatches,
+  });
 
   Future<void> _mostrarDialogoCantidad(BuildContext context) async {
     final qtyCtrl = TextEditingController(text: item.quantity.toString());
@@ -1422,10 +1684,20 @@ class _CartItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Resumen de lotes para mostrar debajo del nombre (solo si usa lotes)
+    final bool hasBatchOverride =
+        onEditBatches != null && batchAssignments != null;
+    final activeBatches =
+        hasBatchOverride
+            ? batchAssignments!.where((b) => b.assigned > 0).toList()
+            : <_BatchAssignment>[];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Imagen
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child:
@@ -1451,6 +1723,8 @@ class _CartItemRow extends StatelessWidget {
                     ),
           ),
           const SizedBox(width: 12),
+
+          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1475,6 +1749,85 @@ class _CartItemRow extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+
+                // ── Chips de lotes asignados (FEFO o editados) ──────────
+                if (onEditBatches != null) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: onEditBatches,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            hasBatchOverride && activeBatches.isNotEmpty
+                                ? AppColors.teal.withValues(alpha: 0.08)
+                                : AppColors.amberLight.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color:
+                              hasBatchOverride && activeBatches.isNotEmpty
+                                  ? AppColors.teal.withValues(alpha: 0.3)
+                                  : AppColors.amber.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            hasBatchOverride && activeBatches.isNotEmpty
+                                ? Icons.inventory_2_rounded
+                                : Icons.edit_note_rounded,
+                            size: 11,
+                            color:
+                                hasBatchOverride && activeBatches.isNotEmpty
+                                    ? AppColors.teal
+                                    : AppColors.amber,
+                          ),
+                          const SizedBox(width: 4),
+                          if (hasBatchOverride && activeBatches.isNotEmpty)
+                            Text(
+                              activeBatches
+                                  .map((b) {
+                                    final exp =
+                                        b.expiryDate != null
+                                            ? ' (vto ${b.expiryLabel})'
+                                            : '';
+                                    return '${b.assigned}u · ${b.batchNumber}$exp';
+                                  })
+                                  .join(' + '),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.tealDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            )
+                          else
+                            const Text(
+                              'FEFO automático · Toca para editar lotes',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.amber,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.edit_rounded,
+                            size: 10,
+                            color:
+                                hasBatchOverride && activeBatches.isNotEmpty
+                                    ? AppColors.teal
+                                    : AppColors.amber,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -1571,6 +1924,8 @@ class _CartItemRow extends StatelessWidget {
               ],
             ),
           ),
+
+          // Precio total + borrar
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -1600,6 +1955,438 @@ class _CartItemRow extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── BOTTOM SHEET: EDITAR LOTES ──────────────────────────────────────────────
+
+class _BatchEditSheet extends StatefulWidget {
+  final String productName;
+  final String? variantLabel;
+  final int totalRequired;
+  final List<_BatchAssignment>
+  batches; // ya ordenados FEFO, con assigned pre-cargado
+
+  const _BatchEditSheet({
+    required this.productName,
+    this.variantLabel,
+    required this.totalRequired,
+    required this.batches,
+  });
+
+  @override
+  State<_BatchEditSheet> createState() => _BatchEditSheetState();
+}
+
+class _BatchEditSheetState extends State<_BatchEditSheet> {
+  late final List<_BatchAssignment> _batches;
+
+  @override
+  void initState() {
+    super.initState();
+    // Trabajamos con copias para no mutar el original hasta confirmar
+    _batches =
+        widget.batches.map((b) => b.copyWith(assigned: b.assigned)).toList();
+  }
+
+  int get _totalAssigned => _batches.fold(0, (s, b) => s + b.assigned);
+
+  int get _remaining => widget.totalRequired - _totalAssigned;
+
+  bool get _isValid => _totalAssigned == widget.totalRequired;
+
+  /// Distribuye automáticamente los lotes siguiendo FEFO puro,
+  /// reiniciando cualquier asignación manual previa.
+  void _resetToFefo() {
+    setState(() {
+      for (final b in _batches) {
+        b.assigned = 0;
+      }
+      int rem = widget.totalRequired;
+      for (final b in _batches) {
+        if (rem <= 0) break;
+        b.assigned = rem > b.available ? b.available : rem;
+        rem -= b.assigned;
+      }
+    });
+  }
+
+  void _changeAssigned(int index, int delta) {
+    setState(() {
+      final b = _batches[index];
+      final newVal = (b.assigned + delta).clamp(0, b.available);
+      _batches[index].assigned = newVal;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Título
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Asignación de Lotes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      widget.variantLabel != null
+                          ? '${widget.productName} · ${widget.variantLabel}'
+                          : widget.productName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _resetToFefo,
+                icon: const Icon(Icons.restart_alt_rounded, size: 14),
+                label: const Text(
+                  'Reset FEFO',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.teal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Indicador: asignado vs requerido
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color:
+                  _isValid
+                      ? AppColors.successLight
+                      : (_remaining < 0
+                          ? AppColors.dangerLight
+                          : AppColors.amberLight),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color:
+                    _isValid
+                        ? AppColors.success.withValues(alpha: 0.3)
+                        : (_remaining < 0
+                            ? AppColors.danger.withValues(alpha: 0.3)
+                            : AppColors.amber.withValues(alpha: 0.4)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isValid
+                      ? Icons.check_circle_rounded
+                      : (_remaining < 0
+                          ? Icons.error_rounded
+                          : Icons.warning_rounded),
+                  size: 14,
+                  color:
+                      _isValid
+                          ? AppColors.success
+                          : (_remaining < 0
+                              ? AppColors.danger
+                              : AppColors.amber),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isValid
+                      ? 'Asignación completa: $_totalAssigned / ${widget.totalRequired} unidades ✓'
+                      : _remaining > 0
+                      ? 'Faltan $_remaining unidades por asignar'
+                      : 'Exceso de ${-_remaining} unidades. Reduce algún lote.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        _isValid
+                            ? AppColors.success
+                            : (_remaining < 0
+                                ? AppColors.danger
+                                : AppColors.amber),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Lista de lotes
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 320),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _batches.length,
+              separatorBuilder:
+                  (_, __) => const Divider(height: 1, color: AppColors.divider),
+              itemBuilder: (context, index) {
+                final b = _batches[index];
+                final isExpired =
+                    b.expiryDate != null &&
+                    b.expiryDate!.isBefore(DateTime.now());
+                final badgeColor =
+                    isExpired
+                        ? AppColors.danger
+                        : b.isExpiringSoon
+                        ? AppColors.amber
+                        : AppColors.success;
+                final badgeLabel =
+                    isExpired
+                        ? 'VENCIDO'
+                        : b.isExpiringSoon
+                        ? 'PRÓXIMO A VENCER'
+                        : b.expiryDate != null
+                        ? 'Vto: ${b.expiryLabel}'
+                        : 'Sin vto.';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      // Info lote
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.tag_rounded,
+                                  size: 12,
+                                  color: AppColors.textHint,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  b.batchNumber,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                if (index == 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.tealLight,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'FEFO 1°',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.tealDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: badgeColor.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    badgeLabel,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: badgeColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Disponible: ${b.available} u',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Stepper de cantidad
+                      Container(
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap:
+                                  b.assigned > 0
+                                      ? () => _changeAssigned(index, -1)
+                                      : null,
+                              borderRadius: const BorderRadius.horizontal(
+                                left: Radius.circular(8),
+                              ),
+                              child: Container(
+                                width: 30,
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.remove_rounded,
+                                  size: 14,
+                                  color:
+                                      b.assigned > 0
+                                          ? AppColors.textSecondary
+                                          : AppColors.textHint,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              constraints: const BoxConstraints(minWidth: 36),
+                              alignment: Alignment.center,
+                              color: AppColors.tealLight.withValues(
+                                alpha: 0.25,
+                              ),
+                              child: Text(
+                                '${b.assigned}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.tealDark,
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap:
+                                  b.assigned < b.available && _remaining > 0
+                                      ? () => _changeAssigned(index, 1)
+                                      : null,
+                              borderRadius: const BorderRadius.horizontal(
+                                right: Radius.circular(8),
+                              ),
+                              child: Container(
+                                width: 30,
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.add_rounded,
+                                  size: 14,
+                                  color:
+                                      b.assigned < b.available && _remaining > 0
+                                          ? AppColors.textSecondary
+                                          : AppColors.textHint,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Botón confirmar
+          SizedBox(
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed:
+                  _isValid
+                      ? () => Navigator.pop(context, List.of(_batches))
+                      : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.teal,
+                disabledBackgroundColor: AppColors.bg,
+                disabledForegroundColor: AppColors.textHint,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(
+                Icons.check_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'Confirmar asignación',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1640,6 +2427,10 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCajaSelected = accountsList.any(
+      (a) => a['id'] == selectedAccountId && a['type'] == 'CAJA',
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1803,8 +2594,11 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
                 color: AppColors.bg,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 border: Border.all(
+                  // CORREGIR ESTA LÍNEA:
                   color:
-                      activeShift == null ? AppColors.danger : AppColors.border,
+                      (isCajaSelected && activeShift == null)
+                          ? AppColors.danger
+                          : AppColors.border,
                 ),
               ),
               child: DropdownButtonHideUnderline(
@@ -1847,7 +2641,7 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (selectedAccountId != null)
+            if (selectedAccountId != null && isCajaSelected)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(

@@ -10,7 +10,13 @@ class CartItemModel {
   final double? wholesalePrice;
   final String? imageUrl;
   final String? sku;
-  int availableStock; // Nota: Lo ideal es pasar este valor desde la consulta de stock real
+  int availableStock;
+
+  // Indica si el producto gestiona stock por lotes (uses_batches en products).
+  // Se propaga desde ProductModel al añadir al carrito, NO viene de la BD
+  // de cart_items — es un dato de producto, no del carrito.
+  final bool usesBatches;
+
   bool isSelected;
 
   CartItemModel({
@@ -22,15 +28,16 @@ class CartItemModel {
     this.wholesalePrice,
     this.imageUrl,
     this.sku,
-    int? availableStock, // Cambiado a requerido o con valor por defecto seguro
+    int? availableStock,
+    bool? usesBatches,
     String? cartKey,
     this.isSelected = true,
-  })  : unitPrice = unitPrice ?? product.salePrice,
-        // CORRECCIÓN 1: Como product.currentStock no existe, por defecto iniciamos en 0 
-        // a menos que inyectes el stock real de la variante/lote al añadir al carrito.
-        availableStock = availableStock ?? 0, 
-        // CORRECCIÓN 2: product.id es obligatorio, no necesitas usar ?? ''
-        cartKey = cartKey ?? buildKey(product.id, variantId);
+  }) : unitPrice = unitPrice ?? product.salePrice,
+       // Si no se pasa explícitamente, lo tomamos del propio ProductModel.
+       // Así nunca queda en false por descuido al construir el ítem.
+       usesBatches = usesBatches ?? product.usesBatches,
+       availableStock = availableStock ?? 0,
+       cartKey = cartKey ?? buildKey(product.id, variantId);
 
   static String buildKey(String productId, String? variantId) {
     return variantId == null || variantId.isEmpty
@@ -39,6 +46,8 @@ class CartItemModel {
   }
 
   double get totalItemPrice => unitPrice * quantity;
+
+  // ── Serialización (para persistencia local, p.ej. Hive/SharedPreferences) ─
 
   Map<String, dynamic> toJson() {
     return {
@@ -52,31 +61,35 @@ class CartItemModel {
       'sku': sku,
       'availableStock': availableStock,
       'cartKey': cartKey,
+      'usesBatches': usesBatches,
       'isSelected': isSelected,
     };
   }
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    final product = ProductModel.fromJson(
+      json['product'] as Map<String, dynamic>,
+    );
     return CartItemModel(
-      product: ProductModel.fromJson(json['product'] as Map<String, dynamic>),
-      // CORRECCIÓN 3: Casteos numéricos explícitos y seguros para persistencia local
+      product: product,
       quantity: (json['quantity'] as num).toInt(),
       variantId: json['variantId'] as String?,
       variantLabel: json['variantLabel'] as String?,
       unitPrice: (json['unitPrice'] as num).toDouble(),
-      wholesalePrice: json['wholesalePrice'] != null 
-          ? (json['wholesalePrice'] as num).toDouble() 
-          : null,
+      wholesalePrice:
+          json['wholesalePrice'] != null
+              ? (json['wholesalePrice'] as num).toDouble()
+              : null,
       imageUrl: json['imageUrl'] as String?,
       sku: json['sku'] as String?,
       availableStock: (json['availableStock'] as num).toInt(),
       cartKey: json['cartKey'] as String,
+      // Si viene de un JSON antiguo sin este campo, el fallback es product.usesBatches.
+      usesBatches: json['usesBatches'] as bool? ?? product.usesBatches,
       isSelected: json['isSelected'] as bool? ?? true,
     );
   }
 
-  /// Método copyWith añadido para facilitar la actualización de cantidades 
-  /// o selección en tus gestores de estado (Bloc, Riverpod, Provider).
   CartItemModel copyWith({
     ProductModel? product,
     int? quantity,
@@ -88,6 +101,7 @@ class CartItemModel {
     String? imageUrl,
     String? sku,
     int? availableStock,
+    bool? usesBatches,
     bool? isSelected,
   }) {
     return CartItemModel(
@@ -101,6 +115,7 @@ class CartItemModel {
       imageUrl: imageUrl ?? this.imageUrl,
       sku: sku ?? this.sku,
       availableStock: availableStock ?? this.availableStock,
+      usesBatches: usesBatches ?? this.usesBatches,
       isSelected: isSelected ?? this.isSelected,
     );
   }

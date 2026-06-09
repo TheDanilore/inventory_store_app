@@ -13,8 +13,21 @@ class PosProvider with ChangeNotifier {
   String _paymentMethod = 'EFECTIVO';
   String? _selectedWarehouseId;
 
-  // Getters
-  Map<String, CartItemModel> get items => {..._items};
+  // --- LOTES: override manual por cartKey ---
+  // Guardamos los overrides aquí para que el checkout los lea y también los
+  // pueda limpiar cuando cambia el almacén o se elimina un producto.
+  // Clave: cartKey  →  lista de segmentos de lote asignados manualmente.
+  // El tipo es `dynamic` para no crear dependencia circular con _BatchAssignment
+  // del checkout. El checkout gestiona el tipo concreto; el provider solo lo almacena.
+  final Map<String, List<dynamic>> _batchOverrides = {};
+
+  // --- GETTERS ---
+
+  // IMPORTANTE: retornamos una vista UNMODIFIABLE del mapa interno, no una copia
+  // shallow. Así el checkout siempre lee los valores actualizados sin necesidad
+  // de recrear el mapa en cada rebuild, evitando inconsistencias con _batchOverrides.
+  Map<String, CartItemModel> get items => Map.unmodifiable(_items);
+
   int get itemCount => _items.length;
 
   String? get selectedClientId => _selectedClientId;
@@ -24,18 +37,24 @@ class PosProvider with ChangeNotifier {
   String get paymentMethod => _paymentMethod;
   String? get selectedWarehouseId => _selectedWarehouseId;
 
+  /// Overrides de lotes asignados manualmente (cartKey → lista dinámica).
+  /// El checkout los lee y escribe a través de [setBatchOverride] / [clearBatchOverride].
+  Map<String, List<dynamic>> get batchOverrides =>
+      Map.unmodifiable(_batchOverrides);
+
   double get totalAmount {
     var total = 0.0;
-    _items.forEach((key, item) => total += item.totalItemPrice);
+    _items.forEach((_, item) => total += item.totalItemPrice);
     return total;
   }
 
   // --- SETTERS DE CONFIGURACIÓN ---
+
   void setClient(String? id, String? name, int saldo) {
     _selectedClientId = id;
     _selectedClientName = name;
     _saldoActualCliente = saldo;
-    _puntosAUsar = 0; // Se resetean los puntos al cambiar de cliente
+    _puntosAUsar = 0;
     notifyListeners();
   }
 
@@ -49,12 +68,36 @@ class PosProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cambiar de almacén limpia todos los overrides de lotes porque los lotes
+  /// son específicos a cada almacén. El usuario tendrá que reasignar si quiere.
   void setWarehouse(String? id) {
+    if (id != _selectedWarehouseId) {
+      _batchOverrides.clear();
+    }
     _selectedWarehouseId = id;
     notifyListeners();
   }
 
+  // --- GESTIÓN DE LOTES ---
+
+  /// Guarda el override de lotes para un ítem. Llamado desde el checkout
+  /// cuando el usuario confirma la asignación en el _BatchEditSheet.
+  void setBatchOverride(String cartKey, List<dynamic> assignments) {
+    _batchOverrides[cartKey] = assignments;
+    notifyListeners();
+  }
+
+  /// Elimina el override de un ítem (vuelve a FEFO automático).
+  void clearBatchOverride(String cartKey) {
+    _batchOverrides.remove(cartKey);
+    notifyListeners();
+  }
+
+  /// Retorna true si el ítem tiene un override manual guardado.
+  bool hasBatchOverride(String cartKey) => _batchOverrides.containsKey(cartKey);
+
   // --- MÉTODOS DEL CARRITO ---
+
   void addProductToPos({
     required ProductModel product,
     required int quantity,
@@ -73,6 +116,9 @@ class PosProvider with ChangeNotifier {
         existing.quantity += quantity;
         return existing;
       });
+      // Si se suma más cantidad al mismo ítem, el override previo ya no es
+      // válido porque la suma de lotes no cuadraría con la nueva cantidad.
+      _batchOverrides.remove(key);
     } else {
       _items.putIfAbsent(
         key,
@@ -87,6 +133,9 @@ class PosProvider with ChangeNotifier {
           sku: sku,
           availableStock: availableStock ?? product.totalStock,
           cartKey: key,
+          // Propagamos si el producto gestiona lotes para que el checkout
+          // pueda mostrar el chip de edición sin acceder al ProductModel.
+          usesBatches: product.usesBatches,
         ),
       );
     }
@@ -97,6 +146,7 @@ class PosProvider with ChangeNotifier {
     if (!_items.containsKey(cartKey)) return;
     if (quantity <= 0) {
       _items.remove(cartKey);
+      _batchOverrides.remove(cartKey); // limpiamos override huérfano
     } else {
       _items.update(cartKey, (existing) {
         existing.quantity =
@@ -105,24 +155,27 @@ class PosProvider with ChangeNotifier {
                 : quantity;
         return existing;
       });
+      // Si la cantidad cambió, el override de lotes ya no cuadra → borramos.
+      _batchOverrides.remove(cartKey);
     }
     notifyListeners();
   }
 
   void removeProduct(String key) {
     _items.remove(key);
+    _batchOverrides.remove(key); // siempre limpiamos el override asociado
     notifyListeners();
   }
 
   void clearPos() {
     _items.clear();
-    // Limpiamos también la configuración al terminar la venta
+    _batchOverrides.clear();
     _selectedClientId = null;
     _selectedClientName = null;
     _saldoActualCliente = 0;
     _puntosAUsar = 0;
     _paymentMethod = 'EFECTIVO';
-    // Nota: Dejamos el almacén (_selectedWarehouseId) como estaba por comodidad para la siguiente venta.
+    // El almacén se mantiene para comodidad en la siguiente venta.
     notifyListeners();
   }
 }

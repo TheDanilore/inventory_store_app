@@ -60,7 +60,7 @@ class _ShiftsTabState extends State<ShiftsTab>
 
     final accountsRes = await _supabase
         .from('financial_accounts')
-        .select('id, name, type')
+        .select('id, name, type, balance') 
         .eq('is_active', true)
         .eq('type', 'CAJA')
         .order('name');
