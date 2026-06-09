@@ -2554,13 +2554,6 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
     'OTRO': AppColors.textSecondary,
   };
 
-  static const Map<String, String> _typeLabels = {
-    'CAJA': 'Efectivo',
-    'BANCO': 'Transferencia / Tarjeta',
-    'DIGITAL': 'Billetera digital',
-    'OTRO': 'Otro',
-  };
-
   const _PaymentWarehouseAccountCard({
     required this.paymentMethod,
     required this.warehouseList,
@@ -2576,13 +2569,6 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Agrupar cuentas por tipo
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    for (final acc in accountsList) {
-      final type = acc['type'] as String? ?? 'OTRO';
-      grouped.putIfAbsent(type, () => []).add(acc);
-    }
-
     // Cuenta actualmente seleccionada
     final selectedAcc =
         selectedAccountId != null
@@ -2592,7 +2578,7 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
             )
             : <String, dynamic>{};
     final selectedType = selectedAcc['type'] as String? ?? '';
-    final isCajaSelected = selectedType == 'CAJA';
+    final isCajaSelected = !isCredito && selectedType == 'CAJA';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -2605,8 +2591,222 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Método de pago / cuenta ─────────────────────────────────
+          const Text(
+            'Método de pago',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                // ── Chips de cuentas financieras ──────────────────────
+                ...accountsList.map((acc) {
+                  final type = acc['type'] as String? ?? 'OTRO';
+                  final chipColor =
+                      _typeColors[type] ?? AppColors.textSecondary;
+                  final chipIcon = _typeIcons[type] ?? Icons.wallet_rounded;
+                  final isSelected =
+                      !isCredito && acc['id'] == selectedAccountId;
+                  final balance =
+                      (acc['balance'] as num?)?.toStringAsFixed(0) ?? '0';
+
+                  return GestureDetector(
+                    onTap: () => onAccountChanged(acc['id'] as String),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? chipColor.withValues(alpha: 0.12)
+                                : AppColors.bg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? chipColor : AppColors.border,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            chipIcon,
+                            size: 14,
+                            color: isSelected ? chipColor : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                acc['name'] as String,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isSelected
+                                          ? chipColor
+                                          : AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                'S/ $balance',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color:
+                                      isSelected
+                                          ? chipColor.withValues(alpha: 0.75)
+                                          : AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Dot de turno (solo CAJA seleccionada)
+                          if (type == 'CAJA' && isSelected) ...[
+                            const SizedBox(width: 6),
+                            Icon(
+                              activeShift != null
+                                  ? Icons.circle
+                                  : Icons.warning_rounded,
+                              size: activeShift != null ? 7 : 13,
+                              color:
+                                  activeShift != null
+                                      ? AppColors.success
+                                      : AppColors.danger,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+
+                // ── Separador visual antes de CRÉDITO ─────────────────
+                if (accountsList.isNotEmpty)
+                  Container(
+                    width: 1,
+                    height: 28,
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 8,
+                    ),
+                    color: AppColors.border,
+                  ),
+
+                // ── Chip CRÉDITO (siempre al final) ───────────────────
+                GestureDetector(
+                  onTap: () => onCreditoToggle(!isCredito),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.only(left: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color:
+                          isCredito
+                              ? Colors.deepOrange.withValues(alpha: 0.12)
+                              : AppColors.bg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isCredito ? Colors.deepOrange : AppColors.border,
+                        width: isCredito ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.handshake_rounded,
+                          size: 14,
+                          color:
+                              isCredito
+                                  ? Colors.deepOrange
+                                  : AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'CRÉDITO',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                isCredito
+                                    ? Colors.deepOrange
+                                    : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Aviso turno de caja (inline, debajo de chips) ──────────
+          if (isCajaSelected) ...[
+            const SizedBox(height: 8),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color:
+                    activeShift != null
+                        ? AppColors.successLight
+                        : AppColors.dangerLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color:
+                      activeShift != null
+                          ? AppColors.success.withValues(alpha: 0.3)
+                          : AppColors.danger.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    activeShift != null
+                        ? Icons.check_circle_rounded
+                        : Icons.lock_rounded,
+                    size: 13,
+                    color:
+                        activeShift != null
+                            ? AppColors.success
+                            : AppColors.danger,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    activeShift != null
+                        ? 'Turno de caja abierto ✓'
+                        : 'Caja sin turno abierto — no se puede cobrar',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          activeShift != null
+                              ? AppColors.success
+                              : AppColors.danger,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // ── Almacén ────────────────────────────────────────────────────
           if (warehouseList.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: AppColors.divider),
+            const SizedBox(height: 14),
             const Text(
               'Almacén de origen',
               style: TextStyle(
@@ -2659,283 +2859,6 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: 14),
-          ],
-
-          // ── Destino del pago ────────────────────────────────────────────
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Destino del pago',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              // Chip CRÉDITO especial
-              GestureDetector(
-                onTap: () => onCreditoToggle(!isCredito),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isCredito ? Colors.deepOrange : AppColors.bg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isCredito ? Colors.deepOrange : AppColors.border,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.handshake_rounded,
-                        size: 13,
-                        color: isCredito ? Colors.white : Colors.deepOrange,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'CRÉDITO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: isCredito ? Colors.white : Colors.deepOrange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          if (isCredito) ...[
-            // ── Modo CRÉDITO activo: mostrar info ──────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.deepOrange.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(AppColors.radius),
-                border: Border.all(
-                  color: Colors.deepOrange.withValues(alpha: 0.25),
-                ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 14,
-                    color: Colors.deepOrange,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Venta a crédito — no requiere cuenta financiera. '
-                      'El cobro queda pendiente.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.deepOrange,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            // ── Selección de cuenta por tipo ───────────────────────────
-            ...grouped.entries.map((entry) {
-              final type = entry.key;
-              final accounts = entry.value;
-              final typeColor = _typeColors[type] ?? AppColors.textSecondary;
-              final typeIcon = _typeIcons[type] ?? Icons.wallet_rounded;
-              final typeLabel = _typeLabels[type] ?? type;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Cabecera del grupo de tipo
-                    Row(
-                      children: [
-                        Icon(typeIcon, size: 12, color: typeColor),
-                        const SizedBox(width: 5),
-                        Text(
-                          typeLabel,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: typeColor,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // Chips de cuentas dentro del tipo
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children:
-                          accounts.map((acc) {
-                            final isSelected =
-                                acc['id'] == selectedAccountId && !isCredito;
-                            final balance =
-                                (acc['balance'] as num?)?.toStringAsFixed(0) ??
-                                '0';
-                            return GestureDetector(
-                              onTap:
-                                  () => onAccountChanged(acc['id'] as String),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isSelected
-                                          ? typeColor.withValues(alpha: 0.1)
-                                          : AppColors.bg,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color:
-                                        isSelected
-                                            ? typeColor
-                                            : AppColors.border,
-                                    width: isSelected ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      typeIcon,
-                                      size: 14,
-                                      color:
-                                          isSelected
-                                              ? typeColor
-                                              : AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          acc['name'] as String,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color:
-                                                isSelected
-                                                    ? typeColor
-                                                    : AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        Text(
-                                          'S/ $balance',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                            color:
-                                                isSelected
-                                                    ? typeColor.withValues(
-                                                      alpha: 0.8,
-                                                    )
-                                                    : AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    // Indicador de turno para cuentas CAJA
-                                    if (type == 'CAJA' && isSelected) ...[
-                                      const SizedBox(width: 6),
-                                      Icon(
-                                        activeShift != null
-                                            ? Icons.check_circle_rounded
-                                            : Icons.warning_rounded,
-                                        size: 13,
-                                        color:
-                                            activeShift != null
-                                                ? AppColors.success
-                                                : AppColors.danger,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                    ),
-                  ],
-                ),
-              );
-            }),
-
-            // ── Aviso de turno cerrado (cuando es CAJA sin turno) ──────
-            if (isCajaSelected && selectedAccountId != null)
-              AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        activeShift != null
-                            ? AppColors.successLight
-                            : AppColors.dangerLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color:
-                          activeShift != null
-                              ? AppColors.success.withValues(alpha: 0.3)
-                              : AppColors.danger.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        activeShift != null
-                            ? Icons.check_circle_rounded
-                            : Icons.lock_rounded,
-                        size: 13,
-                        color:
-                            activeShift != null
-                                ? AppColors.success
-                                : AppColors.danger,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        activeShift != null
-                            ? 'Turno de caja abierto ✓'
-                            : 'Esta caja no tiene un turno abierto',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              activeShift != null
-                                  ? AppColors.success
-                                  : AppColors.danger,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ],
       ),
