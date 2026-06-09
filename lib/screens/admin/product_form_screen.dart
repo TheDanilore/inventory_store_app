@@ -790,8 +790,9 @@ class _FormularioScreenState extends State<FormularioScreen> {
 
         for (final row in _ingredientRows) {
           // Validamos que tenga un ingrediente válido seleccionado
-          if (row.ingredientId == null || row.nameCtrl.text.trim().isEmpty)
+          if (row.ingredientId == null || row.nameCtrl.text.trim().isEmpty) {
             continue;
+          }
 
           // Simplemente vinculamos el ingrediente al producto
           final payload = {

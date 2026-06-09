@@ -61,7 +61,6 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   bool _creditExistsInDb = false;
   String? _creditId;
   double _currentDebt = 0; // solo lectura, viene de BD
-  double _currentCreditLimit = 0; // valor original en BD para comparar
 
   // Billetera
   int _currentWalletBalance = 0; // saldo actual en BD
@@ -125,7 +124,6 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           _creditIsActive = isActive;
           _hasCredit = isActive;
           _currentDebt = (resp['current_debt'] as num).toDouble();
-          _currentCreditLimit = limit;
           _creditLimitCtrl.text = limit.toStringAsFixed(2);
         });
       }

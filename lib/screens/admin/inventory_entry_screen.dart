@@ -60,7 +60,9 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
 
   // ── Cuentas financieras ───────────────────────────────────────────────────
   List<FinancialAccountModel> _financialAccounts = [];
-  String? _selectedAccountId;
+  String?
+  _selectedAccountId; // La cuenta con la que vas a pagar (Caja, Yape, etc.)
+  String? _activeShiftId; // Aquí guardaremos el ID del turno si está abierto
   // Método de pago que se registrará en account_movements
   // 'CONTADO' = pagado al momento. 'CREDITO' = no genera movimiento financiero aún.
   String _paymentMode = 'CONTADO';
@@ -171,6 +173,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         // Preseleccionar la primera cuenta disponible
         if (_financialAccounts.isNotEmpty) {
           _selectedAccountId = _financialAccounts.first.id;
+          _checkActiveShift(_selectedAccountId!);
         }
 
         _loadingWarehouses = false;
@@ -190,6 +193,26 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
           _loadingAccounts = false;
         });
       }
+    }
+  }
+
+  Future<void> _checkActiveShift(String accountId) async {
+    try {
+      final shiftRes =
+          await _supabase
+              .from('cash_shifts')
+              .select('id')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
+
+      if (mounted) {
+        setState(() {
+          _activeShiftId = shiftRes?['id'] as String?;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error verificando turno de caja: $e');
     }
   }
 
@@ -316,6 +339,16 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         context,
         message: 'Seleccione la cuenta financiera que se utilizará para pagar',
         type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    // Si el modo de pago es CONTADO, la cuenta seleccionada debe tener un turno de caja abierto.
+    if (_paymentMode == 'CONTADO' && _activeShiftId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'La cuenta seleccionada no tiene un turno de caja abierto.',
+        type: SnackbarType.error,
       );
       return;
     }
@@ -480,6 +513,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
           'reference_type': 'inventory_entry',
           'reference_id': entryId,
           'created_by': createdByProfileId,
+          'shift_id': _activeShiftId,
         });
 
         // 5b. Actualizar saldo de la cuenta financiera
@@ -583,10 +617,12 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                             ),
                                           )
                                           .toList(),
-                                  onChanged:
-                                      (v) => setState(
-                                        () => _selectedWarehouseId = v,
-                                      ),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      // CORRECCIÓN: Aquí se actualiza el Almacén, no la cuenta
+                                      setState(() => _selectedWarehouseId = v);
+                                    }
+                                  },
                                 ),
                                 const SizedBox(height: 12),
 
@@ -762,11 +798,52 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                             ),
                                           );
                                         }).toList(),
-                                    onChanged:
-                                        (v) => setState(
-                                          () => _selectedAccountId = v,
-                                        ),
+                                    onChanged: (v) {
+                                      if (v != null) {
+                                        setState(() => _selectedAccountId = v);
+                                        // AQUÍ ES DONDE DEBE IR LA VERIFICACIÓN DE LA CAJA
+                                        _checkActiveShift(v);
+                                      }
+                                    },
                                   ),
+
+                                  // --- INICIO UI DE TURNO ABIERTO/CERRADO ---
+                                  if (_selectedAccountId != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 8,
+                                        bottom: 8,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _activeShiftId != null
+                                                ? Icons.check_circle_rounded
+                                                : Icons.warning_rounded,
+                                            size: 14,
+                                            color:
+                                                _activeShiftId != null
+                                                    ? AppColors.success
+                                                    : AppColors.danger,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _activeShiftId != null
+                                                ? 'Turno de caja abierto'
+                                                : 'Caja cerrada (Se requiere turno abierto)',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color:
+                                                  _activeShiftId != null
+                                                      ? AppColors.success
+                                                      : AppColors.danger,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  // --- FIN UI DE TURNO ABIERTO/CERRADO ---
 
                                   // Advertencia si el saldo es insuficiente
                                   if (_selectedAccountId != null &&
