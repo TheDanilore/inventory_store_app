@@ -343,42 +343,6 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
                   ),
 
-                  // // ── Crédito (con sub-ítems) ─────────────────────────
-                  // _buildExpandableItem(
-                  //   context,
-                  //   _DrawerItem(
-                  //     icon: Icons.credit_card_rounded,
-                  //     title: 'Crédito',
-                  //     children: [
-                  //       _DrawerSubItem(
-                  //         icon: Icons.credit_score_rounded,
-                  //         title: 'Créditos',
-                  //         onTap: () {
-                  //           Navigator.pop(context);
-                  //           Navigator.push(
-                  //             context,
-                  //             MaterialPageRoute(
-                  //               builder: (_) => const AdminCreditsScreen(),
-                  //             ),
-                  //           );
-                  //         },
-                  //       ),
-                  //       _DrawerSubItem(
-                  //         icon: Icons.swap_horiz_rounded,
-                  //         title: 'Movimientos de Crédito',
-                  //         onTap: () {
-                  //           Navigator.pop(context);
-                  //           Navigator.push(
-                  //             context,
-                  //             MaterialPageRoute(
-                  //               builder: (_) => const AdminCreditsScreen(),
-                  //             ),
-                  //           );
-                  //         },
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
                   _buildItem(
                     context,
                     _DrawerItem(
