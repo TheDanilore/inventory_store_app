@@ -92,23 +92,20 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     return raw.cast<_BatchAssignment>();
   }
 
-  final List<String> _paymentMethods = [
-    'EFECTIVO',
-    'YAPE',
-    'PLIN',
-    'TARJETA',
-    'TRANSFERENCIA',
-    'CRÉDITO',
-  ];
-
-  static const Map<String, IconData> _paymentIcons = {
-    'EFECTIVO': Icons.payments_rounded,
-    'YAPE': Icons.smartphone_rounded,
-    'PLIN': Icons.phone_android_rounded,
-    'TARJETA': Icons.credit_card_rounded,
-    'TRANSFERENCIA': Icons.account_balance_rounded,
-    'CRÉDITO': Icons.handshake_rounded,
-  };
+  /// Infiere el método de pago a partir del tipo de cuenta financiera.
+  /// CRÉDITO es manejado aparte — no pasa por aquí.
+  String _inferPaymentMethod(String accountType) {
+    switch (accountType) {
+      case 'CAJA':
+        return 'EFECTIVO';
+      case 'BANCO':
+        return 'TRANSFERENCIA';
+      case 'DIGITAL':
+        return 'DIGITAL';
+      default:
+        return 'OTRO';
+    }
+  }
 
   @override
   void initState() {
@@ -141,11 +138,12 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       final list =
           (whRes as List).map((w) => WarehouseModel.fromJson(w)).toList();
 
-      // 2. Cuentas Financieras
+      // 2. Cuentas Financieras (incluimos 'type' para inferir método de pago)
       final accRes = await _supabase
           .from('financial_accounts')
-          .select('id, name, balance')
+          .select('id, name, type, balance')
           .eq('is_active', true)
+          .order('type')
           .order('name');
       final accs = List<Map<String, dynamic>>.from(accRes);
 
@@ -157,7 +155,14 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           }
           _accountsList = accs;
           if (accs.isNotEmpty) {
-            _selectedAccountId = accs.first['id'] as String;
+            final firstAcc = accs.first;
+            _selectedAccountId = firstAcc['id'] as String;
+            // Sincronizar método de pago con el tipo de cuenta
+            if (pos.paymentMethod != 'CRÉDITO') {
+              pos.setPaymentMethod(
+                _inferPaymentMethod(firstAcc['type'] as String? ?? 'OTRO'),
+              );
+            }
             _checkActiveShift();
           }
         });
@@ -479,10 +484,10 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           List<({String id, int take, int available, String batchNumber})>
           segments = [];
 
-          final _batchAssigned = _batchOverrideFor(pos, cartKey);
-          if (_batchAssigned != null) {
+          final batchAssigned = _batchOverrideFor(pos, cartKey);
+          if (batchAssigned != null) {
             // ── Override manual ──────────────────────────────────────────
-            final overrides = _batchAssigned;
+            final overrides = batchAssigned;
             final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
             if (totalAssigned != item.quantity) {
               throw Exception(
@@ -1009,25 +1014,47 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                     const SizedBox(height: 8),
                     _PaymentWarehouseAccountCard(
                       paymentMethod: pos.paymentMethod,
-                      paymentMethods: _paymentMethods,
-                      paymentIcons: _paymentIcons,
                       warehouseList: _warehouseList,
                       selectedWarehouseId: pos.selectedWarehouseId,
                       accountsList: _accountsList,
                       selectedAccountId: _selectedAccountId,
                       activeShift: _activeShift,
                       isCredito: isCredito,
-                      onPaymentChanged: (v) {
-                        pos.setPaymentMethod(v!);
-                        if (v == 'CRÉDITO') {
+                      onCreditoToggle: (isCredito) {
+                        final pos = context.read<PosProvider>();
+                        if (isCredito) {
+                          pos.setPaymentMethod('CRÉDITO');
                           pos.setPuntosAUsar(0);
                           _puntosCtrl.text = '0';
+                        } else {
+                          // Volver al método inferido de la cuenta seleccionada
+                          if (_selectedAccountId != null) {
+                            final acc = _accountsList.firstWhere(
+                              (a) => a['id'] == _selectedAccountId,
+                              orElse: () => {},
+                            );
+                            final type = acc['type'] as String? ?? 'OTRO';
+                            pos.setPaymentMethod(_inferPaymentMethod(type));
+                          } else {
+                            pos.setPaymentMethod('EFECTIVO');
+                          }
                         }
                         setState(() {});
                       },
                       onWarehouseChanged: (v) => pos.setWarehouse(v),
                       onAccountChanged: (v) {
                         setState(() => _selectedAccountId = v);
+                        if (v != null) {
+                          final acc = _accountsList.firstWhere(
+                            (a) => a['id'] == v,
+                            orElse: () => {},
+                          );
+                          final type = acc['type'] as String? ?? 'OTRO';
+                          final pos = context.read<PosProvider>();
+                          if (pos.paymentMethod != 'CRÉDITO') {
+                            pos.setPaymentMethod(_inferPaymentMethod(type));
+                          }
+                        }
                         _checkActiveShift();
                       },
                     ),
@@ -2023,6 +2050,98 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
     });
   }
 
+  Future<void> _mostrarDialogoCantidad(
+    BuildContext context,
+    int index,
+    dynamic b,
+  ) async {
+    // Inicializa con el valor asignado actual
+    final qtyCtrl = TextEditingController(text: b.assigned.toString());
+
+    // El stock máximo que puede tomar es su asignación actual + lo que queda libre en el total (_remaining)
+    // O bien, el límite físico de la propia cuenta (b.available). Tomamos el menor de ambos.
+    final maximoPermitido = b.assigned + _remaining;
+    final stockMaximoReal =
+        maximoPermitido < b.available ? maximoPermitido : b.available;
+
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text(
+              'Cantidad exacta',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: TextField(
+              controller: qtyCtrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                helperText: 'Límite disponible: $stockMaximoReal',
+                helperStyle: const TextStyle(
+                  color: AppColors.tealDark,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.tealDark,
+                ),
+                onPressed: () {
+                  final newQty = int.tryParse(qtyCtrl.text.trim());
+
+                  if (newQty != null && newQty >= 0) {
+                    if (newQty <= stockMaximoReal) {
+                      // Forzamos el resultado de la resta a un entero usando .toInt()
+                      final diferencia = (newQty - b.assigned).toInt();
+
+                      if (diferencia != 0) {
+                        _changeAssigned(index, diferencia);
+                      }
+                      Navigator.pop(dialogContext);
+                    } else {
+                      // Alerta si el usuario se pasa de la capacidad disponible usando el snackbar que creamos
+                      AppSnackbar.show(
+                        context,
+                        message:
+                            'No puedes asignar más de $stockMaximoReal unidades.',
+                        type: SnackbarType.warning,
+                      );
+                    }
+                  } else {
+                    AppSnackbar.show(
+                      context,
+                      message: 'Por favor, ingresa un número válido.',
+                      type: SnackbarType.error,
+                    );
+                  }
+                },
+                child: const Text(
+                  'Guardar',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -2309,21 +2428,34 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
                                 ),
                               ),
                             ),
-                            Container(
-                              constraints: const BoxConstraints(minWidth: 36),
-                              alignment: Alignment.center,
-                              color: AppColors.tealLight.withValues(
-                                alpha: 0.25,
-                              ),
-                              child: Text(
-                                '${b.assigned}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.tealDark,
+                            // --- CAMBIO AQUÍ: Ahora es interactivo para abrir el diálogo ---
+                            GestureDetector(
+                              onTap:
+                                  () => _mostrarDialogoCantidad(
+                                    context,
+                                    index,
+                                    b,
+                                  ),
+                              child: Container(
+                                constraints: const BoxConstraints(minWidth: 36),
+                                alignment: Alignment.center,
+                                color: AppColors.tealLight.withValues(
+                                  alpha: 0.25,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ), // Espaciado extra por si digitan números grandes
+                                child: Text(
+                                  '${b.assigned}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.tealDark,
+                                  ),
                                 ),
                               ),
                             ),
+                            // -------------------------------------------------------------
                             InkWell(
                               onTap:
                                   b.assigned < b.available && _remaining > 0
@@ -2398,38 +2530,69 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
 
 class _PaymentWarehouseAccountCard extends StatelessWidget {
   final String paymentMethod;
-  final List<String> paymentMethods;
-  final Map<String, IconData> paymentIcons;
   final List<WarehouseModel> warehouseList;
   final String? selectedWarehouseId;
   final List<Map<String, dynamic>> accountsList;
   final String? selectedAccountId;
   final Map<String, dynamic>? activeShift;
   final bool isCredito;
-  final ValueChanged<String?> onPaymentChanged;
   final ValueChanged<String?> onWarehouseChanged;
   final ValueChanged<String?> onAccountChanged;
+  final ValueChanged<bool> onCreditoToggle; // true = activar crédito
+
+  static const Map<String, IconData> _typeIcons = {
+    'CAJA': Icons.payments_rounded,
+    'BANCO': Icons.account_balance_rounded,
+    'DIGITAL': Icons.smartphone_rounded,
+    'OTRO': Icons.wallet_rounded,
+  };
+
+  static const Map<String, Color> _typeColors = {
+    'CAJA': AppColors.teal,
+    'BANCO': Colors.indigo,
+    'DIGITAL': Colors.purple,
+    'OTRO': AppColors.textSecondary,
+  };
+
+  static const Map<String, String> _typeLabels = {
+    'CAJA': 'Efectivo',
+    'BANCO': 'Transferencia / Tarjeta',
+    'DIGITAL': 'Billetera digital',
+    'OTRO': 'Otro',
+  };
 
   const _PaymentWarehouseAccountCard({
     required this.paymentMethod,
-    required this.paymentMethods,
-    required this.paymentIcons,
     required this.warehouseList,
     required this.selectedWarehouseId,
     required this.accountsList,
     required this.selectedAccountId,
     required this.activeShift,
     required this.isCredito,
-    required this.onPaymentChanged,
     required this.onWarehouseChanged,
     required this.onAccountChanged,
+    required this.onCreditoToggle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isCajaSelected = accountsList.any(
-      (a) => a['id'] == selectedAccountId && a['type'] == 'CAJA',
-    );
+    // Agrupar cuentas por tipo
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
+    for (final acc in accountsList) {
+      final type = acc['type'] as String? ?? 'OTRO';
+      grouped.putIfAbsent(type, () => []).add(acc);
+    }
+
+    // Cuenta actualmente seleccionada
+    final selectedAcc =
+        selectedAccountId != null
+            ? accountsList.firstWhere(
+              (a) => a['id'] == selectedAccountId,
+              orElse: () => <String, dynamic>{},
+            )
+            : <String, dynamic>{};
+    final selectedType = selectedAcc['type'] as String? ?? '';
+    final isCajaSelected = selectedType == 'CAJA';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -2442,85 +2605,8 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Método de pago',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children:
-                  paymentMethods.map((method) {
-                    final selected = paymentMethod == method;
-                    final isCurrentCredito = method == 'CRÉDITO';
-                    return GestureDetector(
-                      onTap: () => onPaymentChanged(method),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color:
-                              selected
-                                  ? (isCurrentCredito
-                                      ? Colors.deepOrange
-                                      : AppColors.teal)
-                                  : AppColors.bg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color:
-                                selected
-                                    ? (isCurrentCredito
-                                        ? Colors.deepOrange
-                                        : AppColors.teal)
-                                    : AppColors.border,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              paymentIcons[method] ?? Icons.payment_rounded,
-                              size: 14,
-                              color:
-                                  selected
-                                      ? Colors.white
-                                      : (isCurrentCredito
-                                          ? Colors.deepOrange
-                                          : AppColors.textSecondary),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              method,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color:
-                                    selected
-                                        ? Colors.white
-                                        : (isCurrentCredito
-                                            ? Colors.deepOrange
-                                            : AppColors.textSecondary),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-            ),
-          ),
-
+          // ── Almacén ────────────────────────────────────────────────────
           if (warehouseList.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: AppColors.divider),
-            const SizedBox(height: 14),
             const Text(
               'Almacén de origen',
               style: TextStyle(
@@ -2573,104 +2659,281 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-
-          if (!isCredito && accountsList.isNotEmpty) ...[
             const SizedBox(height: 14),
             const Divider(height: 1, color: AppColors.divider),
             const SizedBox(height: 14),
-            const Text(
-              'Cuenta Financiera (Destino del ingreso)',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppColors.bg,
-                borderRadius: BorderRadius.circular(AppColors.radius),
-                border: Border.all(
-                  // CORREGIR ESTA LÍNEA:
-                  color:
-                      (isCajaSelected && activeShift == null)
-                          ? AppColors.danger
-                          : AppColors.border,
-                ),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedAccountId,
-                  isExpanded: true,
-                  hint: const Text(
-                    'Selecciona una cuenta',
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                  ),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
+          ],
+
+          // ── Destino del pago ────────────────────────────────────────────
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Destino del pago',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   ),
-                  items:
-                      accountsList.map((a) {
-                        return DropdownMenuItem<String>(
-                          value: a['id'],
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.account_balance_wallet_rounded,
-                                size: 16,
-                                color: AppColors.teal,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${a['name']} (S/ ${a['balance']})',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                  onChanged: onAccountChanged,
                 ),
               ),
-            ),
-            if (selectedAccountId != null && isCajaSelected)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      activeShift != null
-                          ? Icons.check_circle_rounded
-                          : Icons.warning_rounded,
-                      size: 14,
-                      color:
-                          activeShift != null
-                              ? AppColors.success
-                              : AppColors.danger,
+              // Chip CRÉDITO especial
+              GestureDetector(
+                onTap: () => onCreditoToggle(!isCredito),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isCredito ? Colors.deepOrange : AppColors.bg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isCredito ? Colors.deepOrange : AppColors.border,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      activeShift != null
-                          ? 'Turno de caja abierto'
-                          : 'Caja cerrada (Se requiere turno abierto)',
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.handshake_rounded,
+                        size: 13,
+                        color: isCredito ? Colors.white : Colors.deepOrange,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'CRÉDITO',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: isCredito ? Colors.white : Colors.deepOrange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          if (isCredito) ...[
+            // ── Modo CRÉDITO activo: mostrar info ──────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.deepOrange.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(AppColors.radius),
+                border: Border.all(
+                  color: Colors.deepOrange.withValues(alpha: 0.25),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 14,
+                    color: Colors.deepOrange,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Venta a crédito — no requiere cuenta financiera. '
+                      'El cobro queda pendiente.',
                       style: TextStyle(
                         fontSize: 11,
+                        color: Colors.deepOrange,
                         fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // ── Selección de cuenta por tipo ───────────────────────────
+            ...grouped.entries.map((entry) {
+              final type = entry.key;
+              final accounts = entry.value;
+              final typeColor = _typeColors[type] ?? AppColors.textSecondary;
+              final typeIcon = _typeIcons[type] ?? Icons.wallet_rounded;
+              final typeLabel = _typeLabels[type] ?? type;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Cabecera del grupo de tipo
+                    Row(
+                      children: [
+                        Icon(typeIcon, size: 12, color: typeColor),
+                        const SizedBox(width: 5),
+                        Text(
+                          typeLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: typeColor,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Chips de cuentas dentro del tipo
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children:
+                          accounts.map((acc) {
+                            final isSelected =
+                                acc['id'] == selectedAccountId && !isCredito;
+                            final balance =
+                                (acc['balance'] as num?)?.toStringAsFixed(0) ??
+                                '0';
+                            return GestureDetector(
+                              onTap:
+                                  () => onAccountChanged(acc['id'] as String),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isSelected
+                                          ? typeColor.withValues(alpha: 0.1)
+                                          : AppColors.bg,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color:
+                                        isSelected
+                                            ? typeColor
+                                            : AppColors.border,
+                                    width: isSelected ? 1.5 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      typeIcon,
+                                      size: 14,
+                                      color:
+                                          isSelected
+                                              ? typeColor
+                                              : AppColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          acc['name'] as String,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color:
+                                                isSelected
+                                                    ? typeColor
+                                                    : AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          'S/ $balance',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                            color:
+                                                isSelected
+                                                    ? typeColor.withValues(
+                                                      alpha: 0.8,
+                                                    )
+                                                    : AppColors.textMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    // Indicador de turno para cuentas CAJA
+                                    if (type == 'CAJA' && isSelected) ...[
+                                      const SizedBox(width: 6),
+                                      Icon(
+                                        activeShift != null
+                                            ? Icons.check_circle_rounded
+                                            : Icons.warning_rounded,
+                                        size: 13,
+                                        color:
+                                            activeShift != null
+                                                ? AppColors.success
+                                                : AppColors.danger,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+
+            // ── Aviso de turno cerrado (cuando es CAJA sin turno) ──────
+            if (isCajaSelected && selectedAccountId != null)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        activeShift != null
+                            ? AppColors.successLight
+                            : AppColors.dangerLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color:
+                          activeShift != null
+                              ? AppColors.success.withValues(alpha: 0.3)
+                              : AppColors.danger.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        activeShift != null
+                            ? Icons.check_circle_rounded
+                            : Icons.lock_rounded,
+                        size: 13,
                         color:
                             activeShift != null
                                 ? AppColors.success
                                 : AppColors.danger,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        activeShift != null
+                            ? 'Turno de caja abierto ✓'
+                            : 'Esta caja no tiene un turno abierto',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              activeShift != null
+                                  ? AppColors.success
+                                  : AppColors.danger,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
           ],
