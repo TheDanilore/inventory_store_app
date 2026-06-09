@@ -125,11 +125,10 @@ class _ShiftsTabState extends State<ShiftsTab>
     final availableAccounts =
         accounts.where((a) => !openAccountIds.contains(a.id)).toList();
     if (availableAccounts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Todas las cuentas ya tienen un turno abierto'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnackbar.show(
+        context,
+        message: 'Todas las cuentas ya tienen un turno abierto',
+        type: SnackbarType.warning,
       );
       return;
     }
@@ -669,11 +668,10 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
       return;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cerrar turno: $e'),
-            backgroundColor: AppColors.danger,
-          ),
+        AppSnackbar.show(
+          context,
+          message: 'Error al cerrar turno: $e',
+          type: SnackbarType.error,
         );
       }
     }

@@ -743,8 +743,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       final max50Products = allProducts.take(50).toList();
 
       if (max50Products.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No hay productos para exportar.')),
+        AppSnackbar.show(
+          context,
+          message: 'No hay productos para exportar.',
+          type: SnackbarType.error,
         );
         return;
       }
@@ -775,10 +777,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       }
 
       if (filteredProducts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No hay productos seleccionados para exportar.'),
-          ),
+        AppSnackbar.show(
+          context,
+          message: 'No hay productos seleccionados para exportar.',
+          type: SnackbarType.error,
         );
         return;
       }
@@ -805,11 +807,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       await Printing.layoutPdf(onLayout: (_) async => bytes);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se pudo exportar el PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
+
+      AppSnackbar.show(
+        context,
+        message: 'No se pudo exportar el PDF: $e',
+        type: SnackbarType.error,
       );
     } finally {
       if (mounted) setState(() => _isExportingPdf = false);

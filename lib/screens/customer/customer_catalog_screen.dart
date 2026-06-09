@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1080,16 +1081,11 @@ class _PromoBanner extends StatelessWidget {
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap:
-                    () => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Próximamente: Ofertas relámpago'),
-                        backgroundColor: AppColors.accent,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        margin: const EdgeInsets.all(16),
-                      ),
+                    () => AppSnackbar.show(
+                      context,
+                      message:
+                          'Próximamente: Ofertas relámpago y descuentos exclusivos',
+                      type: SnackbarType.error,
                     ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(

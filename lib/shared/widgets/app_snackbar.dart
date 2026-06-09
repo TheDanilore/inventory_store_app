@@ -11,7 +11,7 @@ class AppSnackbar {
     required String message,
     SnackbarType type = SnackbarType.success,
     Color? backgroundColor,
-    Duration duration = const Duration(seconds: 2),
+    Duration duration = const Duration(seconds: 4),
   }) {
     dismiss();
 
@@ -96,15 +96,20 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
       curve: Curves.easeOut,
     );
 
+    // Ajustado para que baje desde arriba (-0.5) hacia su posición final
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
+      begin: const Offset(0, -0.5),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack, // Conserva el efecto rebote moderno
+      ),
+    );
 
     _controller.forward();
 
     Future.delayed(widget.duration, () async {
-      // Si el usuario ya lo quitó con el dedo, no ejecutamos la salida automática
       if (mounted && !_isDismissedBySwipe) {
         await _controller.reverse();
         widget.onDismissed();
@@ -121,7 +126,8 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: MediaQuery.paddingOf(context).bottom + 16,
+      // Posicionamiento dinámico respetando el Notch o la barra de estado del celular
+      top: MediaQuery.paddingOf(context).top + 16,
       left: 16,
       right: 16,
       child: SlideTransition(
@@ -132,12 +138,10 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
             color: Colors.transparent,
             child: Dismissible(
               key: UniqueKey(),
-              direction:
-                  DismissDirection
-                      .horizontal, // Permite deslizar a izquierda o derecha
+              direction: DismissDirection.horizontal,
               onDismissed: (direction) {
                 _isDismissedBySwipe = true;
-                widget.onDismissed(); // Remueve el Overlay inmediatamente
+                widget.onDismissed();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -149,7 +153,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: const [
                     BoxShadow(
-                      color: Colors.black26,
+                      color: Colors.black12,
                       blurRadius: 12,
                       offset: Offset(0, 4),
                     ),

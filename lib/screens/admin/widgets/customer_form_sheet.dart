@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── PUNTO DE ENTRADA ─────────────────────────────────────────────────────────
@@ -224,7 +225,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
             'credit_limit': newLimit,
             'current_debt': 0.0,
             'is_active': true,
-            'created_by': adminProfileId, 
+            'created_by': adminProfileId,
           });
         }
       } else if (_creditExistsInDb && _creditId != null && _creditIsActive) {
@@ -261,13 +262,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.danger,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppSnackbar.show(context, message: msg, type: SnackbarType.error);
   }
 
   // ── BUILD ──────────────────────────────────────────────────────────────────

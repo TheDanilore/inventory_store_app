@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -364,11 +365,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
       await _supabase.from('orders').update(updates).eq('id', order.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Estado actualizado correctamente'),
-            backgroundColor: Colors.green,
-          ),
+        AppSnackbar.show(
+          context,
+          message: 'Estado actualizado correctamente',
+          type: SnackbarType.success,
         );
         _fetchOrders();
       }
@@ -392,9 +392,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   void _showErrorSnackBar(String msg) {
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+      AppSnackbar.show(context, message: msg, type: SnackbarType.error);
     }
   }
 

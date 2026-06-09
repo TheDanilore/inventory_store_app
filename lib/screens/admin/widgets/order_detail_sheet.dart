@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:inventory_store_app/models/order_model.dart';
@@ -237,9 +238,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
+      AppSnackbar.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error cargando datos: $e')));
+        message: 'Error cargando datos: $e',
+        type: SnackbarType.error,
+      );
     }
   }
 
@@ -789,9 +792,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   void _showErrorSnackBar(String msg) {
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+      AppSnackbar.show(context, message: msg, type: SnackbarType.error);
     }
   }
 
@@ -1849,21 +1850,19 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
           .eq('id', widget.orderId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Abono registrado correctamente'),
-            backgroundColor: Colors.green,
-          ),
+        AppSnackbar.show(
+          context,
+          message: 'Abono registrado correctamente',
+          type: SnackbarType.success,
         );
         widget.onPaymentRegistered();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al registrar abono: $e'),
-            backgroundColor: Colors.red,
-          ),
+        AppSnackbar.show(
+          context,
+          message: 'Error al registrar abono: $e',
+          type: SnackbarType.error,
         );
       }
     } finally {

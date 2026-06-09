@@ -35,6 +35,7 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
     } catch (e) {
       // 3. USAR LA VARIABLE LOCAL
       scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      
     } finally {
       if (mounted) setState(() => isSaving = false);
     }
