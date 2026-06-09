@@ -16,7 +16,7 @@ class FinancialAccountModel {
   });
 
   /// ¡Agrega o reemplaza este método en tu modelo!
-  factory FinancialAccountModel.fromMap(Map<String, dynamic> map) {
+  factory FinancialAccountModel.fromJson(Map<String, dynamic> map) {
     return FinancialAccountModel(
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? '',
@@ -33,7 +33,7 @@ class FinancialAccountModel {
   }
 
   /// Opcional: Por si necesitas enviar datos de vuelta a Supabase
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,

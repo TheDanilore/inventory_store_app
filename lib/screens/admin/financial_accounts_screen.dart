@@ -118,7 +118,11 @@ class _AccountsTabState extends State<_AccountsTab>
     _future = _load();
   }
 
-  void _refresh() => setState(() => _future = _load());
+  // CORRECCIÓN: Devolver el Future para que el RefreshIndicator funcione correctamente
+  Future<void> _refresh() async {
+    setState(() => _future = _load());
+    await _future;
+  }
 
   Future<List<FinancialAccountModel>> _load() async {
     final response = await _supabase
@@ -126,9 +130,11 @@ class _AccountsTabState extends State<_AccountsTab>
         .select('id, name, type, balance, is_active, created_at')
         .order('is_active', ascending: false)
         .order('name');
+
+    // CORRECCIÓN: Usar fromJson como está definido en los modelos que creamos
     return (response as List)
         .map(
-          (e) => FinancialAccountModel.fromMap(
+          (e) => FinancialAccountModel.fromJson(
             Map<String, dynamic>.from(e as Map),
           ),
         )
@@ -166,7 +172,6 @@ class _AccountsTabState extends State<_AccountsTab>
           children: [
             Column(
               children: [
-                // Resumen
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Row(
@@ -201,7 +206,7 @@ class _AccountsTabState extends State<_AccountsTab>
                             message: 'No hay cuentas registradas',
                           )
                           : RefreshIndicator(
-                            onRefresh: () async => _refresh(),
+                            onRefresh: _refresh,
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                               itemCount: accounts.length,
@@ -220,7 +225,6 @@ class _AccountsTabState extends State<_AccountsTab>
                 ),
               ],
             ),
-            // FAB
             Positioned(
               bottom: 24,
               right: 16,
@@ -248,7 +252,7 @@ class _AccountsTabState extends State<_AccountsTab>
 // ── Bottom Sheet: Crear / Editar cuenta ──────────────────────────────────────
 
 class _AccountFormSheet extends StatefulWidget {
-  final FinancialAccountModel? account; // null = crear
+  final FinancialAccountModel? account;
   const _AccountFormSheet({this.account});
 
   @override
@@ -276,7 +280,6 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
       _nameCtrl.text = widget.account!.name;
       _type = widget.account!.type;
       _isActive = widget.account!.isActive;
-      // El balance no se edita directamente en edición (se mueve via movimientos)
     }
   }
 
@@ -311,7 +314,12 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
           'is_active': _isActive,
         });
       }
-      if (mounted) Navigator.pop(context, true);
+
+      // CORRECCIÓN: Salir limpiamente sin ejecutar el bloque finally
+      // para evitar el error de "setState called after dispose" que congela la app.
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      return;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -321,9 +329,10 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
+
+    // Solo se quita el loader si hubo un error y NO se cerró el modal
+    if (mounted) setState(() => _saving = false);
   }
 
   @override
@@ -341,7 +350,6 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle
             Center(
               child: Container(
                 width: 40,
@@ -353,14 +361,12 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
                 ),
               ),
             ),
-
             Text(
               _isEditing ? 'Editar cuenta' : 'Nueva cuenta',
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 20),
 
-            // Nombre
             _FieldLabel('Nombre de la cuenta'),
             TextFormField(
               controller: _nameCtrl,
@@ -371,7 +377,6 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Tipo
             _FieldLabel('Tipo'),
             Wrap(
               spacing: 8,
@@ -430,7 +435,6 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Balance inicial (solo en creación)
             if (!_isEditing) ...[
               _FieldLabel('Balance inicial'),
               TextFormField(
@@ -446,7 +450,6 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
               const SizedBox(height: 14),
             ],
 
-            // Activo (solo en edición)
             if (_isEditing) ...[
               Row(
                 children: [
@@ -481,7 +484,6 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
               const SizedBox(height: 14),
             ],
 
-            // Botón guardar
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -553,8 +555,6 @@ Widget _FieldLabel(String text) => Padding(
     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
   ),
 );
-
-// ── Card de cuenta ───────────────────────────────────────────────────────────
 
 class _AccountCard extends StatelessWidget {
   final FinancialAccountModel account;
@@ -641,7 +641,7 @@ class _AccountCard extends StatelessWidget {
                           ),
                         ),
                         if (!isActive)
-                          _Badge(
+                          const _Badge(
                             label: 'Inactiva',
                             color: AppColors.textSecondary,
                           ),
@@ -678,7 +678,7 @@ class _AccountCard extends StatelessWidget {
                           balance >= 0 ? AppColors.success : AppColors.danger,
                     ),
                   ),
-                  Text(
+                  const Text(
                     'saldo',
                     style: TextStyle(
                       fontSize: 10,
@@ -721,7 +721,10 @@ class _MovementsTabState extends State<_MovementsTab>
     _future = _load();
   }
 
-  void _refresh() => setState(() => _future = _load());
+  Future<void> _refresh() async {
+    setState(() => _future = _load());
+    await _future;
+  }
 
   Future<List<AccountMovementModel>> _load() async {
     final response = await _supabase
@@ -732,10 +735,11 @@ class _MovementsTabState extends State<_MovementsTab>
         .order('created_at', ascending: false)
         .limit(200);
 
+    // CORRECCIÓN: fromJson en lugar de fromMap
     final list =
         (response as List)
             .map(
-              (e) => AccountMovementModel.fromMap(
+              (e) => AccountMovementModel.fromJson(
                 Map<String, dynamic>.from(e as Map),
               ),
             )
@@ -888,7 +892,7 @@ class _MovementsTabState extends State<_MovementsTab>
                         message: 'No hay movimientos registrados',
                       )
                       : RefreshIndicator(
-                        onRefresh: () async => _refresh(),
+                        onRefresh: _refresh,
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           itemCount: movements.length,
@@ -971,9 +975,8 @@ class _MovementCard extends StatelessWidget {
         typeLabel = type;
     }
 
-    String dateLabel = '–';
     final dt = createdAt.toLocal();
-    dateLabel =
+    final dateLabel =
         '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     return Container(
@@ -1089,7 +1092,10 @@ class _ShiftsTabState extends State<_ShiftsTab>
     _future = _load();
   }
 
-  void _refresh() => setState(() => _future = _load());
+  Future<void> _refresh() async {
+    setState(() => _future = _load());
+    await _future;
+  }
 
   Future<_ShiftsData> _load() async {
     final shiftsRes = await _supabase
@@ -1104,11 +1110,12 @@ class _ShiftsTabState extends State<_ShiftsTab>
         .order('opened_at', ascending: false)
         .limit(100);
 
+    // CORRECCIÓN: fromJson en lugar de fromMap
     final shifts =
         (shiftsRes as List)
             .map(
               (e) =>
-                  CashShiftModel.fromMap(Map<String, dynamic>.from(e as Map)),
+                  CashShiftModel.fromJson(Map<String, dynamic>.from(e as Map)),
             )
             .toList();
 
@@ -1121,7 +1128,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
     final accounts =
         (accountsRes as List)
             .map(
-              (e) => FinancialAccountModel.fromMap(
+              (e) => FinancialAccountModel.fromJson(
                 Map<String, dynamic>.from(e as Map),
               ),
             )
@@ -1129,9 +1136,14 @@ class _ShiftsTabState extends State<_ShiftsTab>
 
     final openAccountIds =
         shifts
+            .whereType<
+              CashShiftModel
+            >() // 1. Asegura que ningún elemento de la lista sea nulo
             .where((s) => s.status == 'OPEN')
             .map((s) => s.accountId)
-            .whereType<String>()
+            .whereType<
+              String
+            >() // 2. Filtra los accountId nulos (agrega esto también por el error anterior)
             .toSet();
 
     return _ShiftsData(
@@ -1141,8 +1153,6 @@ class _ShiftsTabState extends State<_ShiftsTab>
     );
   }
 
-  // Calcular el monto esperado al cerrar:
-  // opening_amount + suma de movimientos INCOME del turno - suma EXPENSE
   Future<double> _calcExpected(
     String shiftId,
     String accountId,
@@ -1176,8 +1186,8 @@ class _ShiftsTabState extends State<_ShiftsTab>
         accounts.where((a) => !openAccountIds.contains(a.id)).toList();
     if (availableAccounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Todas las cuentas ya tienen un turno abierto'),
+        const SnackBar(
+          content: Text('Todas las cuentas ya tienen un turno abierto'),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -1232,15 +1242,12 @@ class _ShiftsTabState extends State<_ShiftsTab>
 
         final openCount = allShifts.where((s) => s.status == 'OPEN').length;
         final closedCount = allShifts.where((s) => s.status == 'CLOSED').length;
-
-        // Turnos abiertos (puede haber uno por cuenta)
         final openShifts = allShifts.where((s) => s.status == 'OPEN').toList();
 
         return Stack(
           children: [
             Column(
               children: [
-                // Banners de turnos abiertos
                 if (openShifts.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -1259,8 +1266,6 @@ class _ShiftsTabState extends State<_ShiftsTab>
                               .toList(),
                     ),
                   ),
-
-                // Filtros
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     16,
@@ -1302,7 +1307,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
                       const Spacer(),
                       Text(
                         '${shifts.length} turno${shifts.length != 1 ? 's' : ''}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w500,
@@ -1323,7 +1328,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
                             message: 'No hay turnos registrados',
                           )
                           : RefreshIndicator(
-                            onRefresh: () async => _refresh(),
+                            onRefresh: _refresh,
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                               itemCount: shifts.length,
@@ -1343,8 +1348,6 @@ class _ShiftsTabState extends State<_ShiftsTab>
                 ),
               ],
             ),
-
-            // FAB — Abrir nuevo turno
             Positioned(
               bottom: 24,
               right: 16,
@@ -1371,8 +1374,6 @@ class _ShiftsTabState extends State<_ShiftsTab>
     );
   }
 }
-
-// ── Data holder ──────────────────────────────────────────────────────────────
 
 class _ShiftsData {
   final List<CashShiftModel> shifts;
@@ -1426,15 +1427,13 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No hay sesión activa');
 
-      // Buscar profile por user_id (columna estándar de Supabase Auth)
+      // CORRECCIÓN: Para auth_user_id en lugar de id directo
       final profileRes =
           await _supabase
               .from('profiles')
               .select('id')
-              .eq('id', user.id)
+              .eq('auth_user_id', user.id)
               .maybeSingle();
-
-      // Si no existe columna auth_user_id, intentar con id directo
       final profileId = profileRes?['id'] as String? ?? user.id;
 
       final amount =
@@ -1448,7 +1447,10 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
         'opened_at': DateTime.now().toUtc().toIso8601String(),
       });
 
-      if (mounted) Navigator.pop(context, true);
+      // CORRECCIÓN de Salida Limpia
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      return;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1458,9 +1460,9 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
+
+    if (mounted) setState(() => _saving = false);
   }
 
   @override
@@ -1497,7 +1499,7 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
                     color: AppColors.success.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.lock_open_rounded,
                     color: AppColors.success,
                     size: 22,
@@ -1676,14 +1678,13 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No hay sesión activa');
 
-      // Buscar profile por id directo (evitar congelamiento con .single())
+      // CORRECCIÓN: Para auth_user_id
       final profileRes =
           await _supabase
               .from('profiles')
               .select('id')
-              .eq('id', user.id)
+              .eq('auth_user_id', user.id)
               .maybeSingle();
-
       final profileId = profileRes?['id'] as String? ?? user.id;
 
       final actual = double.parse(_actualCtrl.text.replaceAll(',', '.'));
@@ -1705,7 +1706,10 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
           })
           .eq('id', widget.shift.id);
 
-      if (mounted) Navigator.pop(context, true);
+      // CORRECCIÓN Salida limpia
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      return;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1715,9 +1719,8 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
+    if (mounted) setState(() => _saving = false);
   }
 
   @override
@@ -1779,7 +1782,7 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
                     color: AppColors.danger.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.lock_rounded,
                     color: AppColors.danger,
                     size: 22,
@@ -1799,7 +1802,7 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
                       ),
                       Text(
                         accountName,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                         ),
@@ -1811,7 +1814,6 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
             ),
             const SizedBox(height: 20),
 
-            // Resumen apertura + esperado
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -1873,7 +1875,6 @@ class _CloseShiftSheetState extends State<_CloseShiftSheet> {
               },
             ),
 
-            // Diferencia en tiempo real
             if (_difference != null) ...[
               const SizedBox(height: 10),
               AnimatedContainer(
@@ -1986,9 +1987,8 @@ class _ActiveShiftBanner extends StatelessWidget {
     final openingAmount = shift.openingAmount;
     final openedAt = shift.openedAt;
 
-    String openedLabel = '–';
     final dt = openedAt.toLocal();
-    openedLabel =
+    final openedLabel =
         '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
     return Container(
@@ -2006,7 +2006,7 @@ class _ActiveShiftBanner extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.success,
               shape: BoxShape.circle,
             ),
@@ -2018,7 +2018,7 @@ class _ActiveShiftBanner extends StatelessWidget {
               children: [
                 Text(
                   'Turno activo — $accountName',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                     color: AppColors.success,
@@ -2036,8 +2036,12 @@ class _ActiveShiftBanner extends StatelessWidget {
           ),
           TextButton.icon(
             onPressed: onClose,
-            icon: Icon(Icons.lock_rounded, size: 14, color: AppColors.danger),
-            label: Text(
+            icon: const Icon(
+              Icons.lock_rounded,
+              size: 14,
+              color: AppColors.danger,
+            ),
+            label: const Text(
               'Cerrar',
               style: TextStyle(
                 color: AppColors.danger,
@@ -2154,7 +2158,7 @@ class _ShiftCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         'Abierto por $openedBy',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
@@ -2206,9 +2210,9 @@ class _ShiftCard extends StatelessWidget {
 
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.background,
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(14),
                 bottomRight: Radius.circular(14),
               ),
@@ -2218,7 +2222,7 @@ class _ShiftCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.login_rounded,
                       size: 12,
                       color: AppColors.textSecondary,
@@ -2226,14 +2230,14 @@ class _ShiftCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       fmtDate(openedAt),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                       ),
                     ),
                     if (closedAt != null) ...[
                       const SizedBox(width: 8),
-                      Icon(
+                      const Icon(
                         Icons.logout_rounded,
                         size: 12,
                         color: AppColors.textSecondary,
@@ -2241,7 +2245,7 @@ class _ShiftCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         fmtDate(closedAt),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
@@ -2249,7 +2253,7 @@ class _ShiftCard extends StatelessWidget {
                     ],
                     if (durationLabel.isNotEmpty) ...[
                       const Spacer(),
-                      Icon(
+                      const Icon(
                         Icons.timer_outlined,
                         size: 12,
                         color: AppColors.textSecondary,
@@ -2257,7 +2261,7 @@ class _ShiftCard extends StatelessWidget {
                       const SizedBox(width: 3),
                       Text(
                         durationLabel,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
@@ -2270,7 +2274,7 @@ class _ShiftCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.person_outline_rounded,
                         size: 12,
                         color: AppColors.textSecondary,
@@ -2278,7 +2282,7 @@ class _ShiftCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         'Cerrado por $closedBy',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
@@ -2291,7 +2295,7 @@ class _ShiftCard extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.notes_rounded,
                         size: 12,
                         color: AppColors.textSecondary,
@@ -2300,7 +2304,7 @@ class _ShiftCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           notes,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,
                             fontStyle: FontStyle.italic,
@@ -2318,12 +2322,12 @@ class _ShiftCard extends StatelessWidget {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: onClose,
-                      icon: Icon(
+                      icon: const Icon(
                         Icons.lock_rounded,
                         size: 14,
                         color: AppColors.danger,
                       ),
-                      label: Text(
+                      label: const Text(
                         'Cerrar turno',
                         style: TextStyle(
                           color: AppColors.danger,
@@ -2677,7 +2681,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             message,
-            style: TextStyle(
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
               fontWeight: FontWeight.w500,

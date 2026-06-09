@@ -39,8 +39,8 @@ class CashShiftModel {
       openedByProfile?['full_name'] as String? ?? 'Desconocido';
   String? get closedByName => closedByProfile?['full_name'] as String?;
 
-  /// 3. Constructor fromMap compatible con los alias de la consulta
-  factory CashShiftModel.fromMap(Map<String, dynamic> map) {
+  /// 3. Constructor fromJson compatible con los alias de la consulta
+  factory CashShiftModel.fromJson(Map<String, dynamic> map) {
     return CashShiftModel(
       id: map['id'] as String? ?? '',
       status: map['status'] as String? ?? 'CLOSED',
@@ -68,7 +68,7 @@ class CashShiftModel {
   }
 
   /// Opcional: Para enviar los datos de vuelta a Supabase al abrir/cerrar caja
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'status': status,

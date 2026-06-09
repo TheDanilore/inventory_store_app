@@ -36,8 +36,8 @@ class AccountMovementModel {
   String get createdByName =>
       profile?['full_name'] as String? ?? 'Sistema / Desconocido';
 
-  /// 3. Constructor fromMap actualizado y seguro contra errores de casteo
-  factory AccountMovementModel.fromMap(Map<String, dynamic> map) {
+  /// 3. Constructor fromJson actualizado y seguro contra errores de casteo
+  factory AccountMovementModel.fromJson(Map<String, dynamic> map) {
     return AccountMovementModel(
       id: map['id'] as String? ?? '',
       accountId: map['account_id'] as String?,
@@ -58,7 +58,7 @@ class AccountMovementModel {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'account_id': accountId,
