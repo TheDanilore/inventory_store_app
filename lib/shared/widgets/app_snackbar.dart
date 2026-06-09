@@ -11,12 +11,11 @@ class AppSnackbar {
     required String message,
     SnackbarType type = SnackbarType.success,
     Color? backgroundColor,
-    Duration duration = const Duration(seconds: 4),
+    Duration duration = const Duration(milliseconds: 2500),
   }) {
     dismiss();
 
-    final resolvedBackgroundColor =
-        backgroundColor ??
+    final resolvedBackgroundColor = backgroundColor ??
         switch (type) {
           SnackbarType.success => AppColors.success,
           SnackbarType.error => AppColors.accent,
@@ -71,8 +70,7 @@ class _AnimatedSnackbarWidget extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedSnackbarWidget> createState() =>
-      _AnimatedSnackbarWidgetState();
+  State<_AnimatedSnackbarWidget> createState() => _AnimatedSnackbarWidgetState();
 }
 
 class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
@@ -80,7 +78,10 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  
   bool _isDismissedBySwipe = false;
+  bool _isBeingPressed = false; // Rastrea si el usuario está tocando la alerta
+  DateTime? _endTime; // Almacena el momento exacto en el que debía cerrar
 
   @override
   void initState() {
@@ -96,25 +97,48 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
       curve: Curves.easeOut,
     );
 
-    // Ajustado para que baje desde arriba (-0.5) hacia su posición final
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.5),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutBack, // Conserva el efecto rebote moderno
-      ),
-    );
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    ));
 
     _controller.forward();
+    _startAutoDismissTimer(widget.duration);
+  }
 
-    Future.delayed(widget.duration, () async {
-      if (mounted && !_isDismissedBySwipe) {
+  // Configura el temporizador de cierre automático
+  void _startAutoDismissTimer(Duration duration) {
+    _endTime = DateTime.now().add(duration);
+    
+    Future.delayed(duration, () async {
+      // Solo procede si sigue montado, nadie lo arrastró y no está siendo retenido por el dedo
+      if (mounted && !_isDismissedBySwipe && !_isBeingPressed) {
         await _controller.reverse();
         widget.onDismissed();
       }
     });
+  }
+
+  // Al presionar el widget, bloqueamos la destrucción automática
+  void _handleTapDown() {
+    setState(() {
+      _isBeingPressed = true;
+    });
+  }
+
+  // Al soltar el widget, recalculamos un tiempo extra de cortesía para que se vaya
+  void _handleTapUpOrCancel() {
+    if (!_isBeingPressed) return;
+    
+    setState(() {
+      _isBeingPressed = false;
+    });
+
+    // Le otorgamos 1.5 segundos extras de vida tras soltarlo para que el usuario termine de leer
+    _startAutoDismissTimer(const Duration(milliseconds: 1500));
   }
 
   @override
@@ -126,7 +150,6 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      // Posicionamiento dinámico respetando el Notch o la barra de estado del celular
       top: MediaQuery.paddingOf(context).top + 16,
       left: 16,
       right: 16,
@@ -136,44 +159,46 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
           opacity: _fadeAnimation,
           child: Material(
             color: Colors.transparent,
-            child: Dismissible(
-              key: UniqueKey(),
-              direction: DismissDirection.horizontal,
-              onDismissed: (direction) {
-                _isDismissedBySwipe = true;
-                widget.onDismissed();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: widget.backgroundColor,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 12,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(widget.iconData, color: Colors.white, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.message,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+            child: GestureDetector(
+              onTapDown: (_) => _handleTapDown(),
+              onTapUp: (_) => _handleTapUpOrCancel(),
+              onTapCancel: () => _handleTapUpOrCancel(),
+              child: Dismissible(
+                key: UniqueKey(),
+                direction: DismissDirection.horizontal,
+                onDismissed: (direction) {
+                  _isDismissedBySwipe = true;
+                  widget.onDismissed();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: widget.backgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(widget.iconData, color: Colors.white, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

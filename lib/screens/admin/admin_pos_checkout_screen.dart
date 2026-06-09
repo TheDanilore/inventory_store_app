@@ -155,7 +155,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           }
           _accountsList = accs;
           if (accs.isNotEmpty) {
-            final firstAcc = accs.first;
+            // Preferir la primera cuenta CAJA; si no hay, tomar la primera
+            final firstAcc = accs.firstWhere(
+              (a) => a['type'] == 'CAJA',
+              orElse: () => accs.first,
+            );
             _selectedAccountId = firstAcc['id'] as String;
             // Sincronizar método de pago con el tipo de cuenta
             if (pos.paymentMethod != 'CRÉDITO') {
@@ -1050,10 +1054,8 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                             orElse: () => {},
                           );
                           final type = acc['type'] as String? ?? 'OTRO';
-                          final pos = context.read<PosProvider>();
-                          if (pos.paymentMethod != 'CRÉDITO') {
-                            pos.setPaymentMethod(_inferPaymentMethod(type));
-                          }
+                          // Siempre actualiza el método — también sale de CRÉDITO
+                          pos.setPaymentMethod(_inferPaymentMethod(type));
                         }
                         _checkActiveShift();
                       },
@@ -1815,20 +1817,24 @@ class _CartItemRow extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           if (hasBatchOverride && activeBatches.isNotEmpty)
-                            Text(
-                              activeBatches
-                                  .map((b) {
-                                    final exp =
-                                        b.expiryDate != null
-                                            ? ' (vto ${b.expiryLabel})'
-                                            : '';
-                                    return '${b.assigned}u · ${b.batchNumber}$exp';
-                                  })
-                                  .join(' + '),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: AppColors.tealDark,
-                                fontWeight: FontWeight.w600,
+                            Flexible(
+                              child: Text(
+                                activeBatches
+                                    .map((b) {
+                                      final exp =
+                                          b.expiryDate != null
+                                              ? ' (vto ${b.expiryLabel})'
+                                              : '';
+                                      return '${b.assigned}u · ${b.batchNumber}$exp';
+                                    })
+                                    .join(' + '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.tealDark,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             )
                           else
@@ -2606,8 +2612,13 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                // ── Chips de cuentas financieras ──────────────────────
-                ...accountsList.map((acc) {
+                // ── Chips de cuentas financieras (CAJA primero) ───────
+                ...(List<Map<String, dynamic>>.from(accountsList)..sort((a, b) {
+                  const order = ['CAJA', 'DIGITAL', 'BANCO', 'OTRO'];
+                  final ai = order.indexOf(a['type'] as String? ?? 'OTRO');
+                  final bi = order.indexOf(b['type'] as String? ?? 'OTRO');
+                  return ai.compareTo(bi);
+                })).map((acc) {
                   final type = acc['type'] as String? ?? 'OTRO';
                   final chipColor =
                       _typeColors[type] ?? AppColors.textSecondary;
