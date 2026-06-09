@@ -118,10 +118,12 @@ class _AccountsTabState extends State<_AccountsTab>
     _future = _load();
   }
 
-  Future<void> _refresh() async {
-    final next = _load();
-    setState(() => _future = next);
-    await next;
+  void _refresh() {
+    final f = _load();
+    setState(() {
+      _future = f;
+      return;
+    });
   }
 
   Future<List<FinancialAccountModel>> _load() async {
@@ -148,7 +150,7 @@ class _AccountsTabState extends State<_AccountsTab>
       backgroundColor: Colors.transparent,
       builder: (_) => _AccountFormSheet(account: account),
     );
-    if (saved == true) await _refresh();
+    if (saved == true) _refresh();
   }
 
   @override
@@ -206,7 +208,7 @@ class _AccountsTabState extends State<_AccountsTab>
                             message: 'No hay cuentas registradas',
                           )
                           : RefreshIndicator(
-                            onRefresh: _refresh,
+                            onRefresh: () async => _refresh(),
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                               itemCount: accounts.length,
@@ -712,6 +714,7 @@ class _MovementsTabState extends State<_MovementsTab>
   String _filterType = 'Todos';
   String _filterAccount = 'Todas';
   List<String> _accountNames = ['Todas'];
+  List<String>? _pendingAccountNames;
   final _searchCtrl = TextEditingController();
   String _searchText = '';
 
@@ -721,10 +724,12 @@ class _MovementsTabState extends State<_MovementsTab>
     _future = _load();
   }
 
-  Future<void> _refresh() async {
-    final next = _load();
-    setState(() => _future = next);
-    await next;
+  void _refresh() {
+    final f = _load();
+    setState(() {
+      _future = f;
+      return;
+    });
   }
 
   Future<List<AccountMovementModel>> _load() async {
@@ -748,7 +753,8 @@ class _MovementsTabState extends State<_MovementsTab>
 
     final names =
         list.map((m) => m.accountName ?? '–').toSet().toList()..sort();
-    if (mounted) setState(() => _accountNames = ['Todas', ...names]);
+    // Actualizar _accountNames fuera del async: se hará en el FutureBuilder
+    _pendingAccountNames = ['Todas', ...names];
 
     return list;
   }
@@ -775,6 +781,11 @@ class _MovementsTabState extends State<_MovementsTab>
     return FutureBuilder<List<AccountMovementModel>>(
       future: _future,
       builder: (context, snapshot) {
+        // Aplicar nombres de cuentas cuando el Future termina (sin setState async)
+        if (snapshot.hasData && _pendingAccountNames != null) {
+          _accountNames = _pendingAccountNames!;
+          _pendingAccountNames = null;
+        }
         final allMovements = snapshot.data ?? [];
         final movements = _applyFilters(allMovements);
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
@@ -893,7 +904,7 @@ class _MovementsTabState extends State<_MovementsTab>
                         message: 'No hay movimientos registrados',
                       )
                       : RefreshIndicator(
-                        onRefresh: _refresh,
+                        onRefresh: () async => _refresh(),
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           itemCount: movements.length,
@@ -1093,10 +1104,12 @@ class _ShiftsTabState extends State<_ShiftsTab>
     _future = _load();
   }
 
-  Future<void> _refresh() async {
-    final next = _load();
-    setState(() => _future = next);
-    await next;
+  void _refresh() {
+    final f = _load();
+    setState(() {
+      _future = f;
+      return;
+    });
   }
 
   Future<_ShiftsData> _load() async {
@@ -1201,7 +1214,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
       backgroundColor: Colors.transparent,
       builder: (_) => _OpenShiftSheet(accounts: availableAccounts),
     );
-    if (saved == true) await _refresh();
+    if (saved == true) _refresh();
   }
 
   Future<void> _openCloseShiftSheet(CashShiftModel shift) async {
@@ -1218,7 +1231,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
       backgroundColor: Colors.transparent,
       builder: (_) => _CloseShiftSheet(shift: shift, expectedAmount: expected),
     );
-    if (saved == true) await _refresh();
+    if (saved == true) _refresh();
   }
 
   List<CashShiftModel> _applyFilters(List<CashShiftModel> shifts) {
@@ -1330,7 +1343,7 @@ class _ShiftsTabState extends State<_ShiftsTab>
                             message: 'No hay turnos registrados',
                           )
                           : RefreshIndicator(
-                            onRefresh: _refresh,
+                            onRefresh: () async => _refresh(),
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                               itemCount: shifts.length,

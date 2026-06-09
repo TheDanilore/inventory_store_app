@@ -954,13 +954,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 },
               ),
 
-            OrderDetailStatusSection(
-              currentStatus: _currentStatus,
-              isEditing: _isEditing,
-              onChanged: (val) {
-                if (val != null) setState(() => _currentStatus = val);
-              },
-            ),
             OrderDetailPointsSection(
               pointsUsed: _pointsUsed,
               pointsEarned: _pointsEarned,
@@ -1260,58 +1253,6 @@ class OrderDetailCustomerSection extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class OrderDetailStatusSection extends StatelessWidget {
-  final String currentStatus;
-  final bool isEditing;
-  final ValueChanged<String?> onChanged;
-
-  const OrderDetailStatusSection({
-    super.key,
-    required this.currentStatus,
-    required this.isEditing,
-    required this.onChanged,
-  });
-
-  String _label(String status) {
-    switch (status) {
-      case 'PENDING':
-        return 'Pendiente';
-      case 'COMPLETED':
-        return 'Completado';
-      case 'CANCELLED':
-        return 'Cancelado';
-      default:
-        return status;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isEditing) {
-      return OrderDetailSectionCard(
-        title: 'Estado',
-        child: OrderDetailInfoBox(value: _label(currentStatus)),
-      );
-    }
-
-    return OrderDetailSectionCard(
-      title: 'Estado',
-      child: DropdownButtonFormField<String>(
-        value: currentStatus,
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        ),
-        items:
-            ['PENDING', 'COMPLETED', 'CANCELLED']
-                .map((s) => DropdownMenuItem(value: s, child: Text(_label(s))))
-                .toList(),
-        onChanged: onChanged,
       ),
     );
   }

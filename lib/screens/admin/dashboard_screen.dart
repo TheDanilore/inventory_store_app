@@ -18,7 +18,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _supabase = Supabase.instance.client;
 
   Future<List<Map<String, dynamic>>> _loadProducts() async {
-    // 1. Gracias al nuevo product_id, traemos todo en una sola consulta súper optimizada
     final response = await _supabase
         .from('products')
         .select('''
@@ -31,17 +30,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final products = List<Map<String, dynamic>>.from(response);
 
-    // 2. Procesamos la data en memoria
     for (final prod in products) {
       final variants = List<Map<String, dynamic>>.from(
         prod['product_variants'] ?? [],
       );
 
-      // Filtramos solo las variantes activas
       final activeVariants =
           variants.where((v) => v['is_active'] == true).toList();
-
-      // Creamos un Set con los IDs de las variantes activas para hacer la búsqueda instantánea
       final activeVariantIds = activeVariants.map((v) => v['id']).toSet();
 
       final batches = List<Map<String, dynamic>>.from(
@@ -50,7 +45,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       int totalActiveStock = 0;
 
-      // Sumamos el stock de los lotes que pertenezcan ÚNICAMENTE a variantes activas
       for (final batch in batches) {
         if (activeVariantIds.contains(batch['variant_id'])) {
           totalActiveStock +=
@@ -58,7 +52,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // Inyectamos los resultados calculados para que la UI los consuma
       prod['total_active_stock'] = totalActiveStock;
       prod['active_variants_list'] = activeVariants;
     }
@@ -156,8 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 double valorVentaMinorista = 0;
                 double gananciaEsperadaMax = 0;
                 double gananciaEsperadaMin = 0;
-                double gananciaBruta =
-                    0; // = gananciaEsperadaMax (precio compra vs venta minorista)
+                double gananciaBruta = 0;
                 int productosBajoStock = 0;
                 int totalProductos = 0;
 
@@ -199,14 +191,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   inversionTotal += stock * unitCost;
                   valorVentaMinorista += stock * salePrice;
 
-                  // Ganancia Bruta = venta minorista - costo de compra
                   gananciaBruta += (stock * salePrice) - (stock * unitCost);
-
-                  // Ganancia Máxima (minorista)
                   gananciaEsperadaMax +=
                       (stock * salePrice) - (stock * unitCost);
 
-                  // Ganancia Mínima (mayorista si aplica)
                   final canApplyWholesale =
                       wholesalePrice != null && stock >= wholesaleMinQuantity;
                   final effectiveWholesale =
@@ -217,7 +205,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (stock <= reorderPoint) productosBajoStock++;
                 }
 
-                // Margen bruto %
                 final margenBruto =
                     inversionTotal > 0
                         ? (gananciaBruta / valorVentaMinorista) * 100
@@ -225,7 +212,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 return Column(
                   children: [
-                    // Fila 1: Stock + Alertas
                     Row(
                       children: [
                         Expanded(
@@ -265,35 +251,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // Inversión actual — card ancha
                     _KpiCardWide(
                       title: 'Inversión en Inventario',
                       value: 'S/ ${inversionTotal.toStringAsFixed(2)}',
                       subtitle: 'Valor al precio de compra',
                       icon: Icons.account_balance_wallet_rounded,
-                      color:
-                          AppColors.textSecondary, // Gris neutro de tu paleta
+                      color: AppColors.textSecondary,
                       rightLabel: 'Valor venta minorista',
                       rightValue:
                           'S/ ${valorVentaMinorista.toStringAsFixed(2)}',
                     ),
                     const SizedBox(height: 12),
-
-                    // ── Indicadores Clave de Ganancia ──────────────────
                     const _SubSectionLabel(
                       label: 'Indicadores de Ganancia Proyectada',
                     ),
                     const SizedBox(height: 8),
-
-                    // Ganancia Bruta + Margen
                     _GananciaBrutaCard(
                       gananciaBruta: gananciaBruta,
                       margenPct: margenBruto,
                       inversion: inversionTotal,
                     ),
                     const SizedBox(height: 12),
-
                     Row(
                       children: [
                         Expanded(
@@ -327,7 +305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               colors: [
                                 AppColors.primary,
                                 AppColors.primaryDark,
-                              ], // Deep Navy para contraste
+                              ],
                             ),
                           ),
                         ),
@@ -364,10 +342,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   for (var venta in snapshot.data!) {
                     totalVentas += 1;
+                    // Según tu esquema DB, la tabla 'orders' almacena el ingreso (total_amount)
+                    // y la ganancia (total_profit).
                     ingresoTotal += (venta['total_amount'] as num).toDouble();
                     gananciaTotal += (venta['total_profit'] as num).toDouble();
                   }
                 }
+
+                // CÁLCULO FONDO DE REPOSICIÓN:
+                // Ingreso Total - Ganancia Neta = Costo de lo vendido (Capital a recuperar)
+                final fondoReposicion = ingresoTotal - gananciaTotal;
 
                 final ticketPromedio =
                     totalVentas > 0 ? ingresoTotal / totalVentas : 0.0;
@@ -416,19 +400,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
+
+                    // CARD 1: Ingresos Generales vs Ganancia Neta
                     _KpiCardWide(
-                      title: 'Ingreso Total',
+                      title: 'Ingreso Total Bruto',
                       value: 'S/ ${ingresoTotal.toStringAsFixed(2)}',
-                      subtitle: 'Facturado en ventas completadas',
+                      subtitle: 'Facturado en caja',
                       icon: Icons.monetization_on_rounded,
                       color: AppColors.tealDark,
-                      rightLabel: 'Ganancia neta',
+                      rightLabel: 'Ganancia Neta',
                       rightValue: 'S/ ${gananciaTotal.toStringAsFixed(2)}',
                       rightColor: AppColors.success,
                     ),
                     const SizedBox(height: 12),
+
+                    // CARD 2: NUEVA - Fondo de Reposición (Capital)
+                    _KpiCardWide(
+                      title: 'Fondo de Reposición',
+                      value: 'S/ ${fondoReposicion.toStringAsFixed(2)}',
+                      subtitle: 'Costo unitario de lo vendido',
+                      icon: Icons.currency_exchange_rounded,
+                      color: Colors.blueGrey.shade600,
+                      rightLabel: '% del Ingreso',
+                      rightValue:
+                          ingresoTotal > 0
+                              ? '${((fondoReposicion / ingresoTotal) * 100).toStringAsFixed(1)}%'
+                              : '0.0%',
+                      rightColor: Colors.blueGrey.shade600,
+                    ),
+                    const SizedBox(height: 12),
+
                     _MargenBar(
-                      label: 'Margen sobre ventas',
+                      label: 'Margen Nivelado sobre ventas',
                       percent: margenVentas,
                       color: AppColors.success,
                     ),
@@ -713,10 +716,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// WIDGETS DE UI
+// WIDGETS DE UI (SIN ALTERACIONES ESTRUCTURALES)
 // ══════════════════════════════════════════════════════════════════════════════
 
-/// Encabezado de sección con icono, título y subtítulo.
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -768,7 +770,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Etiqueta de sub-sección.
 class _SubSectionLabel extends StatelessWidget {
   final String label;
   const _SubSectionLabel({required this.label});
@@ -800,7 +801,6 @@ class _SubSectionLabel extends StatelessWidget {
   }
 }
 
-/// KPI Card compacta con gradiente de fondo.
 class _KpiCard extends StatelessWidget {
   final String title;
   final String value;
@@ -827,9 +827,7 @@ class _KpiCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: gradient.colors.last.withValues(
-              alpha: 0.25,
-            ), // Cambiado a .last y 0.25
+            color: gradient.colors.last.withValues(alpha: 0.25),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -898,7 +896,6 @@ class _KpiCard extends StatelessWidget {
   }
 }
 
-/// KPI Card ancha con dos métricas: izquierda (principal) y derecha.
 class _KpiCardWide extends StatelessWidget {
   final String title;
   final String value;
@@ -1000,7 +997,6 @@ class _KpiCardWide extends StatelessWidget {
   }
 }
 
-/// Card especial para Ganancia Bruta con margen visual.
 class _GananciaBrutaCard extends StatelessWidget {
   final double gananciaBruta;
   final double margenPct;
@@ -1096,7 +1092,6 @@ class _GananciaBrutaCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // Barra de margen
           Row(
             children: [
               const Text(
@@ -1121,7 +1116,9 @@ class _GananciaBrutaCard extends StatelessWidget {
               value: (margenPct / 100).clamp(0.0, 1.0),
               minHeight: 7,
               backgroundColor: Colors.white.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Colors.greenAccent,
+              ),
             ),
           ),
         ],
@@ -1130,7 +1127,6 @@ class _GananciaBrutaCard extends StatelessWidget {
   }
 }
 
-/// Barra de margen simple.
 class _MargenBar extends StatelessWidget {
   final String label;
   final double percent;
@@ -1192,7 +1188,6 @@ class _MargenBar extends StatelessWidget {
   }
 }
 
-/// Card de egresos/gastos.
 class _EgresosCard extends StatelessWidget {
   final double total;
   final int cantidad;
@@ -1274,7 +1269,6 @@ class _EgresosCard extends StatelessWidget {
   }
 }
 
-/// Tarjeta de alertas: lotes próximos a vencer (≤ 30 días).
 class _ExpiringBatchesCard extends StatefulWidget {
   final List<Map<String, dynamic>> batches;
   const _ExpiringBatchesCard({required this.batches});
@@ -1337,7 +1331,6 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Cabecera ────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
@@ -1348,7 +1341,7 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
                     color: AppColors.danger.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.warning_amber_rounded,
                     color: AppColors.danger,
                     size: 22,
@@ -1359,7 +1352,7 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Lotes Próximos a Vencer',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
@@ -1400,10 +1393,7 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
               ],
             ),
           ),
-
           const Divider(height: 1, indent: 16, endIndent: 16),
-
-          // ── Lista de lotes ──────────────────────────────────────────
           ...visibleBatches.map((batch) {
             final productName =
                 (batch['products'] as Map?)?['name'] as String? ?? '–';
@@ -1419,7 +1409,6 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
             final urgencyColor = _urgencyColor(expiryStr);
             final daysLabel = _daysLabel(expiryStr);
 
-            // Construye descripción de atributos (ej: "500ml · Cápsula")
             final attrsDesc = variantAttrs.entries
                 .map((e) => '${e.value}')
                 .join(' · ');
@@ -1435,7 +1424,6 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Indicador de urgencia
                   Container(
                     width: 4,
                     height: 48,
@@ -1466,7 +1454,7 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
                             'Lote: $batchNumber',
                             warehouseName,
                           ].join(' · '),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,
                           ),
@@ -1501,7 +1489,7 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
                       const SizedBox(height: 4),
                       Text(
                         '$qty uds.',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
@@ -1513,14 +1501,12 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
               ),
             );
           }),
-
-          // ── Ver más / Ver menos ─────────────────────────────────────
           if (batches.length > 3)
             TextButton(
               onPressed: () => setState(() => _expanded = !_expanded),
               child: Text(
                 _expanded ? 'Ver menos' : 'Ver ${batches.length - 3} más...',
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.danger,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1534,7 +1520,6 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
   }
 }
 
-/// Placeholder de carga.
 class _LoadingPlaceholder extends StatelessWidget {
   const _LoadingPlaceholder();
 
@@ -1547,7 +1532,6 @@ class _LoadingPlaceholder extends StatelessWidget {
   }
 }
 
-/// Tarjeta de error.
 class _ErrorCard extends StatelessWidget {
   final String message;
   const _ErrorCard({required this.message});
@@ -1570,10 +1554,6 @@ class _ErrorCard extends StatelessWidget {
     );
   }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Admin Goal Card (sin cambios funcionales, mejora visual menor)
-// ══════════════════════════════════════════════════════════════════════════════
 
 class AdminGoalCard extends StatelessWidget {
   final double currentAmount;
