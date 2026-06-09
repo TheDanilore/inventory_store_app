@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/models/product_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -111,92 +110,110 @@ class _StockTabState extends State<_StockTab>
   String _filterCategory = 'Todos';
   List<String> _categories = ['Todos'];
 
+  // Cacheamos el future para evitar recargas en cada rebuild
+  late Future<List<Map<String, dynamic>>> _stockFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _stockFuture = _loadStock();
+  }
+
+  void _refresh() => setState(() => _stockFuture = _loadStock());
+
   Future<List<Map<String, dynamic>>> _loadStock() async {
+    // Los lotes están relacionados con product_variants (wsb.variant_id → pv.id),
+    // por eso el join anidado va dentro de product_variants.
     final response = await _supabase
         .from('products')
         .select('''
-    id, name, sale_price, unit_cost, wholesale_price, wholesale_min_quantity,
-    uses_batches, stock_control, product_type,
-    categories(name),
-    product_variants!inner(
-      id, sku, attributes, sale_price, wholesale_price,
-      wholesale_min_quantity, reorder_point, is_active
-    ),
-    warehouse_stock_batches!variant_id(
-      variant_id, available_quantity, expiry_date, batch_number
-    )
-  ''') // Nota: Añadí !variant_id para evitar error de relación ambigua si falla la query
+          id, name, sale_price, unit_cost, wholesale_price, wholesale_min_quantity,
+          uses_batches, stock_control, product_type,
+          categories(name),
+          product_variants!inner(
+            id, sku, attributes, sale_price, wholesale_price,
+            wholesale_min_quantity, reorder_point, is_active,
+            warehouse_stock_batches(
+              id, variant_id, available_quantity, expiry_date, batch_number,
+              warehouse_id, warehouses(name)
+            )
+          )
+        ''')
         .eq('is_active', true)
         .eq('product_variants.is_active', true);
 
-    debugPrint('Productos cargados: ${response.length}');
-
-    // 1. Mapear la respuesta de Supabase de manera segura a tus Modelos de Dart
-    final List<ProductModel> products =
-        (response as List)
-            .map((json) => ProductModel.fromJson(json as Map<String, dynamic>))
-            .toList();
 
     final List<Map<String, dynamic>> result = [];
     final Set<String> cats = {};
 
-    for (final prod in products) {
-      // 2. Extraer propiedades directamente desde el modelo de forma segura
-      final usesBatches = prod.usesBatches;
-      final stockControl = prod.stockControl;
+    for (final rawProd in (response as List)) {
+      final prod = rawProd as Map<String, dynamic>;
 
-      // Asumiendo que tu ProductModel parsea la categoría o la maneja internamente
-      final catName = prod.categoryName ?? 'Sin categoría';
+      final usesBatches = prod['uses_batches'] as bool? ?? false;
+      final stockControl = prod['stock_control'] as bool? ?? true;
+      final catName =
+          (prod['categories'] as Map<String, dynamic>?)?['name'] as String? ??
+          'Sin categoría';
       cats.add(catName);
 
-      // Acceder a la lista de variantes ya casteada por tu modelo
-      final variants = prod.productVariants;
-      // Acceder a la lista de lotes ya casteada por tu modelo
-      final batches = prod.warehouseStockBatches;
+      final double unitCost = (prod['unit_cost'] as num).toDouble();
+      final double prodSalePrice = (prod['sale_price'] as num).toDouble();
+      final double? prodWholesalePrice =
+          (prod['wholesale_price'] as num?)?.toDouble();
+      final int prodWholesaleMinQty =
+          (prod['wholesale_min_quantity'] as int?) ?? 1;
 
-      for (final variant in variants) {
-        final variantId = variant.id;
+      final variants = (prod['product_variants'] as List?) ?? [];
+
+      for (final rawVariant in variants) {
+        final variant = rawVariant as Map<String, dynamic>;
+        final variantId = variant['id'] as String;
+        final batches =
+            (variant['warehouse_stock_batches'] as List?)
+                ?.map((b) => Map<String, dynamic>.from(b as Map))
+                .toList() ??
+            [];
+
         int stock = 0;
 
         if (stockControl) {
-          // Filtrar los lotes utilizando las propiedades del modelo de lote
-          final variantBatches =
-              batches.where((b) => b.variantId == variantId).toList();
-
-          stock = variantBatches.fold<int>(
+          stock = batches.fold<int>(
             0,
-            (sum, b) => sum + (b.availableQuantity.toInt()),
+            (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
           );
 
           // Solo incluir si tiene stock
           if (stock <= 0) continue;
         }
 
-        final reorderPoint = variant.reorderPoint;
-        final variantBatches =
-            batches.where((b) => b.variantId == variantId).toList();
-
-        // Convertir los objetos del lote de vuelta a mapa para tu 'result' final si la vista lo requiere
-        final mappedBatches = variantBatches.map((b) => b.toJson()).toList();
+        final reorderPoint = (variant['reorder_point'] as int?) ?? 3;
+        final double variantSalePrice =
+            (variant['sale_price'] as num?)?.toDouble() ?? prodSalePrice;
+        final double? variantWholesalePrice =
+            (variant['wholesale_price'] as num?)?.toDouble() ??
+            prodWholesalePrice;
+        final int variantWholesaleMinQty =
+            (variant['wholesale_min_quantity'] as int?) ?? prodWholesaleMinQty;
 
         result.add({
-          'product_id': prod.id,
-          'product_name': prod.name,
+          'product_id': prod['id'] as String,
+          'product_name': prod['name'] as String,
           'category': catName,
-          'product_type': prod.productType,
+          'product_type': prod['product_type'] as String? ?? 'good',
           'uses_batches': usesBatches,
           'stock_control': stockControl,
-          'unit_cost': prod.unitCost,
-          'sale_price': variant.salePrice ?? prod.salePrice,
-          'wholesale_price': variant.wholesalePrice ?? prod.wholesalePrice,
-          'wholesale_min_qty':
-              variant.wholesaleMinQuantity ?? prod.wholesaleMinQuantity,
+          'unit_cost': unitCost,
+          'sale_price': variantSalePrice,
+          'wholesale_price': variantWholesalePrice,
+          'wholesale_min_qty': variantWholesaleMinQty,
           'variant_id': variantId,
-          'sku': variant.sku,
-          'attributes': variant.attributes,
+          'sku': variant['sku'] as String?,
+          'attributes': Map<String, dynamic>.from(
+            (variant['attributes'] as Map?) ?? {},
+          ),
           'reorder_point': reorderPoint,
           'stock': stock,
-          'batches': mappedBatches,
+          'batches': batches,
           'is_low_stock': stockControl && stock <= reorderPoint,
         });
       }
@@ -219,7 +236,6 @@ class _StockTabState extends State<_StockTab>
       });
     }
 
-    debugPrint('Variantes con stock: ${result.length}');
     return result;
   }
 
@@ -243,7 +259,7 @@ class _StockTabState extends State<_StockTab>
   Widget build(BuildContext context) {
     super.build(context);
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _loadStock(),
+      future: _stockFuture,
       builder: (context, snapshot) {
         final allItems = snapshot.data ?? [];
         final items = _applyFilters(allItems);
@@ -351,7 +367,7 @@ class _StockTabState extends State<_StockTab>
                         message: 'No hay productos con stock disponible',
                       )
                       : RefreshIndicator(
-                        onRefresh: () async => setState(() {}),
+                        onRefresh: () async => _refresh(),
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           itemCount: items.length,
@@ -380,15 +396,18 @@ class _StockItemCard extends StatelessWidget {
     final sku = item['sku'] as String?;
     final stock = item['stock'] as int;
     final reorderPoint = item['reorder_point'] as int;
-    final salePrice = item['sale_price'] as double;
-    final unitCost = item['unit_cost'] as double;
-    final wholesalePrice = item['wholesale_price'] as double?;
-    final wholesaleMinQty = item['wholesale_min_qty'] as int;
+    final salePrice = (item['sale_price'] as num).toDouble();
+    final unitCost = (item['unit_cost'] as num).toDouble();
+    final wholesalePrice = (item['wholesale_price'] as num?)?.toDouble();
+    final wholesaleMinQty = (item['wholesale_min_qty'] as int?) ?? 1;
     final isLowStock = item['is_low_stock'] as bool;
     final usesBatches = item['uses_batches'] as bool;
-    final attrs = item['attributes'] as Map;
+    final attrs = Map<String, dynamic>.from((item['attributes'] as Map?) ?? {});
     final category = item['category'] as String;
-    final batches = item['batches'] as List<Map<String, dynamic>>;
+    final batches =
+        (item['batches'] as List)
+            .map((b) => Map<String, dynamic>.from(b as Map))
+            .toList();
 
     final attrsText = attrs.entries.map((e) => '${e.value}').join(' · ');
     final profit = salePrice - unitCost;
@@ -727,29 +746,50 @@ class _BatchesTab extends StatefulWidget {
 class _BatchesTabState extends State<_BatchesTab>
     with AutomaticKeepAliveClientMixin {
   final _supabase = Supabase.instance.client;
-  String _filterStatus = 'Todos'; // Todos | Vencido | Crítico | Normal
+  String _filterStatus =
+      'Todos'; // Todos | Vencido | Crítico | Próximo | Normal
   String _searchText = '';
   final _searchCtrl = TextEditingController();
 
+  // Cacheamos el future para evitar recargas en cada rebuild
+  late Future<List<Map<String, dynamic>>> _batchesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _batchesFuture = _loadBatches();
+  }
+
+  void _refresh() => setState(() => _batchesFuture = _loadBatches());
+
   Future<List<Map<String, dynamic>>> _loadBatches() async {
-    // Traemos todos los lotes de productos que usan lotes, con stock > 0
+    // Traemos todos los lotes con stock > 0.
+    // El filtro .eq('products.uses_batches', true) NO funciona sobre relaciones
+    // en Supabase Flutter — filtramos del lado cliente tras recibir los datos.
     final response = await _supabase
         .from('warehouse_stock_batches')
         .select('''
           id, batch_number, expiry_date, available_quantity, updated_at,
-          products!inner(name, uses_batches),
-          product_variants(sku, attributes),
+          variant_id, warehouse_id,
+          products!inner(id, name, uses_batches),
+          product_variants(id, sku, attributes),
           warehouses(name),
           suppliers(name)
         ''')
-        .eq('products.uses_batches', true)
         .gt('available_quantity', 0)
         .order('expiry_date', ascending: true, nullsFirst: false);
 
-    // También traemos lotes sin fecha de vencimiento (nullsFirst: false los deja al final)
-    final allBatches = List<Map<String, dynamic>>.from(response);
+    // Filtrar del lado cliente: solo productos que usan lotes
+    final allBatches =
+        (response as List)
+            .map((b) => Map<String, dynamic>.from(b as Map))
+            .where(
+              (b) =>
+                  ((b['products'] as Map?)?['uses_batches'] as bool?) == true,
+            )
+            .toList();
 
-    // Enriquecer con estado
+    // Enriquecer con estado de vencimiento
     for (final b in allBatches) {
       final expiryStr = b['expiry_date'] as String?;
       if (expiryStr == null) {
@@ -817,7 +857,7 @@ class _BatchesTabState extends State<_BatchesTab>
   Widget build(BuildContext context) {
     super.build(context);
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _loadBatches(),
+      future: _batchesFuture,
       builder: (context, snapshot) {
         final allBatches = snapshot.data ?? [];
         final batches = _applyFilters(allBatches);
@@ -946,7 +986,7 @@ class _BatchesTabState extends State<_BatchesTab>
                         message: 'No hay lotes con stock disponible',
                       )
                       : RefreshIndicator(
-                        onRefresh: () async => setState(() {}),
+                        onRefresh: () async => _refresh(),
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                           itemCount: batches.length,
@@ -971,15 +1011,20 @@ class _BatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final productName = (batch['products'] as Map?)?['name'] as String? ?? '–';
+    final productName =
+        (batch['products'] as Map<String, dynamic>?)?['name'] as String? ?? '–';
     final batchNumber = batch['batch_number'] as String? ?? '–';
     final qty = (batch['available_quantity'] as num?)?.toInt() ?? 0;
     final warehouseName =
-        (batch['warehouses'] as Map?)?['name'] as String? ?? '–';
-    final supplierName = (batch['suppliers'] as Map?)?['name'] as String?;
-    final variantAttrs =
-        (batch['product_variants'] as Map?)?['attributes'] as Map? ?? {};
-    final sku = (batch['product_variants'] as Map?)?['sku'] as String?;
+        (batch['warehouses'] as Map<String, dynamic>?)?['name'] as String? ??
+        '–';
+    final supplierName =
+        (batch['suppliers'] as Map<String, dynamic>?)?['name'] as String?;
+    final variantMap = batch['product_variants'] as Map<String, dynamic>? ?? {};
+    final variantAttrs = Map<String, dynamic>.from(
+      (variantMap['attributes'] as Map?) ?? {},
+    );
+    final sku = variantMap['sku'] as String?;
     final expiryStr = batch['expiry_date'] as String?;
     final status = batch['_status'] as String;
     final daysRemaining = batch['_days_remaining'] as int?;

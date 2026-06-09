@@ -100,44 +100,31 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   }
 
   /// Nombre a mostrar del cliente.
-  /// Prioridad:
-  ///  1. Nombre del perfil ya embebido en el modelo (del join SQL)
-  ///  2. Nombre manual (customer_name en la orden)
-  ///  3. Lista de perfiles cargada localmente (para cuando se edita y cambia cliente)
-  ///  4. "Cliente mostrador" como último recurso
   String _customerLabelFor(String? customerId) {
-    // Si no hay customer_id vinculado, usar el nombre manual de la orden
     if (customerId == null) {
       final manualName = widget.order.displayCustomerName.trim();
       return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
     }
 
-    // Si el customer_id es el mismo que el original de la orden,
-    // usar directamente el nombre embebido en el modelo (ya viene del JOIN)
     if (customerId == widget.order.customerId) {
       final embeddedName = widget.order.profileFullName?.trim();
       if (embeddedName != null && embeddedName.isNotEmpty) {
         return embeddedName;
       }
-      // Fallback al customer_name manual si el join no trajo nombre
       final manualName = widget.order.displayCustomerName.trim();
       if (manualName.isNotEmpty && manualName != 'Cliente mostrador') {
         return manualName;
       }
     }
 
-    // Si cambió el cliente en edición, buscar en la lista local de perfiles
     if (_profiles.isNotEmpty) {
       try {
         final profile = _profiles.firstWhere((p) => p['id'] == customerId);
         final name = (profile['full_name'] as String?)?.trim();
         if (name != null && name.isNotEmpty) return name;
-      } catch (_) {
-        // No encontrado en la lista local
-      }
+      } catch (_) {}
     }
 
-    // Si los perfiles aún no cargaron y es el cliente original, mostrar algo
     if (_isLoading && customerId == widget.order.customerId) {
       return widget.order.displayCustomerName.trim().isNotEmpty
           ? widget.order.displayCustomerName
@@ -151,9 +138,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     if (!_isEditing) return;
     setState(() {
       _selectedCustomerId = customerId;
-      _creditInfo = null; // limpiar mientras carga
+      _creditInfo = null;
     });
-    // Cargar crédito del nuevo cliente seleccionado
     _loadCreditInfo(customerId);
   }
 
@@ -181,7 +167,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               product_variants ( attributes, sku, product_images(*) )
             ''')
             .eq('order_id', widget.order.id),
-        // Solo clientes activos para el buscador de edición
         _supabase
             .from('profiles')
             .select('id, full_name, phone, document_number, role, is_active')
@@ -189,7 +174,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .order('full_name'),
       ];
 
-      // Cargar crédito del cliente si tiene uno asignado
       if (_selectedCustomerId != null) {
         futures.add(
           _supabase
@@ -216,8 +200,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         results[1],
       );
 
-      // Asegurarnos de que el cliente actual de la orden esté en la lista,
-      // incluso si fue desactivado (is_active = false). Lo añadimos si no está.
       final currentCustomerId = _selectedCustomerId ?? widget.order.customerId;
       if (currentCustomerId != null &&
           !profiles.any((p) => p['id'] == currentCustomerId)) {
@@ -306,7 +288,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     final appliedDiscount =
         discountValue > maxDiscountValue ? maxDiscountValue : discountValue;
 
-    // AQUÍ RESTAMOS EL DESCUENTO EXTRA GUARDADO EN EL MODELO
     final finalAmount =
         subtotalAmount - appliedDiscount - widget.order.discountAmount;
 
@@ -339,7 +320,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       final isNowCompleted = _currentStatus.toUpperCase() == 'COMPLETED';
       final isNowCancelled = _currentStatus.toUpperCase() == 'CANCELLED';
 
-      // ─── 1. OBTENER PERFIL DEL USUARIO PARA TRAZABILIDAD (created_by) ───
       final authUserId = _supabase.auth.currentUser?.id;
       String? currentProfileId;
       if (authUserId != null) {
@@ -352,7 +332,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         if (profileResp != null) currentProfileId = profileResp['id'] as String;
       }
 
-      // --- Recálculos financieros ---
       final nextPointsUsed = int.tryParse(_pointsUsedCtrl.text.trim()) ?? 0;
       _pointsUsed = nextPointsUsed < 0 ? 0 : nextPointsUsed;
 
@@ -371,7 +350,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 .single();
         final warehouseId = orderData['warehouse_id'];
 
-        // A. Validar Crédito
         if (_paymentMethod == 'CRÉDITO') {
           if (_selectedCustomerId == null) {
             _showErrorSnackBar(
@@ -406,8 +384,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           }
         }
 
-        // B. Validar Stock de todos los items
-        // B. Validar Stock de todos los items y preparar lotes
         List<String> outOfStockMessages = [];
         List<Map<String, dynamic>> batchesToUpdate = [];
         List<Map<String, dynamic>> movementsToInsert = [];
@@ -434,7 +410,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               '• ${item.productName ?? 'Producto'} - ${item.variantLabel} (Stock real: $currentStock, Pedido: $qtyNeeded)',
             );
           } else {
-            // Distribuir el descuento entre los lotes
             int remainingToDeduct = qtyNeeded;
             for (var batch in batches) {
               if (remainingToDeduct <= 0) break;
@@ -472,14 +447,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           }
         }
 
-        // C. Detener si falta stock
         if (outOfStockMessages.isNotEmpty) {
           _showStockErrorDialog(outOfStockMessages);
           setState(() => _isSaving = false);
           return;
         }
 
-        // D. Proceder a descontar inventario y registrar movimientos
         for (var update in batchesToUpdate) {
           await _supabase
               .from('warehouse_stock_batches')
@@ -491,7 +464,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           await _supabase.from('inventory_movements').insert(mov);
         }
 
-        // E. Cargar Deuda al Cliente (Si es Crédito)
         if (_paymentMethod == 'CRÉDITO') {
           final creditResp =
               await _supabase
@@ -535,13 +507,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         final origPaymentMethod = orderData['payment_method'] as String;
         final origCustomerId = orderData['customer_id'] as String?;
 
-        // A. Restaurar inventario
         for (final item in _items) {
           final safeVariantId = item.variantId ?? '';
           final qty = item.quantity;
           final productId = item.productId;
 
-          // Buscar el lote más reciente al cual regresarle el stock
           final batchResp =
               await _supabase
                   .from('warehouse_stock_batches')
@@ -576,7 +546,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               if (currentProfileId != null) 'created_by': currentProfileId,
             });
           } else {
-            // Crear un lote nuevo si no había ninguno en el sistema
             final newBatch =
                 await _supabase
                     .from('warehouse_stock_batches')
@@ -607,7 +576,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           }
         }
 
-        // B. Reembolsar Deuda al Cliente (Si era Crédito)
         if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
           final creditResp =
               await _supabase
@@ -641,9 +609,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           }
         }
 
-        // C. Revertir wallet (puntos ganados → quitar, puntos canjeados → devolver)
         if (origCustomerId != null) {
-          // Revertir puntos GANADOS
           final earnedMov =
               await _supabase
                   .from('wallet_movements')
@@ -677,7 +643,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             });
           }
 
-          // Devolver puntos CANJEADOS
           final redeemedMov =
               await _supabase
                   .from('wallet_movements')
@@ -721,7 +686,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         _paymentMethod = 'EFECTIVO';
       }
 
-      // Cuando es crédito, no tiene sentido usar puntos (incompatibles)
       if (_paymentMethod == 'CRÉDITO') {
         _pointsUsed = 0;
         _pointsEarned = 0;
@@ -731,15 +695,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       double amountPaid;
 
       if (_paymentMethod == 'CRÉDITO') {
-        // Crédito siempre nace pendiente hasta que se salde
         paymentStatus = 'PENDING';
         amountPaid = 0;
       } else if (isNowCancelled) {
-        // Cancelado: neutro
         paymentStatus = 'PAID';
         amountPaid = 0;
       } else {
-        // Efectivo, Yape, etc.: pagado completo
         paymentStatus = 'PAID';
         amountPaid = totalAmount;
       }
@@ -810,7 +771,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .from('order_items')
             .update({
               'quantity': item.quantity,
-              // Corrección adicional: Recalcular net_profit si el usuario alteró la cantidad de este ítem
               'net_profit': (item.appliedPrice - item.unitCost) * item.quantity,
             })
             .eq('id', item.id ?? '');
@@ -827,7 +787,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
   }
 
-  // Helpers para no ensuciar el bloque principal
   void _showErrorSnackBar(String msg) {
     if (mounted) {
       ScaffoldMessenger.of(
@@ -891,6 +850,54 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   ),
             ),
             const Divider(),
+
+            // ─── NUEVO: BANNER INFORMATIVO PARA EDICIÓN DE COMPLETADOS ───
+            if (_isCompleted)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      _isEditing ? Colors.orange.shade50 : Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        _isEditing
+                            ? Colors.orange.shade300
+                            : Colors.teal.shade200,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isEditing
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_rounded,
+                      color:
+                          _isEditing
+                              ? Colors.orange.shade800
+                              : Colors.teal.shade700,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _isEditing
+                            ? 'Este pedido ya está COMPLETADO. Es totalmente seguro cambiar el cliente o el método de pago. Evita alterar cantidades si no deseas provocar desfases en el inventario actual.'
+                            : 'Este pedido ya ha sido finalizado con éxito. Los movimientos de inventario y monedas de fidelidad correspondientes ya fueron consolidados.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              _isEditing
+                                  ? Colors.orange.shade900
+                                  : Colors.teal.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             OrderDetailCustomerSection(
               isEditing: _isEditing,
               searchController: _customerSearchCtrl,
@@ -913,14 +920,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 if (val != null) {
                   setState(() {
                     _paymentMethod = val;
-                    // Al cambiar a crédito, limpiar puntos (incompatibles)
                     if (val == 'CRÉDITO') {
                       _pointsUsed = 0;
                       _pointsUsedCtrl.text = '0';
                       _pointsEarned = _calculatePointsEarned();
                     }
                   });
-                  // Si cambia cliente+método, refrescar crédito
                   if (val == 'CRÉDITO' && _selectedCustomerId != null) {
                     _loadCreditInfo(_selectedCustomerId!);
                   }
@@ -928,14 +933,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               },
             ),
 
-            // ─── SECCIÓN DE CRÉDITO (solo cuando el método es CRÉDITO) ───
             if (_paymentMethod == 'CRÉDITO')
               _CreditInfoSection(
                 creditInfo: _creditInfo,
                 customerId: _selectedCustomerId,
               ),
 
-            // ─── PAYMENT STATUS (siempre visible en COMPLETED) ───
             if (_isCompleted)
               _PaymentStatusSection(
                 paymentStatus: _currentPaymentStatus,
@@ -1013,7 +1016,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 }
 
 class OrderDetailHeaderRow extends StatelessWidget {
-  final String orderId; // NUEVO: Se recibe el ID del pedido
+  final String orderId;
   final bool isCompleted;
   final bool isEditing;
   final bool canToggleEdit;
@@ -1034,9 +1037,8 @@ class OrderDetailHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start, // Alineado arriba
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Usamos Expanded para evitar desbordamientos
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1046,7 +1048,6 @@ class OrderDetailHeaderRow extends StatelessWidget {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 2),
-              // NUEVO: SelectableText permite copiar el ID fácilmente
               SelectableText(
                 'ID: $orderId',
                 style: TextStyle(
@@ -1316,7 +1317,6 @@ class OrderDetailStatusSection extends StatelessWidget {
   }
 }
 
-/// Incluye CRÉDITO en el listado de métodos de pago.
 class OrderDetailPaymentSection extends StatelessWidget {
   final String currentPaymentMethod;
   final bool isEditing;
@@ -1335,13 +1335,12 @@ class OrderDetailPaymentSection extends StatelessWidget {
     'PLIN',
     'TARJETA',
     'TRANSFERENCIA',
-    'CRÉDITO', // ← CORREGIDO: faltaba en el listado original
+    'CRÉDITO',
     'POR ACORDAR',
   ];
 
   @override
   Widget build(BuildContext context) {
-    // Aseguramos que el valor actual sea válido en la lista
     final safeValue =
         _paymentMethods.contains(currentPaymentMethod)
             ? currentPaymentMethod
@@ -1467,13 +1466,12 @@ class OrderDetailPointsSection extends StatelessWidget {
   }
 }
 
-/// Resumen de totales con cap del 50% en descuento por monedas.
 class OrderDetailTotalSummarySection extends StatelessWidget {
   final double subtotal;
   final int pointsUsed;
   final int pointsEarned;
   final double pointsToSolesRatio;
-  final double discountAmount; // <-- 1. Agregado
+  final double discountAmount;
 
   const OrderDetailTotalSummarySection({
     super.key,
@@ -1481,19 +1479,16 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
     required this.pointsUsed,
     required this.pointsEarned,
     required this.pointsToSolesRatio,
-    this.discountAmount = 0.0, // <-- 2. Agregado al constructor
+    this.discountAmount = 0.0,
   });
 
-  /// Descuento bruto en soles (antes del cap)
   double get _rawDiscount => pointsUsed * pointsToSolesRatio;
 
-  /// Descuento real aplicado — máximo 50% del subtotal
   double get _appliedDiscount {
     final maxDiscount = subtotal * 0.5;
     return _rawDiscount > maxDiscount ? maxDiscount : _rawDiscount;
   }
 
-  // 3. Modificado para restar también el descuento manual de forma visual
   double get _totalFinal {
     final total = subtotal - _appliedDiscount - discountAmount;
     return total < 0 ? 0 : total;
@@ -1550,7 +1545,6 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Indicar si el cap fue aplicado
     final capApplied = _rawDiscount > _appliedDiscount;
 
     return OrderDetailSectionCard(
@@ -1570,15 +1564,12 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
                       : null,
             ),
           ],
-
-          // 4. NUEVO: Renglón para el descuento adicional
           if (discountAmount > 0)
             _buildRow(
               'Descuento adicional',
               '- S/ ${discountAmount.toStringAsFixed(2)}',
               valueColor: Colors.green.shade800,
             ),
-
           const Divider(height: 16),
           _buildRow(
             'Total final',
@@ -1629,7 +1620,6 @@ class OrderDetailItemCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagen del producto
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child:
@@ -1644,7 +1634,6 @@ class OrderDetailItemCard extends StatelessWidget {
                       : _placeholderIcon(),
             ),
             const SizedBox(width: 12),
-            // Datos del producto
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1667,7 +1656,6 @@ class OrderDetailItemCard extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 4),
-                  // Precio unitario
                   Text(
                     'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
@@ -1676,7 +1664,6 @@ class OrderDetailItemCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Cantidad y subtotal
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -1834,8 +1821,6 @@ class _PaymentStatusSection extends StatefulWidget {
 class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
   bool _isRegistering = false;
   final _abonoCtrl = TextEditingController();
-
-  // NUEVO: Estado para guardar el mensaje de error en tiempo real
   String? _errorMessage;
 
   @override
@@ -1844,7 +1829,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
     super.dispose();
   }
 
-  // NUEVO: Función que valida el texto mientras el usuario escribe
   void _validarEntrada(String value) {
     if (value.trim().isEmpty) {
       setState(() => _errorMessage = null);
@@ -1869,8 +1853,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
   }
 
   Future<void> _registrarAbono() async {
-    // La validación fuerte ya se hace en tiempo real,
-    // pero mantenemos una barrera de seguridad aquí.
     if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
 
     final amount = double.parse(_abonoCtrl.text.trim());
@@ -1881,7 +1863,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
       final currentDebt =
           (widget.creditInfo!['current_debt'] as num).toDouble();
 
-      // Descontamos a la deuda global de la línea de crédito
       final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
 
       await widget.supabase
@@ -1914,7 +1895,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
         if (adminProfileId != null) 'created_by': adminProfileId,
       });
 
-      // Actualizamos los montos específicos de ESTA orden
       final newOrderAmountPaid = widget.amountPaid + amount;
       String newPaymentStatus =
           newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
@@ -1971,7 +1951,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
         badgeLabel = 'Pendiente de pago';
     }
 
-    // Condición para habilitar el botón: no debe estar cargando, el campo no debe estar vacío y no debe haber errores.
     final bool isButtonEnabled =
         !_isRegistering &&
         _abonoCtrl.text.trim().isNotEmpty &&
@@ -2032,7 +2011,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
                 ),
             ],
           ),
-
           if (widget.paymentMethod == 'CRÉDITO' &&
               pendingAmount > 0 &&
               widget.creditInfo != null) ...[
@@ -2058,12 +2036,10 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
                       decimal: true,
                       signed: false,
                     ),
-                    // ─── NUEVO: Bloquea teclas inválidas (solo deja pasar números y un punto) ───
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                     ],
-                    onChanged:
-                        _validarEntrada, // Sigue evaluando el límite máximo
+                    onChanged: _validarEntrada,
                     decoration: InputDecoration(
                       hintText: 'Monto a abonar (S/)',
                       hintStyle: TextStyle(
@@ -2099,7 +2075,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
                       vertical: 11,
                     ),
                   ),
-                  // Si no pasa las validaciones, el botón se bloquea solo (queda en gris)
                   onPressed: isButtonEnabled ? _registrarAbono : null,
                   child:
                       _isRegistering

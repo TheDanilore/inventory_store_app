@@ -3,6 +3,7 @@ import 'package:inventory_store_app/screens/admin/admin_credits_screen.dart';
 import 'package:inventory_store_app/screens/admin/admin_suppliers_screen.dart';
 import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
+import 'package:inventory_store_app/screens/admin/financial_accounts_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_screen.dart';
@@ -252,6 +253,23 @@ class _AppDrawerState extends State<AppDrawer> {
                           },
                         ),
                       ],
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Cuentas',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FinancialAccountsScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
