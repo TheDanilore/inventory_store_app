@@ -4,67 +4,177 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 enum SnackbarType { success, error, warning, info }
 
 class AppSnackbar {
+  static OverlayEntry? _currentOverlay;
+
   static void show(
     BuildContext context, {
     required String message,
     SnackbarType type = SnackbarType.success,
     Color? backgroundColor,
-    Duration duration = const Duration(
-      seconds: 2,
-    ), // Ajustado a 2 segundos como en tu diseño
+    Duration duration = const Duration(seconds: 2),
   }) {
-    // Oculta el snackbar actual si hay uno en pantalla para mostrar el nuevo rápido
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    dismiss();
 
-    // Determinamos el color de fondo basado en tu AppColors
     final resolvedBackgroundColor =
         backgroundColor ??
         switch (type) {
           SnackbarType.success => AppColors.success,
-          SnackbarType.error =>
-            AppColors.accent, // Usando accent como error según tu diseño
+          SnackbarType.error => AppColors.accent,
           SnackbarType.warning => AppColors.warning,
           SnackbarType.info => AppColors.info,
         };
 
-    // Determinamos el icono
-    IconData iconData;
-    switch (type) {
-      case SnackbarType.success:
-        iconData = Icons.check_circle_outline_rounded;
-        break;
-      case SnackbarType.error:
-      case SnackbarType.warning:
-        iconData = Icons.warning_amber_rounded;
-        break;
-      case SnackbarType.info:
-        iconData = Icons.info_outline_rounded;
-        break;
-    }
+    final IconData iconData = switch (type) {
+      SnackbarType.success => Icons.check_circle_outline_rounded,
+      SnackbarType.error || SnackbarType.warning => Icons.warning_amber_rounded,
+      SnackbarType.info => Icons.info_outline_rounded,
+    };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(iconData, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+    final overlayState = Overlay.of(context);
+
+    _currentOverlay = OverlayEntry(
+      builder: (context) {
+        return _AnimatedSnackbarWidget(
+          message: message,
+          backgroundColor: resolvedBackgroundColor,
+          iconData: iconData,
+          duration: duration,
+          onDismissed: () => dismiss(),
+        );
+      },
+    );
+
+    overlayState.insert(_currentOverlay!);
+  }
+
+  static void dismiss() {
+    if (_currentOverlay != null && _currentOverlay!.mounted) {
+      _currentOverlay!.remove();
+      _currentOverlay = null;
+    }
+  }
+}
+
+class _AnimatedSnackbarWidget extends StatefulWidget {
+  final String message;
+  final Color backgroundColor;
+  final IconData iconData;
+  final Duration duration;
+  final VoidCallback onDismissed;
+
+  const _AnimatedSnackbarWidget({
+    required this.message,
+    required this.backgroundColor,
+    required this.iconData,
+    required this.duration,
+    required this.onDismissed,
+  });
+
+  @override
+  State<_AnimatedSnackbarWidget> createState() =>
+      _AnimatedSnackbarWidgetState();
+}
+
+class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  bool _isDismissedBySwipe = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _controller.forward();
+
+    Future.delayed(widget.duration, () async {
+      // Si el usuario ya lo quitó con el dedo, no ejecutamos la salida automática
+      if (mounted && !_isDismissedBySwipe) {
+        await _controller.reverse();
+        widget.onDismissed();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: MediaQuery.paddingOf(context).bottom + 16,
+      left: 16,
+      right: 16,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Material(
+            color: Colors.transparent,
+            child: Dismissible(
+              key: UniqueKey(),
+              direction:
+                  DismissDirection
+                      .horizontal, // Permite deslizar a izquierda o derecha
+              onDismissed: (direction) {
+                _isDismissedBySwipe = true;
+                widget.onDismissed(); // Remueve el Overlay inmediatamente
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: widget.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(widget.iconData, color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.message,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
-        backgroundColor: resolvedBackgroundColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: duration,
       ),
     );
   }

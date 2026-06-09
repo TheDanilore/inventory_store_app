@@ -4,6 +4,7 @@ import 'package:inventory_store_app/models/warehouse_stock_batch_model.dart';
 import 'package:inventory_store_app/models/warehouse_model.dart';
 import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
+import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_entry_item_model.dart';
@@ -532,7 +533,11 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                   : 'Ingreso registrado. Pago pendiente al proveedor.',
           type: SnackbarType.success,
         );
-        Navigator.pop(context, true);
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const KardexScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
@@ -462,7 +462,11 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
           message: 'Salida registrada correctamente en el Kardex',
           type: SnackbarType.success,
         );
-        Navigator.pop(context, true);
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const KardexScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {

@@ -132,6 +132,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               .select('id, status')
               .eq('account_id', _selectedAccountId!)
               .eq('status', 'OPEN')
+              .eq('type', 'CAJA')
               .maybeSingle();
       if (mounted) {
         setState(() => _activeShift = shiftRes);

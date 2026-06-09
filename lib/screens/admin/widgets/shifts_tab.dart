@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/cash_shift_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShiftsTab extends StatefulWidget {
@@ -61,6 +62,7 @@ class _ShiftsTabState extends State<ShiftsTab>
         .from('financial_accounts')
         .select('id, name, type')
         .eq('is_active', true)
+        .eq('type', 'CAJA')
         .order('name');
 
     final accounts =
@@ -365,7 +367,6 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No hay sesión activa');
 
-      // CORRECCIÓN: Para auth_user_id en lugar de id directo
       final profileRes =
           await _supabase
               .from('profiles')
@@ -377,6 +378,26 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
       final amount =
           double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
 
+      // ─── INICIO DE LA NUEVA VALIDACIÓN ──────────────────────────
+      // Buscamos la cuenta seleccionada para ver cuánto saldo tiene
+      final selectedAccount = widget.accounts.firstWhere(
+        (a) => a.id == _selectedAccountId,
+      );
+
+      if (amount > selectedAccount.balance) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                'Saldo insuficiente. La cuenta solo tiene S/ ${selectedAccount.balance.toStringAsFixed(2)}',
+            type: SnackbarType.error,
+          );
+          setState(() => _saving = false);
+        }
+        return; // Detenemos el guardado
+      }
+      // ─── FIN DE LA NUEVA VALIDACIÓN ─────────────────────────────
+
       await _supabase.from('cash_shifts').insert({
         'account_id': _selectedAccountId,
         'opened_by': profileId,
@@ -385,17 +406,15 @@ class _OpenShiftSheetState extends State<_OpenShiftSheet> {
         'opened_at': DateTime.now().toUtc().toIso8601String(),
       });
 
-      // CORRECCIÓN de Salida Limpia
       if (!mounted) return;
       Navigator.pop(context, true);
       return;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al abrir turno: $e'),
-            backgroundColor: AppColors.danger,
-          ),
+        AppSnackbar.show(
+          context,
+          message: 'Error al abrir turno: $e',
+          type: SnackbarType.error,
         );
       }
     }
