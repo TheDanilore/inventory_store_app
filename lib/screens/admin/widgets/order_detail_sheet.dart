@@ -25,6 +25,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   List<OrderItemModel> _items = [];
   List<TextEditingController> _quantityControllers = [];
   List<Map<String, dynamic>> _profiles = [];
+  // variantId -> lista de {batch_number, expiry_date, quantity}
+  Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
 
   bool _isLoading = true;
   bool _isEditing = false;
@@ -235,6 +237,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 (item) => TextEditingController(text: item.quantity.toString()),
               )
               .toList();
+
+      // Cargar lotes usados en esta orden (solo para órdenes completadas)
+      if (_currentStatus.toUpperCase() == 'COMPLETED') {
+        _fetchBatchMovements();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -243,6 +250,37 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         message: 'Error cargando datos: $e',
         type: SnackbarType.error,
       );
+    }
+  }
+
+  /// Carga los movimientos de inventario de esta orden para mostrar
+  /// qué lotes se descontaron por cada variante.
+  Future<void> _fetchBatchMovements() async {
+    try {
+      final resp = await _supabase
+          .from('inventory_movements')
+          .select('''
+            variant_id, quantity,
+            warehouse_stock_batches ( batch_number, expiry_date )
+          ''')
+          .eq('order_id', widget.order.id)
+          .eq('reason', 'SALE');
+
+      final Map<String, List<Map<String, dynamic>>> grouped = {};
+      for (final row in (resp as List)) {
+        final variantId = row['variant_id'] as String? ?? '';
+        final batch = row['warehouse_stock_batches'] as Map<String, dynamic>?;
+        if (batch == null) continue;
+        grouped.putIfAbsent(variantId, () => []).add({
+          'batch_number': batch['batch_number'] ?? '',
+          'expiry_date': batch['expiry_date'],
+          'quantity': ((row['quantity'] as num?)?.toInt() ?? 0).abs(),
+        });
+      }
+
+      if (mounted) setState(() => _batchesByVariant = grouped);
+    } catch (e) {
+      debugPrint('Error cargando lotes: $e');
     }
   }
 
@@ -979,6 +1017,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               items: _items,
               isLoading: _isLoading,
               isEditing: _isEditing,
+              isLocked: _isCompleted || _isCancelled,
+              batchesByVariant: _batchesByVariant,
               quantityControllers: _quantityControllers,
               onDecrease: (index) => _changeQuantity(index, -1),
               onIncrease: (index) => _changeQuantity(index, 1),
@@ -1530,6 +1570,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
 class OrderDetailItemCard extends StatelessWidget {
   final OrderItemModel item;
   final bool isEditing;
+  final List<Map<String, dynamic>> batches;
   final TextEditingController quantityController;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
@@ -1539,11 +1580,22 @@ class OrderDetailItemCard extends StatelessWidget {
     super.key,
     required this.item,
     required this.isEditing,
+    this.batches = const [],
     required this.quantityController,
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
   });
+
+  String _formatExpiry(dynamic raw) {
+    if (raw == null) return '';
+    try {
+      final dt = DateTime.parse(raw.toString());
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1602,6 +1654,57 @@ class OrderDetailItemCard extends StatelessWidget {
                     'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
+                  // ── Chips de lotes ──────────────────────────────────
+                  if (batches.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children:
+                          batches.map((b) {
+                            final batchNumber =
+                                b['batch_number'] as String? ?? '';
+                            final qty = b['quantity'] as int? ?? 0;
+                            final expiry = _formatExpiry(b['expiry_date']);
+                            final label =
+                                expiry.isNotEmpty
+                                    ? '${qty}u · $batchNumber (vto $expiry)'
+                                    : '${qty}u · $batchNumber';
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.teal.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_rounded,
+                                    size: 10,
+                                    color: Colors.teal.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.teal.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1682,6 +1785,8 @@ class OrderDetailItemsSection extends StatelessWidget {
   final List<OrderItemModel> items;
   final bool isLoading;
   final bool isEditing;
+  final bool isLocked;
+  final Map<String, List<Map<String, dynamic>>> batchesByVariant;
   final List<TextEditingController> quantityControllers;
   final void Function(int index) onDecrease;
   final void Function(int index) onIncrease;
@@ -1692,6 +1797,8 @@ class OrderDetailItemsSection extends StatelessWidget {
     required this.items,
     required this.isLoading,
     required this.isEditing,
+    this.isLocked = false,
+    this.batchesByVariant = const {},
     required this.quantityControllers,
     required this.onDecrease,
     required this.onIncrease,
@@ -1718,9 +1825,12 @@ class OrderDetailItemsSection extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
+                  final item = items[index];
+                  final batches = batchesByVariant[item.variantId ?? ''] ?? [];
                   return OrderDetailItemCard(
-                    item: items[index],
-                    isEditing: isEditing,
+                    item: item,
+                    isEditing: isEditing && !isLocked,
+                    batches: batches,
                     quantityController: quantityControllers[index],
                     onDecrease: () => onDecrease(index),
                     onIncrease: () => onIncrease(index),
