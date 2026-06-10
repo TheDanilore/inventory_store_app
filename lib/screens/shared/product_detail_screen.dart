@@ -605,7 +605,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   Text(
                     'Máx. $_effectiveStock',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Container(
@@ -800,7 +803,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: AppColors.bg,
-                              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radiusSm,
+                              ),
                             ),
                             child: Text(
                               'Publicando como: $defaultName',
@@ -835,7 +840,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     borderRadius: BorderRadius.circular(
                                       AppColors.radius,
                                     ),
-                                    side: const BorderSide(color: AppColors.border),
+                                    side: const BorderSide(
+                                      color: AppColors.border,
+                                    ),
                                   ),
                                 ),
                                 child: const Text(
@@ -1131,8 +1138,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         onSettingsSelected: (value) {
           switch (value) {
             case 'export':
-              ProductPdfGenerator.generateProductPdf(
-                product: widget.product,
+              ProductPdfGenerator.shareProduct(
+                widget.product,
                 variants: _variants,
                 stockByVariant: _stockByVariant,
               );
@@ -1192,7 +1199,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               decoration: BoxDecoration(
                 color: AppColors.bg,
                 border: Border.all(
-                  color: !_showVariantImage ? AppColors.primary : AppColors.border,
+                  color:
+                      !_showVariantImage ? AppColors.primary : AppColors.border,
                   width: !_showVariantImage ? 2 : 1,
                 ),
                 borderRadius: BorderRadius.circular(8),
@@ -1599,7 +1607,10 @@ class _ProductTopSection extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'SKU $sku',
-                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
           ],
@@ -1643,7 +1654,10 @@ class _ProductTopSection extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 '($totalReviews reseñas)',
-                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
           ),
@@ -1739,7 +1753,8 @@ class _PriceSection extends StatelessWidget {
                     Icon(
                       Icons.local_offer_rounded,
                       size: 14,
-                      color: isWholesale ? AppColors.amber : AppColors.textMuted,
+                      color:
+                          isWholesale ? AppColors.amber : AppColors.textMuted,
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -1747,14 +1762,18 @@ class _PriceSection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: isWholesale ? AppColors.amberDark : AppColors.textMuted,
+                        color:
+                            isWholesale
+                                ? AppColors.amberDark
+                                : AppColors.textMuted,
                       ),
                     ),
                     Text(
                       'S/ ${baseWholesalePrice!.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 10,
-                        color: isWholesale ? AppColors.amber : AppColors.textMuted,
+                        color:
+                            isWholesale ? AppColors.amber : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -1794,7 +1813,11 @@ class _PriceSection extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.bolt_rounded, size: 14, color: AppColors.amber),
+                const Icon(
+                  Icons.bolt_rounded,
+                  size: 14,
+                  color: AppColors.amber,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -1912,7 +1935,9 @@ class _VariantSelector extends StatelessWidget {
                               duration: const Duration(milliseconds: 180),
                               width: 72,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(AppColors.radius),
+                                borderRadius: BorderRadius.circular(
+                                  AppColors.radius,
+                                ),
                                 border: Border.all(
                                   color:
                                       isSelected
@@ -1964,7 +1989,8 @@ class _VariantSelector extends StatelessWidget {
                                                         Icons
                                                             .inventory_2_outlined,
                                                         size: 22,
-                                                        color: AppColors.textMuted,
+                                                        color:
+                                                            AppColors.textMuted,
                                                       ),
                                                     ),
                                               )
@@ -2164,7 +2190,9 @@ class _BottomBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: const Border(top: BorderSide(color: AppColors.border, width: 1)),
+        border: const Border(
+          top: BorderSide(color: AppColors.border, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -2277,7 +2305,8 @@ class _BottomBar extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: canBuy ? Colors.white : AppColors.textMuted,
+                                color:
+                                    canBuy ? Colors.white : AppColors.textMuted,
                               ),
                             ),
                             if (canBuy)
@@ -2381,7 +2410,6 @@ class _InputField extends StatelessWidget {
     );
   }
 }
-
 
 // ─── DESCRIPTION CARD ────────────────────────────────────────────────────────
 

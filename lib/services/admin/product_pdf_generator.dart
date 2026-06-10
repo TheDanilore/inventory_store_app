@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -5,10 +8,8 @@ import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 
 class ProductPdfGenerator {
-
-  
-  static Future<void> generateProductPdf({
-    required ProductModel product,
+  static Future<Uint8List> _buildPdf(
+    ProductModel product, {
     required List<ProductVariantModel> variants,
     required Map<String, int> stockByVariant,
   }) async {
@@ -96,14 +97,12 @@ class ProductPdfGenerator {
                           ),
                         ),
                         pw.SizedBox(height: 4),
-                        ...product.details.entries
-                            .map(
-                              (e) => pw.Text(
-                                '- ${e.key}: ${e.value}',
-                                style: const pw.TextStyle(fontSize: 11),
-                              ),
-                            )
-                            ,
+                        ...product.details.entries.map(
+                          (e) => pw.Text(
+                            '- ${e.key}: ${e.value}',
+                            style: const pw.TextStyle(fontSize: 11),
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -262,10 +261,78 @@ class ProductPdfGenerator {
       ),
     );
 
-    // 4. Mostrar vista previa e imprimir/compartir
+    return pdf.save();
+  }
+
+  static Future<void> printProduct(
+    ProductModel product, {
+    required List<ProductVariantModel> variants,
+    required Map<String, int> stockByVariant,
+  }) async {
+    final bytes = await _buildPdf(
+      product,
+      variants: variants,
+      stockByVariant: stockByVariant,
+    );
+
     await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+      onLayout: (_) async => bytes,
       name: 'Producto_${product.name.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  static Future<void> shareProduct(
+    ProductModel product, {
+    required List<ProductVariantModel> variants,
+    required Map<String, int> stockByVariant,
+  }) async {
+    final bytes = await _buildPdf(
+      product,
+      variants: variants,
+      stockByVariant: stockByVariant,
+    );
+
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'Producto_${product.name.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  static Future<void> saveProduct(
+    ProductModel product, {
+    required List<ProductVariantModel> variants,
+    required Map<String, int> stockByVariant,
+  }) async {
+    final bytes = await _buildPdf(
+      product,
+      variants: variants,
+      stockByVariant: stockByVariant,
+    );
+
+    await FileSaver.instance.saveFile(
+      name: 'Producto_${product.name.replaceAll(' ', '_')}',
+      bytes: bytes,
+      fileExtension: 'pdf',
+      mimeType: MimeType.pdf,
+    );
+  }
+
+  static Future<void> saveProductAs(
+    ProductModel product, {
+    required List<ProductVariantModel> variants,
+    required Map<String, int> stockByVariant,
+  }) async {
+    final bytes = await _buildPdf(
+      product,
+      variants: variants,
+      stockByVariant: stockByVariant,
+    );
+
+    await FileSaver.instance.saveAs(
+      name: 'Producto_${product.name.replaceAll(' ', '_')}',
+      bytes: bytes,
+      fileExtension: 'pdf',
+      mimeType: MimeType.pdf,
     );
   }
 }
