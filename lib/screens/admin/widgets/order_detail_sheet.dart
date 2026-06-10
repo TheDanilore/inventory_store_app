@@ -260,11 +260,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       final resp = await _supabase
           .from('inventory_movements')
           .select('''
-            variant_id, quantity,
-            warehouse_stock_batches ( batch_number, expiry_date )
-          ''')
+      variant_id, quantity,
+      warehouse_stock_batches!inner ( batch_number, expiry_date )
+    ''')
           .eq('order_id', widget.order.id)
-          .eq('reason', 'SALE');
+          .eq('reason', 'SALE')
+          .neq('warehouse_stock_batches.batch_number', 'DEFAULT');
 
       final Map<String, List<Map<String, dynamic>>> grouped = {};
       for (final row in (resp as List)) {
