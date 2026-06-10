@@ -1340,7 +1340,40 @@ class _CreditAccountModalState extends State<_CreditAccountModal> {
   }
 }
 
-// ─── MODAL: Registrar abono / pago ────────────────────────────────────────────
+// ─── MODAL: Registrar abono / pago ─────────────────────────────────
+
+// Modelo local para representar una cuenta financiera en este modal
+class _FinancialAccountOption {
+  final String id;
+  final String name;
+  final String type; // CAJA | BANCO | DIGITAL | OTRO
+  final double balance;
+
+  _FinancialAccountOption({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.balance,
+  });
+
+  // Icono según tipo de cuenta
+  IconData get icon {
+    switch (type) {
+      case 'CAJA':
+        return Icons.point_of_sale_rounded;
+      case 'BANCO':
+        return Icons.account_balance_rounded;
+      case 'DIGITAL':
+        return Icons.smartphone_rounded;
+      default:
+        return Icons.wallet_rounded;
+    }
+  }
+
+  // El payment_method que se guarda en credit_movements y orders
+  // es el nombre de la cuenta (ej: "Yape", "BCP", "Caja Principal")
+  String get paymentMethodLabel => name;
+}
 
 class _RegisterPaymentModal extends StatefulWidget {
   final CreditAccountModel account;
@@ -1359,30 +1392,29 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
   final _supabase = Supabase.instance.client;
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  String _paymentMethod = 'EFECTIVO';
   bool _isSaving = false;
 
   // Pedidos con deuda pendiente de este cliente
   List<Map<String, dynamic>> _pendingOrders = [];
   bool _loadingOrders = true;
-  // null = distribuir automáticamente; non-null = pagar solo ese pedido
-  String? _selectedOrderId;
+  String? _selectedOrderId; // null = distribuir FIFO automáticamente
 
-  // NUEVO: Estado para el mensaje de error en tiempo real
+  // Validación en tiempo real
   String? _errorMessage;
+  // Monto rápido seleccionado (null = ninguno / usuario escribió manual)
+  String? _selectedQuickAmount;
 
-  static const _paymentMethods = [
-    'EFECTIVO',
-    'YAPE',
-    'PLIN',
-    'TRANSFERENCIA',
-    'OTRO',
-  ];
+  // ─ Cuentas financieras ──────────────────────────────────
+  List<_FinancialAccountOption> _accounts = [];
+  _FinancialAccountOption? _selectedAccount;
+  bool _loadingAccounts = true;
+  // Turno activo (solo relevante para cuentas tipo CAJA)
+  Map<String, dynamic>? _activeShift;
 
   @override
   void initState() {
     super.initState();
-    _loadPendingOrders();
+    _loadData();
   }
 
   @override
@@ -1390,6 +1422,12 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
     _amountCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
+  }
+
+  // ─ Carga paralela de pedidos pendientes + cuentas financieras ─────
+
+  Future<void> _loadData() async {
+    await Future.wait([_loadPendingOrders(), _loadAccounts()]);
   }
 
   Future<void> _loadPendingOrders() async {
@@ -1414,21 +1452,100 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
     }
   }
 
+  Future<void> _loadAccounts() async {
+    try {
+      final resp = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('name');
+
+      if (mounted) {
+        const typeOrder = {'CAJA': 0, 'BANCO': 1, 'DIGITAL': 2, 'OTRO': 3};
+        final accounts =
+            (resp as List)
+                .map(
+                  (a) => _FinancialAccountOption(
+                    id: a['id'] as String,
+                    name: a['name'] as String,
+                    type: a['type'] as String,
+                    balance: (a['balance'] as num).toDouble(),
+                  ),
+                )
+                .toList()
+              ..sort((a, b) {
+                final oa = typeOrder[a.type] ?? 99;
+                final ob = typeOrder[b.type] ?? 99;
+                if (oa != ob) return oa.compareTo(ob);
+                return a.name.compareTo(b.name);
+              });
+
+        setState(() {
+          _accounts = accounts;
+          // Preseleccionar primera cuenta disponible
+          if (accounts.isNotEmpty) {
+            _selectedAccount = accounts.first;
+            _loadingAccounts = false;
+          } else {
+            _loadingAccounts = false;
+          }
+        });
+
+        // Verificar turno si la cuenta preseleccionada es CAJA
+        if (_selectedAccount?.type == 'CAJA') {
+          await _checkActiveShift(_selectedAccount!.id);
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingAccounts = false);
+    }
+  }
+
+  /// Solo para cuentas CAJA: verifica si hay un turno abierto.
+  Future<void> _checkActiveShift(String accountId) async {
+    try {
+      final resp =
+          await _supabase
+              .from('cash_shifts')
+              .select('id, opened_at, opening_amount')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
+
+      if (mounted) setState(() => _activeShift = resp);
+    } catch (_) {
+      if (mounted) setState(() => _activeShift = null);
+    }
+  }
+
+  Future<void> _onAccountChanged(_FinancialAccountOption account) async {
+    setState(() {
+      _selectedAccount = account;
+      _activeShift = null; // Resetear mientras carga
+    });
+    if (account.type == 'CAJA') {
+      await _checkActiveShift(account.id);
+    }
+  }
+
   double _pendingOf(Map<String, dynamic> order) {
     final total = (order['total_amount'] as num).toDouble();
     final paid = (order['amount_paid'] as num).toDouble();
     return (total - paid).clamp(0.0, double.infinity);
   }
 
-  // NUEVO: Función de validación en tiempo real
-  void _validarEntrada(String value) {
+  void _validarEntrada(String value, {bool fromQuick = false}) {
+    if (!fromQuick) {
+      // El usuario escribió manualmente → deseleccionar chip rápido
+      if (_selectedQuickAmount != null) {
+        setState(() => _selectedQuickAmount = null);
+      }
+    }
     if (value.trim().isEmpty) {
       setState(() => _errorMessage = null);
       return;
     }
-
     final amount = double.tryParse(value.trim());
-
     if (amount == null) {
       setState(() => _errorMessage = 'Número inválido');
       return;
@@ -1437,9 +1554,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
       setState(() => _errorMessage = 'Debe ser mayor a 0');
       return;
     }
-
     if (_selectedOrderId != null) {
-      // Validar límite específico del pedido seleccionado
       final target = _pendingOrders.firstWhere(
         (o) => o['id'] == _selectedOrderId,
       );
@@ -1453,7 +1568,6 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
         return;
       }
     } else {
-      // Validar límite de la deuda total general
       if (amount > widget.account.currentDebt) {
         setState(
           () =>
@@ -1463,19 +1577,35 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
         return;
       }
     }
-
-    // Si pasa todas las reglas, no hay error
     setState(() => _errorMessage = null);
   }
 
   Future<void> _savePayment() async {
-    // Barrera de seguridad final
     if (_errorMessage != null || _amountCtrl.text.trim().isEmpty) return;
+    if (_selectedAccount == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Selecciona una cuenta de destino',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+    // CAJA requiere turno abierto
+    if (_selectedAccount!.type == 'CAJA' && _activeShift == null) {
+      AppSnackbar.show(
+        context,
+        message:
+            'La cuenta Caja no tiene un turno abierto. Abre el turno primero.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
 
     final amount = double.parse(_amountCtrl.text.trim());
-
     setState(() => _isSaving = true);
+
     try {
+      // ─ Obtener profile_id del admin ────────────
       final authUserId = _supabase.auth.currentUser?.id;
       String? adminProfileId;
       if (authUserId != null) {
@@ -1488,18 +1618,19 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
         if (resp != null) adminProfileId = resp['id'] as String;
       }
 
-      final String? linkedOrderId = _selectedOrderId;
-
+      // 1. Registrar en credit_movements
       await _supabase.from('credit_movements').insert({
         'credit_id': widget.account.creditId,
-        if (linkedOrderId != null) 'order_id': linkedOrderId,
+        if (_selectedOrderId != null) 'order_id': _selectedOrderId,
         'movement_type': 'PAYMENT',
         'amount': amount,
-        'payment_method': _paymentMethod,
-        'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        // Guardamos el nombre de la cuenta como payment_method (ej: "Yape", "BCP")
+        'payment_method': _selectedAccount!.paymentMethodLabel,
+        'notes': _notesCtrl.text.trim().isEmpty ? "Abono registrado desde Admin Credits" : _notesCtrl.text.trim(),
         if (adminProfileId != null) 'created_by': adminProfileId,
       });
 
+      // 2. Actualizar amount_paid y payment_status en cada orden afectada (FIFO)
       final ordersToApply =
           _selectedOrderId != null
               ? _pendingOrders
@@ -1510,19 +1641,15 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
       double remaining = amount;
       for (final order in ordersToApply) {
         if (remaining <= 0) break;
-
         final orderId = order['id'] as String;
         final total = (order['total_amount'] as num).toDouble();
         final alreadyPaid = (order['amount_paid'] as num).toDouble();
         final pendingOfOrder = _pendingOf(order);
-
         final toApply =
             remaining >= pendingOfOrder ? pendingOfOrder : remaining;
         final newAmountPaid = alreadyPaid + toApply;
         remaining -= toApply;
-
         final newPaymentStatus = newAmountPaid >= total ? 'PAID' : 'PARTIAL';
-
         await _supabase
             .from('orders')
             .update({
@@ -1532,6 +1659,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
             .eq('id', orderId);
       }
 
+      // 3. Reducir current_debt en customer_credits
       final newDebt = (widget.account.currentDebt - amount).clamp(
         0.0,
         double.infinity,
@@ -1544,10 +1672,37 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
           })
           .eq('id', widget.account.creditId);
 
+      // 4. Registrar INGRESO en account_movements
+      //    shift_id solo si es cuenta CAJA con turno abierto
+      final bool isCaja = _selectedAccount!.type == 'CAJA';
+      final String? shiftId =
+          isCaja && _activeShift != null
+              ? _activeShift!['id'] as String?
+              : null;
+
+      await _supabase.from('account_movements').insert({
+        'account_id': _selectedAccount!.id,
+        'movement_type': 'INCOME',
+        'amount': amount,
+        'description': 'Cobro de crédito — ${widget.account.partnerName}',
+        'reference_type': 'customer_credits',
+        'reference_id': widget.account.creditId,
+        if (shiftId != null) 'shift_id': shiftId,
+        if (adminProfileId != null) 'created_by': adminProfileId,
+      });
+
+      // 5. Actualizar saldo de la cuenta financiera
+      final newBalance = _selectedAccount!.balance + amount;
+      await _supabase
+          .from('financial_accounts')
+          .update({'balance': newBalance})
+          .eq('id', _selectedAccount!.id);
+
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Pago de S/ ${amount.toStringAsFixed(2)} registrado.',
+          message:
+              'Pago de S/ ${amount.toStringAsFixed(2)} registrado en ${_selectedAccount!.name}.',
           type: SnackbarType.success,
         );
         widget.onPaymentSaved();
@@ -1570,10 +1725,16 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final debt = widget.account.currentDebt;
+    final bool isLoading = _loadingOrders || _loadingAccounts;
 
-    // Condición para habilitar el botón
+    // Bloquear botón si cuenta CAJA no tiene turno
+    final bool cajaSinTurno =
+        _selectedAccount?.type == 'CAJA' && _activeShift == null;
     final bool isButtonEnabled =
         !_isSaving &&
+        !isLoading &&
+        !cajaSinTurno &&
+        _selectedAccount != null &&
         _amountCtrl.text.trim().isNotEmpty &&
         _errorMessage == null;
 
@@ -1588,6 +1749,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Handle
             Center(
               child: Container(
                 width: 36,
@@ -1600,6 +1762,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
               ),
             ),
 
+            // Título
             Row(
               children: [
                 const Icon(Icons.payments_rounded, color: AppColors.success),
@@ -1628,37 +1791,37 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
+            // Deuda actual
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.dangerLight,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.money_off_rounded,
                     color: AppColors.danger,
-                    size: 20,
+                    size: 18,
                   ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Deuda actual',
-                      style: TextStyle(
-                        color: AppColors.danger,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Deuda actual',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.danger,
                     ),
                   ),
+                  const Spacer(),
                   Text(
                     'S/ ${debt.toStringAsFixed(2)}',
                     style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
                       color: AppColors.danger,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
                     ),
                   ),
                 ],
@@ -1666,6 +1829,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
             ),
             const SizedBox(height: 16),
 
+            // Aplicar pago a (FIFO / pedido específico)
             const Text(
               'Aplicar pago a',
               style: TextStyle(
@@ -1694,7 +1858,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                 isSelected: _selectedOrderId == null,
                 onTap: () {
                   setState(() => _selectedOrderId = null);
-                  _validarEntrada(_amountCtrl.text); // Re-evaluar
+                  _validarEntrada(_amountCtrl.text);
                 },
               ),
               ..._pendingOrders.map((order) {
@@ -1715,7 +1879,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                       _selectedOrderId = orderId;
                       final valText = pending.toStringAsFixed(2);
                       _amountCtrl.text = valText;
-                      _validarEntrada(valText); // Validar automáticamente
+                      _validarEntrada(valText);
                     });
                   },
                 );
@@ -1752,6 +1916,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
             ],
             const SizedBox(height: 14),
 
+            // Montos rápidos
             if (debt > 0) ...[
               const Text(
                 'Monto rápido',
@@ -1769,41 +1934,50 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                   if (debt >= 50)
                     _QuickAmountChip(
                       label: 'S/ 50',
+                      isSelected: _selectedQuickAmount == '50.00',
                       onTap: () {
+                        setState(() => _selectedQuickAmount = '50.00');
                         _amountCtrl.text = '50.00';
-                        _validarEntrada('50.00');
+                        _validarEntrada('50.00', fromQuick: true);
                       },
                     ),
                   if (debt >= 100)
                     _QuickAmountChip(
                       label: 'S/ 100',
+                      isSelected: _selectedQuickAmount == '100.00',
                       onTap: () {
+                        setState(() => _selectedQuickAmount = '100.00');
                         _amountCtrl.text = '100.00';
-                        _validarEntrada('100.00');
+                        _validarEntrada('100.00', fromQuick: true);
                       },
                     ),
                   if (debt >= 200)
                     _QuickAmountChip(
                       label: 'S/ 200',
+                      isSelected: _selectedQuickAmount == '200.00',
                       onTap: () {
+                        setState(() => _selectedQuickAmount = '200.00');
                         _amountCtrl.text = '200.00';
-                        _validarEntrada('200.00');
+                        _validarEntrada('200.00', fromQuick: true);
                       },
                     ),
                   _QuickAmountChip(
                     label: 'Total (S/ ${debt.toStringAsFixed(2)})',
+                    isSelected: _selectedQuickAmount == debt.toStringAsFixed(2),
+                    isTotalChip: true,
                     onTap: () {
-                      final valText = debt.toStringAsFixed(2);
-                      _amountCtrl.text = valText;
-                      _validarEntrada(valText);
+                      final v = debt.toStringAsFixed(2);
+                      setState(() => _selectedQuickAmount = v);
+                      _amountCtrl.text = v;
+                      _validarEntrada(v, fromQuick: true);
                     },
-                    isHighlight: true,
                   ),
                 ],
               ),
               const SizedBox(height: 14),
             ],
 
+            // Monto del abono
             const Text(
               'Monto del abono (S/)',
               style: TextStyle(
@@ -1828,12 +2002,11 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                 controller: _amountCtrl,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
-                  signed: false, // Oculta tecla negativa
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
-                onChanged: _validarEntrada, // Evalúa en tiempo real
+                onChanged: _validarEntrada,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1841,7 +2014,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                 ),
                 decoration: InputDecoration(
                   hintText: 'Ej. 50.00',
-                  errorText: _errorMessage, // Muestra el texto en rojo
+                  errorText: _errorMessage,
                   errorMaxLines: 2,
                   prefixIcon: Icon(
                     Icons.attach_money_rounded,
@@ -1855,34 +2028,26 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                 ),
               ),
             ),
-
-            // Aviso visual adicional
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
                   Icons.info_outline_rounded,
-                  size: 14,
+                  size: 13,
                   color: Colors.grey.shade600,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Ingresa un número mayor a 0. No se admiten montos negativos.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                const SizedBox(width: 5),
+                Text(
+                  'Ingresa un número mayor a 0. No se admiten montos negativos.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
+            // ─── SELECTOR DE CUENTA FINANCIERA ───────────────────
             const Text(
-              'Método de pago',
+              'Cuenta de destino',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -1890,43 +2055,253 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
               ),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  _paymentMethods.map((method) {
-                    final selected = _paymentMethod == method;
+            if (_loadingAccounts)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (_accounts.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerLight,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.danger.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.warning_rounded,
+                      size: 14,
+                      color: AppColors.danger,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'No hay cuentas financieras activas. Crea una primero.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                height: 64,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  itemCount: _accounts.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final account = _accounts[index];
+                    final isSelected = _selectedAccount?.id == account.id;
+                    // Badge de tipo con color según categoría
+                    final typeColor =
+                        account.type == 'CAJA'
+                            ? AppColors.amber
+                            : account.type == 'BANCO'
+                            ? Colors.blue.shade600
+                            : account.type == 'DIGITAL'
+                            ? Colors.purple.shade500
+                            : AppColors.textMuted;
                     return GestureDetector(
-                      onTap: () => setState(() => _paymentMethod = method),
-                      child: Container(
+                      onTap: () => _onAccountChanged(account),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: selected ? AppColors.teal : AppColors.bg,
-                          borderRadius: BorderRadius.circular(20),
+                          color: isSelected ? AppColors.teal : AppColors.bg,
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: selected ? AppColors.teal : AppColors.border,
-                          ),
-                        ),
-                        child: Text(
-                          method,
-                          style: TextStyle(
                             color:
-                                selected
-                                    ? Colors.white
-                                    : AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                                isSelected ? AppColors.teal : AppColors.border,
+                            width: isSelected ? 1.5 : 1,
                           ),
+                          boxShadow:
+                              isSelected
+                                  ? [
+                                    BoxShadow(
+                                      color: AppColors.teal.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  account.icon,
+                                  size: 13,
+                                  color: isSelected ? Colors.white : typeColor,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  account.name,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? Colors.white.withValues(
+                                              alpha: 0.2,
+                                            )
+                                            : typeColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    account.type,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          isSelected
+                                              ? Colors.white70
+                                              : typeColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'S/ ${account.balance.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isSelected
+                                            ? Colors.white70
+                                            : AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     );
-                  }).toList(),
-            ),
-            const SizedBox(height: 14),
+                  },
+                ),
+              ),
 
+            // Advertencia si CAJA sin turno
+            if (_selectedAccount?.type == 'CAJA' &&
+                _activeShift == null &&
+                !_loadingAccounts) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.danger.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.lock_rounded,
+                      size: 13,
+                      color: AppColors.danger,
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'Esta caja no tiene un turno abierto. Abre el turno antes de registrar el cobro.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Info turno activo (si CAJA con turno)
+            if (_selectedAccount?.type == 'CAJA' && _activeShift != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.successLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 13,
+                      color: AppColors.success,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Turno abierto · Se registrará en el turno activo',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+
+            // Notas
             const Text(
               'Notas (opcional)',
               style: TextStyle(
@@ -1955,10 +2330,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
             const SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed:
-                  isButtonEnabled
-                      ? _savePayment
-                      : null, // Bloqueado si hay errores
+              onPressed: isButtonEnabled ? _savePayment : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 disabledBackgroundColor: Colors.grey.shade300,
@@ -2090,37 +2462,74 @@ class _OrderSelectionTile extends StatelessWidget {
 class _QuickAmountChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  final bool isHighlight;
+  final bool isSelected;
+  final bool isTotalChip;
 
   const _QuickAmountChip({
     required this.label,
     required this.onTap,
-    this.isHighlight = false,
+    this.isSelected = false,
+    this.isTotalChip = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Estado visual: seleccionado > es-total > normal
+    final Color bgColor;
+    final Color borderColor;
+    final Color textColor;
+
+    if (isSelected) {
+      bgColor = isTotalChip ? AppColors.success : AppColors.teal;
+      borderColor = bgColor;
+      textColor = Colors.white;
+    } else if (isTotalChip) {
+      bgColor = AppColors.success.withValues(alpha: 0.09);
+      borderColor = AppColors.success.withValues(alpha: 0.5);
+      textColor = AppColors.success;
+    } else {
+      bgColor = AppColors.bg;
+      borderColor = AppColors.border;
+      textColor = AppColors.textSecondary;
+    }
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color:
-              isHighlight
-                  ? AppColors.success.withValues(alpha: 0.12)
-                  : AppColors.bg,
+          color: bgColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isHighlight ? AppColors.success : AppColors.border,
-          ),
+          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: (isTotalChip ? AppColors.success : AppColors.teal)
+                          .withValues(alpha: 0.22),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isHighlight ? AppColors.success : AppColors.textSecondary,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              Icon(Icons.check_rounded, size: 11, color: textColor),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -211,7 +211,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .order('full_name'),
         _supabase
             .from('financial_accounts')
-            .select('id, name, type')
+            .select('id, name, type, balance')
             .eq('is_active', true)
             .order('name'),
       ];
@@ -247,6 +247,19 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       List<Map<String, dynamic>> accounts = List<Map<String, dynamic>>.from(
         results[2],
       );
+      // CAJA primero, luego BANCO, DIGITAL, OTRO, resto alfabético
+      const accountTypeOrder = {
+        'CAJA': 0,
+        'BANCO': 1,
+        'DIGITAL': 2,
+        'OTRO': 3,
+      };
+      accounts.sort((a, b) {
+        final oa = accountTypeOrder[a['type'] as String? ?? ''] ?? 99;
+        final ob = accountTypeOrder[b['type'] as String? ?? ''] ?? 99;
+        if (oa != ob) return oa.compareTo(ob);
+        return (a['name'] as String).compareTo(b['name'] as String);
+      });
 
       final currentCustomerId = _selectedCustomerId ?? widget.order.customerId;
       if (currentCustomerId != null &&
@@ -1078,7 +1091,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             OrderDetailPaymentSection(
               currentPaymentMethod: _paymentMethod,
               isEditing: _isEditing,
-              accounts: _accounts, // NUEVO: Pasamos las cuentas
+              isCompleted: _isCompleted,
+              accounts: _accounts,
               onChanged: (val) {
                 if (val != null) {
                   setState(() {
@@ -1111,6 +1125,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 creditInfo: _creditInfo,
                 orderId: widget.order.id,
                 supabase: _supabase,
+                accounts: _accounts,
                 onPaymentRegistered: () {
                   _fetchData();
                   Navigator.pop(context, true);
@@ -1553,7 +1568,8 @@ class OrderDetailCustomerSection extends StatelessWidget {
 class OrderDetailPaymentSection extends StatelessWidget {
   final String currentPaymentMethod;
   final bool isEditing;
-  final List<Map<String, dynamic>> accounts; // Lista de cuentas financieras
+  final bool isCompleted;
+  final List<Map<String, dynamic>> accounts;
   final ValueChanged<String?> onChanged;
 
   const OrderDetailPaymentSection({
@@ -1562,47 +1578,332 @@ class OrderDetailPaymentSection extends StatelessWidget {
     required this.isEditing,
     required this.accounts,
     required this.onChanged,
+    this.isCompleted = false,
+  });
+
+  // Icono según tipo de cuenta financiera
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'CAJA':
+        return Icons.point_of_sale_rounded;
+      case 'BANCO':
+        return Icons.account_balance_rounded;
+      case 'DIGITAL':
+        return Icons.smartphone_rounded;
+      default:
+        return Icons.wallet_rounded;
+    }
+  }
+
+  // Color del badge del tipo
+  Color _colorForType(String type) {
+    switch (type) {
+      case 'CAJA':
+        return const Color(0xFFF59E0B); // amber
+      case 'BANCO':
+        return const Color(0xFF2563EB); // blue
+      case 'DIGITAL':
+        return const Color(0xFF7C3AED); // purple
+      default:
+        return const Color(0xFF6B7280); // gray
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Pedido COMPLETED con crédito → campos bloqueados, solo lectura
+    final bool isCrediToLocked =
+        isCompleted && currentPaymentMethod == 'CRÉDITO';
+
+    // Opciones fijas que siempre aparecen
+    final List<Map<String, dynamic>> fixedOptions = [
+      {'id': 'POR_ACORDAR', 'name': 'POR ACORDAR', 'type': 'FIXED'},
+      {'id': 'CREDITO', 'name': 'CRÉDITO', 'type': 'FIXED'},
+    ];
+
+    // Todas las opciones: fijas primero, luego cuentas financieras (ya vienen ordenadas CAJA first)
+    final allOptions = [...fixedOptions, ...accounts];
+
+    // Valor seguro: si el método guardado no coincide con ninguna cuenta, lo añadimos como legacy
+    final String safeValue =
+        currentPaymentMethod.isNotEmpty ? currentPaymentMethod : 'POR ACORDAR';
+    final bool valueInList = allOptions.any(
+      (o) => o['name'] as String == safeValue,
+    );
+
+    return OrderDetailSectionCard(
+      title: 'Método de Pago / Cuenta',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Aviso de bloqueo cuando es CRÉDITO y está completado ──────
+          if (isCrediToLocked) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.lock_rounded, size: 13, color: Color(0xFFB45309)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Venta a crédito completada. El método de pago no puede modificarse.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF92400E),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // ── Vista solo lectura ─────────────────────────────────────────
+          if (!isEditing || isCrediToLocked) ...[
+            _PaymentMethodBadge(
+              label: safeValue,
+              icon:
+                  accounts.any((a) => a['name'] == safeValue)
+                      ? _iconForType(
+                        accounts.firstWhere(
+                              (a) => a['name'] == safeValue,
+                              orElse: () => {'type': 'OTRO'},
+                            )['type']
+                            as String,
+                      )
+                      : (safeValue == 'CRÉDITO'
+                          ? Icons.handshake_rounded
+                          : Icons.help_outline_rounded),
+              color:
+                  accounts.any((a) => a['name'] == safeValue)
+                      ? _colorForType(
+                        accounts.firstWhere(
+                              (a) => a['name'] == safeValue,
+                              orElse: () => {'type': 'OTRO'},
+                            )['type']
+                            as String,
+                      )
+                      : (safeValue == 'CRÉDITO'
+                          ? AppColors.teal
+                          : AppColors.textMuted),
+            ),
+          ]
+          // ── Vista editable: chips con scroll horizontal ────────────────
+          else ...[
+            SizedBox(
+              height: 68,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                itemCount: allOptions.length + (valueInList ? 0 : 1),
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  // Opción legacy (método guardado que ya no existe en cuentas)
+                  if (!valueInList && index == allOptions.length) {
+                    final isSelected = safeValue == currentPaymentMethod;
+                    return _buildChip(
+                      name: safeValue,
+                      type: 'LEGACY',
+                      balance: null,
+                      isSelected: isSelected,
+                      isFixed: true,
+                      onTap: () => onChanged(safeValue),
+                    );
+                  }
+
+                  final option = allOptions[index];
+                  final name = option['name'] as String;
+                  final type = option['type'] as String;
+                  final isFixed = type == 'FIXED';
+                  final balance =
+                      isFixed ? null : (option['balance'] as num?)?.toDouble();
+                  final isSelected = name == safeValue;
+
+                  return _buildChip(
+                    name: name,
+                    type: type,
+                    balance: balance,
+                    isSelected: isSelected,
+                    isFixed: isFixed,
+                    onTap: () => onChanged(name),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    required String name,
+    required String type,
+    required double? balance,
+    required bool isSelected,
+    required bool isFixed,
+    required VoidCallback onTap,
+  }) {
+    final Color typeColor =
+        isFixed
+            ? (name == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted)
+            : _colorForType(type);
+    final IconData icon =
+        isFixed
+            ? (name == 'CRÉDITO'
+                ? Icons.handshake_rounded
+                : Icons.pending_actions_rounded)
+            : _iconForType(type);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.teal : AppColors.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: AppColors.teal.withValues(alpha: 0.18),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 13,
+                  color: isSelected ? Colors.white : typeColor,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isFixed) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : typeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      type,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? Colors.white70 : typeColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  if (balance != null)
+                    Text(
+                      'S/ ${balance.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isSelected ? Colors.white70 : AppColors.textMuted,
+                      ),
+                    ),
+                ] else
+                  Text(
+                    name == 'CRÉDITO'
+                        ? 'A cuenta del cliente'
+                        : 'Definir luego',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected ? Colors.white70 : AppColors.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Badge de solo lectura para el método de pago seleccionado
+class _PaymentMethodBadge extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _PaymentMethodBadge({
+    required this.label,
+    required this.icon,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 1. Armamos la lista de opciones (Fijas + Nombres de Cuentas)
-    List<String> options = ['POR ACORDAR', 'CRÉDITO'];
-    options.addAll(accounts.map((a) => a['name'] as String));
-
-    // 2. Por seguridad, si el método actual no está en la lista (ej. venía guardado como 'YAPE' en vez de 'Yape Negocio'),
-    // lo agregamos temporalmente a las opciones para que el Dropdown no tire error al cargar.
-    String safeValue =
-        currentPaymentMethod.isNotEmpty ? currentPaymentMethod : 'POR ACORDAR';
-    if (!options.contains(safeValue)) {
-      options.add(safeValue);
-    }
-
-    return OrderDetailSectionCard(
-      title: 'Método de Pago / Cuenta',
-      child:
-          isEditing
-              ? DropdownButtonFormField<String>(
-                value: safeValue,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-                items:
-                    options
-                        .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                        .toList(),
-                onChanged: onChanged,
-              )
-              : OrderDetailInfoBox(
-                value:
-                    currentPaymentMethod.isNotEmpty
-                        ? currentPaymentMethod
-                        : 'No registrado',
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2197,6 +2498,8 @@ class OrderDetailItemsSection extends StatelessWidget {
   }
 }
 
+
+
 class _PaymentStatusSection extends StatefulWidget {
   final String paymentStatus;
   final double totalAmount;
@@ -2205,6 +2508,7 @@ class _PaymentStatusSection extends StatefulWidget {
   final Map<String, dynamic>? creditInfo;
   final String orderId;
   final SupabaseClient supabase;
+  final List<Map<String, dynamic>> accounts; // cuentas financieras ordenadas
   final VoidCallback onPaymentRegistered;
 
   const _PaymentStatusSection({
@@ -2215,6 +2519,7 @@ class _PaymentStatusSection extends StatefulWidget {
     required this.creditInfo,
     required this.orderId,
     required this.supabase,
+    required this.accounts,
     required this.onPaymentRegistered,
   });
 
@@ -2226,6 +2531,24 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
   bool _isRegistering = false;
   final _abonoCtrl = TextEditingController();
   String? _errorMessage;
+  String? _selectedQuickAmount;
+
+  // Cuenta financiera seleccionada para el abono
+  Map<String, dynamic>? _selectedAccount;
+  // Turno activo (solo para CAJA)
+  Map<String, dynamic>? _activeShift;
+
+  @override
+  void initState() {
+    super.initState();
+    // Preseleccionar la primera cuenta disponible
+    if (widget.accounts.isNotEmpty) {
+      _selectedAccount = widget.accounts.first;
+      if (_selectedAccount!['type'] == 'CAJA') {
+        _checkActiveShift(_selectedAccount!['id'] as String);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -2233,7 +2556,52 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
     super.dispose();
   }
 
-  void _validarEntrada(String value) {
+  Future<void> _checkActiveShift(String accountId) async {
+    try {
+      final resp = await widget.supabase
+          .from('cash_shifts')
+          .select('id, opened_at')
+          .eq('account_id', accountId)
+          .eq('status', 'OPEN')
+          .maybeSingle();
+      if (mounted) setState(() => _activeShift = resp);
+    } catch (_) {
+      if (mounted) setState(() => _activeShift = null);
+    }
+  }
+
+  Future<void> _onAccountTap(Map<String, dynamic> account) async {
+    setState(() {
+      _selectedAccount = account;
+      _activeShift = null;
+    });
+    if (account['type'] == 'CAJA') {
+      await _checkActiveShift(account['id'] as String);
+    }
+  }
+
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'CAJA':     return Icons.point_of_sale_rounded;
+      case 'BANCO':    return Icons.account_balance_rounded;
+      case 'DIGITAL':  return Icons.smartphone_rounded;
+      default:         return Icons.wallet_rounded;
+    }
+  }
+
+  Color _colorForType(String type) {
+    switch (type) {
+      case 'CAJA':    return const Color(0xFFF59E0B);
+      case 'BANCO':   return const Color(0xFF2563EB);
+      case 'DIGITAL': return const Color(0xFF7C3AED);
+      default:        return const Color(0xFF6B7280);
+    }
+  }
+
+  void _validarEntrada(String value, {bool fromQuick = false}) {
+    if (!fromQuick && _selectedQuickAmount != null) {
+      setState(() => _selectedQuickAmount = null);
+    }
     if (value.trim().isEmpty) {
       setState(() => _errorMessage = null);
       return;
@@ -2245,10 +2613,7 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
     } else if (amount <= 0) {
       setState(() => _errorMessage = 'Debe ser mayor a 0');
     } else if (amount > pendingOrderAmount) {
-      setState(
-        () =>
-            _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}',
-      );
+      setState(() => _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}');
     } else {
       setState(() => _errorMessage = null);
     }
@@ -2256,69 +2621,94 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
 
   Future<void> _registrarAbono() async {
     if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
+    if (_selectedAccount == null) {
+      AppSnackbar.show(context,
+          message: 'Selecciona una cuenta de destino', type: SnackbarType.warning);
+      return;
+    }
+    final isCaja = _selectedAccount!['type'] == 'CAJA';
+    if (isCaja && _activeShift == null) {
+      AppSnackbar.show(context,
+          message: 'La caja no tiene un turno abierto. Abre el turno primero.',
+          type: SnackbarType.error);
+      return;
+    }
+
     final amount = double.parse(_abonoCtrl.text.trim());
     setState(() => _isRegistering = true);
-    try {
-      final creditId = widget.creditInfo!['id'] as String;
-      final currentDebt =
-          (widget.creditInfo!['current_debt'] as num).toDouble();
-      final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
-      await widget.supabase
-          .from('customer_credits')
-          .update({
-            'current_debt': newGeneralDebt,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', creditId);
 
+    try {
       final authUserId = widget.supabase.auth.currentUser?.id;
       String? adminProfileId;
       if (authUserId != null) {
-        final p =
-            await widget.supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
+        final p = await widget.supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', authUserId)
+            .maybeSingle();
         adminProfileId = p?['id'] as String?;
       }
 
+      final creditId = widget.creditInfo!['id'] as String;
+      final currentDebt = (widget.creditInfo!['current_debt'] as num).toDouble();
+      final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
+
+      // 1. Actualizar deuda en customer_credits
+      await widget.supabase
+          .from('customer_credits')
+          .update({'current_debt': newGeneralDebt, 'updated_at': DateTime.now().toIso8601String()})
+          .eq('id', creditId);
+
+      // 2. Registrar en credit_movements con el nombre de la cuenta como payment_method
       await widget.supabase.from('credit_movements').insert({
         'credit_id': creditId,
         'order_id': widget.orderId,
         'movement_type': 'PAYMENT',
         'amount': amount,
-        'payment_method': 'EFECTIVO',
-        'notes': 'Abono registrado desde estado de pago',
+        'payment_method': _selectedAccount!['name'] as String,
+        'notes': 'Abono registrado desde detalle de pedido',
         if (adminProfileId != null) 'created_by': adminProfileId,
       });
 
+      // 3. Actualizar orders.amount_paid y payment_status
       final newOrderAmountPaid = widget.amountPaid + amount;
-      String newPaymentStatus =
-          newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
+      final newPaymentStatus = newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
       await widget.supabase
           .from('orders')
-          .update({
-            'payment_status': newPaymentStatus,
-            'amount_paid': newOrderAmountPaid,
-          })
+          .update({'payment_status': newPaymentStatus, 'amount_paid': newOrderAmountPaid})
           .eq('id', widget.orderId);
 
+      // 4. Registrar INGRESO en account_movements
+      final shiftId = isCaja && _activeShift != null
+          ? _activeShift!['id'] as String?
+          : null;
+      await widget.supabase.from('account_movements').insert({
+        'account_id': _selectedAccount!['id'],
+        'movement_type': 'INCOME',
+        'amount': amount,
+        'description': 'Cobro de crédito — Pedido #\${widget.orderId.substring(0, 8).toUpperCase()}',
+        'reference_type': 'orders',
+        'reference_id': widget.orderId,
+        if (shiftId != null) 'shift_id': shiftId,
+        if (adminProfileId != null) 'created_by': adminProfileId,
+      });
+
+      // 5. Actualizar saldo de la cuenta financiera
+      final currentBalance = ((_selectedAccount!['balance'] as num?)?.toDouble() ?? 0.0);
+      await widget.supabase
+          .from('financial_accounts')
+          .update({'balance': currentBalance + amount})
+          .eq('id', _selectedAccount!['id'] as String);
+
       if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Abono registrado correctamente',
-          type: SnackbarType.success,
-        );
+        AppSnackbar.show(context,
+            message: 'Abono de S/ ${amount.toStringAsFixed(2)} registrado en ${_selectedAccount!['name']}.',
+            type: SnackbarType.success);
         widget.onPaymentRegistered();
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error al registrar abono: $e',
-          type: SnackbarType.error,
-        );
+        AppSnackbar.show(context, message: 'Error al registrar abono: $e', type: SnackbarType.error);
       }
     } finally {
       if (mounted) setState(() => _isRegistering = false);
@@ -2332,162 +2722,384 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
     String badgeLabel;
     switch (widget.paymentStatus) {
       case 'PAID':
-        badgeColor = Colors.teal;
-        badgeLabel = 'Pagado completo';
-        break;
+        badgeColor = Colors.teal; badgeLabel = 'Pagado completo'; break;
       case 'PARTIAL':
-        badgeColor = Colors.amber.shade700;
-        badgeLabel = 'Pago parcial';
-        break;
+        badgeColor = Colors.amber.shade700; badgeLabel = 'Pago parcial'; break;
       case 'PENDING':
       default:
-        badgeColor = Colors.deepOrange;
-        badgeLabel = 'Pendiente de pago';
+        badgeColor = Colors.deepOrange; badgeLabel = 'Pendiente de pago';
     }
+
+    final bool cajaSinTurno =
+        _selectedAccount != null &&
+        _selectedAccount!['type'] == 'CAJA' &&
+        _activeShift == null;
+
     final bool isButtonEnabled =
         !_isRegistering &&
         _abonoCtrl.text.trim().isNotEmpty &&
-        _errorMessage == null;
+        _errorMessage == null &&
+        _selectedAccount != null &&
+        !cajaSinTurno;
 
     return OrderDetailSectionCard(
       title: 'Estado de Pago',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Badge de estado
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
                 ),
-                child: Text(
-                  badgeLabel,
-                  style: TextStyle(
-                    color: badgeColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                child: Text(badgeLabel,
+                    style: TextStyle(
+                      color: badgeColor, fontSize: 12, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
           const SizedBox(height: 10),
+
+          // Fila de totales
           Row(
             children: [
-              Expanded(
-                child: _PStatRow(
+              Expanded(child: _PStatRow(
                   label: 'Total',
-                  value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}',
-                ),
-              ),
-              Expanded(
-                child: _PStatRow(
+                  value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}')),
+              Expanded(child: _PStatRow(
                   label: 'Pagado',
                   value: 'S/ ${widget.amountPaid.toStringAsFixed(2)}',
-                  valueColor: Colors.teal,
-                ),
-              ),
+                  valueColor: Colors.teal)),
               if (widget.paymentStatus != 'PAID')
-                Expanded(
-                  child: _PStatRow(
+                Expanded(child: _PStatRow(
                     label: 'Pendiente',
                     value: 'S/ ${pendingAmount.toStringAsFixed(2)}',
                     valueColor: Colors.deepOrange,
-                    bold: true,
-                  ),
-                ),
+                    bold: true)),
             ],
           ),
+
+          // Sección de abono (solo crédito pendiente)
           if (widget.paymentMethod == 'CRÉDITO' &&
               pendingAmount > 0 &&
               widget.creditInfo != null) ...[
             const SizedBox(height: 14),
             const Divider(height: 1),
-            const SizedBox(height: 12),
-            const Text(
-              'Registrar abono',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 14),
+
+            const Text('Registrar abono',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
+                    color: Colors.black87)),
+            const SizedBox(height: 10),
+
+            // ── Montos rápidos ─────────────────────────────────────────
+            Wrap(
+              spacing: 8, runSpacing: 6,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _abonoCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                      signed: false,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                    ],
-                    onChanged: _validarEntrada,
-                    decoration: InputDecoration(
-                      hintText: 'Monto a abonar (S/)',
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 13,
-                      ),
-                      errorText: _errorMessage,
-                      errorMaxLines: 2,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                    ),
+                if (pendingAmount >= 50)
+                  _AbonoQuickChip(
+                    label: 'S/ 50',
+                    isSelected: _selectedQuickAmount == '50.00',
+                    onTap: () {
+                      setState(() => _selectedQuickAmount = '50.00');
+                      _abonoCtrl.text = '50.00';
+                      _validarEntrada('50.00', fromQuick: true);
+                    },
                   ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    disabledForegroundColor: Colors.grey.shade500,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 11,
-                    ),
+                if (pendingAmount >= 100)
+                  _AbonoQuickChip(
+                    label: 'S/ 100',
+                    isSelected: _selectedQuickAmount == '100.00',
+                    onTap: () {
+                      setState(() => _selectedQuickAmount = '100.00');
+                      _abonoCtrl.text = '100.00';
+                      _validarEntrada('100.00', fromQuick: true);
+                    },
                   ),
-                  onPressed: isButtonEnabled ? _registrarAbono : null,
-                  child:
-                      _isRegistering
-                          ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                          : const Text(
-                            'Abonar',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
+                if (pendingAmount >= 200)
+                  _AbonoQuickChip(
+                    label: 'S/ 200',
+                    isSelected: _selectedQuickAmount == '200.00',
+                    onTap: () {
+                      setState(() => _selectedQuickAmount = '200.00');
+                      _abonoCtrl.text = '200.00';
+                      _validarEntrada('200.00', fromQuick: true);
+                    },
+                  ),
+                _AbonoQuickChip(
+                  label: 'Total (S/ ${pendingAmount.toStringAsFixed(2)})',
+                  isSelected: _selectedQuickAmount == pendingAmount.toStringAsFixed(2),
+                  isTotal: true,
+                  onTap: () {
+                    final v = pendingAmount.toStringAsFixed(2);
+                    setState(() => _selectedQuickAmount = v);
+                    _abonoCtrl.text = v;
+                    _validarEntrada(v, fromQuick: true);
+                  },
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+
+            // ── Campo de monto ─────────────────────────────────────────
+            TextField(
+              controller: _abonoCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+              onChanged: _validarEntrada,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              decoration: InputDecoration(
+                hintText: 'Monto a abonar (S/)',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                errorText: _errorMessage,
+                errorMaxLines: 2,
+                prefixIcon: Icon(Icons.attach_money_rounded,
+                    color: _errorMessage != null ? Colors.deepOrange : Colors.grey.shade500),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // ── Selector de cuenta destino (scroll horizontal) ─────────
+            const Text('Cuenta de destino',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: Colors.black54)),
+            const SizedBox(height: 8),
+            if (widget.accounts.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.warning_rounded, size: 13, color: Colors.red),
+                  SizedBox(width: 6),
+                  Expanded(child: Text('No hay cuentas activas.',
+                      style: TextStyle(fontSize: 11, color: Colors.red,
+                          fontWeight: FontWeight.w600))),
+                ]),
+              )
+            else
+              SizedBox(
+                height: 64,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  itemCount: widget.accounts.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final acc = widget.accounts[index];
+                    final isSelected = _selectedAccount?['id'] == acc['id'];
+                    final type = acc['type'] as String? ?? 'OTRO';
+                    final typeColor = _colorForType(type);
+                    final balance = (acc['balance'] as num?)?.toDouble() ?? 0.0;
+                    return GestureDetector(
+                      onTap: () => _onAccountTap(acc),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.teal : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? Colors.teal : Colors.grey.shade300,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                          boxShadow: isSelected ? [BoxShadow(
+                            color: Colors.teal.withValues(alpha: 0.18),
+                            blurRadius: 6, offset: const Offset(0, 2),
+                          )] : null,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(_iconForType(type), size: 13,
+                                  color: isSelected ? Colors.white : typeColor),
+                              const SizedBox(width: 5),
+                              Text(acc['name'] as String,
+                                  style: TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w700,
+                                    color: isSelected ? Colors.white : Colors.black87,
+                                  )),
+                            ]),
+                            const SizedBox(height: 3),
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.white.withValues(alpha: 0.2)
+                                      : typeColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(type, style: TextStyle(
+                                  fontSize: 9, fontWeight: FontWeight.w700,
+                                  color: isSelected ? Colors.white70 : typeColor,
+                                )),
+                              ),
+                              const SizedBox(width: 5),
+                              Text('S/ ${balance.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 10, fontWeight: FontWeight.w600,
+                                    color: isSelected ? Colors.white70 : Colors.grey.shade500,
+                                  )),
+                            ]),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // Advertencia CAJA sin turno
+            if (cajaSinTurno) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.lock_rounded, size: 13, color: Colors.red),
+                  SizedBox(width: 6),
+                  Expanded(child: Text(
+                    'Esta caja no tiene turno abierto. Abre el turno antes de registrar el abono.',
+                    style: TextStyle(fontSize: 11, color: Colors.red,
+                        fontWeight: FontWeight.w600),
+                  )),
+                ]),
+              ),
+            ],
+
+            // Info turno activo
+            if (_selectedAccount != null &&
+                _selectedAccount!['type'] == 'CAJA' &&
+                _activeShift != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50, borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.teal.shade200),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.check_circle_rounded, size: 13, color: Colors.teal),
+                  SizedBox(width: 6),
+                  Text('Turno abierto · Se registrará en el turno activo',
+                      style: TextStyle(fontSize: 11, color: Colors.teal,
+                          fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            ],
+            const SizedBox(height: 14),
+
+            // Botón Abonar
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  disabledForegroundColor: Colors.grey.shade500,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                onPressed: isButtonEnabled ? _registrarAbono : null,
+                icon: _isRegistering
+                    ? const SizedBox(width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check_rounded, size: 18),
+                label: Text(
+                  _isRegistering
+                      ? 'Registrando...'
+                      : _selectedAccount != null
+                          ? 'Abonar a ${_selectedAccount!['name']}'
+                          : 'Abonar',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+              ),
+            ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// Chip de monto rápido para la sección de abono
+class _AbonoQuickChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final bool isTotal;
+  final VoidCallback onTap;
+
+  const _AbonoQuickChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.isTotal = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bgColor;
+    final Color borderColor;
+    final Color textColor;
+
+    if (isSelected) {
+      bgColor = isTotal ? Colors.teal : Colors.teal;
+      borderColor = Colors.teal;
+      textColor = Colors.white;
+    } else if (isTotal) {
+      bgColor = Colors.teal.withValues(alpha: 0.07);
+      borderColor = Colors.teal.withValues(alpha: 0.4);
+      textColor = Colors.teal.shade700;
+    } else {
+      bgColor = Colors.grey.shade50;
+      borderColor = Colors.grey.shade300;
+      textColor = Colors.grey.shade600;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
+          boxShadow: isSelected ? [BoxShadow(
+            color: Colors.teal.withValues(alpha: 0.2),
+            blurRadius: 6, offset: const Offset(0, 2),
+          )] : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              Icon(Icons.check_rounded, size: 11, color: textColor),
+              const SizedBox(width: 4),
+            ],
+            Text(label, style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: textColor)),
+          ],
+        ),
       ),
     );
   }
@@ -3152,3 +3764,23 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
