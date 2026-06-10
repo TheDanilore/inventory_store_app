@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
-
   static const bg = Color(0xFFF7F8FC);
   static const surface = Colors.white;
   static const border = Color(0xFFE8ECF0);
@@ -76,6 +74,26 @@ class AppColors {
   static const radius = 16.0;
   static const radiusSm = 8.0;
   static const radiusXl = 24.0;
+
+  static const slate = Color(0xFF3D5168);
+  static const slateLight = Color(0xFFDFE8F0);
+
+  static BoxDecoration card({Color? borderColor, bool elevated = true}) =>
+      BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(radiusXl),
+        border: Border.all(color: borderColor ?? border),
+        boxShadow:
+            elevated
+                ? [
+                  BoxShadow(
+                    color: const Color(0xFF0D1B2E).withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : null,
+      );
 
   // --- CORREGIDO: Material 3 ColorScheme ---
   static const ColorScheme colorScheme = ColorScheme.light(

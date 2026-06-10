@@ -3,6 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/screens/shared/widgets/full_screen_gallery.dart';
+import 'package:inventory_store_app/screens/shared/widgets/product_admin_info_card.dart';
+import 'package:inventory_store_app/screens/shared/widgets/product_availability_card.dart';
+import 'package:inventory_store_app/screens/shared/widgets/product_batches_card.dart';
+import 'package:inventory_store_app/screens/shared/widgets/product_quick_decisions_card.dart';
+import 'package:inventory_store_app/screens/shared/widgets/product_reviews_card.dart';
 import 'package:inventory_store_app/services/admin/product_pdf_generator.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
@@ -13,49 +18,6 @@ import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
-
-// ─── TOKENS ──────────────────────────────────────────────────────────────────
-
-class _DS {
-  static const bg = Color(0xFFF8F9FC);
-  static const surface = Colors.white;
-  static const border = Color(0xFFEAEEF4);
-  static const divider = Color(0xFFF3F6FA);
-  static const textPrimary = Color(0xFF0D1B2E);
-  static const textSecondary = Color(0xFF5C6E85);
-  static const textMuted = Color(0xFF9CAEBF);
-  static const success = Color(0xFF0CB77C);
-  static const successLight = Color(0xFFD6F5EC);
-  static const danger = Color(0xFFE8394A);
-  static const dangerLight = Color(0xFFFFE8EB);
-  static const amber = Color(0xFFF5A623);
-  static const amberLight = Color(0xFFFEF3C7);
-  static const amberDark = Color(0xFF7D4A00);
-  static const slate = Color(0xFF3D5168);
-  static const slateLight = Color(0xFFDFE8F0);
-  static const radius = 14.0;
-  static const radiusSm = 8.0;
-  static const radiusXl = 20.0;
-
-  static BoxDecoration card({Color? borderColor, bool elevated = true}) =>
-      BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(radiusXl),
-        border: Border.all(color: borderColor ?? border),
-        boxShadow:
-            elevated
-                ? [
-                  BoxShadow(
-                    color: const Color(0xFF0D1B2E).withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-                : null,
-      );
-}
-
-// ─── SCREEN ───────────────────────────────────────────────────────────────────
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -613,7 +575,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ],
         ),
-        backgroundColor: isSuccess ? _DS.success : _DS.slate,
+        backgroundColor: isSuccess ? AppColors.success : AppColors.slate,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -630,7 +592,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           (ctx) => Dialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_DS.radiusXl),
+              borderRadius: BorderRadius.circular(AppColors.radiusXl),
             ),
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -643,14 +605,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   Text(
                     'Máx. $_effectiveStock',
-                    style: const TextStyle(fontSize: 12, color: _DS.textMuted),
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 20),
                   Container(
                     decoration: BoxDecoration(
-                      color: _DS.bg,
-                      borderRadius: BorderRadius.circular(_DS.radius),
-                      border: Border.all(color: _DS.border),
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(AppColors.radius),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: TextField(
                       controller: ctrl,
@@ -676,7 +638,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           child: const Text(
                             'Cancelar',
                             style: TextStyle(
-                              color: _DS.textSecondary,
+                              color: AppColors.textSecondary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -774,7 +736,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 (ctx, setS) => Dialog(
                   backgroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(_DS.radiusXl),
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -785,12 +747,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: _DS.amberLight,
+                            color: AppColors.amberLight,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             Icons.star_rounded,
-                            color: _DS.amber,
+                            color: AppColors.amber,
                             size: 24,
                           ),
                         ),
@@ -800,7 +762,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: _DS.textPrimary,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -818,7 +780,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   i < selectedRating
                                       ? Icons.star_rounded
                                       : Icons.star_border_rounded,
-                                  color: _DS.amber,
+                                  color: AppColors.amber,
                                   size: 36,
                                 ),
                               ),
@@ -837,14 +799,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: _DS.bg,
-                              borderRadius: BorderRadius.circular(_DS.radiusSm),
+                              color: AppColors.bg,
+                              borderRadius: BorderRadius.circular(AppColors.radiusSm),
                             ),
                             child: Text(
                               'Publicando como: $defaultName',
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: _DS.textSecondary,
+                                color: AppColors.textSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -871,15 +833,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
-                                      _DS.radius,
+                                      AppColors.radius,
                                     ),
-                                    side: const BorderSide(color: _DS.border),
+                                    side: const BorderSide(color: AppColors.border),
                                   ),
                                 ),
                                 child: const Text(
                                   'Cancelar',
                                   style: TextStyle(
-                                    color: _DS.textSecondary,
+                                    color: AppColors.textSecondary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -940,7 +902,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
-                                      _DS.radius,
+                                      AppColors.radius,
                                     ),
                                   ),
                                 ),
@@ -1177,7 +1139,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               break;
           }
         },
-        body: Container(color: _DS.bg, child: content),
+        body: Container(color: AppColors.bg, child: content),
       );
     }
 
@@ -1186,7 +1148,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
-      body: Container(color: _DS.bg, child: content),
+      body: Container(color: AppColors.bg, child: content),
       bottomNavigationBar: _BottomBar(
         canBuy: _canBuy,
         isActive: _isActive,
@@ -1228,9 +1190,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               height: 64,
               margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
-                color: _DS.bg,
+                color: AppColors.bg,
                 border: Border.all(
-                  color: !_showVariantImage ? AppColors.primary : _DS.border,
+                  color: !_showVariantImage ? AppColors.primary : AppColors.border,
                   width: !_showVariantImage ? 2 : 1,
                 ),
                 borderRadius: BorderRadius.circular(8),
@@ -1289,9 +1251,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 height: 64,
                 margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
-                  color: _DS.bg,
+                  color: AppColors.bg,
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : _DS.border,
+                    color: isSelected ? AppColors.primary : AppColors.border,
                     width: isSelected ? 2.5 : 1,
                   ),
                   borderRadius: BorderRadius.circular(8),
@@ -1377,7 +1339,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(_DS.danger),
+              valueColor: AlwaysStoppedAnimation(AppColors.danger),
             ),
           ),
         ),
@@ -1390,7 +1352,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _isWishlisted ? _DS.danger : Colors.white,
+          color: _isWishlisted ? AppColors.danger : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -1404,151 +1366,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           _isWishlisted
               ? Icons.favorite_rounded
               : Icons.favorite_border_rounded,
-          color: _isWishlisted ? Colors.white : _DS.danger,
+          color: _isWishlisted ? Colors.white : AppColors.danger,
           size: 20,
         ),
       ),
-    );
-  }
-}
-
-// ─── COMPONENTE NUEVO: DECISIONES RÁPIDAS ────────────────────────────────────
-
-class ProductQuickDecisionsCard extends StatelessWidget {
-  final int totalSold;
-  final double reinvestmentNeeded;
-
-  const ProductQuickDecisionsCard({
-    super.key,
-    required this.totalSold,
-    required this.reinvestmentNeeded,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (totalSold == 0) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4), // Verde sutil (DS Success light)
-        borderRadius: BorderRadius.circular(_DS.radiusXl),
-        border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.lightbulb_outline_rounded,
-                  color: Color(0xFF166534),
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 9),
-              const Text(
-                'Decisiones rápidas',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF166534),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Has vendido $totalSold unidades en total.',
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF15803D),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
-            ),
-            child: Column(
-              children: [
-                _DecisionRow(
-                  icon: Icons.inventory_2_outlined,
-                  color: _DS.amberDark,
-                  label: 'Fondo de reposición',
-                  value: 'S/ ${reinvestmentNeeded.toStringAsFixed(2)}',
-                  subtitle: 'Ideal para reinvertir en stock.',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DecisionRow extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String value;
-  final String? subtitle;
-
-  const _DecisionRow({
-    required this.icon,
-    required this.color,
-    required this.label,
-    required this.value,
-    this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: color),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _DS.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (subtitle != null)
-                Text(
-                  subtitle!,
-                  style: const TextStyle(fontSize: 10, color: _DS.textMuted),
-                ),
-            ],
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            color: color,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1603,7 +1424,7 @@ class _GallerySection extends StatelessWidget {
                 child: Icon(
                   Icons.inventory_2_outlined,
                   size: 64,
-                  color: _DS.textMuted.withValues(alpha: 0.4),
+                  color: AppColors.textMuted.withValues(alpha: 0.4),
                 ),
               );
             }
@@ -1629,7 +1450,7 @@ class _GallerySection extends StatelessWidget {
                         child: Icon(
                           Icons.broken_image_rounded,
                           size: 48,
-                          color: _DS.textMuted,
+                          color: AppColors.textMuted,
                         ),
                       ),
                 ),
@@ -1748,10 +1569,10 @@ class _ProductTopSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final (statusLabel, statusColor, statusBg) =
         !isActive
-            ? ('No disponible', _DS.textSecondary, _DS.slateLight)
+            ? ('No disponible', AppColors.textSecondary, AppColors.slateLight)
             : effectiveStock > 0
-            ? ('En stock', _DS.success, _DS.successLight)
-            : ('Agotado', _DS.danger, _DS.dangerLight);
+            ? ('En stock', AppColors.success, AppColors.successLight)
+            : ('Agotado', AppColors.danger, AppColors.dangerLight);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1778,7 +1599,7 @@ class _ProductTopSection extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'SKU $sku',
-                style: const TextStyle(fontSize: 11, color: _DS.textMuted),
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ],
           ],
@@ -1790,7 +1611,7 @@ class _ProductTopSection extends StatelessWidget {
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: _DS.textPrimary,
+            color: AppColors.textPrimary,
             letterSpacing: -0.4,
             height: 1.15,
           ),
@@ -1806,7 +1627,7 @@ class _ProductTopSection extends StatelessWidget {
                   i < averageRating.floor()
                       ? Icons.star_rounded
                       : Icons.star_border_rounded,
-                  color: _DS.amber,
+                  color: AppColors.amber,
                   size: 15,
                 ),
               ),
@@ -1816,13 +1637,13 @@ class _ProductTopSection extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: _DS.textPrimary,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 4),
               Text(
                 '($totalReviews reseñas)',
-                style: const TextStyle(fontSize: 12, color: _DS.textMuted),
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -1889,7 +1710,7 @@ class _PriceSection extends StatelessWidget {
                   'S/ ${baseSalePrice.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 15,
-                    color: _DS.textMuted,
+                    color: AppColors.textMuted,
                     decoration: TextDecoration.lineThrough,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1904,13 +1725,13 @@ class _PriceSection extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: isWholesale ? _DS.amberLight : _DS.bg,
-                  borderRadius: BorderRadius.circular(_DS.radius),
+                  color: isWholesale ? AppColors.amberLight : AppColors.bg,
+                  borderRadius: BorderRadius.circular(AppColors.radius),
                   border: Border.all(
                     color:
                         isWholesale
-                            ? _DS.amber.withValues(alpha: 0.5)
-                            : _DS.border,
+                            ? AppColors.amber.withValues(alpha: 0.5)
+                            : AppColors.border,
                   ),
                 ),
                 child: Column(
@@ -1918,7 +1739,7 @@ class _PriceSection extends StatelessWidget {
                     Icon(
                       Icons.local_offer_rounded,
                       size: 14,
-                      color: isWholesale ? _DS.amber : _DS.textMuted,
+                      color: isWholesale ? AppColors.amber : AppColors.textMuted,
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -1926,14 +1747,14 @@ class _PriceSection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: isWholesale ? _DS.amberDark : _DS.textMuted,
+                        color: isWholesale ? AppColors.amberDark : AppColors.textMuted,
                       ),
                     ),
                     Text(
                       'S/ ${baseWholesalePrice!.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 10,
-                        color: isWholesale ? _DS.amber : _DS.textMuted,
+                        color: isWholesale ? AppColors.amber : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -1948,14 +1769,14 @@ class _PriceSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _DS.successLight,
+              color: AppColors.successLight,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               '¡Ahorro mayorista de S/ ${(baseSalePrice - effectivePrice).toStringAsFixed(2)}!',
               style: const TextStyle(
                 fontSize: 11,
-                color: _DS.success,
+                color: AppColors.success,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1968,19 +1789,19 @@ class _PriceSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
-              color: _DS.amberLight,
-              borderRadius: BorderRadius.circular(_DS.radiusSm),
+              color: AppColors.amberLight,
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: Row(
               children: [
-                const Icon(Icons.bolt_rounded, size: 14, color: _DS.amber),
+                const Icon(Icons.bolt_rounded, size: 14, color: AppColors.amber),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Compra $baseWholesaleMinQty+ y paga S/ ${baseWholesalePrice!.toStringAsFixed(2)} c/u',
                     style: const TextStyle(
                       fontSize: 11,
-                      color: _DS.amberDark,
+                      color: AppColors.amberDark,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2044,7 +1865,7 @@ class _VariantSelector extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: _DS.textPrimary,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       if (selected != null) ...[
@@ -2091,14 +1912,14 @@ class _VariantSelector extends StatelessWidget {
                               duration: const Duration(milliseconds: 180),
                               width: 72,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(_DS.radius),
+                                borderRadius: BorderRadius.circular(AppColors.radius),
                                 border: Border.all(
                                   color:
                                       isSelected
                                           ? AppColors.primary
                                           : enabled
-                                          ? _DS.border
-                                          : _DS.divider,
+                                          ? AppColors.border
+                                          : AppColors.divider,
                                   width: isSelected ? 2.5 : 1.5,
                                 ),
                                 boxShadow:
@@ -2116,7 +1937,7 @@ class _VariantSelector extends StatelessWidget {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(
-                                  _DS.radius - 1,
+                                  AppColors.radius - 1,
                                 ),
                                 child: Stack(
                                   children: [
@@ -2138,21 +1959,21 @@ class _VariantSelector extends StatelessWidget {
                                                     BlendMode.srcATop,
                                                 errorBuilder:
                                                     (_, __, ___) => Container(
-                                                      color: _DS.bg,
+                                                      color: AppColors.bg,
                                                       child: const Icon(
                                                         Icons
                                                             .inventory_2_outlined,
                                                         size: 22,
-                                                        color: _DS.textMuted,
+                                                        color: AppColors.textMuted,
                                                       ),
                                                     ),
                                               )
                                               : Container(
-                                                color: _DS.bg,
+                                                color: AppColors.bg,
                                                 child: const Icon(
                                                   Icons.inventory_2_outlined,
                                                   size: 22,
-                                                  color: _DS.textMuted,
+                                                  color: AppColors.textMuted,
                                                 ),
                                               ),
                                     ),
@@ -2248,17 +2069,17 @@ class _VariantSelector extends StatelessWidget {
                                           ? AppColors.primary
                                           : enabled
                                           ? Colors.white
-                                          : _DS.bg,
+                                          : AppColors.bg,
                                   borderRadius: BorderRadius.circular(
-                                    _DS.radius,
+                                    AppColors.radius,
                                   ),
                                   border: Border.all(
                                     color:
                                         isSelected
                                             ? AppColors.primary
                                             : enabled
-                                            ? _DS.border
-                                            : _DS.divider,
+                                            ? AppColors.border
+                                            : AppColors.divider,
                                     width: isSelected ? 2 : 1.5,
                                   ),
                                   boxShadow:
@@ -2285,8 +2106,8 @@ class _VariantSelector extends StatelessWidget {
                                         isSelected
                                             ? Colors.white
                                             : enabled
-                                            ? _DS.textPrimary
-                                            : _DS.textMuted,
+                                            ? AppColors.textPrimary
+                                            : AppColors.textMuted,
                                   ),
                                 ),
                               ),
@@ -2343,7 +2164,7 @@ class _BottomBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: const Border(top: BorderSide(color: _DS.border, width: 1)),
+        border: const Border(top: BorderSide(color: AppColors.border, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -2361,9 +2182,9 @@ class _BottomBar extends StatelessWidget {
               if (canBuy) ...[
                 Container(
                   decoration: BoxDecoration(
-                    color: _DS.bg,
-                    borderRadius: BorderRadius.circular(_DS.radius),
-                    border: Border.all(color: _DS.border),
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
                     children: [
@@ -2381,7 +2202,7 @@ class _BottomBar extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
-                              color: _DS.textPrimary,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -2416,8 +2237,8 @@ class _BottomBar extends StatelessWidget {
                                 end: Alignment.bottomRight,
                               )
                               : null,
-                      color: canBuy ? null : _DS.slateLight,
-                      borderRadius: BorderRadius.circular(_DS.radius),
+                      color: canBuy ? null : AppColors.slateLight,
+                      borderRadius: BorderRadius.circular(AppColors.radius),
                       boxShadow:
                           canBuy
                               ? [
@@ -2440,7 +2261,7 @@ class _BottomBar extends StatelessWidget {
                               : canBuy
                               ? Icons.shopping_bag_rounded
                               : Icons.remove_shopping_cart_rounded,
-                          color: canBuy ? Colors.white : _DS.textMuted,
+                          color: canBuy ? Colors.white : AppColors.textMuted,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -2456,7 +2277,7 @@ class _BottomBar extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: canBuy ? Colors.white : _DS.textMuted,
+                                color: canBuy ? Colors.white : AppColors.textMuted,
                               ),
                             ),
                             if (canBuy)
@@ -2510,7 +2331,7 @@ class _QtyBtn extends StatelessWidget {
       child: Icon(
         icon,
         size: 20,
-        color: enabled ? AppColors.primary : _DS.textMuted,
+        color: enabled ? AppColors.primary : AppColors.textMuted,
       ),
     ),
   );
@@ -2535,25 +2356,25 @@ class _InputField extends StatelessWidget {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(fontSize: 14, color: _DS.textPrimary),
+      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        hintStyle: const TextStyle(fontSize: 13, color: _DS.textMuted),
-        labelStyle: const TextStyle(color: _DS.textSecondary),
+        hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
         filled: true,
-        fillColor: _DS.bg,
+        fillColor: AppColors.bg,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
         ),
         enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: _DS.border),
-          borderRadius: BorderRadius.circular(_DS.radiusSm),
+          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-          borderRadius: BorderRadius.circular(_DS.radiusSm),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
         ),
         isDense: true,
       ),
@@ -2561,171 +2382,6 @@ class _InputField extends StatelessWidget {
   }
 }
 
-// ─── ADMIN INFO CARD ─────────────────────────────────────────────────────────
-
-class ProductAdminInfoCard extends StatelessWidget {
-  final double unitCost;
-  final double profit;
-  final double margin;
-  final double? wholesalePrice;
-  final int wholesaleMinQuantity;
-  final int reorderPoint;
-
-  const ProductAdminInfoCard({
-    super.key,
-    required this.unitCost,
-    required this.profit,
-    required this.margin,
-    required this.wholesalePrice,
-    required this.wholesaleMinQuantity,
-    required this.reorderPoint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(_DS.radiusXl),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: _DS.slate.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.admin_panel_settings_rounded,
-                  color: _DS.slate,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 9),
-              const Text(
-                'Info interna',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: _DS.slate,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 12),
-          _AdminRow(
-            Icons.receipt_long_rounded,
-            const Color(0xFFF59E0B),
-            'Costo unitario',
-            'S/ ${unitCost.toStringAsFixed(2)}',
-          ),
-          const SizedBox(height: 8),
-          _AdminRow(
-            Icons.trending_up_rounded,
-            _DS.success,
-            'Ganancia estim.',
-            'S/ ${profit.toStringAsFixed(2)}',
-            badge: '${margin.toStringAsFixed(1)}%',
-            valueColor: _DS.success,
-          ),
-          if (wholesalePrice != null) ...[
-            const SizedBox(height: 8),
-            _AdminRow(
-              Icons.people_rounded,
-              _DS.amber,
-              'Precio mayor',
-              'S/ ${wholesalePrice!.toStringAsFixed(2)}',
-              badge: 'x$wholesaleMinQuantity',
-            ),
-          ],
-          const SizedBox(height: 8),
-          _AdminRow(
-            Icons.warning_amber_rounded,
-            _DS.danger,
-            'Pto. reorden',
-            '$reorderPoint unds.',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AdminRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final String? badge;
-  final Color? valueColor;
-  const _AdminRow(
-    this.icon,
-    this.iconColor,
-    this.label,
-    this.value, {
-    this.badge,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Icon(icon, size: 14, color: iconColor),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: _DS.textSecondary),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: valueColor ?? _DS.textPrimary,
-          ),
-        ),
-        if (badge != null) ...[
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: _DS.slateLight,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Text(
-              badge!,
-              style: const TextStyle(
-                fontSize: 9,
-                color: _DS.slate,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
 
 // ─── DESCRIPTION CARD ────────────────────────────────────────────────────────
 
@@ -2738,7 +2394,7 @@ class ProductDescriptionCard extends StatelessWidget {
     if (description.trim().isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: _DS.card(),
+      decoration: AppColors.card(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2754,7 +2410,7 @@ class ProductDescriptionCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 14,
               height: 1.7,
-              color: _DS.textSecondary,
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -2775,7 +2431,7 @@ class ProductDetailsCard extends StatelessWidget {
     if (details.isEmpty) return const SizedBox.shrink();
     final entries = details.entries.toList();
     return Container(
-      decoration: _DS.card(),
+      decoration: AppColors.card(),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2789,12 +2445,12 @@ class ProductDetailsCard extends StatelessWidget {
               title: 'Especificaciones',
             ),
           ),
-          Container(height: 1, color: _DS.divider),
+          Container(height: 1, color: AppColors.divider),
           ...entries.asMap().entries.map((e) {
             final isEven = e.key % 2 == 0;
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-              color: isEven ? _DS.bg : Colors.white,
+              color: isEven ? AppColors.bg : Colors.white,
               child: Row(
                 children: [
                   Expanded(
@@ -2803,7 +2459,7 @@ class ProductDetailsCard extends StatelessWidget {
                       e.value.key.toString(),
                       style: const TextStyle(
                         fontSize: 12,
-                        color: _DS.textMuted,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ),
@@ -2813,7 +2469,7 @@ class ProductDetailsCard extends StatelessWidget {
                       e.value.value.toString(),
                       style: const TextStyle(
                         fontSize: 13,
-                        color: _DS.textPrimary,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2823,587 +2479,6 @@ class ProductDetailsCard extends StatelessWidget {
             );
           }),
           const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── REVIEWS CARD ─────────────────────────────────────────────────────────────
-
-class ProductReviewsCard extends StatelessWidget {
-  final double averageRating;
-  final int totalReviews;
-  final List<Map<String, dynamic>> reviews;
-  final VoidCallback onAddReview;
-
-  const ProductReviewsCard({
-    super.key,
-    required this.averageRating,
-    required this.totalReviews,
-    required this.reviews,
-    required this.onAddReview,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _DS.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const _CardHeader(
-                icon: Icons.star_rounded,
-                iconColor: Color(0xFFF5A623),
-                iconBg: Color(0xFFFEF3C7),
-                title: 'Reseñas',
-              ),
-              GestureDetector(
-                onTap: onAddReview,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(_DS.radius),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.edit_rounded,
-                        size: 13,
-                        color: AppColors.primary,
-                      ),
-                      SizedBox(width: 5),
-                      Text(
-                        'Opinar',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          if (totalReviews == 0) ...[
-            const SizedBox(height: 20),
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.star_outline_rounded,
-                    size: 36,
-                    color: _DS.textMuted.withValues(alpha: 0.4),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Sé el primero en opinar',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _DS.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 14),
-            // Summary row
-            Row(
-              children: [
-                Text(
-                  averageRating.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    color: _DS.textPrimary,
-                    letterSpacing: -1,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: List.generate(
-                        5,
-                        (i) => Icon(
-                          i < averageRating.floor()
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color: _DS.amber,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$totalReviews calificaciones',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: _DS.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: _DS.divider),
-            const SizedBox(height: 14),
-            ...reviews.take(3).map((r) => _ReviewRow(review: r)),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ReviewRow extends StatelessWidget {
-  final Map<String, dynamic> review;
-  const _ReviewRow({required this.review});
-
-  @override
-  Widget build(BuildContext context) {
-    final name = review['user_name']?.toString() ?? 'Usuario';
-    final rating = (review['rating'] as num?)?.toInt() ?? 5;
-    final comment = review['comment'] as String?;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    name[0].toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _DS.textPrimary,
-                      ),
-                    ),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (i) => Icon(
-                          i < rating
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color: _DS.amber,
-                          size: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (comment != null && comment.isNotEmpty) ...[
-            const SizedBox(height: 7),
-            Text(
-              comment,
-              style: const TextStyle(
-                fontSize: 13,
-                color: _DS.textSecondary,
-                height: 1.5,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 10),
-          const Divider(height: 1, color: _DS.divider),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── AVAILABILITY CARD ───────────────────────────────────────────────────────
-
-class ProductAvailabilityCard extends StatelessWidget {
-  final bool isActive;
-  final bool isAdmin;
-  final bool isLoadingExtra;
-  final List<Map<String, dynamic>> warehouseStocks;
-  final int effectiveStock;
-  final String stockLabel;
-  final bool showQuantitySelector;
-  final int selectedQty;
-  final VoidCallback? onDecrement;
-  final VoidCallback? onIncrement;
-
-  const ProductAvailabilityCard({
-    super.key,
-    required this.isActive,
-    required this.isAdmin,
-    required this.isLoadingExtra,
-    required this.warehouseStocks,
-    required this.effectiveStock,
-    required this.stockLabel,
-    required this.showQuantitySelector,
-    required this.selectedQty,
-    required this.onDecrement,
-    required this.onIncrement,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isAdmin) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _DS.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _CardHeader(
-            icon: Icons.warehouse_rounded,
-            iconColor: Color(0xFF0D9488),
-            iconBg: Color(0xFFCCFBF1),
-            title: 'Stock por almacén',
-          ),
-          const SizedBox(height: 14),
-          if (isLoadingExtra)
-            const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2,
-              ),
-            )
-          else if (warehouseStocks.isEmpty)
-            const Text(
-              'Sin registros.',
-              style: TextStyle(fontSize: 12, color: _DS.textMuted),
-            )
-          else
-            ...warehouseStocks.map((row) {
-              final name = row['warehouses']?['name'] ?? 'Almacén';
-              final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-              final ok = stock > 0;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 7),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: _DS.bg,
-                  borderRadius: BorderRadius.circular(_DS.radiusSm + 2),
-                  border: Border.all(color: _DS.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: ok ? _DS.successLight : _DS.dangerLight,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Icon(
-                        Icons.warehouse_rounded,
-                        size: 13,
-                        color: ok ? _DS.success : _DS.danger,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        name.toString(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _DS.textPrimary,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            ok
-                                ? AppColors.primary.withValues(alpha: 0.08)
-                                : _DS.dangerLight,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        '$stock',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: ok ? AppColors.primary : _DS.danger,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── NUEVO COMPONENTE: PRODUCT BATCHES CARD ──────────────────────────────────
-
-class ProductBatchesCard extends StatelessWidget {
-  final bool isLoading;
-  final List<Map<String, dynamic>> batches;
-
-  const ProductBatchesCard({
-    super.key,
-    required this.isLoading,
-    required this.batches,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _DS.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _CardHeader(
-            icon: Icons.calendar_month_rounded,
-            iconColor: Color(0xFFD97706),
-            iconBg: Color(0xFFFEF3C7),
-            title: 'Lotes y Vencimientos',
-          ),
-          const SizedBox(height: 14),
-          if (isLoading)
-            const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2,
-              ),
-            )
-          else if (batches.isEmpty)
-            const Text(
-              'No hay lotes con stock para esta variante.',
-              style: TextStyle(fontSize: 12, color: _DS.textMuted),
-            )
-          else
-            ...batches.map((row) {
-              final batchNum = row['batch_number']?.toString() ?? 'Sin Lote';
-              final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-              final whName =
-                  row['warehouses']?['name']?.toString() ?? 'Almacén';
-              final String? expStr = row['expiry_date'];
-
-              DateTime? expDate;
-              int daysRemaining = 999;
-
-              if (expStr != null) {
-                expDate = DateTime.tryParse(expStr);
-                if (expDate != null) {
-                  daysRemaining = expDate.difference(DateTime.now()).inDays;
-                }
-              }
-
-              // Lógica de semáforo de colores
-              Color statusColor = _DS.success;
-              Color statusBg = _DS.successLight;
-              String statusLabel = 'OK';
-              IconData statusIcon = Icons.check_circle_outline_rounded;
-
-              if (expDate != null) {
-                if (daysRemaining < 0) {
-                  statusColor = _DS.danger;
-                  statusBg = _DS.dangerLight;
-                  statusLabel = 'Vencido';
-                  statusIcon = Icons.warning_rounded;
-                } else if (daysRemaining <= 30) {
-                  statusColor = _DS.amberDark;
-                  statusBg = _DS.amberLight;
-                  statusLabel = 'Vence pronto';
-                  statusIcon = Icons.info_outline_rounded;
-                }
-              }
-
-              String dateLabel = 'Sin fecha';
-              if (expDate != null) {
-                dateLabel =
-                    '${expDate.day.toString().padLeft(2, '0')}/${expDate.month.toString().padLeft(2, '0')}/${expDate.year}';
-              }
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _DS.bg,
-                  borderRadius: BorderRadius.circular(_DS.radiusSm + 2),
-                  border: Border.all(color: _DS.border),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(statusIcon, size: 16, color: statusColor),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                batchNum,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: _DS.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusBg,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  statusLabel,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: statusColor,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                size: 12,
-                                color: _DS.textMuted,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                whName,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: _DS.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.event_rounded,
-                                size: 12,
-                                color: _DS.textMuted,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                dateLabel,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color:
-                                      expDate != null && daysRemaining <= 30
-                                          ? statusColor
-                                          : _DS.textSecondary,
-                                  fontWeight:
-                                      expDate != null && daysRemaining <= 30
-                                          ? FontWeight.w700
-                                          : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '$stock',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const Text(
-                            'unds',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
         ],
       ),
     );
@@ -3433,7 +2508,7 @@ class _CardHeader extends StatelessWidget {
           height: 32,
           decoration: BoxDecoration(
             color: iconBg,
-            borderRadius: BorderRadius.circular(_DS.radiusSm),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
           ),
           child: Icon(icon, size: 16, color: iconColor),
         ),
@@ -3443,7 +2518,7 @@ class _CardHeader extends StatelessWidget {
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
-            color: _DS.textPrimary,
+            color: AppColors.textPrimary,
           ),
         ),
       ],
