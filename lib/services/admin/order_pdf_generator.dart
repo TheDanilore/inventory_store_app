@@ -41,159 +41,161 @@ class OrderPdfGenerator {
 
   static Future<void> generateTicket(
     OrderModel order, {
-    List<OrderItemModel>? items,
+    required List<OrderItemModel> items,
   }) async {
-    // 1. Obtener los items si no se pasaron por parámetro
-    List<OrderItemModel> orderItems = items ?? [];
-
-    if (orderItems.isEmpty) {
-      final supabase = Supabase.instance.client;
-      final response = await supabase
-          .from('order_items')
-          .select('''
-            id, order_id, product_id, variant_id, quantity, unit_cost,
-            applied_price, net_profit, created_at,
-            products ( name ),
-            product_variants ( attributes, sku )
-          ''')
-          .eq('order_id', order.id);
-
-      orderItems =
-          (response as List)
-              .map(
-                (row) =>
-                    OrderItemModel.fromJson(Map<String, dynamic>.from(row)),
-              )
-              .toList();
-    }
-
-    // Calculamos el subtotal sumando todos los items
-    final double subtotalItems = orderItems.fold<double>(
-      0.0,
-      (sum, item) => sum + item.subtotal,
-    );
-
-    // 2. Configurar el documento PDF y Fechas
     final pdf = pw.Document();
 
-    final rawDate = order.createdAt ?? DateTime.now();
-    final peruDate = _toPeruTime(rawDate);
-    final dateString = DateFormat('dd/MM/yyyy HH:mm').format(peruDate);
+    // 1. Obtener la información del negocio (Síncrono/Asíncrono según prefieras)
+    // Aquí hacemos una consulta rápida a 'business_info' (asumiendo que hay 1 fila)
+    String businessName = 'MI NEGOCIO';
+    String taxId = 'RUC: 00000000000';
+    String address = 'Dirección no registrada';
+    String phone = '';
 
+    try {
+      final supabase = Supabase.instance.client;
+      final info =
+          await supabase.from('business_info').select().limit(1).maybeSingle();
+
+      if (info != null) {
+        businessName = info['business_name'] ?? businessName;
+        taxId = info['tax_id'] != null ? 'RUC: ${info['tax_id']}' : taxId;
+        address = info['address'] ?? address;
+        phone = info['phone'] != null ? 'Tel: ${info['phone']}' : phone;
+      }
+    } catch (_) {
+      // Ignorar, usará valores por defecto
+    }
+
+    final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
+    final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(peruTime);
+
+    // 2. Construir el diseño del PDF (Formato Ticket/Rollo)
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80,
-        margin: const pw.EdgeInsets.all(16),
+        margin: const pw.EdgeInsets.all(12),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // CABECERA
+              // --- CABECERA (Info del Negocio) ---
               pw.Center(
                 child: pw.Text(
-                  'COMPROBANTE DE PEDIDO',
+                  businessName,
                   style: pw.TextStyle(
+                    fontSize: 16,
                     fontWeight: pw.FontWeight.bold,
-                    fontSize: 14,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.Center(
+                child: pw.Text(taxId, style: const pw.TextStyle(fontSize: 10)),
+              ),
+              pw.SizedBox(height: 2),
+              pw.Center(
+                child: pw.Text(
+                  address,
+                  style: const pw.TextStyle(fontSize: 10),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              if (phone.isNotEmpty)
+                pw.Center(
+                  child: pw.Text(
+                    phone,
+                    style: const pw.TextStyle(fontSize: 10),
                   ),
                 ),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Text('ID Pedido: ${order.id.substring(0, 8).toUpperCase()}'),
-              pw.Text('Fecha: $dateString'),
-              pw.Text('Cliente: ${order.displayCustomerName}'),
-
-              // Aplicamos las traducciones aquí
-              pw.Text('Estado: ${_translateStatus(order.status)}'),
-              pw.Text('Método Pago: ${order.paymentMethod}'),
-              pw.Text(
-                'Estado de Pago: ${_translatePaymentStatus(order.paymentStatus)}',
-              ),
-
-              pw.Text(
-                'Monto Pagado: S/ ${order.amountPaid.toStringAsFixed(2)}',
-              ),
-
-              if (order.dueDate != null)
-                pw.Text(
-                  'Vencimiento: ${DateFormat('dd/MM/yyyy').format(order.dueDate!.toLocal())}',
-                ),
-
+              pw.SizedBox(height: 8),
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
 
-              // ITEMS
+              // --- INFO DEL PEDIDO ---
               pw.Text(
-                'CANT  DESCRIPCION      TOTAL',
-                style: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold,
-                  fontSize: 11,
-                ),
+                'TICKET: #${order.id.substring(0, 8).toUpperCase()}',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               ),
-              pw.SizedBox(height: 5),
-              ...orderItems.map((item) {
-                final itemName =
-                    item.variantDisplayName ?? item.productName ?? 'Producto';
-                final subtotal = item.subtotal.toStringAsFixed(2);
+              pw.Text(
+                'FECHA: $dateStr',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+              pw.Text(
+                'ESTADO: ${_translateStatus(order.status)}',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'CLIENTE: ${order.displayCustomerName.isNotEmpty ? order.displayCustomerName : 'Cliente Mostrador'}',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+              pw.Text(
+                'PAGO: ${order.paymentMethod}',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
+              pw.Text(
+                'ESTADO PAGO: ${_translatePaymentStatus(order.paymentStatus)}',
+                style: const pw.TextStyle(fontSize: 10),
+              ),
 
-                return pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 4),
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.SizedBox(
-                        width: 28,
-                        child: pw.Text(
-                          '${item.quantity}x',
-                          style: const pw.TextStyle(fontSize: 11),
-                        ),
+              pw.SizedBox(height: 8),
+              pw.Divider(borderStyle: pw.BorderStyle.dashed),
+              pw.SizedBox(height: 4),
+
+              // --- CABECERA TABLA DE ITEMS ---
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    flex: 3, // Más espacio para el nombre
+                    child: pw.Text(
+                      'CANT x DESCRIPCIÓN',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
                       ),
-                      pw.Expanded(
-                        child: pw.Text(
-                          itemName,
-                          style: const pw.TextStyle(fontSize: 11),
-                        ),
-                      ),
-                      pw.SizedBox(
-                        width: 50,
-                        child: pw.Text(
-                          'S/ $subtotal',
-                          textAlign: pw.TextAlign.right,
-                          style: const pw.TextStyle(fontSize: 11),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                );
-              }),
+                  pw.Expanded(
+                    flex: 1,
+                    child: pw.Text(
+                      'IMPORTE',
+                      textAlign: pw.TextAlign.right,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+
+              // --- LISTA DE ITEMS ---
+              ..._buildItemList(items),
 
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
+              pw.SizedBox(height: 4),
 
-              // TOTALES
-              // Mostrar Subtotal solo si se aplicó algún tipo de descuento
-              if (order.discountAmount > 0 || order.pointsUsed > 0) ...[
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'Subtotal:',
-                      style: const pw.TextStyle(fontSize: 11),
-                    ),
-                    pw.Text(
-                      'S/ ${subtotalItems.toStringAsFixed(2)}',
-                      style: const pw.TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 4),
-              ],
+              // --- TOTALES ---
+              // Subtotal (Sumando los subtotales de los items)
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('SUBTOTAL:', style: const pw.TextStyle(fontSize: 11)),
+                  pw.Text(
+                    'S/ ${items.fold<double>(0, (s, i) => s + i.subtotal).toStringAsFixed(2)}',
+                    style: const pw.TextStyle(fontSize: 11),
+                  ),
+                ],
+              ),
 
-              // Descuento Adicional
               if (order.discountAmount > 0) ...[
+                pw.SizedBox(height: 2),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'Descuento:',
+                      'DESCUENTO:',
                       style: const pw.TextStyle(fontSize: 11),
                     ),
                     pw.Text(
@@ -202,16 +204,15 @@ class OrderPdfGenerator {
                     ),
                   ],
                 ),
-                pw.SizedBox(height: 4),
               ],
 
-              // Mostrar solo si se usaron monedas/puntos
               if (order.pointsUsed > 0) ...[
+                pw.SizedBox(height: 2),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'Monedas usadas:',
+                      'PUNTOS CANJEADOS:',
                       style: const pw.TextStyle(fontSize: 11),
                     ),
                     pw.Text(
@@ -223,6 +224,7 @@ class OrderPdfGenerator {
                 pw.SizedBox(height: 4),
               ],
 
+              pw.SizedBox(height: 4),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -260,5 +262,52 @@ class OrderPdfGenerator {
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Pedido_${order.id.substring(0, 8)}.pdf',
     );
+  }
+
+  static List<pw.Widget> _buildItemList(List<OrderItemModel> items) {
+    List<pw.Widget> widgets = [];
+    for (final item in items) {
+      // 1. Construir el nombre del producto limpio
+      String displayName = item.productName ?? 'Producto';
+      final String vLabel = item.variantLabel.trim();
+
+      // 2. Revisar si la variante aporta información real (no es "default" o vacía)
+      bool hasRealVariant =
+          vLabel.isNotEmpty &&
+          vLabel.toLowerCase() != 'default' &&
+          vLabel.toLowerCase() != 'única' &&
+          vLabel != '()';
+
+      if (hasRealVariant) {
+        displayName = '$displayName - $vLabel';
+      }
+
+      widgets.add(
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                flex: 3,
+                child: pw.Text(
+                  '${item.quantity} x $displayName',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ),
+              pw.Expanded(
+                flex: 1,
+                child: pw.Text(
+                  'S/ ${item.subtotal.toStringAsFixed(2)}',
+                  textAlign: pw.TextAlign.right,
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return widgets;
   }
 }

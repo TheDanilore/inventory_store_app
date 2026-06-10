@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -128,6 +129,39 @@ class _OrdersScreenState extends State<OrdersScreen> {
       setState(() => _currentPage = 0);
       _fetchOrders();
     });
+  }
+
+  // NUEVO METODO: Obtener los items y generar el PDF desde la lista
+  Future<void> _printOrderTicket(OrderModel order) async {
+    try {
+      final resp = await _supabase
+          .from('order_items')
+          .select('''
+            id, order_id, product_id, variant_id, quantity, unit_cost,
+            applied_price, net_profit, created_at,
+            products ( name, uses_batches, product_images(*) ),
+            product_variants ( attributes, sku, product_images(*) )
+          ''')
+          .eq('order_id', order.id);
+
+      final items =
+          (resp as List)
+              .map(
+                (row) =>
+                    OrderItemModel.fromJson(Map<String, dynamic>.from(row)),
+              )
+              .toList();
+
+      await OrderPdfGenerator.generateTicket(order, items: items);
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al generar ticket: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
   }
 
   Future<void> _updateOrderStatus(OrderModel order, String newStatus) async {
@@ -763,6 +797,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 onUpdateStatus:
                                     (orderObj, newStatus) =>
                                         _updateOrderStatus(orderObj, newStatus),
+                                onPrint: () => _printOrderTicket(order),
                               );
                             },
                           ),
@@ -789,12 +824,14 @@ class AdminOrderCard extends StatelessWidget {
   final OrderModel order;
   final VoidCallback onTap;
   final Function(OrderModel order, String newStatus) onUpdateStatus;
+  final VoidCallback onPrint;
 
   const AdminOrderCard({
     super.key,
     required this.order,
     required this.onTap,
     required this.onUpdateStatus,
+    required this.onPrint,
   });
 
   // Badge de estado de orden
@@ -1174,8 +1211,7 @@ class AdminOrderCard extends StatelessWidget {
                             ),
                             icon: const Icon(Icons.print_rounded, size: 18),
                             label: const Text('Ticket'),
-                            onPressed:
-                                () => OrderPdfGenerator.generateTicket(order),
+                            onPressed: onPrint,
                           ),
                         if (status == 'PENDING') ...[
                           IconButton(

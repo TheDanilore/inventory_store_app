@@ -14,8 +14,8 @@ class BatchAssignment {
   final String batchId;
   final String batchNumber;
   final DateTime? expiryDate;
-  final int available; // stock real disponible
-  int assigned; // cantidad a descontar de este lote (editable)
+  final int available;
+  int assigned;
 
   BatchAssignment({
     required this.batchId,
@@ -62,10 +62,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   List<OrderItemModel> _items = [];
   List<TextEditingController> _quantityControllers = [];
   List<Map<String, dynamic>> _profiles = [];
-  // variantId -> lista de {batch_number, expiry_date, quantity} (solo para completados)
-  Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
 
-  // Estado local para los overrides de lotes cuando se activa un PENDING
+  Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
+  Map<String, bool> _usesBatchesMap = {}; // Identifica qué variantes usan lotes
   final Map<String, List<BatchAssignment>> _batchOverrides = {};
 
   bool _isLoading = true;
@@ -80,7 +79,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
   bool get _isCancelled => _currentStatus.toUpperCase() == 'CANCELLED';
-  bool get _canToggleEdit => !_isCancelled;
+  bool get _canToggleEdit => widget.order.status.toUpperCase() != 'CANCELLED';
 
   String get _currentPaymentStatus {
     if (_isEditing) {
@@ -200,7 +199,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .select('''
               id, order_id, product_id, variant_id, quantity, unit_cost,
               applied_price, net_profit, created_at,
-              products ( name, product_images(*) ),
+              products ( name, uses_batches, product_images(*) ),
               product_variants ( attributes, sku, product_images(*) )
             ''')
             .eq('order_id', widget.order.id),
@@ -224,13 +223,17 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       final results = await Future.wait(futures);
       if (!mounted) return;
 
+      final itemsRaw = results[0] as List;
+
       final items =
-          (results[0] as List)
-              .map(
-                (row) =>
-                    OrderItemModel.fromJson(Map<String, dynamic>.from(row)),
-              )
-              .toList();
+          itemsRaw.map((row) {
+            final variantId = row['variant_id'] as String?;
+            final prod = row['products'] as Map<String, dynamic>?;
+            if (variantId != null && prod != null) {
+              _usesBatchesMap[variantId] = prod['uses_batches'] == true;
+            }
+            return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
+          }).toList();
 
       List<Map<String, dynamic>> profiles = List<Map<String, dynamic>>.from(
         results[1],
@@ -269,7 +272,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               )
               .toList();
 
-      if (_currentStatus.toUpperCase() == 'COMPLETED') {
+      if (widget.order.status.toUpperCase() == 'COMPLETED') {
         _fetchBatchMovements();
       }
     } catch (e) {
@@ -322,6 +325,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           .select('id, batch_number, expiry_date, available_quantity')
           .eq('variant_id', item.variantId ?? '')
           .eq('warehouse_id', warehouseId)
+          .neq('batch_number', 'DEFAULT')
           .gt('available_quantity', 0)
           .order('expiry_date', ascending: true, nullsFirst: false);
 
@@ -401,9 +405,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         offset: _quantityControllers[index].text.length,
       );
       _pointsEarned = _calculatePointsEarned();
-      _batchOverrides.remove(
-        _items[index].id,
-      ); // Resetear lotes si cambia la cantidad
+      _batchOverrides.remove(_items[index].id);
     });
   }
 
@@ -420,9 +422,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         offset: _quantityControllers[index].text.length,
       );
       _pointsEarned = _calculatePointsEarned();
-      _batchOverrides.remove(
-        _items[index].id,
-      ); // Resetear lotes si cambia la cantidad
+      _batchOverrides.remove(_items[index].id);
     });
   }
 
@@ -566,7 +566,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               }
             }
           } else {
-            // FEFO
+            // FEFO Automático
             final batchesResp = await _supabase
                 .from('warehouse_stock_batches')
                 .select('id, available_quantity, batch_number')
@@ -597,7 +597,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               outOfStockMessages.add(
                 '• ${item.productName} - ${item.variantLabel} (Stock real: $currentStock, Pedido: $qtyNeeded)',
               );
-              continue; // Salta para disparar el mensaje de error completo
+              continue;
             }
           }
 
@@ -673,6 +673,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 )
                 .eq('id', widget.order.id)
                 .single();
+
         final warehouseId = orderData['warehouse_id'];
         final origAmount = (orderData['total_amount'] as num).toDouble();
         final origPaymentMethod = orderData['payment_method'] as String;
@@ -680,67 +681,51 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
         for (final item in _items) {
           final safeVariantId = item.variantId ?? '';
-          final qty = item.quantity;
-          final productId = item.productId;
 
-          final batchResp =
-              await _supabase
-                  .from('warehouse_stock_batches')
-                  .select('id, available_quantity')
-                  .eq('warehouse_id', warehouseId)
-                  .eq('variant_id', safeVariantId)
-                  .order('created_at', ascending: false)
-                  .limit(1)
-                  .maybeSingle();
+          final movs = await _supabase
+              .from('inventory_movements')
+              .select('quantity, stock_batch_id')
+              .eq('order_id', widget.order.id)
+              .eq('variant_id', safeVariantId)
+              .eq('reason', 'SALE');
 
-          if (batchResp != null) {
-            final batchId = batchResp['id'];
-            final currentStock =
-                (batchResp['available_quantity'] as num?)?.toInt() ?? 0;
-            final newStock = currentStock + qty;
-            await _supabase
-                .from('warehouse_stock_batches')
-                .update({'available_quantity': newStock})
-                .eq('id', batchId);
-            await _supabase.from('inventory_movements').insert({
-              'variant_id': safeVariantId,
-              'warehouse_id': warehouseId,
-              'stock_batch_id': batchId,
-              'order_id': widget.order.id,
-              'quantity': qty,
-              'previous_stock': currentStock,
-              'new_stock': newStock,
-              'reason': 'RETURN',
-              'notes': 'Devolución por cancelación desde detalles',
-              if (currentProfileId != null) 'created_by': currentProfileId,
-            });
-          } else {
-            final newBatch =
+          for (final mov in (movs as List)) {
+            final batchId = mov['stock_batch_id'];
+            final qtyDeducted =
+                ((mov['quantity'] as num).toDouble()).abs().toInt();
+
+            if (batchId != null && qtyDeducted > 0) {
+              final batchResp =
+                  await _supabase
+                      .from('warehouse_stock_batches')
+                      .select('available_quantity')
+                      .eq('id', batchId)
+                      .maybeSingle();
+
+              if (batchResp != null) {
+                final currentStock =
+                    (batchResp['available_quantity'] as num).toInt();
+                final newStock = currentStock + qtyDeducted;
+
                 await _supabase
                     .from('warehouse_stock_batches')
-                    .insert({
-                      'variant_id': safeVariantId,
-                      'product_id': productId,
-                      'warehouse_id': warehouseId,
-                      'available_quantity': qty,
-                      'batch_number': 'DEFAULT',
-                      if (currentProfileId != null)
-                        'created_by': currentProfileId,
-                    })
-                    .select('id')
-                    .single();
-            await _supabase.from('inventory_movements').insert({
-              'variant_id': safeVariantId,
-              'warehouse_id': warehouseId,
-              'stock_batch_id': newBatch['id'],
-              'order_id': widget.order.id,
-              'quantity': qty,
-              'previous_stock': 0,
-              'new_stock': qty,
-              'reason': 'RETURN',
-              'notes': 'Devolución por cancelación desde detalles',
-              if (currentProfileId != null) 'created_by': currentProfileId,
-            });
+                    .update({'available_quantity': newStock})
+                    .eq('id', batchId);
+
+                await _supabase.from('inventory_movements').insert({
+                  'variant_id': safeVariantId,
+                  'warehouse_id': warehouseId,
+                  'stock_batch_id': batchId,
+                  'order_id': widget.order.id,
+                  'quantity': qtyDeducted,
+                  'previous_stock': currentStock,
+                  'new_stock': newStock,
+                  'reason': 'RETURN',
+                  'notes': 'Devolución por cancelación desde detalles',
+                  if (currentProfileId != null) 'created_by': currentProfileId,
+                });
+              }
+            }
           }
         }
 
@@ -1007,6 +992,18 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             ),
             const Divider(),
 
+            // ─── NUEVO: SECCIÓN DE ESTADO DEL PEDIDO ───
+            OrderDetailStatusSection(
+              currentStatus: _currentStatus,
+              originalStatus: widget.order.status,
+              isEditing: _isEditing,
+              onChanged: (newStatus) {
+                if (newStatus != null) {
+                  setState(() => _currentStatus = newStatus);
+                }
+              },
+            ),
+
             if (_isCompleted)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -1131,8 +1128,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               isEditing: _isEditing,
               isLocked: _isCompleted || _isCancelled,
               batchesByVariant: _batchesByVariant,
-              batchOverrides:
-                  _batchOverrides, // Pasamos los overrides para que se dibujen
+              usesBatchesMap: _usesBatchesMap,
+              batchOverrides: _batchOverrides,
               quantityControllers: _quantityControllers,
               onDecrease: (index) => _changeQuantity(index, -1),
               onIncrease: (index) => _changeQuantity(index, 1),
@@ -1159,6 +1156,132 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── NUEVO COMPONENTE: SELECTOR DE ESTADO ───
+class OrderDetailStatusSection extends StatelessWidget {
+  final String currentStatus;
+  final String originalStatus;
+  final bool isEditing;
+  final ValueChanged<String?> onChanged;
+
+  const OrderDetailStatusSection({
+    super.key,
+    required this.currentStatus,
+    required this.originalStatus,
+    required this.isEditing,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Calculamos qué opciones mostrar dependiendo del estado original
+    List<String> options = [];
+    if (originalStatus.toUpperCase() == 'PENDING') {
+      options = ['PENDING', 'COMPLETED', 'CANCELLED'];
+    } else if (originalStatus.toUpperCase() == 'COMPLETED') {
+      options = ['COMPLETED', 'CANCELLED'];
+    } else {
+      options = [originalStatus.toUpperCase()]; // Cancelled está bloqueado
+    }
+
+    if (!isEditing) {
+      Color badgeColor;
+      String label;
+      switch (currentStatus.toUpperCase()) {
+        case 'COMPLETED':
+          badgeColor = Colors.teal;
+          label = 'COMPLETADO';
+          break;
+        case 'PENDING':
+          badgeColor = Colors.orange.shade700;
+          label = 'PENDIENTE (Borrador)';
+          break;
+        case 'CANCELLED':
+          badgeColor = Colors.red;
+          label = 'CANCELADO';
+          break;
+        default:
+          badgeColor = Colors.grey;
+          label = currentStatus;
+      }
+
+      return OrderDetailSectionCard(
+        title: 'Estado del Pedido',
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: badgeColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return OrderDetailSectionCard(
+      title: 'Estado del Pedido',
+      child: DropdownButtonFormField<String>(
+        value:
+            options.contains(currentStatus.toUpperCase())
+                ? currentStatus.toUpperCase()
+                : options.first,
+        decoration: InputDecoration(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 10,
+          ),
+          fillColor: Colors.grey.shade50,
+          filled: true,
+        ),
+        icon: const Icon(
+          Icons.arrow_drop_down_circle_rounded,
+          color: AppColors.primary,
+        ),
+        items:
+            options.map((s) {
+              String label = s;
+              Color itemColor = Colors.black87;
+
+              if (s == 'COMPLETED') {
+                label = '✅  COMPLETAR PEDIDO';
+                itemColor = Colors.teal.shade700;
+              } else if (s == 'PENDING') {
+                label = '⏳  MANTENER PENDIENTE';
+                itemColor = Colors.orange.shade800;
+              } else if (s == 'CANCELLED') {
+                label = '❌  CANCELAR PEDIDO';
+                itemColor = Colors.red.shade700;
+              }
+
+              return DropdownMenuItem(
+                value: s,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: itemColor,
+                  ),
+                ),
+              );
+            }).toList(),
+        onChanged: onChanged,
       ),
     );
   }
@@ -1678,6 +1801,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
 class OrderDetailItemCard extends StatelessWidget {
   final OrderItemModel item;
   final bool isEditing;
+  final bool usesBatches;
   final List<Map<String, dynamic>> batches; // Históricos (read-only)
   final List<BatchAssignment>? batchAssignments; // Lotes a descontar (editable)
   final TextEditingController quantityController;
@@ -1690,6 +1814,7 @@ class OrderDetailItemCard extends StatelessWidget {
     super.key,
     required this.item,
     required this.isEditing,
+    required this.usesBatches,
     this.batches = const [],
     this.batchAssignments,
     required this.quantityController,
@@ -1714,8 +1839,9 @@ class OrderDetailItemCard extends StatelessWidget {
     final subtotal = item.subtotal;
     final imageUrl = item.displayImageUrl;
 
-    final bool hasBatchOverride =
-        onEditBatches != null && batchAssignments != null;
+    // Solo se puede editar lotes si la variante de este producto lo requiere
+    final bool canEditBatches = onEditBatches != null && usesBatches;
+    final bool hasBatchOverride = canEditBatches && batchAssignments != null;
     final activeBatches =
         hasBatchOverride
             ? batchAssignments!.where((b) => b.assigned > 0).toList()
@@ -1775,7 +1901,7 @@ class OrderDetailItemCard extends StatelessWidget {
                   ),
 
                   // ── Chips de lotes (Para activar borrador) ────────
-                  if (onEditBatches != null) ...[
+                  if (canEditBatches) ...[
                     const SizedBox(height: 6),
                     GestureDetector(
                       onTap: onEditBatches,
@@ -1985,6 +2111,7 @@ class OrderDetailItemsSection extends StatelessWidget {
   final bool isEditing;
   final bool isLocked;
   final Map<String, List<Map<String, dynamic>>> batchesByVariant;
+  final Map<String, bool> usesBatchesMap;
   final Map<String, List<BatchAssignment>> batchOverrides;
   final List<TextEditingController> quantityControllers;
   final void Function(int index) onDecrease;
@@ -1999,6 +2126,7 @@ class OrderDetailItemsSection extends StatelessWidget {
     required this.isEditing,
     this.isLocked = false,
     this.batchesByVariant = const {},
+    required this.usesBatchesMap,
     this.batchOverrides = const {},
     required this.quantityControllers,
     required this.onDecrease,
@@ -2029,9 +2157,13 @@ class OrderDetailItemsSection extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   final batches = batchesByVariant[item.variantId ?? ''] ?? [];
+                  final usesBatches =
+                      usesBatchesMap[item.variantId ?? ''] ?? false;
+
                   return OrderDetailItemCard(
                     item: item,
                     isEditing: isEditing && !isLocked,
+                    usesBatches: usesBatches,
                     batches: batches,
                     batchAssignments: batchOverrides[item.id ?? ''],
                     quantityController: quantityControllers[index],
