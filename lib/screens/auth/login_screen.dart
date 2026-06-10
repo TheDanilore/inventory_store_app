@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       final dest =
           data['role'] == AppRoles.admin
-              ? const CatalogoScreen()
+              ? const AdminCatalogoScreen()
               : const CustomerMainScreen();
       Navigator.pushReplacement(
         context,

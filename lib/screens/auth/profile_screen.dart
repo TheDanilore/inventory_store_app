@@ -484,7 +484,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         (context, __, ___) =>
                                             widget.openedFromAdmin
                                                 ? const CustomerMainScreen()
-                                                : const CatalogoScreen(),
+                                                : const AdminCatalogoScreen(),
                                     transitionDuration: Duration.zero,
                                     reverseTransitionDuration: Duration.zero,
                                   ),

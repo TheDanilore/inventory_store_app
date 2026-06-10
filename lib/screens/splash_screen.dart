@@ -98,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen> {
         builder:
             (_) =>
                 role == AppRoles.admin
-                    ? const CatalogoScreen()
+                    ? const AdminCatalogoScreen()
                     : const CustomerMainScreen(),
       ),
     );

@@ -23,15 +23,18 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CatalogoScreen extends StatefulWidget {
-  const CatalogoScreen({super.key});
+class AdminCatalogoScreen extends StatefulWidget {
+  const AdminCatalogoScreen({super.key});
 
   @override
-  State<CatalogoScreen> createState() => _CatalogoScreenState();
+  State<AdminCatalogoScreen> createState() => _AdminCatalogoScreenState();
 }
 
-class _CatalogoScreenState extends State<CatalogoScreen> {
+class _AdminCatalogoScreenState extends State<AdminCatalogoScreen> {
   Timer? _debounce;
+
+  // Agrega esta nueva variable:
+  Map<String, String> _matchedIngredients = {};
 
   static const int _pageSize = 8;
   final _catalogService = CatalogService();
@@ -46,6 +49,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   String? _selectedCategoryId;
   int _currentPage = 0;
   bool _isExportingPdf = false;
+  Future<List<ProductModel>>? _productsFuture;
 
   final _searchCtrl = TextEditingController();
 
@@ -56,6 +60,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   void initState() {
     super.initState();
     _fetchCategories();
+    _refreshProducts();
+  }
+
+  void _refreshProducts() {
+    setState(() {
+      _productsFuture = _loadProducts();
+    });
   }
 
   Future<void> _fetchCategories() async {
@@ -179,29 +190,81 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   Future<List<ProductModel>> _loadProductsByIngredient(String term) async {
     final supabase = Supabase.instance.client;
 
-    // 1. Buscar ingredient_ids invocando la función RPC de Supabase
+    // 1. RPC: buscar ingredient_ids. La función devuelve TABLE(id text).
     final List<dynamic> aiResp = await supabase.rpc(
       'search_ingredients_unaccent',
       params: {'search_term': term},
     );
 
     final ingredientIds =
-        aiResp.map((r) => r['id'] as String?).whereType<String>().toList();
-
-    // 2. Buscar product_ids en product_active_ingredients
-    final ingResp = await supabase
-        .from('product_active_ingredients')
-        .select('product_id')
-        .inFilter('ingredient_id', ingredientIds);
-
-    final productIds =
-        (ingResp as List)
-            .map((r) => r['product_id'] as String?)
+        (aiResp)
+            .map((r) => (r as Map<String, dynamic>)['id']?.toString())
             .whereType<String>()
+            .where((s) => s.isNotEmpty)
             .toSet()
             .toList();
 
-    if (productIds.isEmpty) return [];
+    if (ingredientIds.isEmpty) return [];
+
+    // 2. Buscar product_ids y los datos reales de los ingredientes
+    final ingResp = await supabase
+        .from('product_active_ingredients')
+        .select('product_id, concentration, unit, active_ingredients(name)')
+        .inFilter('ingredient_id', ingredientIds);
+
+    final productIds = <String>[];
+    final newMatches = <String, String>{};
+
+    for (final e in ingResp as List) {
+      final row = e as Map<String, dynamic>;
+      final pId = row['product_id']?.toString();
+      if (pId == null || pId.isEmpty) continue;
+
+      productIds.add(pId);
+
+      // Extraer datos
+      final aiMap = row['active_ingredients'] as Map<String, dynamic>?;
+      final name = aiMap?['name']?.toString() ?? 'Desconocido';
+      final conc = row['concentration'];
+      final unit = row['unit']?.toString().trim();
+
+      // Formatear la etiqueta
+      String label = name;
+      if (conc != null) {
+        // Quitar el ".0" si es entero (ej: 48.0 -> 48)
+        final concStr =
+            (conc is num && conc == conc.toInt())
+                ? conc.toInt().toString()
+                : conc.toString();
+        label += ' $concStr';
+      }
+      if (unit != null && unit.isNotEmpty) {
+        if (unit.startsWith('%')) {
+          label += unit; // Ej: 48%
+        } else {
+          label += ' $unit'; // Ej: 480 g/L
+        }
+      }
+
+      // Si un producto tiene más de un ingrediente que coincide, los sumamos
+      if (newMatches.containsKey(pId)) {
+        newMatches[pId] = '${newMatches[pId]} + $label';
+      } else {
+        newMatches[pId] = label;
+      }
+    }
+
+    // Guardar los ingredientes coincidentes en el estado.
+    // Usamos addPostFrameCallback porque esta función se ejecuta dentro de un
+    // Future que alimenta el FutureBuilder. Llamar setState() directamente aquí
+    // durante el build del FutureBuilder provoca "setState called during build".
+    // Con postFrameCallback lo diferimos al siguiente frame, cuando el build ya terminó.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _matchedIngredients = newMatches);
+    });
+
+    final uniqueProductIds = productIds.toSet().toList();
+    if (uniqueProductIds.isEmpty) return [];
 
     // 3. Traer los productos correspondientes
     var query = supabase
@@ -211,7 +274,8 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
           wholesale_min_quantity, is_active, description,
           category_id, details, created_at, updated_at,
           stock_control, uses_batches, product_type,
-          product_images(image_url, is_main, display_order, variant_id)
+          categories(name),
+          product_images(*)
         ''')
         .inFilter('id', productIds);
 
@@ -220,12 +284,21 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     }
 
     final resp = await query.order('name');
-    final productsList =
-        (resp as List)
-            .map((e) => ProductModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
 
-    // 3. Consultar el stock aprovechando el nuevo product_id directo
+    // Parse defensivo: saltear filas con datos incompletos
+    final productsList = <ProductModel>[];
+    for (final e in resp as List) {
+      try {
+        final row = Map<String, dynamic>.from(e as Map);
+        // Garantizar campos string no-null requeridos por fromJson
+        if (row['id'] == null || row['name'] == null) continue;
+        productsList.add(ProductModel.fromJson(row));
+      } catch (err) {
+        debugPrint('⚠️ Producto saltado en búsqueda por ingrediente: $err');
+      }
+    }
+
+    // 4. Consultar el stock
     final stockResp = await supabase
         .from('warehouse_stock_batches')
         .select('product_id, available_quantity')
@@ -233,13 +306,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
 
     final stockByProduct = <String, int>{};
     for (final row in List<Map<String, dynamic>>.from(stockResp)) {
-      final pId = row['product_id'] as String?;
-      if (pId == null) continue;
+      final pId = row['product_id']?.toString();
+      if (pId == null || pId.isEmpty) continue;
       final qty = (row['available_quantity'] as num?)?.toInt() ?? 0;
       stockByProduct[pId] = (stockByProduct[pId] ?? 0) + qty;
     }
 
-    // 4. Inyectar el stock calculado
+    // 5. Inyectar el stock calculado
     return productsList
         .map((p) => p.copyWith(totalStock: stockByProduct[p.id] ?? 0))
         .toList();
@@ -729,9 +802,9 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       final visibleProducts =
           allProducts
               .skip(
-                _currentPage * _CatalogoScreenState._pageSize,
+                _currentPage * _AdminCatalogoScreenState._pageSize,
               ) // o solo _pageSize si no es static
-              .take(_CatalogoScreenState._pageSize)
+              .take(_AdminCatalogoScreenState._pageSize)
               .toList();
 
       // 3. Aplicamos el límite de rendimiento para la opción "Todos"
@@ -966,7 +1039,17 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      setState(() => _currentPage = 0);
+      // Si el texto quedó vacío y estábamos en modo ingrediente,
+      // también limpiamos los resultados para no dejar labels huérfanos.
+      if (_searchByIngredient && query.trim().isEmpty) {
+        setState(() {
+          _currentPage = 0;
+          _matchedIngredients = {};
+        });
+      } else {
+        setState(() => _currentPage = 0);
+      }
+      _refreshProducts();
     });
   }
 
@@ -977,6 +1060,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       // Resetear categoría al cambiar modo para evitar filtros cruzados confusos
       if (value) _selectedCategoryId = null;
     });
+    _refreshProducts();
   }
 
   @override
@@ -1004,15 +1088,17 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             CategoryChips(
               categories: _categories,
               selectedCategoryId: _selectedCategoryId,
-              onSelected:
-                  (id) => setState(() {
-                    _selectedCategoryId = id;
-                    _currentPage = 0;
-                  }),
+              onSelected: (id) {
+                setState(() {
+                  _selectedCategoryId = id;
+                  _currentPage = 0;
+                });
+                _refreshProducts();
+              },
             ),
           Expanded(
             child: FutureBuilder<List<ProductModel>>(
-              future: _loadProducts(),
+              future: _productsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -1039,7 +1125,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   onSale: _irAVenta,
                   onToggleActive: _toggleProductoActivo,
                   searchByIngredient: _searchByIngredient,
-                  searchTerm: _searchCtrl.text.trim(),
+                  matchedIngredients: _matchedIngredients,
                   onEdit: (product) async {
                     final result = await Navigator.push(
                       context,
@@ -1048,7 +1134,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                             (_) => FormularioScreen(productToEdit: product),
                       ),
                     );
-                    if (result == true) setState(() {});
+                    if (result == true) _refreshProducts();
                   },
                 );
               },
@@ -2304,7 +2390,7 @@ class CatalogGrid extends StatelessWidget {
   final void Function(ProductModel) onToggleActive;
   final void Function(ProductModel) onEdit;
   final bool searchByIngredient;
-  final String searchTerm;
+  final Map<String, String> matchedIngredients;
 
   const CatalogGrid({
     super.key,
@@ -2316,7 +2402,7 @@ class CatalogGrid extends StatelessWidget {
     required this.onToggleActive,
     required this.onEdit,
     this.searchByIngredient = false,
-    this.searchTerm = '',
+    this.matchedIngredients = const {},
   });
 
   @override
@@ -2390,7 +2476,10 @@ class CatalogGrid extends StatelessWidget {
                     onSale: () => onSale(product),
                     onToggleActive: () => onToggleActive(product),
                     onEdit: () => onEdit(product),
-                    highlightIngredient: searchByIngredient ? searchTerm : null,
+                    highlightIngredient:
+                        searchByIngredient
+                            ? matchedIngredients[product.id]
+                            : null,
                   );
                 },
               ),
@@ -2619,6 +2708,7 @@ class AdminProductCard extends StatelessWidget {
                                 color: Color(0xFF065F46),
                               ),
                               overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
                             ),
                           ),
                         ],
