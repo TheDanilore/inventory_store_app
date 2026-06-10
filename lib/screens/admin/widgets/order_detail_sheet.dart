@@ -62,9 +62,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   List<OrderItemModel> _items = [];
   List<TextEditingController> _quantityControllers = [];
   List<Map<String, dynamic>> _profiles = [];
+  List<Map<String, dynamic>> _accounts = []; // NUEVO: Cuentas financieras
 
   Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
-  Map<String, bool> _usesBatchesMap = {}; // Identifica qué variantes usan lotes
+  Map<String, bool> _usesBatchesMap = {};
   final Map<String, List<BatchAssignment>> _batchOverrides = {};
 
   bool _isLoading = true;
@@ -208,6 +209,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .select('id, full_name, phone, document_number, role, is_active')
             .eq('is_active', true)
             .order('full_name'),
+        _supabase
+            .from('financial_accounts')
+            .select('id, name, type')
+            .eq('is_active', true)
+            .order('name'),
       ];
 
       if (_selectedCustomerId != null) {
@@ -238,6 +244,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       List<Map<String, dynamic>> profiles = List<Map<String, dynamic>>.from(
         results[1],
       );
+      List<Map<String, dynamic>> accounts = List<Map<String, dynamic>>.from(
+        results[2],
+      );
 
       final currentCustomerId = _selectedCustomerId ?? widget.order.customerId;
       if (currentCustomerId != null &&
@@ -258,8 +267,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       setState(() {
         _items = items;
         _profiles = profiles;
-        if (results.length > 2) {
-          _creditInfo = results[2] as Map<String, dynamic>?;
+        _accounts = accounts;
+        if (results.length > 3) {
+          _creditInfo = results[3] as Map<String, dynamic>?;
         }
         _pointsEarned = _calculatePointsEarned();
         _isLoading = false;
@@ -826,7 +836,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       // ─── 4. ACTUALIZAR ORDEN Y PAGOS ───
       if (isNowCompleted &&
           (_paymentMethod == 'POR ACORDAR' || _paymentMethod.trim().isEmpty)) {
-        _paymentMethod = 'EFECTIVO';
+        _paymentMethod =
+            _accounts.isNotEmpty ? _accounts.first['name'] : 'EFECTIVO';
       }
 
       if (_paymentMethod == 'CRÉDITO') {
@@ -1064,6 +1075,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             OrderDetailPaymentSection(
               currentPaymentMethod: _paymentMethod,
               isEditing: _isEditing,
+              accounts: _accounts, // NUEVO: Pasamos las cuentas
               onChanged: (val) {
                 if (val != null) {
                   setState(() {
@@ -1538,33 +1550,33 @@ class OrderDetailCustomerSection extends StatelessWidget {
 class OrderDetailPaymentSection extends StatelessWidget {
   final String currentPaymentMethod;
   final bool isEditing;
+  final List<Map<String, dynamic>> accounts; // Lista de cuentas financieras
   final ValueChanged<String?> onChanged;
 
   const OrderDetailPaymentSection({
     super.key,
     required this.currentPaymentMethod,
     required this.isEditing,
+    required this.accounts,
     required this.onChanged,
   });
 
-  static const List<String> _paymentMethods = [
-    'EFECTIVO',
-    'YAPE',
-    'PLIN',
-    'TARJETA',
-    'TRANSFERENCIA',
-    'CRÉDITO',
-    'POR ACORDAR',
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final safeValue =
-        _paymentMethods.contains(currentPaymentMethod)
-            ? currentPaymentMethod
-            : 'EFECTIVO';
+    // 1. Armamos la lista de opciones (Fijas + Nombres de Cuentas)
+    List<String> options = ['POR ACORDAR', 'CRÉDITO'];
+    options.addAll(accounts.map((a) => a['name'] as String));
+
+    // 2. Por seguridad, si el método actual no está en la lista (ej. venía guardado como 'YAPE' en vez de 'Yape Negocio'),
+    // lo agregamos temporalmente a las opciones para que el Dropdown no tire error al cargar.
+    String safeValue =
+        currentPaymentMethod.isNotEmpty ? currentPaymentMethod : 'POR ACORDAR';
+    if (!options.contains(safeValue)) {
+      options.add(safeValue);
+    }
+
     return OrderDetailSectionCard(
-      title: 'Método de Pago',
+      title: 'Método de Pago / Cuenta',
       child:
           isEditing
               ? DropdownButtonFormField<String>(
@@ -1577,7 +1589,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
                   ),
                 ),
                 items:
-                    _paymentMethods
+                    options
                         .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                         .toList(),
                 onChanged: onChanged,
