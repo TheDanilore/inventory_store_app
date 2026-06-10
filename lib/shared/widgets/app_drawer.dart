@@ -137,7 +137,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
                     screenType:
-                        widget.isAdmin ? AdminCatalogoScreen : CustomerCatalogScreen,
+                        widget.isAdmin ? AdminCatalogScreen : CustomerCatalogScreen,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushReplacement(
@@ -146,7 +146,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           builder:
                               (_) =>
                                   widget.isAdmin
-                                      ? const AdminCatalogoScreen()
+                                      ? const AdminCatalogScreen()
                                       : const CustomerCatalogScreen(),
                         ),
                       );

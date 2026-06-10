@@ -23,14 +23,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AdminCatalogoScreen extends StatefulWidget {
-  const AdminCatalogoScreen({super.key});
+class AdminCatalogScreen extends StatefulWidget {
+  const AdminCatalogScreen({super.key});
 
   @override
-  State<AdminCatalogoScreen> createState() => _AdminCatalogoScreenState();
+  State<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
 }
 
-class _AdminCatalogoScreenState extends State<AdminCatalogoScreen> {
+class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   Timer? _debounce;
 
   // Agrega esta nueva variable:
@@ -802,9 +802,9 @@ class _AdminCatalogoScreenState extends State<AdminCatalogoScreen> {
       final visibleProducts =
           allProducts
               .skip(
-                _currentPage * _AdminCatalogoScreenState._pageSize,
+                _currentPage * _AdminCatalogScreenState._pageSize,
               ) // o solo _pageSize si no es static
-              .take(_AdminCatalogoScreenState._pageSize)
+              .take(_AdminCatalogScreenState._pageSize)
               .toList();
 
       // 3. Aplicamos el límite de rendimiento para la opción "Todos"
