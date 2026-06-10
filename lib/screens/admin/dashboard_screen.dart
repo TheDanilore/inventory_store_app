@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
-import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
@@ -441,42 +440,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
 
             const SizedBox(height: 28),
-
-            // ── Gastos ─────────────────────────────────────────────────
-            _SectionHeader(
-              icon: Icons.money_off_rounded,
-              title: 'Egresos / Gastos',
-              subtitle: 'Control de gastos registrados',
-              iconColor: Colors.red.shade400,
-            ),
-            const SizedBox(height: 12),
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _supabase.from('expenses').stream(primaryKey: ['id']),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const _LoadingPlaceholder();
-                }
-
-                double gastosTotales = 0;
-                int cantGastos = 0;
-                if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                  cantGastos = snapshot.data!.length;
-                  for (var g in snapshot.data!) {
-                    gastosTotales += (g['amount'] as num).toDouble();
-                  }
-                }
-
-                return _EgresosCard(total: gastosTotales, cantidad: cantGastos);
-              },
-            ),
-            const SizedBox(height: 12),
-            AppPrimaryButton(
-              label: 'Registrar Nuevo Gasto',
-              onPressed: () => _registrarGastoDialog(context),
-              icon: const Icon(Icons.add_card, color: Colors.white),
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-            ),
           ],
         ),
       ),
@@ -484,74 +447,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ────────────────────────────────── Dialogs ──────────────────────────────
-
-  Future<void> _registrarGastoDialog(BuildContext context) async {
-    final descCtrl = TextEditingController();
-    final montoCtrl = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Registrar Gasto / Egreso'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: descCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción del gasto',
-                    prefixIcon: Icon(Icons.description),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: montoCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Monto Gastado (S/.)',
-                    prefixIcon: Icon(Icons.money_off),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                ),
-                onPressed: () async {
-                  final amt = double.tryParse(montoCtrl.text);
-                  if (descCtrl.text.trim().isEmpty || amt == null || amt <= 0) {
-                    AppSnackbar.show(
-                      context,
-                      message: 'Ingresa datos válidos',
-                      backgroundColor: AppColors.error,
-                    );
-                    return;
-                  }
-                  await _supabase.from('expenses').insert({
-                    'description': descCtrl.text.trim(),
-                    'amount': amt,
-                  });
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text(
-                  'Guardar Gasto',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-    );
-  }
 
   Future<void> _configurarMetaDialog(
     BuildContext context,
@@ -729,6 +624,7 @@ class _SectionHeader extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    // ignore: unused_element_parameter
     this.iconColor,
   });
 
@@ -1181,87 +1077,6 @@ class _MargenBar extends StatelessWidget {
               backgroundColor: color.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EgresosCard extends StatelessWidget {
-  final double total;
-  final int cantidad;
-
-  const _EgresosCard({required this.total, required this.cantidad});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.dangerLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.danger.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.trending_down_rounded,
-              color: AppColors.danger,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Total Egresos Históricos',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.danger,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'S/ ${total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.danger,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$cantidad',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.danger,
-                ),
-              ),
-              Text(
-                'registros',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.danger.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
           ),
         ],
       ),
