@@ -84,27 +84,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   // Venta
   bool _isProcessingSale = false;
 
-  // Los overrides de lotes viven en PosProvider (pos.setBatchOverride/batchOverrides).
-  // Helper tipado para leer sin cast en cada uso.
+  // Los overrides de lotes viven en PosProvider.
   List<_BatchAssignment>? _batchOverrideFor(PosProvider pos, String cartKey) {
     final raw = pos.batchOverrides[cartKey];
     if (raw == null) return null;
     return raw.cast<_BatchAssignment>();
-  }
-
-  /// Infiere el método de pago a partir del tipo de cuenta financiera.
-  /// CRÉDITO es manejado aparte — no pasa por aquí.
-  String _inferPaymentMethod(String accountType) {
-    switch (accountType) {
-      case 'CAJA':
-        return 'EFECTIVO';
-      case 'BANCO':
-        return 'TRANSFERENCIA';
-      case 'DIGITAL':
-        return 'DIGITAL';
-      default:
-        return 'OTRO';
-    }
   }
 
   @override
@@ -138,7 +122,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       final list =
           (whRes as List).map((w) => WarehouseModel.fromJson(w)).toList();
 
-      // 2. Cuentas Financieras (incluimos 'type' para inferir método de pago)
+      // 2. Cuentas Financieras
       final accRes = await _supabase
           .from('financial_accounts')
           .select('id, name, type, balance')
@@ -161,11 +145,10 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               orElse: () => accs.first,
             );
             _selectedAccountId = firstAcc['id'] as String;
-            // Sincronizar método de pago con el tipo de cuenta
+
+            // ASIGNAR NOMBRE DE CUENTA COMO MÉTODO DE PAGO
             if (pos.paymentMethod != 'CRÉDITO') {
-              pos.setPaymentMethod(
-                _inferPaymentMethod(firstAcc['type'] as String? ?? 'OTRO'),
-              );
+              pos.setPaymentMethod(firstAcc['name'] as String);
             }
             _checkActiveShift();
           }
@@ -392,13 +375,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         return;
       }
 
-      // Verificamos si la cuenta elegida es de tipo CAJA
       final accountData = _accountsList.firstWhere(
         (a) => a['id'] == _selectedAccountId,
         orElse: () => {},
       );
 
-      // SOLO bloqueamos si es CAJA y no tiene turno
       if (accountData['type'] == 'CAJA' && _activeShift == null) {
         AppSnackbar.show(
           context,
@@ -483,14 +464,11 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           final safeVariantId = item.variantId!;
           final cartKey = item.cartKey;
 
-          // Si el usuario editó los lotes manualmente, usamos ese override.
-          // Si no, aplicamos FEFO automático consultando la BD.
           List<({String id, int take, int available, String batchNumber})>
           segments = [];
 
           final batchAssigned = _batchOverrideFor(pos, cartKey);
           if (batchAssigned != null) {
-            // ── Override manual ──────────────────────────────────────────
             final overrides = batchAssigned;
             final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
             if (totalAssigned != item.quantity) {
@@ -510,7 +488,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               }
             }
           } else {
-            // ── FEFO automático ──────────────────────────────────────────
             final batches = await _supabase
                 .from('warehouse_stock_batches')
                 .select('id, available_quantity, batch_number, expiry_date')
@@ -539,7 +516,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
             }
           }
 
-          // Construir batchUpdates y movementInserts a partir de segments
           for (final seg in segments) {
             batchUpdates.add({
               'id': seg.id,
@@ -592,7 +568,8 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                 'total_amount': totalFinal,
                 'total_profit': totalProfit,
                 'discount_amount': descuentoExtra,
-                'payment_method': pos.paymentMethod,
+                'payment_method':
+                    pos.paymentMethod, // Aquí se guarda el nombre de la cuenta (EJ. YAPE)
                 'payment_status': paymentStatus,
                 'amount_paid': amountPaid,
                 'status': orderStatus,
@@ -634,8 +611,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
 
       // ─── 5.5 MOVIMIENTO FINANCIERO ───────────────────────────────────────
-      // shift_id solo aplica cuando la cuenta es de tipo CAJA y tiene turno abierto.
-      // Para cuentas bancarias / billeteras digitales se deja null.
       if (!isDraft && !isCredito && amountPaid > 0) {
         final accountData = _accountsList.firstWhere(
           (a) => a['id'] == _selectedAccountId,
@@ -658,7 +633,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           'created_by': currentProfileId,
         });
 
-        // Aseguramos que el balance de la cuenta se actualice en la DB.
         final accResp =
             await _supabase
                 .from('financial_accounts')
@@ -673,7 +647,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
             .eq('id', _selectedAccountId!);
       }
 
-      // ─── 6. PUNTOS (WALLET) — solo en venta directa con cliente ─────────
+      // ─── 6. PUNTOS (WALLET) ─────────────────────────
       if (!isDraft && pos.selectedClientId != null) {
         if (puntosUsados > 0) {
           final profileData =
@@ -726,7 +700,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         }
       }
 
-      // ─── 7. CRÉDITO — cargar deuda al cliente ───────────────────────────
+      // ─── 7. CRÉDITO ───────────────────────────
       if (!isDraft && isCredito && pos.selectedClientId != null) {
         final latestCredit =
             await _supabase
@@ -769,8 +743,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
   }
 
   // ─── EDITAR LOTES DE UN ÍTEM ──────────────────────────────────────────────
-  /// Carga los lotes disponibles en FEFO, aplica el override guardado si existe,
-  /// y muestra el bottom sheet para que el usuario ajuste manualmente.
   Future<void> _showBatchEditSheet(CartItemModel item, PosProvider pos) async {
     if (pos.selectedWarehouseId == null) {
       AppSnackbar.show(
@@ -781,7 +753,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       return;
     }
 
-    // 1. Cargar todos los lotes con stock disponible (orden FEFO)
     List<_BatchAssignment> batches;
     try {
       final resp = await _supabase
@@ -825,7 +796,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       return;
     }
 
-    // 2. Aplicar override guardado o calcular FEFO automáticamente
     final saved = _batchOverrideFor(pos, item.cartKey);
     if (saved != null) {
       for (final s in saved) {
@@ -833,7 +803,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         if (idx >= 0) batches[idx].assigned = s.assigned;
       }
     } else {
-      // Distribuir automáticamente según FEFO
       int remaining = item.quantity;
       for (final b in batches) {
         if (remaining <= 0) break;
@@ -842,7 +811,6 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
     }
 
-    // 3. Mostrar bottom sheet
     if (!mounted) return;
     final result = await showModalBottomSheet<List<_BatchAssignment>>(
       context: context,
@@ -893,12 +861,10 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         _creditDisponible < totalFinal;
     final creditoSinCliente = isCredito && pos.selectedClientId == null;
 
-    // Verificamos si la cuenta actual es de tipo CAJA
     final isCajaAccount = _accountsList.any(
       (a) => a['id'] == _selectedAccountId && a['type'] == 'CAJA',
     );
 
-    // Solo hay "Caja no abierta" si es pago directo, seleccionó una CAJA y no hay turno
     final noCajaAbierta =
         !isCredito &&
         _selectedAccountId != null &&
@@ -1031,14 +997,15 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                           pos.setPuntosAUsar(0);
                           _puntosCtrl.text = '0';
                         } else {
-                          // Volver al método inferido de la cuenta seleccionada
+                          // Volver al nombre exacto de la cuenta seleccionada
                           if (_selectedAccountId != null) {
                             final acc = _accountsList.firstWhere(
                               (a) => a['id'] == _selectedAccountId,
                               orElse: () => {},
                             );
-                            final type = acc['type'] as String? ?? 'OTRO';
-                            pos.setPaymentMethod(_inferPaymentMethod(type));
+                            final accName =
+                                acc['name'] as String? ?? 'EFECTIVO';
+                            pos.setPaymentMethod(accName);
                           } else {
                             pos.setPaymentMethod('EFECTIVO');
                           }
@@ -1053,9 +1020,9 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                             (a) => a['id'] == v,
                             orElse: () => {},
                           );
-                          final type = acc['type'] as String? ?? 'OTRO';
-                          // Siempre actualiza el método — también sale de CRÉDITO
-                          pos.setPaymentMethod(_inferPaymentMethod(type));
+                          final accName = acc['name'] as String? ?? 'OTRO';
+                          // Siempre asignamos el nombre exacto de la cuenta seleccionada
+                          pos.setPaymentMethod(accName);
                         }
                         _checkActiveShift();
                       },
@@ -2434,7 +2401,6 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
                                 ),
                               ),
                             ),
-                            // --- CAMBIO AQUÍ: Ahora es interactivo para abrir el diálogo ---
                             GestureDetector(
                               onTap:
                                   () => _mostrarDialogoCantidad(
@@ -2450,7 +2416,7 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4,
-                                ), // Espaciado extra por si digitan números grandes
+                                ),
                                 child: Text(
                                   '${b.assigned}',
                                   style: const TextStyle(
@@ -2461,7 +2427,6 @@ class _BatchEditSheetState extends State<_BatchEditSheet> {
                                 ),
                               ),
                             ),
-                            // -------------------------------------------------------------
                             InkWell(
                               onTap:
                                   b.assigned < b.available && _remaining > 0
@@ -2544,7 +2509,7 @@ class _PaymentWarehouseAccountCard extends StatelessWidget {
   final bool isCredito;
   final ValueChanged<String?> onWarehouseChanged;
   final ValueChanged<String?> onAccountChanged;
-  final ValueChanged<bool> onCreditoToggle; // true = activar crédito
+  final ValueChanged<bool> onCreditoToggle;
 
   static const Map<String, IconData> _typeIcons = {
     'CAJA': Icons.payments_rounded,
