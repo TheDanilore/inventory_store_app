@@ -46,7 +46,7 @@ class CreditMovementModel {
       notes: json['notes'] as String?,
       createdAt:
           json['created_at'] != null
-              ? DateTime.parse(json['created_at'] as String)
+              ? DateTime.parse(json['created_at'] as String).toLocal()
               : null,
       createdBy: json['created_by'] as String?,
 

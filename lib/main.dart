@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
@@ -10,6 +11,12 @@ import 'package:inventory_store_app/shared/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
+  // Asegura que Flutter esté inicializado antes de ejecutar código nativo o asíncrono
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa los datos de fecha para español
+  await initializeDateFormatting('es', null);
+
   // 1. ESTO DEBE SER LA PRIMERA LÍNEA SÍ O SÍ
   WidgetsFlutterBinding.ensureInitialized();
 
