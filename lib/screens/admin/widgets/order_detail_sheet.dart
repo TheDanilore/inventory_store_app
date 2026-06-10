@@ -1,12 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// ─── MODELO INTERNO: Segmento de lote asignado a un ítem ────────────────────
+class BatchAssignment {
+  final String batchId;
+  final String batchNumber;
+  final DateTime? expiryDate;
+  final int available; // stock real disponible
+  int assigned; // cantidad a descontar de este lote (editable)
+
+  BatchAssignment({
+    required this.batchId,
+    required this.batchNumber,
+    this.expiryDate,
+    required this.available,
+    required this.assigned,
+  });
+
+  BatchAssignment copyWith({int? assigned}) => BatchAssignment(
+    batchId: batchId,
+    batchNumber: batchNumber,
+    expiryDate: expiryDate,
+    available: available,
+    assigned: assigned ?? this.assigned,
+  );
+
+  String get expiryLabel {
+    if (expiryDate == null) return 'Sin vto.';
+    final d = expiryDate!;
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  bool get isExpiringSoon {
+    if (expiryDate == null) return false;
+    return expiryDate!.isBefore(DateTime.now().add(const Duration(days: 30)));
+  }
+}
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderModel order;
@@ -25,8 +62,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   List<OrderItemModel> _items = [];
   List<TextEditingController> _quantityControllers = [];
   List<Map<String, dynamic>> _profiles = [];
-  // variantId -> lista de {batch_number, expiry_date, quantity}
+  // variantId -> lista de {batch_number, expiry_date, quantity} (solo para completados)
   Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
+
+  // Estado local para los overrides de lotes cuando se activa un PENDING
+  final Map<String, List<BatchAssignment>> _batchOverrides = {};
 
   bool _isLoading = true;
   bool _isEditing = false;
@@ -34,10 +74,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   String? _selectedCustomerId;
   String _currentStatus = '';
-  // --- NUEVO: ESTADO PARA EL MÉTODO DE PAGO ---
   String _paymentMethod = 'EFECTIVO';
   int _pointsUsed = 0;
   int _pointsEarned = 0;
+
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
   bool get _isCancelled => _currentStatus.toUpperCase() == 'CANCELLED';
   bool get _canToggleEdit => !_isCancelled;
@@ -77,7 +117,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }).toList();
   }
 
-  // Crédito del cliente de la orden
   Map<String, dynamic>? _creditInfo;
 
   @override
@@ -102,13 +141,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     super.dispose();
   }
 
-  /// Nombre a mostrar del cliente.
   String _customerLabelFor(String? customerId) {
     if (customerId == null) {
       final manualName = widget.order.displayCustomerName.trim();
       return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
     }
-
     if (customerId == widget.order.customerId) {
       final embeddedName = widget.order.profileFullName?.trim();
       if (embeddedName != null && embeddedName.isNotEmpty) {
@@ -119,7 +156,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         return manualName;
       }
     }
-
     if (_profiles.isNotEmpty) {
       try {
         final profile = _profiles.firstWhere((p) => p['id'] == customerId);
@@ -127,13 +163,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         if (name != null && name.isNotEmpty) return name;
       } catch (_) {}
     }
-
     if (_isLoading && customerId == widget.order.customerId) {
       return widget.order.displayCustomerName.trim().isNotEmpty
           ? widget.order.displayCustomerName
           : 'Cargando...';
     }
-
     return 'Cliente mostrador';
   }
 
@@ -188,7 +222,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       }
 
       final results = await Future.wait(futures);
-
       if (!mounted) return;
 
       final items =
@@ -215,9 +248,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   )
                   .eq('id', currentCustomerId)
                   .maybeSingle();
-          if (missingProfile != null) {
-            profiles = [missingProfile, ...profiles];
-          }
+          if (missingProfile != null) profiles = [missingProfile, ...profiles];
         } catch (_) {}
       }
 
@@ -238,23 +269,16 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               )
               .toList();
 
-      // Cargar lotes usados en esta orden (solo para órdenes completadas)
       if (_currentStatus.toUpperCase() == 'COMPLETED') {
         _fetchBatchMovements();
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      AppSnackbar.show(
-        context,
-        message: 'Error cargando datos: $e',
-        type: SnackbarType.error,
-      );
+      _showErrorSnackBar('Error cargando datos: $e');
     }
   }
 
-  /// Carga los movimientos de inventario de esta orden para mostrar
-  /// qué lotes se descontaron por cada variante.
   Future<void> _fetchBatchMovements() async {
     try {
       final resp = await _supabase
@@ -285,6 +309,87 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
   }
 
+  // ─── EDICIÓN DE LOTES (BOTTOM SHEET) ────────────────────────────────────────
+
+  Future<void> _showBatchEditSheet(OrderItemModel item) async {
+    final warehouseId = widget.order.warehouseId;
+    if (warehouseId == null) return;
+
+    List<BatchAssignment> batches;
+    try {
+      final resp = await _supabase
+          .from('warehouse_stock_batches')
+          .select('id, batch_number, expiry_date, available_quantity')
+          .eq('variant_id', item.variantId ?? '')
+          .eq('warehouse_id', warehouseId)
+          .gt('available_quantity', 0)
+          .order('expiry_date', ascending: true, nullsFirst: false);
+
+      batches =
+          (resp as List)
+              .map(
+                (b) => BatchAssignment(
+                  batchId: b['id'] as String,
+                  batchNumber: b['batch_number'] as String,
+                  expiryDate:
+                      b['expiry_date'] != null
+                          ? DateTime.tryParse(b['expiry_date'] as String)
+                          : null,
+                  available: (b['available_quantity'] as num).toInt(),
+                  assigned: 0,
+                ),
+              )
+              .toList();
+    } catch (e) {
+      _showErrorSnackBar('Error cargando lotes: $e');
+      return;
+    }
+
+    if (batches.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'No hay lotes con stock para este producto.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final saved = _batchOverrides[item.id ?? ''];
+    if (saved != null) {
+      for (final s in saved) {
+        final idx = batches.indexWhere((b) => b.batchId == s.batchId);
+        if (idx >= 0) batches[idx].assigned = s.assigned;
+      }
+    } else {
+      int remaining = item.quantity;
+      for (final b in batches) {
+        if (remaining <= 0) break;
+        b.assigned = (remaining > b.available) ? b.available : remaining;
+        remaining -= b.assigned;
+      }
+    }
+
+    if (!mounted) return;
+    final result = await showModalBottomSheet<List<BatchAssignment>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (_) => _BatchEditSheet(
+            productName: item.productName ?? 'Producto',
+            variantLabel: item.variantLabel,
+            totalRequired: item.quantity,
+            batches: batches,
+          ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _batchOverrides[item.id ?? ''] = result;
+      });
+    }
+  }
+
   void _changeQuantity(int index, int delta) {
     if (!_isEditing) return;
     setState(() {
@@ -296,6 +401,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         offset: _quantityControllers[index].text.length,
       );
       _pointsEarned = _calculatePointsEarned();
+      _batchOverrides.remove(
+        _items[index].id,
+      ); // Resetear lotes si cambia la cantidad
     });
   }
 
@@ -312,6 +420,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         offset: _quantityControllers[index].text.length,
       );
       _pointsEarned = _calculatePointsEarned();
+      _batchOverrides.remove(
+        _items[index].id,
+      ); // Resetear lotes si cambia la cantidad
     });
   }
 
@@ -329,10 +440,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     final maxDiscountValue = subtotalAmount * 0.5;
     final appliedDiscount =
         discountValue > maxDiscountValue ? maxDiscountValue : discountValue;
-
     final finalAmount =
         subtotalAmount - appliedDiscount - widget.order.discountAmount;
-
     return finalAmount < 0 ? 0 : finalAmount;
   }
 
@@ -350,9 +459,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   }
 
   double _calculateOrderTotalProfit() {
-    return _items.fold<double>(0, (sum, item) {
-      return sum + ((item.appliedPrice - item.unitCost) * item.quantity);
-    });
+    return _items.fold<double>(
+      0,
+      (sum, item) =>
+          sum + ((item.appliedPrice - item.unitCost) * item.quantity),
+    );
   }
 
   Future<void> _saveChanges() async {
@@ -406,17 +517,14 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .select('id, credit_limit, current_debt, is_active')
                   .eq('profile_id', _selectedCustomerId!)
                   .maybeSingle();
-
           if (creditInfo == null || creditInfo['is_active'] != true) {
             _showErrorSnackBar('El cliente no tiene línea de crédito activa.');
             setState(() => _isSaving = false);
             return;
           }
-
           final availableCredit =
               (creditInfo['credit_limit'] as num).toDouble() -
               (creditInfo['current_debt'] as num).toDouble();
-
           if (availableCredit < totalAmount) {
             _showErrorSnackBar(
               'Crédito insuficiente. Disponible: S/ ${availableCredit.toStringAsFixed(2)}',
@@ -433,59 +541,85 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         for (final item in _items) {
           final safeVariantId = item.variantId ?? '';
           final qtyNeeded = item.quantity;
+          List<({String id, int take, int available, String batchNumber})>
+          segments = [];
 
-          final batchesResp = await _supabase
-              .from('warehouse_stock_batches')
-              .select('id, available_quantity')
-              .eq('warehouse_id', warehouseId)
-              .eq('variant_id', safeVariantId)
-              .order('created_at', ascending: true);
+          final overrides = _batchOverrides[item.id ?? ''];
 
-          final batches = List<Map<String, dynamic>>.from(batchesResp);
-          final currentStock = batches.fold<int>(
-            0,
-            (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
-          );
-
-          if (currentStock < qtyNeeded) {
-            outOfStockMessages.add(
-              '• ${item.productName ?? 'Producto'} - ${item.variantLabel} (Stock real: $currentStock, Pedido: $qtyNeeded)',
-            );
-          } else {
-            int remainingToDeduct = qtyNeeded;
-            for (var batch in batches) {
-              if (remainingToDeduct <= 0) break;
-
-              int batchStock =
-                  (batch['available_quantity'] as num?)?.toInt() ?? 0;
-              if (batchStock > 0) {
-                int deductFromThis =
-                    batchStock >= remainingToDeduct
-                        ? remainingToDeduct
-                        : batchStock;
-                int newBatchStock = batchStock - deductFromThis;
-
-                batchesToUpdate.add({
-                  'id': batch['id'],
-                  'available_quantity': newBatchStock,
-                });
-
-                movementsToInsert.add({
-                  'variant_id': safeVariantId,
-                  'warehouse_id': warehouseId,
-                  'stock_batch_id': batch['id'],
-                  'order_id': widget.order.id,
-                  'quantity': -deductFromThis,
-                  'previous_stock': batchStock,
-                  'new_stock': newBatchStock,
-                  'reason': 'SALE',
-                  'notes': 'Pedido completado desde detalles',
-                  if (currentProfileId != null) 'created_by': currentProfileId,
-                });
-
-                remainingToDeduct -= deductFromThis;
+          if (overrides != null) {
+            final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
+            if (totalAssigned != qtyNeeded) {
+              _showErrorSnackBar(
+                'Asignación de lotes inválida para ${item.productName ?? 'Producto'}.',
+              );
+              setState(() => _isSaving = false);
+              return;
+            }
+            for (final b in overrides) {
+              if (b.assigned > 0) {
+                segments.add((
+                  id: b.batchId,
+                  take: b.assigned,
+                  available: b.available,
+                  batchNumber: b.batchNumber,
+                ));
               }
             }
+          } else {
+            // FEFO
+            final batchesResp = await _supabase
+                .from('warehouse_stock_batches')
+                .select('id, available_quantity, batch_number')
+                .eq('warehouse_id', warehouseId)
+                .eq('variant_id', safeVariantId)
+                .gt('available_quantity', 0)
+                .order('expiry_date', ascending: true, nullsFirst: false);
+
+            final batches = List<Map<String, dynamic>>.from(batchesResp);
+            int remaining = qtyNeeded;
+            for (final batch in batches) {
+              if (remaining <= 0) break;
+              final available = (batch['available_quantity'] as num).toInt();
+              final take = remaining > available ? available : remaining;
+              segments.add((
+                id: batch['id'],
+                take: take,
+                available: available,
+                batchNumber: batch['batch_number'],
+              ));
+              remaining -= take;
+            }
+            if (remaining > 0) {
+              final currentStock = segments.fold(
+                0,
+                (s, seg) => s + seg.available,
+              );
+              outOfStockMessages.add(
+                '• ${item.productName} - ${item.variantLabel} (Stock real: $currentStock, Pedido: $qtyNeeded)',
+              );
+              continue; // Salta para disparar el mensaje de error completo
+            }
+          }
+
+          // Construir updates de base de datos
+          for (final seg in segments) {
+            batchesToUpdate.add({
+              'id': seg.id,
+              'available_quantity': seg.available - seg.take,
+            });
+            movementsToInsert.add({
+              'variant_id': safeVariantId,
+              'warehouse_id': warehouseId,
+              'stock_batch_id': seg.id,
+              'order_id': widget.order.id,
+              'quantity': -seg.take,
+              'previous_stock': seg.available,
+              'new_stock': seg.available - seg.take,
+              'reason': 'SALE',
+              'notes':
+                  'Pedido completado desde detalles · Lote: ${seg.batchNumber}',
+              if (currentProfileId != null) 'created_by': currentProfileId,
+            });
           }
         }
 
@@ -501,7 +635,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               .update({'available_quantity': update['available_quantity']})
               .eq('id', update['id']);
         }
-
         for (var mov in movementsToInsert) {
           await _supabase.from('inventory_movements').insert(mov);
         }
@@ -513,16 +646,13 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .select('id, current_debt')
                   .eq('profile_id', _selectedCustomerId!)
                   .single();
-
           final creditId = creditResp['id'];
           final newDebt =
               (creditResp['current_debt'] as num).toDouble() + totalAmount;
-
           await _supabase
               .from('customer_credits')
               .update({'current_debt': newDebt})
               .eq('id', creditId);
-
           await _supabase.from('credit_movements').insert({
             'credit_id': creditId,
             'order_id': widget.order.id,
@@ -543,7 +673,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 )
                 .eq('id', widget.order.id)
                 .single();
-
         final warehouseId = orderData['warehouse_id'];
         final origAmount = (orderData['total_amount'] as num).toDouble();
         final origPaymentMethod = orderData['payment_method'] as String;
@@ -569,12 +698,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             final currentStock =
                 (batchResp['available_quantity'] as num?)?.toInt() ?? 0;
             final newStock = currentStock + qty;
-
             await _supabase
                 .from('warehouse_stock_batches')
                 .update({'available_quantity': newStock})
                 .eq('id', batchId);
-
             await _supabase.from('inventory_movements').insert({
               'variant_id': safeVariantId,
               'warehouse_id': warehouseId,
@@ -602,7 +729,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                     })
                     .select('id')
                     .single();
-
             await _supabase.from('inventory_movements').insert({
               'variant_id': safeVariantId,
               'warehouse_id': warehouseId,
@@ -625,13 +751,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .select('id, current_debt')
                   .eq('profile_id', origCustomerId)
                   .maybeSingle();
-
           if (creditResp != null) {
             final creditId = creditResp['id'];
             final currentDebt = (creditResp['current_debt'] as num).toDouble();
             final newDebt =
                 (currentDebt - origAmount) < 0 ? 0 : (currentDebt - origAmount);
-
             await _supabase
                 .from('customer_credits')
                 .update({
@@ -639,7 +763,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   'updated_at': DateTime.now().toIso8601String(),
                 })
                 .eq('id', creditId);
-
             await _supabase.from('credit_movements').insert({
               'credit_id': creditId,
               'order_id': widget.order.id,
@@ -659,7 +782,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .eq('order_id', widget.order.id)
                   .eq('movement_type', 'EARNED')
                   .maybeSingle();
-
           if (earnedMov != null) {
             final ptsGanados = (earnedMov['points'] as num).toInt();
             final profileData =
@@ -670,12 +792,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                     .single();
             final currentBal = (profileData['wallet_balance'] as num).toInt();
             final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
-
             await _supabase
                 .from('profiles')
                 .update({'wallet_balance': newBal})
                 .eq('id', origCustomerId);
-
             await _supabase.from('wallet_movements').insert({
               'profile_id': origCustomerId,
               'order_id': widget.order.id,
@@ -684,7 +804,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'description': 'Reversión de monedas por cancelación de pedido',
             });
           }
-
           final redeemedMov =
               await _supabase
                   .from('wallet_movements')
@@ -692,7 +811,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .eq('order_id', widget.order.id)
                   .eq('movement_type', 'REDEEMED')
                   .maybeSingle();
-
           if (redeemedMov != null) {
             final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
             if (ptsCanjeados > 0) {
@@ -703,12 +821,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                       .eq('id', origCustomerId)
                       .single();
               final currentBal = (profileData['wallet_balance'] as num).toInt();
-
               await _supabase
                   .from('profiles')
                   .update({'wallet_balance': currentBal + ptsCanjeados})
                   .eq('id', origCustomerId);
-
               await _supabase.from('wallet_movements').insert({
                 'profile_id': origCustomerId,
                 'order_id': widget.order.id,
@@ -735,7 +851,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
       String paymentStatus;
       double amountPaid;
-
       if (_paymentMethod == 'CRÉDITO') {
         paymentStatus = 'PENDING';
         amountPaid = 0;
@@ -772,7 +887,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .eq('order_id', widget.order.id)
                   .eq('movement_type', 'REDEEMED')
                   .maybeSingle();
-
           if (redemptionExists == null) {
             await _supabase.from('wallet_movements').insert({
               'profile_id': _selectedCustomerId,
@@ -784,7 +898,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             });
           }
         }
-
         if (_pointsEarned > 0) {
           final earnedExists =
               await _supabase
@@ -793,7 +906,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   .eq('order_id', widget.order.id)
                   .eq('movement_type', 'EARNED')
                   .maybeSingle();
-
           if (earnedExists == null) {
             await _supabase.from('wallet_movements').insert({
               'profile_id': _selectedCustomerId,
@@ -870,6 +982,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     );
     final subtotal = _calculateOrderTotalAmount();
 
+    // Permitimos editar lotes si estamos editando y el pedido estaba PENDING
+    final bool isActivatingDraft =
+        _isEditing && widget.order.status.toUpperCase() == 'PENDING';
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       padding: const EdgeInsets.all(16),
@@ -891,7 +1007,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             ),
             const Divider(),
 
-            // ─── NUEVO: BANNER INFORMATIVO PARA EDICIÓN DE COMPLETADOS ───
             if (_isCompleted)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -945,11 +1060,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               selectedCustomerLabel: _customerLabelFor(_selectedCustomerId),
               selectedCustomerId: _selectedCustomerId,
               onSearchChanged: () => setState(() {}),
-              onClearSearch: () {
-                setState(() {
-                  _customerSearchCtrl.clear();
-                });
-              },
+              onClearSearch: () => setState(() => _customerSearchCtrl.clear()),
               onSelectCustomer: _selectCustomer,
             ),
 
@@ -1020,10 +1131,13 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               isEditing: _isEditing,
               isLocked: _isCompleted || _isCancelled,
               batchesByVariant: _batchesByVariant,
+              batchOverrides:
+                  _batchOverrides, // Pasamos los overrides para que se dibujen
               quantityControllers: _quantityControllers,
               onDecrease: (index) => _changeQuantity(index, -1),
               onIncrease: (index) => _changeQuantity(index, 1),
               onQuantityChanged: (index, value) => _setQuantity(index, value),
+              onEditBatches: isActivatingDraft ? _showBatchEditSheet : null,
             ),
             if (_isEditing)
               Padding(
@@ -1152,9 +1266,7 @@ class OrderDetailSectionCard extends StatelessWidget {
 
 class OrderDetailInfoBox extends StatelessWidget {
   final String value;
-
   const OrderDetailInfoBox({super.key, required this.value});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1328,7 +1440,6 @@ class OrderDetailPaymentSection extends StatelessWidget {
         _paymentMethods.contains(currentPaymentMethod)
             ? currentPaymentMethod
             : 'EFECTIVO';
-
     return OrderDetailSectionCard(
       title: 'Método de Pago',
       child:
@@ -1362,14 +1473,12 @@ class OrderDetailPointInfo extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
-
   const OrderDetailPointInfo({
     super.key,
     required this.title,
     required this.value,
     required this.color,
   });
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1466,7 +1575,6 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
   });
 
   double get _rawDiscount => pointsUsed * pointsToSolesRatio;
-
   double get _appliedDiscount {
     final maxDiscount = subtotal * 0.5;
     return _rawDiscount > maxDiscount ? maxDiscount : _rawDiscount;
@@ -1529,7 +1637,6 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final capApplied = _rawDiscount > _appliedDiscount;
-
     return OrderDetailSectionCard(
       title: 'Resumen total',
       child: Column(
@@ -1571,21 +1678,25 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
 class OrderDetailItemCard extends StatelessWidget {
   final OrderItemModel item;
   final bool isEditing;
-  final List<Map<String, dynamic>> batches;
+  final List<Map<String, dynamic>> batches; // Históricos (read-only)
+  final List<BatchAssignment>? batchAssignments; // Lotes a descontar (editable)
   final TextEditingController quantityController;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
   final ValueChanged<String> onQuantityChanged;
+  final VoidCallback? onEditBatches;
 
   const OrderDetailItemCard({
     super.key,
     required this.item,
     required this.isEditing,
     this.batches = const [],
+    this.batchAssignments,
     required this.quantityController,
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
+    this.onEditBatches,
   });
 
   String _formatExpiry(dynamic raw) {
@@ -1602,6 +1713,13 @@ class OrderDetailItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final subtotal = item.subtotal;
     final imageUrl = item.displayImageUrl;
+
+    final bool hasBatchOverride =
+        onEditBatches != null && batchAssignments != null;
+    final activeBatches =
+        hasBatchOverride
+            ? batchAssignments!.where((b) => b.assigned > 0).toList()
+            : <BatchAssignment>[];
 
     return Card(
       elevation: 0,
@@ -1655,8 +1773,87 @@ class OrderDetailItemCard extends StatelessWidget {
                     'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
-                  // ── Chips de lotes ──────────────────────────────────
-                  if (batches.isNotEmpty) ...[
+
+                  // ── Chips de lotes (Para activar borrador) ────────
+                  if (onEditBatches != null) ...[
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: onEditBatches,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              hasBatchOverride && activeBatches.isNotEmpty
+                                  ? AppColors.teal.withValues(alpha: 0.08)
+                                  : AppColors.amberLight.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color:
+                                hasBatchOverride && activeBatches.isNotEmpty
+                                    ? AppColors.teal.withValues(alpha: 0.3)
+                                    : AppColors.amber.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              hasBatchOverride && activeBatches.isNotEmpty
+                                  ? Icons.inventory_2_rounded
+                                  : Icons.edit_note_rounded,
+                              size: 11,
+                              color:
+                                  hasBatchOverride && activeBatches.isNotEmpty
+                                      ? AppColors.teal
+                                      : AppColors.amber,
+                            ),
+                            const SizedBox(width: 4),
+                            if (hasBatchOverride && activeBatches.isNotEmpty)
+                              Flexible(
+                                child: Text(
+                                  activeBatches
+                                      .map(
+                                        (b) =>
+                                            '${b.assigned}u · ${b.batchNumber}${b.expiryDate != null ? ' (vto ${b.expiryLabel})' : ''}',
+                                      )
+                                      .join(' + '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.tealDark,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            else
+                              const Text(
+                                'FEFO automático · Toca para editar',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.amber,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.edit_rounded,
+                              size: 10,
+                              color:
+                                  hasBatchOverride && activeBatches.isNotEmpty
+                                      ? AppColors.teal
+                                      : AppColors.amber,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ]
+                  // ── Chips de lotes (Históricos / Orden completada) ────────
+                  else if (batches.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 4,
@@ -1788,10 +1985,12 @@ class OrderDetailItemsSection extends StatelessWidget {
   final bool isEditing;
   final bool isLocked;
   final Map<String, List<Map<String, dynamic>>> batchesByVariant;
+  final Map<String, List<BatchAssignment>> batchOverrides;
   final List<TextEditingController> quantityControllers;
   final void Function(int index) onDecrease;
   final void Function(int index) onIncrease;
   final void Function(int index, String value) onQuantityChanged;
+  final void Function(OrderItemModel item)? onEditBatches;
 
   const OrderDetailItemsSection({
     super.key,
@@ -1800,10 +1999,12 @@ class OrderDetailItemsSection extends StatelessWidget {
     required this.isEditing,
     this.isLocked = false,
     this.batchesByVariant = const {},
+    this.batchOverrides = const {},
     required this.quantityControllers,
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
+    this.onEditBatches,
   });
 
   @override
@@ -1832,19 +2033,22 @@ class OrderDetailItemsSection extends StatelessWidget {
                     item: item,
                     isEditing: isEditing && !isLocked,
                     batches: batches,
+                    batchAssignments: batchOverrides[item.id ?? ''],
                     quantityController: quantityControllers[index],
                     onDecrease: () => onDecrease(index),
                     onIncrease: () => onIncrease(index),
                     onQuantityChanged:
                         (value) => onQuantityChanged(index, value),
+                    onEditBatches:
+                        onEditBatches != null
+                            ? () => onEditBatches!(item)
+                            : null,
                   );
                 },
               ),
     );
   }
 }
-
-// ─── PAYMENT STATUS SECTION ──────────────────────────────────────────────────
 
 class _PaymentStatusSection extends StatefulWidget {
   final String paymentStatus;
@@ -1887,10 +2091,8 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
       setState(() => _errorMessage = null);
       return;
     }
-
     final amount = double.tryParse(value.trim());
     final pendingOrderAmount = widget.totalAmount - widget.amountPaid;
-
     if (amount == null) {
       setState(() => _errorMessage = 'Número inválido');
     } else if (amount <= 0) {
@@ -1907,17 +2109,13 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
 
   Future<void> _registrarAbono() async {
     if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
-
     final amount = double.parse(_abonoCtrl.text.trim());
-
     setState(() => _isRegistering = true);
     try {
       final creditId = widget.creditInfo!['id'] as String;
       final currentDebt =
           (widget.creditInfo!['current_debt'] as num).toDouble();
-
       final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
-
       await widget.supabase
           .from('customer_credits')
           .update({
@@ -1951,7 +2149,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
       final newOrderAmountPaid = widget.amountPaid + amount;
       String newPaymentStatus =
           newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
-
       await widget.supabase
           .from('orders')
           .update({
@@ -1986,7 +2183,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
     final pendingAmount = widget.totalAmount - widget.amountPaid;
     Color badgeColor;
     String badgeLabel;
-
     switch (widget.paymentStatus) {
       case 'PAID':
         badgeColor = Colors.teal;
@@ -2001,7 +2197,6 @@ class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
         badgeColor = Colors.deepOrange;
         badgeLabel = 'Pendiente de pago';
     }
-
     final bool isButtonEnabled =
         !_isRegistering &&
         _abonoCtrl.text.trim().isNotEmpty &&
@@ -2156,14 +2351,12 @@ class _PStatRow extends StatelessWidget {
   final String value;
   final Color? valueColor;
   final bool bold;
-
   const _PStatRow({
     required this.label,
     required this.value,
     this.valueColor,
     this.bold = false,
   });
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -2183,21 +2376,15 @@ class _PStatRow extends StatelessWidget {
   }
 }
 
-// ─── CREDIT INFO SECTION ─────────────────────────────────────────────────────
-
 class _CreditInfoSection extends StatelessWidget {
   final Map<String, dynamic>? creditInfo;
   final String? customerId;
-
   const _CreditInfoSection({
     required this.creditInfo,
     required this.customerId,
   });
-
   @override
   Widget build(BuildContext context) {
-    final info = creditInfo;
-
     if (customerId == null) {
       return OrderDetailSectionCard(
         title: 'Crédito',
@@ -2207,8 +2394,7 @@ class _CreditInfoSection extends StatelessWidget {
         ),
       );
     }
-
-    if (info == null) {
+    if (creditInfo == null) {
       return OrderDetailSectionCard(
         title: 'Crédito',
         child: Text(
@@ -2217,13 +2403,10 @@ class _CreditInfoSection extends StatelessWidget {
         ),
       );
     }
-
-    final isActive = info['is_active'] == true;
-    final limit = (info['credit_limit'] as num).toDouble();
-    final debt = (info['current_debt'] as num).toDouble();
+    final isActive = creditInfo!['is_active'] == true;
+    final limit = (creditInfo!['credit_limit'] as num).toDouble();
+    final debt = (creditInfo!['current_debt'] as num).toDouble();
     final available = (limit - debt).clamp(0.0, double.infinity);
-    final debtColor = debt > 0 ? Colors.deepOrange : Colors.teal;
-
     return OrderDetailSectionCard(
       title: 'Resumen de Línea de Crédito',
       child: Column(
@@ -2266,7 +2449,7 @@ class _CreditInfoSection extends StatelessWidget {
                 child: _CreditStatCell(
                   label: 'Deuda Total',
                   value: 'S/ ${debt.toStringAsFixed(2)}',
-                  valueColor: debtColor,
+                  valueColor: debt > 0 ? Colors.deepOrange : Colors.teal,
                   bold: debt > 0,
                 ),
               ),
@@ -2290,14 +2473,12 @@ class _CreditStatCell extends StatelessWidget {
   final String value;
   final Color? valueColor;
   final bool bold;
-
   const _CreditStatCell({
     required this.label,
     required this.value,
     this.valueColor,
     this.bold = false,
   });
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -2314,6 +2495,513 @@ class _CreditStatCell extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── BOTTOM SHEET: EDITAR LOTES ──────────────────────────────────────────────
+
+class _BatchEditSheet extends StatefulWidget {
+  final String productName;
+  final String? variantLabel;
+  final int totalRequired;
+  final List<BatchAssignment> batches; // ordenados FEFO con assigned
+
+  const _BatchEditSheet({
+    required this.productName,
+    this.variantLabel,
+    required this.totalRequired,
+    required this.batches,
+  });
+
+  @override
+  State<_BatchEditSheet> createState() => _BatchEditSheetState();
+}
+
+class _BatchEditSheetState extends State<_BatchEditSheet> {
+  late final List<BatchAssignment> _batches;
+
+  @override
+  void initState() {
+    super.initState();
+    _batches =
+        widget.batches.map((b) => b.copyWith(assigned: b.assigned)).toList();
+  }
+
+  int get _totalAssigned => _batches.fold(0, (s, b) => s + b.assigned);
+  int get _remaining => widget.totalRequired - _totalAssigned;
+  bool get _isValid => _totalAssigned == widget.totalRequired;
+
+  void _resetToFefo() {
+    setState(() {
+      for (final b in _batches) {
+        b.assigned = 0;
+      }
+      int rem = widget.totalRequired;
+      for (final b in _batches) {
+        if (rem <= 0) break;
+        b.assigned = rem > b.available ? b.available : rem;
+        rem -= b.assigned;
+      }
+    });
+  }
+
+  void _changeAssigned(int index, int delta) {
+    setState(() {
+      final b = _batches[index];
+      final newVal = (b.assigned + delta).clamp(0, b.available);
+      _batches[index].assigned = newVal;
+    });
+  }
+
+  Future<void> _mostrarDialogoCantidad(
+    BuildContext context,
+    int index,
+    BatchAssignment b,
+  ) async {
+    final qtyCtrl = TextEditingController(text: b.assigned.toString());
+    final maximoPermitido = b.assigned + _remaining;
+    final stockMaximoReal =
+        maximoPermitido < b.available ? maximoPermitido : b.available;
+
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text(
+              'Cantidad exacta',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: TextField(
+              controller: qtyCtrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                helperText: 'Límite disponible: $stockMaximoReal',
+                helperStyle: const TextStyle(
+                  color: AppColors.tealDark,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.tealDark,
+                ),
+                onPressed: () {
+                  final newQty = int.tryParse(qtyCtrl.text.trim());
+                  if (newQty != null && newQty >= 0) {
+                    if (newQty <= stockMaximoReal) {
+                      final diferencia = (newQty - b.assigned).toInt();
+                      if (diferencia != 0) _changeAssigned(index, diferencia);
+                      Navigator.pop(dialogContext);
+                    } else {
+                      AppSnackbar.show(
+                        context,
+                        message:
+                            'No puedes asignar más de $stockMaximoReal unidades.',
+                        type: SnackbarType.warning,
+                      );
+                    }
+                  } else {
+                    AppSnackbar.show(
+                      context,
+                      message: 'Por favor, ingresa un número válido.',
+                      type: SnackbarType.error,
+                    );
+                  }
+                },
+                child: const Text(
+                  'Guardar',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Asignación de Lotes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      widget.variantLabel != null
+                          ? '${widget.productName} · ${widget.variantLabel}'
+                          : widget.productName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _resetToFefo,
+                icon: const Icon(Icons.restart_alt_rounded, size: 14),
+                label: const Text(
+                  'Reset FEFO',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.teal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color:
+                  _isValid
+                      ? AppColors.successLight
+                      : (_remaining < 0
+                          ? AppColors.dangerLight
+                          : AppColors.amberLight),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color:
+                    _isValid
+                        ? AppColors.success.withValues(alpha: 0.3)
+                        : (_remaining < 0
+                            ? AppColors.danger.withValues(alpha: 0.3)
+                            : AppColors.amber.withValues(alpha: 0.4)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isValid
+                      ? Icons.check_circle_rounded
+                      : (_remaining < 0
+                          ? Icons.error_rounded
+                          : Icons.warning_rounded),
+                  size: 14,
+                  color:
+                      _isValid
+                          ? AppColors.success
+                          : (_remaining < 0
+                              ? AppColors.danger
+                              : AppColors.amber),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isValid
+                      ? 'Asignación completa: $_totalAssigned / ${widget.totalRequired} unidades ✓'
+                      : _remaining > 0
+                      ? 'Faltan $_remaining unidades por asignar'
+                      : 'Exceso de ${-_remaining} unidades. Reduce algún lote.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        _isValid
+                            ? AppColors.success
+                            : (_remaining < 0
+                                ? AppColors.danger
+                                : AppColors.amber),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 320),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _batches.length,
+              separatorBuilder:
+                  (_, __) => const Divider(height: 1, color: AppColors.divider),
+              itemBuilder: (context, index) {
+                final b = _batches[index];
+                final isExpired =
+                    b.expiryDate != null &&
+                    b.expiryDate!.isBefore(DateTime.now());
+                final badgeColor =
+                    isExpired
+                        ? AppColors.danger
+                        : b.isExpiringSoon
+                        ? AppColors.amber
+                        : AppColors.success;
+                final badgeLabel =
+                    isExpired
+                        ? 'VENCIDO'
+                        : b.isExpiringSoon
+                        ? 'PRÓXIMO A VENCER'
+                        : b.expiryDate != null
+                        ? 'Vto: ${b.expiryLabel}'
+                        : 'Sin vto.';
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.tag_rounded,
+                                  size: 12,
+                                  color: AppColors.textHint,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  b.batchNumber,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                if (index == 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.tealLight,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'FEFO 1°',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.tealDark,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: badgeColor.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    badgeLabel,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: badgeColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Disponible: ${b.available} u',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap:
+                                  b.assigned > 0
+                                      ? () => _changeAssigned(index, -1)
+                                      : null,
+                              borderRadius: const BorderRadius.horizontal(
+                                left: Radius.circular(8),
+                              ),
+                              child: Container(
+                                width: 30,
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.remove_rounded,
+                                  size: 14,
+                                  color:
+                                      b.assigned > 0
+                                          ? AppColors.textSecondary
+                                          : AppColors.textHint,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap:
+                                  () => _mostrarDialogoCantidad(
+                                    context,
+                                    index,
+                                    b,
+                                  ),
+                              child: Container(
+                                constraints: const BoxConstraints(minWidth: 36),
+                                alignment: Alignment.center,
+                                color: AppColors.tealLight.withValues(
+                                  alpha: 0.25,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: Text(
+                                  '${b.assigned}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.tealDark,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap:
+                                  b.assigned < b.available && _remaining > 0
+                                      ? () => _changeAssigned(index, 1)
+                                      : null,
+                              borderRadius: const BorderRadius.horizontal(
+                                right: Radius.circular(8),
+                              ),
+                              child: Container(
+                                width: 30,
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.add_rounded,
+                                  size: 14,
+                                  color:
+                                      b.assigned < b.available && _remaining > 0
+                                          ? AppColors.textSecondary
+                                          : AppColors.textHint,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed:
+                  _isValid
+                      ? () => Navigator.pop(context, List.of(_batches))
+                      : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.teal,
+                disabledBackgroundColor: AppColors.bg,
+                disabledForegroundColor: AppColors.textHint,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(
+                Icons.check_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'Confirmar asignación',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

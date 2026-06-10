@@ -985,7 +985,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    'Productos ($totalVariants)',
+                                    'Items ($totalVariants)',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16,
@@ -1043,7 +1043,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                   // ── Footer ───────────────────────────────────────────────
                   _BottomBar(
                     leftLabel: 'Costo Total',
-                    leftSub: '$totalVariants productos · $totalUnits unidades',
+                    leftSub: '$totalVariants items · $totalUnits unidades',
                     rightValue: 'S/ ${totalCost.toStringAsFixed(2)}',
                     buttonLabel:
                         _paymentMode == 'CONTADO'
