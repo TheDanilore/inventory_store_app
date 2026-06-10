@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/screens/admin/widgets/batch_edit_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/order_detail_points_section.dart';
+import 'package:inventory_store_app/screens/admin/widgets/payment_status_section.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -71,12 +73,16 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   bool _isLoading = true;
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isReturning = false; // Procesando devolución
 
   String? _selectedCustomerId;
   String _currentStatus = '';
   String _paymentMethod = 'EFECTIVO';
   int _pointsUsed = 0;
   int _pointsEarned = 0;
+
+  // Controller para nombre manual (cuando no hay customer_id)
+  final TextEditingController _manualNameCtrl = TextEditingController();
 
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
   bool get _isCancelled => _currentStatus.toUpperCase() == 'CANCELLED';
@@ -118,7 +124,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   }
 
   Map<String, dynamic>? _creditInfo;
-
   @override
   void initState() {
     super.initState();
@@ -128,12 +133,15 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     _pointsEarned = widget.order.pointsEarned;
     _paymentMethod = widget.order.paymentMethod;
     _pointsUsedCtrl.text = _pointsUsed.toString();
+    _manualNameCtrl.text = widget.order.displayCustomerName.trim();
     _fetchData();
   }
 
   @override
   void dispose() {
     _customerSearchCtrl.dispose();
+    _pointsUsedCtrl.dispose();
+    _manualNameCtrl.dispose();
     _pointsUsedCtrl.dispose();
     for (final controller in _quantityControllers) {
       controller.dispose();
@@ -248,12 +256,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         results[2],
       );
       // CAJA primero, luego BANCO, DIGITAL, OTRO, resto alfabético
-      const accountTypeOrder = {
-        'CAJA': 0,
-        'BANCO': 1,
-        'DIGITAL': 2,
-        'OTRO': 3,
-      };
+      const accountTypeOrder = {'CAJA': 0, 'BANCO': 1, 'DIGITAL': 2, 'OTRO': 3};
       accounts.sort((a, b) {
         final oa = accountTypeOrder[a['type'] as String? ?? ''] ?? 99;
         final ob = accountTypeOrder[b['type'] as String? ?? ''] ?? 99;
@@ -405,7 +408,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) => _BatchEditSheet(
+          (_) => BatchEditSheet(
             productName: item.productName ?? 'Producto',
             variantLabel: item.variantLabel,
             totalRequired: item.quantity,
@@ -490,6 +493,253 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       (sum, item) =>
           sum + ((item.appliedPrice - item.unitCost) * item.quantity),
     );
+  }
+
+  // ─── DEVOLUCIÓN ────────────────────────────────────────────────────────────
+
+  Future<void> _confirmReturn() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.assignment_return_rounded,
+                  color: Colors.red.shade600,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Registrar Devolución',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\\n\\n'
+              '• Stock de productos devuelto al almacén\\n'
+              '• Monedas de fidelidad revertidas\\n'
+              '• Deuda de crédito ajustada (si aplica)\\n\\n'
+              '¿Deseas continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.assignment_return_rounded, size: 18),
+                label: const Text('Confirmar Devolución'),
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+    );
+    if (confirmed == true && mounted) {
+      await _processReturn();
+    }
+  }
+
+  Future<void> _processReturn() async {
+    setState(() => _isReturning = true);
+    try {
+      final authUserId = _supabase.auth.currentUser?.id;
+      String? currentProfileId;
+      if (authUserId != null) {
+        final profileResp =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+        if (profileResp != null) currentProfileId = profileResp['id'] as String;
+      }
+
+      final orderData =
+          await _supabase
+              .from('orders')
+              .select('warehouse_id, total_amount, payment_method, customer_id')
+              .eq('id', widget.order.id)
+              .single();
+
+      final warehouseId = orderData['warehouse_id'];
+      final origAmount = (orderData['total_amount'] as num).toDouble();
+      final origPaymentMethod = orderData['payment_method'] as String;
+      final origCustomerId = orderData['customer_id'] as String?;
+
+      // ─── Revertir stock ───
+      for (final item in _items) {
+        final safeVariantId = item.variantId ?? '';
+        final movs = await _supabase
+            .from('inventory_movements')
+            .select('quantity, stock_batch_id')
+            .eq('order_id', widget.order.id)
+            .eq('variant_id', safeVariantId)
+            .eq('reason', 'SALE');
+
+        for (final mov in (movs as List)) {
+          final batchId = mov['stock_batch_id'];
+          final qtyDeducted =
+              ((mov['quantity'] as num).toDouble()).abs().toInt();
+          if (batchId != null && qtyDeducted > 0) {
+            final batchResp =
+                await _supabase
+                    .from('warehouse_stock_batches')
+                    .select('available_quantity')
+                    .eq('id', batchId)
+                    .maybeSingle();
+            if (batchResp != null) {
+              final currentStock =
+                  (batchResp['available_quantity'] as num).toInt();
+              final newStock = currentStock + qtyDeducted;
+              await _supabase
+                  .from('warehouse_stock_batches')
+                  .update({'available_quantity': newStock})
+                  .eq('id', batchId);
+              await _supabase.from('inventory_movements').insert({
+                'variant_id': safeVariantId,
+                'warehouse_id': warehouseId,
+                'stock_batch_id': batchId,
+                'order_id': widget.order.id,
+                'quantity': qtyDeducted,
+                'previous_stock': currentStock,
+                'new_stock': newStock,
+                'reason': 'RETURN',
+                'notes': 'Devolución registrada desde detalles del pedido',
+                if (currentProfileId != null) 'created_by': currentProfileId,
+              });
+            }
+          }
+        }
+      }
+
+      // ─── Revertir crédito si aplica ───
+      if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
+        final creditResp =
+            await _supabase
+                .from('customer_credits')
+                .select('id, current_debt')
+                .eq('profile_id', origCustomerId)
+                .maybeSingle();
+        if (creditResp != null) {
+          final creditId = creditResp['id'];
+          final currentDebt = (creditResp['current_debt'] as num).toDouble();
+          final newDebt =
+              (currentDebt - origAmount) < 0 ? 0.0 : currentDebt - origAmount;
+          await _supabase
+              .from('customer_credits')
+              .update({
+                'current_debt': newDebt,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', creditId);
+          await _supabase.from('credit_movements').insert({
+            'credit_id': creditId,
+            'order_id': widget.order.id,
+            'movement_type': 'PAYMENT',
+            'amount': origAmount,
+            'notes': 'Reembolso por devolución de pedido',
+            if (currentProfileId != null) 'created_by': currentProfileId,
+          });
+        }
+      }
+
+      // ─── Revertir monedas ganadas ───
+      if (origCustomerId != null) {
+        final earnedMov =
+            await _supabase
+                .from('wallet_movements')
+                .select('id, points')
+                .eq('order_id', widget.order.id)
+                .eq('movement_type', 'EARNED')
+                .maybeSingle();
+        if (earnedMov != null) {
+          final ptsGanados = (earnedMov['points'] as num).toInt();
+          final profileData =
+              await _supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', origCustomerId)
+                  .single();
+          final currentBal = (profileData['wallet_balance'] as num).toInt();
+          final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
+          await _supabase
+              .from('profiles')
+              .update({'wallet_balance': newBal})
+              .eq('id', origCustomerId);
+          await _supabase.from('wallet_movements').insert({
+            'profile_id': origCustomerId,
+            'order_id': widget.order.id,
+            'points': -ptsGanados,
+            'movement_type': 'ADJUSTMENT',
+            'description': 'Reversión de monedas por devolución de pedido',
+          });
+        }
+
+        // ─── Devolver monedas canjeadas ───
+        final redeemedMov =
+            await _supabase
+                .from('wallet_movements')
+                .select('id, points')
+                .eq('order_id', widget.order.id)
+                .eq('movement_type', 'REDEEMED')
+                .maybeSingle();
+        if (redeemedMov != null) {
+          final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
+          if (ptsCanjeados > 0) {
+            final profileData =
+                await _supabase
+                    .from('profiles')
+                    .select('wallet_balance')
+                    .eq('id', origCustomerId)
+                    .single();
+            final currentBal = (profileData['wallet_balance'] as num).toInt();
+            await _supabase
+                .from('profiles')
+                .update({'wallet_balance': currentBal + ptsCanjeados})
+                .eq('id', origCustomerId);
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': origCustomerId,
+              'order_id': widget.order.id,
+              'points': ptsCanjeados,
+              'movement_type': 'ADJUSTMENT',
+              'description':
+                  'Devolución de monedas canjeadas por devolución de pedido',
+            });
+          }
+        }
+      }
+
+      // ─── Actualizar orden a CANCELLED ───
+      await _supabase
+          .from('orders')
+          .update({
+            'status': 'CANCELLED',
+            'payment_status': 'PAID',
+            'amount_paid': 0,
+          })
+          .eq('id', widget.order.id);
+
+      if (!mounted) return;
+      AppSnackbar.show(
+        context,
+        message: 'Devolución registrada correctamente.',
+        type: SnackbarType.success,
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorSnackBar('Error al registrar devolución: $e');
+    } finally {
+      if (mounted) setState(() => _isReturning = false);
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -874,10 +1124,20 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         amountPaid = totalAmount;
       }
 
+      // Si se asigna un cliente a una venta manual, limpiar customer_name
+      // Si se escribe nombre manual (sin customer_id), guardarlo
+      final String? customerNameToSave =
+          _selectedCustomerId != null
+              ? null // Ya tiene perfil, no necesita nombre manual
+              : _manualNameCtrl.text.trim().isEmpty
+              ? null
+              : _manualNameCtrl.text.trim();
+
       await _supabase
           .from('orders')
           .update({
             'customer_id': _selectedCustomerId,
+            'customer_name': customerNameToSave ?? '',
             'status': _currentStatus,
             'payment_method': _paymentMethod,
             'payment_status': paymentStatus,
@@ -1019,17 +1279,20 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             ),
             const Divider(),
 
-            // ─── NUEVO: SECCIÓN DE ESTADO DEL PEDIDO ───
-            OrderDetailStatusSection(
-              currentStatus: _currentStatus,
-              originalStatus: widget.order.status,
-              isEditing: _isEditing,
-              onChanged: (newStatus) {
-                if (newStatus != null) {
-                  setState(() => _currentStatus = newStatus);
-                }
-              },
-            ),
+            // ─── ESTADO DEL PEDIDO ───
+            // Para COMPLETED: solo muestra badge + botón de devolución (no dropdown)
+            // Para PENDING: dropdown normal para activar/cancelar
+            if (!_isCompleted)
+              OrderDetailStatusSection(
+                currentStatus: _currentStatus,
+                originalStatus: widget.order.status,
+                isEditing: _isEditing,
+                onChanged: (newStatus) {
+                  if (newStatus != null) {
+                    setState(() => _currentStatus = newStatus);
+                  }
+                },
+              ),
 
             if (_isCompleted)
               Container(
@@ -1061,8 +1324,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                     Expanded(
                       child: Text(
                         _isEditing
-                            ? 'Este pedido ya está COMPLETADO. Es totalmente seguro cambiar el cliente o el método de pago. Evita alterar cantidades si no deseas provocar desfases en el inventario actual.'
-                            : 'Este pedido ya ha sido finalizado con éxito. Los movimientos de inventario y monedas de fidelidad correspondientes ya fueron consolidados.',
+                            ? 'Pedido COMPLETADO. Solo puedes cambiar el cliente o método de pago. Las cantidades están bloqueadas para evitar desfases en inventario.'
+                            : 'Pedido finalizado con éxito. Inventario y monedas de fidelidad consolidados.',
                         style: TextStyle(
                           fontSize: 12,
                           color:
@@ -1077,15 +1340,56 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 ),
               ),
 
+            // ─── BOTÓN DE DEVOLUCIÓN (solo visible cuando COMPLETED y no editando) ───
+            if (_isCompleted && !_isEditing)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade300),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon:
+                      _isReturning
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.assignment_return_rounded),
+                  label: Text(
+                    _isReturning ? 'Procesando...' : 'Registrar Devolución',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: _isReturning ? null : _confirmReturn,
+                ),
+              ),
+
             OrderDetailCustomerSection(
               isEditing: _isEditing,
+              isCompleted: _isCompleted,
+              hasManualName: widget.order.customerId == null,
+              manualNameController: _manualNameCtrl,
               searchController: _customerSearchCtrl,
               filteredProfiles: _filteredProfiles,
               selectedCustomerLabel: _customerLabelFor(_selectedCustomerId),
               selectedCustomerId: _selectedCustomerId,
               onSearchChanged: () => setState(() {}),
-              onClearSearch: () => setState(() => _customerSearchCtrl.clear()),
+              onClearSearch: () {
+                setState(() {
+                  _customerSearchCtrl.clear();
+                });
+              },
               onSelectCustomer: _selectCustomer,
+              onClearCustomer:
+                  () => setState(() {
+                    _selectedCustomerId = null;
+                    _creditInfo = null;
+                  }),
             ),
 
             OrderDetailPaymentSection(
@@ -1117,7 +1421,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               ),
 
             if (_isCompleted)
-              _PaymentStatusSection(
+              PaymentStatusSection(
                 paymentStatus: _currentPaymentStatus,
                 totalAmount: _calculateOrderFinalAmount(),
                 amountPaid: _currentAmountPaid,
@@ -1192,6 +1496,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 }
 
 // ─── NUEVO COMPONENTE: SELECTOR DE ESTADO ───
+
 class OrderDetailStatusSection extends StatelessWidget {
   final String currentStatus;
   final String originalStatus;
@@ -1437,6 +1742,10 @@ class OrderDetailInfoBox extends StatelessWidget {
 
 class OrderDetailCustomerSection extends StatelessWidget {
   final bool isEditing;
+  final bool isCompleted;
+  // true cuando la venta original fue hecha sin customer_id (nombre manual)
+  final bool hasManualName;
+  final TextEditingController manualNameController;
   final TextEditingController searchController;
   final List<Map<String, dynamic>> filteredProfiles;
   final String selectedCustomerLabel;
@@ -1444,10 +1753,15 @@ class OrderDetailCustomerSection extends StatelessWidget {
   final VoidCallback onSearchChanged;
   final VoidCallback onClearSearch;
   final ValueChanged<String> onSelectCustomer;
+  // Permite desvincular un cliente ya seleccionado (volver a nombre manual)
+  final VoidCallback? onClearCustomer;
 
   const OrderDetailCustomerSection({
     super.key,
     required this.isEditing,
+    required this.isCompleted,
+    required this.hasManualName,
+    required this.manualNameController,
     required this.searchController,
     required this.filteredProfiles,
     required this.selectedCustomerLabel,
@@ -1455,110 +1769,200 @@ class OrderDetailCustomerSection extends StatelessWidget {
     required this.onSearchChanged,
     required this.onClearSearch,
     required this.onSelectCustomer,
+    this.onClearCustomer,
   });
 
   @override
   Widget build(BuildContext context) {
+    // ─── MODO LECTURA ───────────────────────────────────────────────────────
+    if (!isEditing) {
+      return OrderDetailSectionCard(
+        title: 'Cliente',
+        child: OrderDetailInfoBox(value: selectedCustomerLabel),
+      );
+    }
+
+    // ─── MODO EDICIÓN ───────────────────────────────────────────────────────
+    // Caso A: La venta NO tenía customer_id (fue nombre manual) y aún no
+    // se ha seleccionado un perfil → mostramos campo de texto editable +
+    // buscador para asociar un cliente registrado.
+    //
+    // Caso B: Ya tiene customer_id → solo buscador para cambiar de cliente.
+    // En ambos casos cuando el pedido está COMPLETED, permitimos todo igual.
+
+    final bool showingManualField = hasManualName && selectedCustomerId == null;
+
     return OrderDetailSectionCard(
       title: 'Cliente',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isEditing)
+          // ── Campo de nombre manual (solo cuando no hay cliente asignado) ──
+          if (showingManualField) ...[
             TextField(
-              controller: searchController,
+              controller: manualNameController,
               decoration: InputDecoration(
-                hintText: 'Buscar cliente por nombre, teléfono o documento',
-                prefixIcon: const Icon(Icons.search),
+                hintText: 'Nombre del cliente (opcional)',
+                prefixIcon: const Icon(Icons.person_outline),
                 border: const OutlineInputBorder(),
-                suffixIcon:
-                    searchController.text.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: onClearSearch,
-                        )
-                        : null,
+                helperText:
+                    'O busca abajo para asociar a un cliente registrado',
               ),
-              onChanged: (_) => onSearchChanged(),
-            )
-          else
-            OrderDetailInfoBox(value: selectedCustomerLabel),
-          if (isEditing) ...[
-            const SizedBox(height: 8),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 180),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child:
-                  filteredProfiles.isEmpty
-                      ? Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'No se encontraron clientes.',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      )
-                      : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: filteredProfiles.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final profile = filteredProfiles[index];
-                          final customerId = profile['id'] as String;
-                          final isSelected = customerId == selectedCustomerId;
-                          final fullName =
-                              (profile['full_name'] as String?)
-                                          ?.trim()
-                                          .isNotEmpty ==
-                                      true
-                                  ? profile['full_name'] as String
-                                  : 'Sin nombre';
-                          final phone =
-                              (profile['phone'] as String?)
-                                          ?.trim()
-                                          .isNotEmpty ==
-                                      true
-                                  ? profile['phone'] as String
-                                  : null;
-                          final document =
-                              (profile['document_number'] as String?)
-                                          ?.trim()
-                                          .isNotEmpty ==
-                                      true
-                                  ? profile['document_number'] as String
-                                  : null;
-
-                          return ListTile(
-                            dense: true,
-                            selected: isSelected,
-                            selectedTileColor: Colors.teal.withValues(
-                              alpha: 0.08,
-                            ),
-                            title: Text(fullName),
-                            subtitle:
-                                phone != null || document != null
-                                    ? Text(
-                                      [
-                                        if (phone != null) 'Tel: $phone',
-                                        if (document != null) 'Doc: $document',
-                                      ].join('  |  '),
-                                    )
-                                    : null,
-                            trailing:
-                                isSelected
-                                    ? const Icon(
-                                      Icons.check_circle,
-                                      color: Colors.teal,
-                                    )
-                                    : null,
-                            onTap: () => onSelectCustomer(customerId),
-                          );
-                        },
-                      ),
             ),
+            const SizedBox(height: 12),
+            Text(
+              'Asociar a cliente registrado',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 6),
           ],
+
+          // ── Si ya hay cliente seleccionado, mostrar chip del cliente ──
+          if (selectedCustomerId != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.teal.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.person_rounded,
+                    color: Colors.teal,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      selectedCustomerLabel,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  if (onClearCustomer != null)
+                    IconButton(
+                      icon: Icon(
+                        Icons.link_off,
+                        color: Colors.grey.shade500,
+                        size: 18,
+                      ),
+                      tooltip: 'Desvincular cliente',
+                      onPressed: onClearCustomer,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Cambiar cliente',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+
+          // ── Buscador de perfiles ──
+          TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Buscar por nombre, teléfono o documento',
+              prefixIcon: const Icon(Icons.search),
+              border: const OutlineInputBorder(),
+              suffixIcon:
+                  searchController.text.isNotEmpty
+                      ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: onClearSearch,
+                      )
+                      : null,
+            ),
+            onChanged: (_) => onSearchChanged(),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 180),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child:
+                filteredProfiles.isEmpty
+                    ? Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        'No se encontraron clientes.',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    )
+                    : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: filteredProfiles.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final profile = filteredProfiles[index];
+                        final customerId = profile['id'] as String;
+                        final isSelected = customerId == selectedCustomerId;
+                        final fullName =
+                            (profile['full_name'] as String?)
+                                        ?.trim()
+                                        .isNotEmpty ==
+                                    true
+                                ? profile['full_name'] as String
+                                : 'Sin nombre';
+                        final phone =
+                            (profile['phone'] as String?)?.trim().isNotEmpty ==
+                                    true
+                                ? profile['phone'] as String
+                                : null;
+                        final document =
+                            (profile['document_number'] as String?)
+                                        ?.trim()
+                                        .isNotEmpty ==
+                                    true
+                                ? profile['document_number'] as String
+                                : null;
+
+                        return ListTile(
+                          dense: true,
+                          selected: isSelected,
+                          selectedTileColor: Colors.teal.withValues(
+                            alpha: 0.08,
+                          ),
+                          title: Text(fullName),
+                          subtitle:
+                              phone != null || document != null
+                                  ? Text(
+                                    [
+                                      if (phone != null) 'Tel: $phone',
+                                      if (document != null) 'Doc: $document',
+                                    ].join('  |  '),
+                                  )
+                                  : null,
+                          trailing:
+                              isSelected
+                                  ? const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.teal,
+                                  )
+                                  : null,
+                          onTap: () => onSelectCustomer(customerId),
+                        );
+                      },
+                    ),
+          ),
         ],
       ),
     );
@@ -1902,95 +2306,6 @@ class _PaymentMethodBadge extends StatelessWidget {
               color: color,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class OrderDetailPointInfo extends StatelessWidget {
-  final String title;
-  final String value;
-  final Color color;
-  const OrderDetailPointInfo({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.color,
-  });
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class OrderDetailPointsSection extends StatelessWidget {
-  final int pointsUsed;
-  final int pointsEarned;
-  final bool isEditing;
-  final TextEditingController pointsUsedController;
-  final ValueChanged<String> onPointsUsedChanged;
-
-  const OrderDetailPointsSection({
-    super.key,
-    required this.pointsUsed,
-    required this.pointsEarned,
-    required this.isEditing,
-    required this.pointsUsedController,
-    required this.onPointsUsedChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return OrderDetailSectionCard(
-      title: 'Monedas',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: OrderDetailPointInfo(
-                  title: 'Monedas usadas',
-                  value: pointsUsed.toString(),
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OrderDetailPointInfo(
-                  title: 'Monedas ganadas',
-                  value: pointsEarned.toString(),
-                  color: Colors.teal,
-                ),
-              ),
-            ],
-          ),
-          if (isEditing) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: pointsUsedController,
-              decoration: const InputDecoration(
-                labelText: 'Monedas a aplicar al completar',
-                helperText:
-                    'Solo se descuentan cuando la orden pase a COMPLETED.',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: onPointsUsedChanged,
-            ),
-          ],
         ],
       ),
     );
@@ -2498,643 +2813,6 @@ class OrderDetailItemsSection extends StatelessWidget {
   }
 }
 
-
-
-class _PaymentStatusSection extends StatefulWidget {
-  final String paymentStatus;
-  final double totalAmount;
-  final double amountPaid;
-  final String paymentMethod;
-  final Map<String, dynamic>? creditInfo;
-  final String orderId;
-  final SupabaseClient supabase;
-  final List<Map<String, dynamic>> accounts; // cuentas financieras ordenadas
-  final VoidCallback onPaymentRegistered;
-
-  const _PaymentStatusSection({
-    required this.paymentStatus,
-    required this.totalAmount,
-    required this.amountPaid,
-    required this.paymentMethod,
-    required this.creditInfo,
-    required this.orderId,
-    required this.supabase,
-    required this.accounts,
-    required this.onPaymentRegistered,
-  });
-
-  @override
-  State<_PaymentStatusSection> createState() => _PaymentStatusSectionState();
-}
-
-class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
-  bool _isRegistering = false;
-  final _abonoCtrl = TextEditingController();
-  String? _errorMessage;
-  String? _selectedQuickAmount;
-
-  // Cuenta financiera seleccionada para el abono
-  Map<String, dynamic>? _selectedAccount;
-  // Turno activo (solo para CAJA)
-  Map<String, dynamic>? _activeShift;
-
-  @override
-  void initState() {
-    super.initState();
-    // Preseleccionar la primera cuenta disponible
-    if (widget.accounts.isNotEmpty) {
-      _selectedAccount = widget.accounts.first;
-      if (_selectedAccount!['type'] == 'CAJA') {
-        _checkActiveShift(_selectedAccount!['id'] as String);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _abonoCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _checkActiveShift(String accountId) async {
-    try {
-      final resp = await widget.supabase
-          .from('cash_shifts')
-          .select('id, opened_at')
-          .eq('account_id', accountId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
-      if (mounted) setState(() => _activeShift = resp);
-    } catch (_) {
-      if (mounted) setState(() => _activeShift = null);
-    }
-  }
-
-  Future<void> _onAccountTap(Map<String, dynamic> account) async {
-    setState(() {
-      _selectedAccount = account;
-      _activeShift = null;
-    });
-    if (account['type'] == 'CAJA') {
-      await _checkActiveShift(account['id'] as String);
-    }
-  }
-
-  IconData _iconForType(String type) {
-    switch (type) {
-      case 'CAJA':     return Icons.point_of_sale_rounded;
-      case 'BANCO':    return Icons.account_balance_rounded;
-      case 'DIGITAL':  return Icons.smartphone_rounded;
-      default:         return Icons.wallet_rounded;
-    }
-  }
-
-  Color _colorForType(String type) {
-    switch (type) {
-      case 'CAJA':    return const Color(0xFFF59E0B);
-      case 'BANCO':   return const Color(0xFF2563EB);
-      case 'DIGITAL': return const Color(0xFF7C3AED);
-      default:        return const Color(0xFF6B7280);
-    }
-  }
-
-  void _validarEntrada(String value, {bool fromQuick = false}) {
-    if (!fromQuick && _selectedQuickAmount != null) {
-      setState(() => _selectedQuickAmount = null);
-    }
-    if (value.trim().isEmpty) {
-      setState(() => _errorMessage = null);
-      return;
-    }
-    final amount = double.tryParse(value.trim());
-    final pendingOrderAmount = widget.totalAmount - widget.amountPaid;
-    if (amount == null) {
-      setState(() => _errorMessage = 'Número inválido');
-    } else if (amount <= 0) {
-      setState(() => _errorMessage = 'Debe ser mayor a 0');
-    } else if (amount > pendingOrderAmount) {
-      setState(() => _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}');
-    } else {
-      setState(() => _errorMessage = null);
-    }
-  }
-
-  Future<void> _registrarAbono() async {
-    if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
-    if (_selectedAccount == null) {
-      AppSnackbar.show(context,
-          message: 'Selecciona una cuenta de destino', type: SnackbarType.warning);
-      return;
-    }
-    final isCaja = _selectedAccount!['type'] == 'CAJA';
-    if (isCaja && _activeShift == null) {
-      AppSnackbar.show(context,
-          message: 'La caja no tiene un turno abierto. Abre el turno primero.',
-          type: SnackbarType.error);
-      return;
-    }
-
-    final amount = double.parse(_abonoCtrl.text.trim());
-    setState(() => _isRegistering = true);
-
-    try {
-      final authUserId = widget.supabase.auth.currentUser?.id;
-      String? adminProfileId;
-      if (authUserId != null) {
-        final p = await widget.supabase
-            .from('profiles')
-            .select('id')
-            .eq('auth_user_id', authUserId)
-            .maybeSingle();
-        adminProfileId = p?['id'] as String?;
-      }
-
-      final creditId = widget.creditInfo!['id'] as String;
-      final currentDebt = (widget.creditInfo!['current_debt'] as num).toDouble();
-      final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
-
-      // 1. Actualizar deuda en customer_credits
-      await widget.supabase
-          .from('customer_credits')
-          .update({'current_debt': newGeneralDebt, 'updated_at': DateTime.now().toIso8601String()})
-          .eq('id', creditId);
-
-      // 2. Registrar en credit_movements con el nombre de la cuenta como payment_method
-      await widget.supabase.from('credit_movements').insert({
-        'credit_id': creditId,
-        'order_id': widget.orderId,
-        'movement_type': 'PAYMENT',
-        'amount': amount,
-        'payment_method': _selectedAccount!['name'] as String,
-        'notes': 'Abono registrado desde detalle de pedido',
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
-
-      // 3. Actualizar orders.amount_paid y payment_status
-      final newOrderAmountPaid = widget.amountPaid + amount;
-      final newPaymentStatus = newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
-      await widget.supabase
-          .from('orders')
-          .update({'payment_status': newPaymentStatus, 'amount_paid': newOrderAmountPaid})
-          .eq('id', widget.orderId);
-
-      // 4. Registrar INGRESO en account_movements
-      final shiftId = isCaja && _activeShift != null
-          ? _activeShift!['id'] as String?
-          : null;
-      await widget.supabase.from('account_movements').insert({
-        'account_id': _selectedAccount!['id'],
-        'movement_type': 'INCOME',
-        'amount': amount,
-        'description': 'Cobro de crédito — Pedido #\${widget.orderId.substring(0, 8).toUpperCase()}',
-        'reference_type': 'orders',
-        'reference_id': widget.orderId,
-        if (shiftId != null) 'shift_id': shiftId,
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
-
-      // 5. Actualizar saldo de la cuenta financiera
-      final currentBalance = ((_selectedAccount!['balance'] as num?)?.toDouble() ?? 0.0);
-      await widget.supabase
-          .from('financial_accounts')
-          .update({'balance': currentBalance + amount})
-          .eq('id', _selectedAccount!['id'] as String);
-
-      if (mounted) {
-        AppSnackbar.show(context,
-            message: 'Abono de S/ ${amount.toStringAsFixed(2)} registrado en ${_selectedAccount!['name']}.',
-            type: SnackbarType.success);
-        widget.onPaymentRegistered();
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(context, message: 'Error al registrar abono: $e', type: SnackbarType.error);
-      }
-    } finally {
-      if (mounted) setState(() => _isRegistering = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pendingAmount = widget.totalAmount - widget.amountPaid;
-    Color badgeColor;
-    String badgeLabel;
-    switch (widget.paymentStatus) {
-      case 'PAID':
-        badgeColor = Colors.teal; badgeLabel = 'Pagado completo'; break;
-      case 'PARTIAL':
-        badgeColor = Colors.amber.shade700; badgeLabel = 'Pago parcial'; break;
-      case 'PENDING':
-      default:
-        badgeColor = Colors.deepOrange; badgeLabel = 'Pendiente de pago';
-    }
-
-    final bool cajaSinTurno =
-        _selectedAccount != null &&
-        _selectedAccount!['type'] == 'CAJA' &&
-        _activeShift == null;
-
-    final bool isButtonEnabled =
-        !_isRegistering &&
-        _abonoCtrl.text.trim().isNotEmpty &&
-        _errorMessage == null &&
-        _selectedAccount != null &&
-        !cajaSinTurno;
-
-    return OrderDetailSectionCard(
-      title: 'Estado de Pago',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Badge de estado
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(badgeLabel,
-                    style: TextStyle(
-                      color: badgeColor, fontSize: 12, fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Fila de totales
-          Row(
-            children: [
-              Expanded(child: _PStatRow(
-                  label: 'Total',
-                  value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}')),
-              Expanded(child: _PStatRow(
-                  label: 'Pagado',
-                  value: 'S/ ${widget.amountPaid.toStringAsFixed(2)}',
-                  valueColor: Colors.teal)),
-              if (widget.paymentStatus != 'PAID')
-                Expanded(child: _PStatRow(
-                    label: 'Pendiente',
-                    value: 'S/ ${pendingAmount.toStringAsFixed(2)}',
-                    valueColor: Colors.deepOrange,
-                    bold: true)),
-            ],
-          ),
-
-          // Sección de abono (solo crédito pendiente)
-          if (widget.paymentMethod == 'CRÉDITO' &&
-              pendingAmount > 0 &&
-              widget.creditInfo != null) ...[
-            const SizedBox(height: 14),
-            const Divider(height: 1),
-            const SizedBox(height: 14),
-
-            const Text('Registrar abono',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
-                    color: Colors.black87)),
-            const SizedBox(height: 10),
-
-            // ── Montos rápidos ─────────────────────────────────────────
-            Wrap(
-              spacing: 8, runSpacing: 6,
-              children: [
-                if (pendingAmount >= 50)
-                  _AbonoQuickChip(
-                    label: 'S/ 50',
-                    isSelected: _selectedQuickAmount == '50.00',
-                    onTap: () {
-                      setState(() => _selectedQuickAmount = '50.00');
-                      _abonoCtrl.text = '50.00';
-                      _validarEntrada('50.00', fromQuick: true);
-                    },
-                  ),
-                if (pendingAmount >= 100)
-                  _AbonoQuickChip(
-                    label: 'S/ 100',
-                    isSelected: _selectedQuickAmount == '100.00',
-                    onTap: () {
-                      setState(() => _selectedQuickAmount = '100.00');
-                      _abonoCtrl.text = '100.00';
-                      _validarEntrada('100.00', fromQuick: true);
-                    },
-                  ),
-                if (pendingAmount >= 200)
-                  _AbonoQuickChip(
-                    label: 'S/ 200',
-                    isSelected: _selectedQuickAmount == '200.00',
-                    onTap: () {
-                      setState(() => _selectedQuickAmount = '200.00');
-                      _abonoCtrl.text = '200.00';
-                      _validarEntrada('200.00', fromQuick: true);
-                    },
-                  ),
-                _AbonoQuickChip(
-                  label: 'Total (S/ ${pendingAmount.toStringAsFixed(2)})',
-                  isSelected: _selectedQuickAmount == pendingAmount.toStringAsFixed(2),
-                  isTotal: true,
-                  onTap: () {
-                    final v = pendingAmount.toStringAsFixed(2);
-                    setState(() => _selectedQuickAmount = v);
-                    _abonoCtrl.text = v;
-                    _validarEntrada(v, fromQuick: true);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // ── Campo de monto ─────────────────────────────────────────
-            TextField(
-              controller: _abonoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-              onChanged: _validarEntrada,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              decoration: InputDecoration(
-                hintText: 'Monto a abonar (S/)',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                errorText: _errorMessage,
-                errorMaxLines: 2,
-                prefixIcon: Icon(Icons.attach_money_rounded,
-                    color: _errorMessage != null ? Colors.deepOrange : Colors.grey.shade500),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // ── Selector de cuenta destino (scroll horizontal) ─────────
-            const Text('Cuenta de destino',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                    color: Colors.black54)),
-            const SizedBox(height: 8),
-            if (widget.accounts.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: const Row(children: [
-                  Icon(Icons.warning_rounded, size: 13, color: Colors.red),
-                  SizedBox(width: 6),
-                  Expanded(child: Text('No hay cuentas activas.',
-                      style: TextStyle(fontSize: 11, color: Colors.red,
-                          fontWeight: FontWeight.w600))),
-                ]),
-              )
-            else
-              SizedBox(
-                height: 64,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  itemCount: widget.accounts.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final acc = widget.accounts[index];
-                    final isSelected = _selectedAccount?['id'] == acc['id'];
-                    final type = acc['type'] as String? ?? 'OTRO';
-                    final typeColor = _colorForType(type);
-                    final balance = (acc['balance'] as num?)?.toDouble() ?? 0.0;
-                    return GestureDetector(
-                      onTap: () => _onAccountTap(acc),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.teal : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? Colors.teal : Colors.grey.shade300,
-                            width: isSelected ? 1.5 : 1,
-                          ),
-                          boxShadow: isSelected ? [BoxShadow(
-                            color: Colors.teal.withValues(alpha: 0.18),
-                            blurRadius: 6, offset: const Offset(0, 2),
-                          )] : null,
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(_iconForType(type), size: 13,
-                                  color: isSelected ? Colors.white : typeColor),
-                              const SizedBox(width: 5),
-                              Text(acc['name'] as String,
-                                  style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w700,
-                                    color: isSelected ? Colors.white : Colors.black87,
-                                  )),
-                            ]),
-                            const SizedBox(height: 3),
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.white.withValues(alpha: 0.2)
-                                      : typeColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(type, style: TextStyle(
-                                  fontSize: 9, fontWeight: FontWeight.w700,
-                                  color: isSelected ? Colors.white70 : typeColor,
-                                )),
-                              ),
-                              const SizedBox(width: 5),
-                              Text('S/ ${balance.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 10, fontWeight: FontWeight.w600,
-                                    color: isSelected ? Colors.white70 : Colors.grey.shade500,
-                                  )),
-                            ]),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            // Advertencia CAJA sin turno
-            if (cajaSinTurno) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: const Row(children: [
-                  Icon(Icons.lock_rounded, size: 13, color: Colors.red),
-                  SizedBox(width: 6),
-                  Expanded(child: Text(
-                    'Esta caja no tiene turno abierto. Abre el turno antes de registrar el abono.',
-                    style: TextStyle(fontSize: 11, color: Colors.red,
-                        fontWeight: FontWeight.w600),
-                  )),
-                ]),
-              ),
-            ],
-
-            // Info turno activo
-            if (_selectedAccount != null &&
-                _selectedAccount!['type'] == 'CAJA' &&
-                _activeShift != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.teal.shade50, borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.teal.shade200),
-                ),
-                child: const Row(children: [
-                  Icon(Icons.check_circle_rounded, size: 13, color: Colors.teal),
-                  SizedBox(width: 6),
-                  Text('Turno abierto · Se registrará en el turno activo',
-                      style: TextStyle(fontSize: 11, color: Colors.teal,
-                          fontWeight: FontWeight.w600)),
-                ]),
-              ),
-            ],
-            const SizedBox(height: 14),
-
-            // Botón Abonar
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  disabledForegroundColor: Colors.grey.shade500,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                ),
-                onPressed: isButtonEnabled ? _registrarAbono : null,
-                icon: _isRegistering
-                    ? const SizedBox(width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check_rounded, size: 18),
-                label: Text(
-                  _isRegistering
-                      ? 'Registrando...'
-                      : _selectedAccount != null
-                          ? 'Abonar a ${_selectedAccount!['name']}'
-                          : 'Abonar',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// Chip de monto rápido para la sección de abono
-class _AbonoQuickChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final bool isTotal;
-  final VoidCallback onTap;
-
-  const _AbonoQuickChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.isTotal = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Color bgColor;
-    final Color borderColor;
-    final Color textColor;
-
-    if (isSelected) {
-      bgColor = isTotal ? Colors.teal : Colors.teal;
-      borderColor = Colors.teal;
-      textColor = Colors.white;
-    } else if (isTotal) {
-      bgColor = Colors.teal.withValues(alpha: 0.07);
-      borderColor = Colors.teal.withValues(alpha: 0.4);
-      textColor = Colors.teal.shade700;
-    } else {
-      bgColor = Colors.grey.shade50;
-      borderColor = Colors.grey.shade300;
-      textColor = Colors.grey.shade600;
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
-          boxShadow: isSelected ? [BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.2),
-            blurRadius: 6, offset: const Offset(0, 2),
-          )] : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isSelected) ...[
-              Icon(Icons.check_rounded, size: 11, color: textColor),
-              const SizedBox(width: 4),
-            ],
-            Text(label, style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: textColor)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PStatRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool bold;
-  const _PStatRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-    this.bold = false,
-  });
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-            color: valueColor ?? Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _CreditInfoSection extends StatelessWidget {
   final Map<String, dynamic>? creditInfo;
   final String? customerId;
@@ -3257,530 +2935,3 @@ class _CreditStatCell extends StatelessWidget {
     );
   }
 }
-
-// ─── BOTTOM SHEET: EDITAR LOTES ──────────────────────────────────────────────
-
-class _BatchEditSheet extends StatefulWidget {
-  final String productName;
-  final String? variantLabel;
-  final int totalRequired;
-  final List<BatchAssignment> batches; // ordenados FEFO con assigned
-
-  const _BatchEditSheet({
-    required this.productName,
-    this.variantLabel,
-    required this.totalRequired,
-    required this.batches,
-  });
-
-  @override
-  State<_BatchEditSheet> createState() => _BatchEditSheetState();
-}
-
-class _BatchEditSheetState extends State<_BatchEditSheet> {
-  late final List<BatchAssignment> _batches;
-
-  @override
-  void initState() {
-    super.initState();
-    _batches =
-        widget.batches.map((b) => b.copyWith(assigned: b.assigned)).toList();
-  }
-
-  int get _totalAssigned => _batches.fold(0, (s, b) => s + b.assigned);
-  int get _remaining => widget.totalRequired - _totalAssigned;
-  bool get _isValid => _totalAssigned == widget.totalRequired;
-
-  void _resetToFefo() {
-    setState(() {
-      for (final b in _batches) {
-        b.assigned = 0;
-      }
-      int rem = widget.totalRequired;
-      for (final b in _batches) {
-        if (rem <= 0) break;
-        b.assigned = rem > b.available ? b.available : rem;
-        rem -= b.assigned;
-      }
-    });
-  }
-
-  void _changeAssigned(int index, int delta) {
-    setState(() {
-      final b = _batches[index];
-      final newVal = (b.assigned + delta).clamp(0, b.available);
-      _batches[index].assigned = newVal;
-    });
-  }
-
-  Future<void> _mostrarDialogoCantidad(
-    BuildContext context,
-    int index,
-    BatchAssignment b,
-  ) async {
-    final qtyCtrl = TextEditingController(text: b.assigned.toString());
-    final maximoPermitido = b.assigned + _remaining;
-    final stockMaximoReal =
-        maximoPermitido < b.available ? maximoPermitido : b.available;
-
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Cantidad exacta',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                helperText: 'Límite disponible: $stockMaximoReal',
-                helperStyle: const TextStyle(
-                  color: AppColors.tealDark,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.tealDark,
-                ),
-                onPressed: () {
-                  final newQty = int.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null && newQty >= 0) {
-                    if (newQty <= stockMaximoReal) {
-                      final diferencia = (newQty - b.assigned).toInt();
-                      if (diferencia != 0) _changeAssigned(index, diferencia);
-                      Navigator.pop(dialogContext);
-                    } else {
-                      AppSnackbar.show(
-                        context,
-                        message:
-                            'No puedes asignar más de $stockMaximoReal unidades.',
-                        type: SnackbarType.warning,
-                      );
-                    }
-                  } else {
-                    AppSnackbar.show(
-                      context,
-                      message: 'Por favor, ingresa un número válido.',
-                      type: SnackbarType.error,
-                    );
-                  }
-                },
-                child: const Text(
-                  'Guardar',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Asignación de Lotes',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      widget.variantLabel != null
-                          ? '${widget.productName} · ${widget.variantLabel}'
-                          : widget.productName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _resetToFefo,
-                icon: const Icon(Icons.restart_alt_rounded, size: 14),
-                label: const Text(
-                  'Reset FEFO',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.teal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color:
-                  _isValid
-                      ? AppColors.successLight
-                      : (_remaining < 0
-                          ? AppColors.dangerLight
-                          : AppColors.amberLight),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color:
-                    _isValid
-                        ? AppColors.success.withValues(alpha: 0.3)
-                        : (_remaining < 0
-                            ? AppColors.danger.withValues(alpha: 0.3)
-                            : AppColors.amber.withValues(alpha: 0.4)),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isValid
-                      ? Icons.check_circle_rounded
-                      : (_remaining < 0
-                          ? Icons.error_rounded
-                          : Icons.warning_rounded),
-                  size: 14,
-                  color:
-                      _isValid
-                          ? AppColors.success
-                          : (_remaining < 0
-                              ? AppColors.danger
-                              : AppColors.amber),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _isValid
-                      ? 'Asignación completa: $_totalAssigned / ${widget.totalRequired} unidades ✓'
-                      : _remaining > 0
-                      ? 'Faltan $_remaining unidades por asignar'
-                      : 'Exceso de ${-_remaining} unidades. Reduce algún lote.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color:
-                        _isValid
-                            ? AppColors.success
-                            : (_remaining < 0
-                                ? AppColors.danger
-                                : AppColors.amber),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 320),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: _batches.length,
-              separatorBuilder:
-                  (_, __) => const Divider(height: 1, color: AppColors.divider),
-              itemBuilder: (context, index) {
-                final b = _batches[index];
-                final isExpired =
-                    b.expiryDate != null &&
-                    b.expiryDate!.isBefore(DateTime.now());
-                final badgeColor =
-                    isExpired
-                        ? AppColors.danger
-                        : b.isExpiringSoon
-                        ? AppColors.amber
-                        : AppColors.success;
-                final badgeLabel =
-                    isExpired
-                        ? 'VENCIDO'
-                        : b.isExpiringSoon
-                        ? 'PRÓXIMO A VENCER'
-                        : b.expiryDate != null
-                        ? 'Vto: ${b.expiryLabel}'
-                        : 'Sin vto.';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.tag_rounded,
-                                  size: 12,
-                                  color: AppColors.textHint,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  b.batchNumber,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                if (index == 0) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.tealLight,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'FEFO 1°',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.tealDark,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: badgeColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: badgeColor.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    badgeLabel,
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: badgeColor,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Disponible: ${b.available} u',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: AppColors.bg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            InkWell(
-                              onTap:
-                                  b.assigned > 0
-                                      ? () => _changeAssigned(index, -1)
-                                      : null,
-                              borderRadius: const BorderRadius.horizontal(
-                                left: Radius.circular(8),
-                              ),
-                              child: Container(
-                                width: 30,
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.remove_rounded,
-                                  size: 14,
-                                  color:
-                                      b.assigned > 0
-                                          ? AppColors.textSecondary
-                                          : AppColors.textHint,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap:
-                                  () => _mostrarDialogoCantidad(
-                                    context,
-                                    index,
-                                    b,
-                                  ),
-                              child: Container(
-                                constraints: const BoxConstraints(minWidth: 36),
-                                alignment: Alignment.center,
-                                color: AppColors.tealLight.withValues(
-                                  alpha: 0.25,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: Text(
-                                  '${b.assigned}',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.tealDark,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap:
-                                  b.assigned < b.available && _remaining > 0
-                                      ? () => _changeAssigned(index, 1)
-                                      : null,
-                              borderRadius: const BorderRadius.horizontal(
-                                right: Radius.circular(8),
-                              ),
-                              child: Container(
-                                width: 30,
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.add_rounded,
-                                  size: 14,
-                                  color:
-                                      b.assigned < b.available && _remaining > 0
-                                          ? AppColors.textSecondary
-                                          : AppColors.textHint,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed:
-                  _isValid
-                      ? () => Navigator.pop(context, List.of(_batches))
-                      : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.teal,
-                disabledBackgroundColor: AppColors.bg,
-                disabledForegroundColor: AppColors.textHint,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(
-                Icons.check_rounded,
-                size: 18,
-                color: Colors.white,
-              ),
-              label: const Text(
-                'Confirmar asignación',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
