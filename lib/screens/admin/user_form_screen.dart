@@ -16,7 +16,7 @@ class UserFormScreen extends StatefulWidget {
 class _UserFormScreenState extends State<UserFormScreen> {
   final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
-  
+
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -62,29 +62,29 @@ class _UserFormScreenState extends State<UserFormScreen> {
       final phone = _phoneCtrl.text.trim();
       final docNum = _docCtrl.text.trim();
 
-      // 1) Crear usuario en auth.users a través del admin API
-      // IMPORTANTE: Requiere service_role key en el entorno de Supabase 
-      // o permisos específicos en el RLS para poder usar admin.createUser
-      final AuthResponse res = (await _supabase.auth.admin.createUser(
-        AdminUserAttributes(
-          email: email,
-          password: password,
-          emailConfirm: true,
-        ),
-      )) as AuthResponse;
+      // 1) Llamar a la Edge Function enviando TODOS los datos
+      final response = await _supabase.functions.invoke(
+        'crear-usuario-admin',
+        body: {
+          'email': email,
+          'password': password,
+          'role': _role,
+          'name': name,
+          'phone': phone.isNotEmpty ? phone : null,
+          'document_type': _docType,
+          'document_number': docNum.isNotEmpty ? docNum : null,
+        },
+      );
 
-      final newUserId = res.user?.id;
-      if (newUserId == null) throw Exception('No se pudo crear el usuario en Auth');
+      // Si el status no es 200, algo falló en el servidor
+      if (response.status != 200) {
+        throw Exception(
+          'Error al crear usuario en el servidor: ${response.data}',
+        );
+      }
 
-      // 2) Insertar perfil
-      await _supabase.from('profiles').insert({
-        'auth_user_id': newUserId,
-        'full_name': name,
-        'role': _role,
-        'phone': phone.isNotEmpty ? phone : null,
-        'document_type': _docType,
-        'document_number': docNum.isNotEmpty ? docNum : null,
-      });
+      // ¡Hemos eliminado la inserción a la tabla 'profiles' de aquí!
+      // La Edge Function ya se encarga de guardar el perfil de forma segura.
 
       if (mounted) {
         AppSnackbar.show(
@@ -96,9 +96,19 @@ class _UserFormScreenState extends State<UserFormScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String mensajeError =
+            'Ocurrió un error inesperado al crear el usuario.';
+
+        if (e.toString().contains('already been registered')) {
+          mensajeError =
+              'Este correo electrónico ya se encuentra registrado en el sistema.';
+        } else {
+          mensajeError = 'Error: $e';
+        }
+
         AppSnackbar.show(
           context,
-          message: 'Error al crear usuario: $e',
+          message: mensajeError,
           type: SnackbarType.error,
         );
       }
@@ -138,11 +148,14 @@ class _UserFormScreenState extends State<UserFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    
                     // ─── SELECTOR DE ROL (Visual) ──────────────────────────────────
                     const Text(
                       'Tipo de cuenta',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -153,7 +166,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
                             icon: Icons.people_alt_rounded,
                             isSelected: _role == AppRoles.customer,
                             color: AppColors.primary,
-                            onTap: () => setState(() => _role = AppRoles.customer),
+                            onTap:
+                                () => setState(() => _role = AppRoles.customer),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -181,7 +195,8 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           hint: 'ejemplo@correo.com',
                           icon: Icons.email_rounded,
                           keyboardType: TextInputType.emailAddress,
-                          validator: (v) => _required(v, 'el correo electrónico'),
+                          validator:
+                              (v) => _required(v, 'el correo electrónico'),
                         ),
                         const SizedBox(height: 16),
                         _CustomTextField(
@@ -191,17 +206,24 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           icon: Icons.vpn_key_rounded,
                           obscureText: _obscurePassword,
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Ingresa una contraseña';
+                            if (v == null || v.isEmpty) {
+                              return 'Ingresa una contraseña';
+                            }
                             if (v.length < 6) return 'Mínimo 6 caracteres';
                             return null;
                           },
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                              _obscurePassword
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
                               color: Colors.grey.shade500,
                               size: 20,
                             ),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            onPressed:
+                                () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
                           ),
                         ),
                       ],
@@ -230,10 +252,14 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           keyboardType: TextInputType.phone,
                         ),
                         const SizedBox(height: 16),
-                        
+
                         const Text(
                           'Documento de Identidad (Opcional)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black87),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -250,16 +276,32 @@ class _UserFormScreenState extends State<UserFormScreen> {
                                 child: DropdownButton<String>(
                                   value: _docType,
                                   isExpanded: true,
-                                  icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.grey),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  items: ['DNI', 'CE', 'RUC', 'PASAPORTE']
-                                      .map((type) => DropdownMenuItem(
-                                            value: type,
-                                            child: Text(type, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                                          ))
-                                      .toList(),
+                                  icon: const Icon(
+                                    Icons.arrow_drop_down_rounded,
+                                    color: Colors.grey,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  items:
+                                      ['DNI', 'CE', 'RUC', 'PASAPORTE']
+                                          .map(
+                                            (type) => DropdownMenuItem(
+                                              value: type,
+                                              child: Text(
+                                                type,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
                                   onChanged: (val) {
-                                    if (val != null) setState(() => _docType = val);
+                                    if (val != null) {
+                                      setState(() => _docType = val);
+                                    }
                                   },
                                 ),
                               ),
@@ -281,14 +323,18 @@ class _UserFormScreenState extends State<UserFormScreen> {
               ),
             ),
           ),
-          
+
           // ─── BOTÓN FIJO INFERIOR ──────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4)),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
               ],
             ),
             child: SizedBox(
@@ -300,21 +346,40 @@ class _UserFormScreenState extends State<UserFormScreen> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                child: _isLoading 
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.person_add_rounded, size: 20, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Text(
-                            _role == AppRoles.admin ? 'Crear Administrador' : 'Crear Cliente',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
                           ),
-                        ],
-                      ),
+                        )
+                        : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.person_add_rounded,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _role == AppRoles.admin
+                                  ? 'Crear Administrador'
+                                  : 'Crear Cliente',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
               ),
             ),
           ),
@@ -358,7 +423,11 @@ class _RoleCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 28, color: isSelected ? color : Colors.grey.shade400),
+            Icon(
+              icon,
+              size: 28,
+              color: isSelected ? color : Colors.grey.shade400,
+            ),
             const SizedBox(height: 8),
             Text(
               title,
@@ -380,7 +449,11 @@ class _SectionCard extends StatelessWidget {
   final IconData icon;
   final List<Widget> children;
 
-  const _SectionCard({required this.title, required this.icon, required this.children});
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -391,7 +464,11 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -401,13 +478,20 @@ class _SectionCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Icon(icon, size: 16, color: AppColors.primary),
               ),
               const SizedBox(width: 10),
               Text(
                 title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.black87),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
               ),
             ],
           ),
@@ -450,7 +534,11 @@ class _CustomTextField extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 8),
         ],
@@ -463,15 +551,36 @@ class _CustomTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-            prefixIcon: icon != null ? Icon(icon, size: 18, color: Colors.grey.shade400) : null,
+            prefixIcon:
+                icon != null
+                    ? Icon(icon, size: 18, color: Colors.grey.shade400)
+                    : null,
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
           ),
           validator: validator,
         ),
