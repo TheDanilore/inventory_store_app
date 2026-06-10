@@ -270,12 +270,14 @@ class OrderPdfGenerator {
       // 1. Construir el nombre del producto limpio
       String displayName = item.productName ?? 'Producto';
       final String vLabel = item.variantLabel.trim();
+      final String vLabelLower = vLabel.toLowerCase();
 
-      // 2. Revisar si la variante aporta información real (no es "default" o vacía)
+      // 2. Filtro robusto: ignorar si contiene "unica", "única", "default" o está vacío
       bool hasRealVariant =
           vLabel.isNotEmpty &&
-          vLabel.toLowerCase() != 'default' &&
-          vLabel.toLowerCase() != 'única' &&
+          !vLabelLower.contains('default') &&
+          !vLabelLower.contains('única') &&
+          !vLabelLower.contains('unica') &&
           vLabel != '()';
 
       if (hasRealVariant) {
