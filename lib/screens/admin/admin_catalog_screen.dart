@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -13,12 +12,8 @@ import 'package:inventory_store_app/services/admin/catalog_service.dart';
 import 'package:inventory_store_app/screens/admin/product_form_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
-import 'package:intl/intl.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:http/http.dart' as http;
+import 'package:inventory_store_app/services/admin/catalog_pdf_generator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -38,12 +33,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
   static const int _pageSize = 8;
   final _catalogService = CatalogService();
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    locale: 'es_PE',
-    symbol: 'S/ ',
-    decimalDigits: 2,
-    customPattern: '¤#,##0.00', // Fuerza a que el símbolo (¤) vaya al inicio
-  );
 
   List<CategoryModel> _categories = [];
   String? _selectedCategoryId;
@@ -543,251 +532,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   }
   // ─── PDF Build (sin cambios de lógica) ──────────────────────────────────
 
-  Future<Uint8List> _buildCatalogPdfBytes(
-    List<ProductModel> products,
-    Map<String, List<ProductVariantModel>> variantsByProduct,
-    Map<String, int> stockByVariant,
-  ) async {
-    final baseFont = await PdfGoogleFonts.notoSansRegular();
-    final boldFont = await PdfGoogleFonts.notoSansBold();
-    final italicFont = await PdfGoogleFonts.notoSansItalic();
-
-    final doc = pw.Document();
-    final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
-
-    final Map<String, Uint8List?> productImages = {};
-
-    // MEJORA DE RENDIMIENTO: Descarga de imágenes en paralelo
-    await Future.wait(
-      products.map((product) async {
-        final key = product.id;
-        final url = product.primaryImageUrl;
-
-        if (url != null && url.trim().isNotEmpty) {
-          try {
-            final resp = await http
-                .get(Uri.parse(url))
-                .timeout(
-                  const Duration(seconds: 10),
-                ); // Agregamos timeout de seguridad
-            if (resp.statusCode == 200) {
-              productImages[key] = resp.bodyBytes;
-            } else {
-              productImages[key] = null;
-            }
-          } catch (_) {
-            productImages[key] = null;
-          }
-        } else {
-          productImages[key] = null;
-        }
-      }),
-    );
-
-    doc.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
-        theme: pw.ThemeData.withFont(
-          base: baseFont,
-          bold: boldFont,
-          italic: italicFont,
-        ),
-        build:
-            (context) => [
-              pw.Text(
-                'Catálogo de productos',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text('Generado: $generatedAt'),
-              pw.SizedBox(height: 16),
-              ...products.map((product) {
-                final variants = variantsByProduct[product.id] ?? [];
-                final imageKey = product.id;
-                final imageBytes = productImages[imageKey];
-
-                return pw.Container(
-                  margin: const pw.EdgeInsets.only(bottom: 12),
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey300),
-                    borderRadius: pw.BorderRadius.circular(6),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          imageBytes != null
-                              ? pw.Container(
-                                width: 86,
-                                height: 86,
-                                decoration: pw.BoxDecoration(
-                                  border: pw.Border.all(
-                                    color: PdfColors.grey300,
-                                  ),
-                                  borderRadius: pw.BorderRadius.circular(6),
-                                ),
-                                child: pw.ClipRRect(
-                                  horizontalRadius: 6,
-                                  verticalRadius: 6,
-                                  child: pw.Image(
-                                    pw.MemoryImage(imageBytes),
-                                    fit: pw.BoxFit.cover,
-                                  ),
-                                ),
-                              )
-                              : pw.Container(
-                                width: 86,
-                                height: 86,
-                                alignment: pw.Alignment.center,
-                                decoration: pw.BoxDecoration(
-                                  border: pw.Border.all(
-                                    color: PdfColors.grey300,
-                                  ),
-                                  borderRadius: pw.BorderRadius.circular(6),
-                                ),
-                                child: pw.Text(
-                                  'Sin imagen',
-                                  style: pw.TextStyle(
-                                    fontSize: 8,
-                                    color: PdfColors.grey600,
-                                  ),
-                                ),
-                              ),
-                          pw.SizedBox(width: 12),
-                          pw.Expanded(
-                            child: pw.Column(
-                              crossAxisAlignment: pw.CrossAxisAlignment.start,
-                              children: [
-                                pw.Text(
-                                  product.name,
-                                  style: pw.TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: pw.FontWeight.bold,
-                                  ),
-                                ),
-                                pw.SizedBox(height: 6),
-                                if (product.description != null &&
-                                    product.description!.trim().isNotEmpty)
-                                  pw.Text(
-                                    product.description!,
-                                    style: pw.TextStyle(
-                                      fontSize: 9,
-                                      color: PdfColors.grey700,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (variants.isNotEmpty) ...[
-                        pw.SizedBox(height: 8),
-                        pw.Text(
-                          'Variantes',
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                        pw.SizedBox(height: 4),
-                        pw.Table(
-                          border: pw.TableBorder.all(color: PdfColors.grey300),
-                          columnWidths: {
-                            0: const pw.FlexColumnWidth(1.8),
-                            1: const pw.FlexColumnWidth(2.2),
-                            2: const pw.FlexColumnWidth(1.2),
-                          },
-                          children: [
-                            pw.TableRow(
-                              decoration: const pw.BoxDecoration(
-                                color: PdfColors.grey200,
-                              ),
-                              children: [
-                                pw.Padding(
-                                  padding: const pw.EdgeInsets.all(6),
-                                  child: pw.Text(
-                                    'Atributos',
-                                    style: pw.TextStyle(
-                                      fontWeight: pw.FontWeight.bold,
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                ),
-                                pw.Padding(
-                                  padding: const pw.EdgeInsets.all(6),
-                                  child: pw.Text(
-                                    'Precio',
-                                    style: pw.TextStyle(
-                                      fontWeight: pw.FontWeight.bold,
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                ),
-                                pw.Padding(
-                                  padding: const pw.EdgeInsets.all(6),
-                                  child: pw.Text(
-                                    'Stock',
-                                    style: pw.TextStyle(
-                                      fontWeight: pw.FontWeight.bold,
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            ...variants.map((variant) {
-                              final variantId = variant.id;
-                              final stock = stockByVariant[variantId] ?? 0;
-
-                              final variantPrice =
-                                  variant.salePrice ?? product.salePrice;
-                              return pw.TableRow(
-                                children: [
-                                  pw.Padding(
-                                    padding: const pw.EdgeInsets.all(6),
-                                    child: pw.Text(
-                                      variant.label,
-                                      style: const pw.TextStyle(fontSize: 9),
-                                    ),
-                                  ),
-                                  pw.Padding(
-                                    padding: const pw.EdgeInsets.all(6),
-                                    child: pw.Text(
-                                      _currencyFormat.format(variantPrice),
-                                      style: const pw.TextStyle(fontSize: 9),
-                                    ),
-                                  ),
-                                  pw.Padding(
-                                    padding: const pw.EdgeInsets.all(6),
-                                    child: pw.Text(
-                                      '$stock',
-                                      style: const pw.TextStyle(fontSize: 9),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              }),
-            ],
-      ),
-    );
-
-    return doc.save();
-  }
-
   // ─── Export Method ───────────────────────────────────────────────────────
 
   Future<void> _exportCatalogPdf() async {
@@ -865,14 +609,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               .toList();
       final stockByVariant = await _loadVariantStockByVariantIds(allVariantIds);
 
-      final bytes = await _buildCatalogPdfBytes(
-        filteredProducts,
-        variantsByProduct,
-        stockByVariant,
-      );
       if (!mounted) return;
 
-      await Printing.layoutPdf(onLayout: (_) async => bytes);
+      // Delegar la generación y el compartir al service (equivalente a shareTicket)
+      await CatalogPdfGenerator.shareCatalog(
+        products: filteredProducts,
+        variantsByProduct: variantsByProduct,
+        stockByVariant: stockByVariant,
+      );
     } catch (e) {
       if (!mounted) return;
 

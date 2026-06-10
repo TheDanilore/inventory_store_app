@@ -1,254 +1,235 @@
 import 'dart:typed_data';
 
-import 'package:file_saver/file_saver.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:inventory_store_app/models/product_model.dart';
+import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/models/product_variant_model.dart';
 
-class ProductPdfGenerator {
-  static Future<Uint8List> _buildPdf(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+class CatalogPdfGenerator {
+  // Formato de moneda idéntico al que usaba el screen
+  static final _currencyFormat = NumberFormat.currency(
+    locale: 'es_PE',
+    symbol: 'S/ ',
+    decimalDigits: 2,
+    customPattern: '¤#,##0.00',
+  );
+
+  // ── Build ────────────────────────────────────────────────────────────────
+
+  static Future<Uint8List> _buildPdf({
+    required List<ProductModel> products,
+    required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
-    final pdf = pw.Document();
+    final baseFont = await PdfGoogleFonts.notoSansRegular();
+    final boldFont = await PdfGoogleFonts.notoSansBold();
+    final italicFont = await PdfGoogleFonts.notoSansItalic();
 
-    // 1. Descargar imagen principal si existe
-    pw.ImageProvider? mainImage;
-    if (product.images.isNotEmpty) {
-      try {
-        mainImage = await networkImage(product.images.first.imageUrl);
-      } catch (_) {}
-    }
+    final doc = pw.Document();
+    final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
 
-    // 2. Descargar imágenes de las variantes
-    Map<String, pw.ImageProvider> variantImages = {};
-    for (var v in variants) {
-      // Verificamos que id no sea nulo antes de usarlo como llave
-      if (v.images.isNotEmpty) {
-        try {
-          // Usamos el operador ! porque ya validamos que v.id no es nulo
-          variantImages[v.id] = await networkImage(v.images.first.imageUrl);
-        } catch (_) {}
-      }
-    }
+    // Descarga de imágenes en paralelo
+    final Map<String, Uint8List?> productImages = {};
+    await Future.wait(
+      products.map((product) async {
+        final url = product.primaryImageUrl;
+        if (url != null && url.trim().isNotEmpty) {
+          try {
+            final resp = await http
+                .get(Uri.parse(url))
+                .timeout(const Duration(seconds: 10));
+            productImages[product.id] =
+                resp.statusCode == 200 ? resp.bodyBytes : null;
+          } catch (_) {
+            productImages[product.id] = null;
+          }
+        } else {
+          productImages[product.id] = null;
+        }
+      }),
+    );
 
-    // 3. Construir el PDF
-    pdf.addPage(
+    doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
-        build: (pw.Context context) {
-          return [
-            // --- CABECERA DEL PRODUCTO ---
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                if (mainImage != null)
-                  pw.Container(
-                    width: 120,
-                    height: 120,
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData.withFont(
+          base: baseFont,
+          bold: boldFont,
+          italic: italicFont,
+        ),
+        build:
+            (context) => [
+              pw.Text(
+                'Catálogo de productos',
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text('Generado: $generatedAt'),
+              pw.SizedBox(height: 16),
+              ...products.map(
+                (product) => _buildProductCard(
+                  product: product,
+                  variants: variantsByProduct[product.id] ?? [],
+                  imageBytes: productImages[product.id],
+                  stockByVariant: stockByVariant,
+                ),
+              ),
+            ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  static pw.Widget _buildProductCard({
+    required ProductModel product,
+    required List<ProductVariantModel> variants,
+    required Uint8List? imageBytes,
+    required Map<String, int> stockByVariant,
+  }) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(bottom: 12),
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Imagen o placeholder
+              imageBytes != null
+                  ? pw.Container(
+                    width: 86,
+                    height: 86,
                     decoration: pw.BoxDecoration(
-                      borderRadius: pw.BorderRadius.circular(12),
+                      border: pw.Border.all(color: PdfColors.grey300),
+                      borderRadius: pw.BorderRadius.circular(6),
                     ),
                     child: pw.ClipRRect(
-                      horizontalRadius: 12,
-                      verticalRadius: 12,
-                      child: pw.Image(mainImage, fit: pw.BoxFit.cover),
+                      horizontalRadius: 6,
+                      verticalRadius: 6,
+                      child: pw.Image(
+                        pw.MemoryImage(imageBytes),
+                        fit: pw.BoxFit.cover,
+                      ),
+                    ),
+                  )
+                  : pw.Container(
+                    width: 86,
+                    height: 86,
+                    alignment: pw.Alignment.center,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300),
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Text(
+                      'Sin imagen',
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey600,
+                      ),
                     ),
                   ),
-                if (mainImage != null) pw.SizedBox(width: 20),
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        product.name,
-                        style: pw.TextStyle(
-                          fontSize: 24,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.SizedBox(height: 8),
-                      pw.Text(
-                        'Precio Base: S/ ${product.salePrice.toStringAsFixed(2)}',
-                        style: pw.TextStyle(
-                          fontSize: 16,
-                          color: PdfColors.teal800,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.SizedBox(height: 8),
-                      if (product.description != null &&
-                          product.description!.trim().isNotEmpty)
-                        pw.Text(
-                          'Descripción: ${product.description}',
-                          style: const pw.TextStyle(fontSize: 12),
-                        ),
-                      if (product.details.isNotEmpty) ...[
-                        pw.SizedBox(height: 10),
-                        pw.Text(
-                          'Detalles Adicionales:',
-                          style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        pw.SizedBox(height: 4),
-                        ...product.details.entries.map(
-                          (e) => pw.Text(
-                            '- ${e.key}: ${e.value}',
-                            style: const pw.TextStyle(fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 24),
-            pw.Divider(color: PdfColors.grey300),
-            pw.SizedBox(height: 16),
 
-            // --- TABLA DE VARIANTES Y STOCK ---
+              pw.SizedBox(width: 12),
+
+              // Nombre + descripción
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      product.name,
+                      style: pw.TextStyle(
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    if (product.description != null &&
+                        product.description!.trim().isNotEmpty)
+                      pw.Text(
+                        product.description!,
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Tabla de variantes
+          if (variants.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
             pw.Text(
-              'Variantes Disponibles',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+              'Variantes',
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
             ),
-            pw.SizedBox(height: 16),
+            pw.SizedBox(height: 4),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey300),
               columnWidths: {
-                0: const pw.FixedColumnWidth(50),
-                1: const pw.FlexColumnWidth(2),
+                0: const pw.FlexColumnWidth(1.8),
+                1: const pw.FlexColumnWidth(2.2),
                 2: const pw.FlexColumnWidth(1.2),
-                3: const pw.FixedColumnWidth(70),
-                4: const pw.FixedColumnWidth(60),
               },
               children: [
-                // Cabecera de la tabla
+                // Encabezado
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.teal700),
-                  children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Img',
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                        textAlign: pw.TextAlign.center,
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Atributos',
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'SKU',
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Precio',
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                        textAlign: pw.TextAlign.right,
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Stock',
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                        textAlign: pw.TextAlign.center,
-                      ),
-                    ),
-                  ],
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                  children:
+                      ['Atributos', 'Precio', 'Stock'].map((label) {
+                        return pw.Padding(
+                          padding: const pw.EdgeInsets.all(6),
+                          child: pw.Text(
+                            label,
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 9,
+                            ),
+                          ),
+                        );
+                      }).toList(),
                 ),
-                // Filas por cada variante
-                ...variants.map((v) {
-                  final price = v.salePrice ?? product.salePrice;
-                  final stock =
-                      stockByVariant[v.id] ??
-                      0; // Usamos v.id ?? '' para evitar el nulo
-                  final img = variantImages[v.id] ?? mainImage;
-
+                // Filas de variantes
+                ...variants.map((variant) {
+                  final stock = stockByVariant[variant.id] ?? 0;
+                  final price = variant.salePrice ?? product.salePrice;
                   return pw.TableRow(
-                    verticalAlignment: pw.TableCellVerticalAlignment.middle,
                     children: [
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Center(
-                          child:
-                              img != null
-                                  ? pw.Container(
-                                    width: 36,
-                                    height: 36,
-                                    child: pw.Image(img, fit: pw.BoxFit.cover),
-                                  )
-                                  : pw.SizedBox(width: 36, height: 36),
-                        ),
-                      ),
-                      // AQUÍ ESTABA EL ERROR: Usamos v.label que es String (no nulo)
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
+                        padding: const pw.EdgeInsets.all(6),
                         child: pw.Text(
-                          v.label,
-                          style: const pw.TextStyle(fontSize: 10),
+                          variant.label,
+                          style: const pw.TextStyle(fontSize: 9),
                         ),
                       ),
-                      // Usamos v.sku ?? '' para asegurar que sea String
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
+                        padding: const pw.EdgeInsets.all(6),
                         child: pw.Text(
-                          v.sku ?? '-',
-                          style: const pw.TextStyle(fontSize: 10),
+                          _currencyFormat.format(price),
+                          style: const pw.TextStyle(fontSize: 9),
                         ),
                       ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'S/ ${price.toStringAsFixed(2)}',
-                          style: const pw.TextStyle(fontSize: 10),
-                          textAlign: pw.TextAlign.right,
-                        ),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
+                        padding: const pw.EdgeInsets.all(6),
                         child: pw.Text(
                           '$stock',
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                            color:
-                                stock > 0
-                                    ? PdfColors.green700
-                                    : PdfColors.red700,
-                          ),
-                          textAlign: pw.TextAlign.center,
+                          style: const pw.TextStyle(fontSize: 9),
                         ),
                       ),
                     ],
@@ -256,83 +237,46 @@ class ProductPdfGenerator {
                 }),
               ],
             ),
-          ];
-        },
+          ],
+        ],
       ),
     );
-
-    return pdf.save();
   }
 
-  static Future<void> printProduct(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+  // ── Métodos públicos (misma convención que OrderPdfGenerator) ────────────
+
+  /// Abre el diálogo de impresión / vista previa del sistema.
+  static Future<void> printCatalog({
+    required List<ProductModel> products,
+    required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(
-      product,
-      variants: variants,
+      products: products,
+      variantsByProduct: variantsByProduct,
       stockByVariant: stockByVariant,
     );
-
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
-      name: 'Producto_${product.name.replaceAll(' ', '_')}.pdf',
+      name: 'Catalogo_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
     );
   }
 
-  static Future<void> shareProduct(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+  /// Comparte el PDF usando el sistema de compartir del dispositivo.
+  /// Equivalente a `OrderPdfGenerator.shareTicket`.
+  static Future<void> shareCatalog({
+    required List<ProductModel> products,
+    required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(
-      product,
-      variants: variants,
+      products: products,
+      variantsByProduct: variantsByProduct,
       stockByVariant: stockByVariant,
     );
-
     await Printing.sharePdf(
       bytes: bytes,
-      filename: 'Producto_${product.name.replaceAll(' ', '_')}.pdf',
-    );
-  }
-
-  static Future<void> saveProduct(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
-    required Map<String, int> stockByVariant,
-  }) async {
-    final bytes = await _buildPdf(
-      product,
-      variants: variants,
-      stockByVariant: stockByVariant,
-    );
-
-    await FileSaver.instance.saveFile(
-      name: 'Producto_${product.name.replaceAll(' ', '_')}',
-      bytes: bytes,
-      fileExtension: 'pdf',
-      mimeType: MimeType.pdf,
-    );
-  }
-
-  static Future<void> saveProductAs(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
-    required Map<String, int> stockByVariant,
-  }) async {
-    final bytes = await _buildPdf(
-      product,
-      variants: variants,
-      stockByVariant: stockByVariant,
-    );
-
-    await FileSaver.instance.saveAs(
-      name: 'Producto_${product.name.replaceAll(' ', '_')}',
-      bytes: bytes,
-      fileExtension: 'pdf',
-      mimeType: MimeType.pdf,
+      filename: 'Catalogo_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
     );
   }
 }
