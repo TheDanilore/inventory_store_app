@@ -33,6 +33,7 @@ class _DrawerItem {
   final VoidCallback? onTap;
   final Widget? trailing;
   final List<_DrawerSubItem> children;
+  final Type? screenType;
 
   const _DrawerItem({
     required this.icon,
@@ -40,6 +41,7 @@ class _DrawerItem {
     this.onTap,
     this.trailing,
     this.children = const [],
+    this.screenType,
   });
 }
 
@@ -48,6 +50,7 @@ class _DrawerSubItem {
   final String title;
   final VoidCallback onTap;
   final Widget? trailing;
+  final Type? screenType;
 
   const _DrawerSubItem({
     required this.icon,
@@ -55,6 +58,7 @@ class _DrawerSubItem {
     required this.onTap,
     // ignore: unused_element_parameter
     this.trailing,
+    this.screenType,
   });
 }
 
@@ -92,6 +96,21 @@ class _AppDrawerState extends State<AppDrawer> {
     });
   }
 
+  /// Sube el árbol de widgets para detectar si la screen actual
+  /// es del tipo [screenType] — funciona sin named routes.
+  bool _checkAncestor(BuildContext context, Type? screenType) {
+    if (screenType == null) return false;
+    bool found = false;
+    context.visitAncestorElements((element) {
+      if (element.widget.runtimeType == screenType) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    return found;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -117,6 +136,8 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
+                    screenType:
+                        widget.isAdmin ? CatalogoScreen : CustomerCatalogScreen,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushReplacement(
@@ -137,6 +158,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.bar_chart_rounded,
                     title: 'Dashboard',
+                    screenType: DashboardScreen,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -154,6 +176,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.shopping_cart_outlined,
                       title: 'Mi Carrito',
+                      screenType: CartScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -179,6 +202,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerItem(
                           icon: Icons.receipt_long_rounded,
                           title: 'Pedidos',
+                          screenType: OrdersScreen,
                           trailing: count > 0 ? _buildBadge(count) : null,
                           onTap: () {
                             Navigator.pop(context);
@@ -204,6 +228,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.grid_view_rounded,
                           title: 'Inventario',
+                          screenType: InventoryScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -217,6 +242,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.article_outlined,
                           title: 'Kardex',
+                          screenType: KardexScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -230,6 +256,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.add_rounded,
                           title: 'Registro Entrada',
+                          screenType: InventoryEntryScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -243,6 +270,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.remove_rounded,
                           title: 'Registro Salida',
+                          screenType: InventoryExitScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -257,23 +285,6 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
                   ),
 
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: 'Cuentas',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FinancialAccountsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
                   _buildExpandableItem(
                     context,
                     _DrawerItem(
@@ -283,6 +294,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.person_outline_rounded,
                           title: 'Clientes',
+                          screenType: CustomersScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -296,6 +308,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.credit_score_rounded,
                           title: 'Créditos',
+                          screenType: AdminCreditsScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
@@ -313,8 +326,27 @@ class _AppDrawerState extends State<AppDrawer> {
                   _buildItem(
                     context,
                     _DrawerItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Cuentas',
+                      screenType: FinancialAccountsScreen,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FinancialAccountsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
                       icon: Icons.local_shipping_outlined,
                       title: 'Proveedores',
+                      screenType: AdminSuppliersScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -332,6 +364,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.category_outlined,
                       title: 'Categorías',
+                      screenType: CategoriesManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -349,6 +382,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.warehouse_outlined,
                       title: 'Almacenes',
+                      screenType: WarehousesManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -365,6 +399,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.people_outline_rounded,
                       title: 'Usuarios',
+                      screenType: UsersManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -382,6 +417,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.storefront_rounded,
                       title: 'Negocio',
+                      screenType: BusinessInfoScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -399,6 +435,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.stars_rounded,
                       title: 'Monedas',
+                      screenType: PointsSettingsScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -426,6 +463,7 @@ class _AppDrawerState extends State<AppDrawer> {
               _DrawerItem(
                 icon: Icons.account_circle_outlined,
                 title: 'Mi Perfil',
+                screenType: ProfileScreen,
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -450,18 +488,24 @@ class _AppDrawerState extends State<AppDrawer> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildItem(BuildContext context, _DrawerItem item) {
+    final active = _checkAncestor(context, item.screenType);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: ListTile(
-        leading: Icon(item.icon, color: AppColors.textSecondary, size: 22),
+        leading: Icon(
+          item.icon,
+          color: active ? AppColors.primary : AppColors.textSecondary,
+          size: 22,
+        ),
         title: Text(
           item.title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: active ? AppColors.primary : AppColors.textPrimary,
             fontSize: 15,
-            fontWeight: FontWeight.w600,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w600,
           ),
         ),
+        tileColor: active ? AppColors.primary.withValues(alpha: 0.08) : null,
         trailing: item.trailing,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         splashColor: AppColors.primary.withValues(alpha: 0.1),
@@ -473,7 +517,18 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Widget _buildExpandableItem(BuildContext context, _DrawerItem item) {
-    final isOpen = _expanded.contains(item.title);
+    // Si algún sub-ítem es la pantalla activa, auto-expandir el grupo
+    final hasActiveChild = item.children.any(
+      (sub) => _checkAncestor(context, sub.screenType),
+    );
+    if (hasActiveChild && !_expanded.contains(item.title)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_expanded.contains(item.title)) {
+          setState(() => _expanded.add(item.title));
+        }
+      });
+    }
+    final isOpen = _expanded.contains(item.title) || hasActiveChild;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -595,20 +650,42 @@ class _SubItemTile extends StatelessWidget {
   final _DrawerSubItem item;
   const _SubItemTile({required this.item});
 
+  bool _checkAncestor(BuildContext context, Type? screenType) {
+    if (screenType == null) return false;
+    bool found = false;
+    context.visitAncestorElements((element) {
+      if (element.widget.runtimeType == screenType) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    return found;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final active = _checkAncestor(context, item.screenType);
     return Padding(
       padding: const EdgeInsets.only(left: 8, right: 0, top: 2, bottom: 2),
       child: ListTile(
-        leading: Icon(item.icon, color: AppColors.primary, size: 20),
+        leading: Icon(
+          item.icon,
+          color:
+              active
+                  ? AppColors.primary
+                  : AppColors.primary.withValues(alpha: 0.55),
+          size: 20,
+        ),
         title: Text(
           item.title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: active ? AppColors.primary : AppColors.textPrimary,
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
+        tileColor: active ? AppColors.primary.withValues(alpha: 0.08) : null,
         trailing: item.trailing,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         splashColor: AppColors.primary.withValues(alpha: 0.1),

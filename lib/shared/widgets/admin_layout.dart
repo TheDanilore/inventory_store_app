@@ -217,27 +217,105 @@ class _SettingsMenuButton extends StatelessWidget {
   }
 }
 
-/// Avatar / botón de perfil
-class _ProfileAvatar extends StatelessWidget {
+/// Avatar / botón de perfil — carga la foto real del usuario
+class _ProfileAvatar extends StatefulWidget {
   final VoidCallback onTap;
   const _ProfileAvatar({required this.onTap});
 
   @override
+  State<_ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends State<_ProfileAvatar> {
+  String? _avatarUrl;
+  String? _initials;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final authUser = Supabase.instance.client.auth.currentUser;
+      if (authUser == null) return;
+      final data =
+          await Supabase.instance.client
+              .from('profiles')
+              .select('full_name, avatar_url')
+              .eq('auth_user_id', authUser.id)
+              .maybeSingle();
+      if (!mounted || data == null) return;
+      final name = (data['full_name'] as String?)?.trim() ?? '';
+      final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
+      final initials =
+          parts.length >= 2
+              ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+              : name.isNotEmpty
+              ? name[0].toUpperCase()
+              : '?';
+      setState(() {
+        _avatarUrl = data['avatar_url'] as String?;
+        _initials = initials;
+        _loaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loaded = true);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
           gradient: const LinearGradient(
             colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: _buildContent(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (!_loaded) {
+      // Mientras carga: ícono placeholder
+      return const Icon(Icons.person_rounded, size: 20, color: Colors.white);
+    }
+    if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
+      return Image.network(
+        _avatarUrl!,
+        fit: BoxFit.cover,
+        width: 38,
+        height: 38,
+        errorBuilder: (_, __, ___) => _initialsWidget(),
+      );
+    }
+    return _initialsWidget();
+  }
+
+  Widget _initialsWidget() {
+    return Center(
+      child: Text(
+        _initials ?? '?',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+        ),
       ),
     );
   }

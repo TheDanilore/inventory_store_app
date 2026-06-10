@@ -2329,62 +2329,83 @@ class CatalogGrid extends StatelessWidget {
     final end = (start + pageSize) > total ? total : (start + pageSize);
     final pageItems = products.sublist(start, end);
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(
-            children: [
-              Text(
-                'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
+    // Usamos LayoutBuilder para leer el ancho exacto asignado a la vista
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        int crossAxisCount = 2; // Por defecto móvil
+        double aspectRatio = 0.70;
+
+        if (constraints.maxWidth >= 1024) {
+          crossAxisCount = 5; // Laptops / PCs
+          aspectRatio =
+              1; // <--- CAMBIA ESTO (Antes 0.75). Prueba valores entre 1.0 y 1.2
+        } else if (constraints.maxWidth >= 600) {
+          crossAxisCount = 3; // Tablets
+          aspectRatio = 0.85; // <--- SÚBELO UN POCO TAMBIÉN (Antes 0.72)
+        } else {
+          crossAxisCount = 2; // Móvil
+          aspectRatio =
+              0.80; // Se queda igual para que se vea alargado en celis
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Pág. ${safeCurrentPage + 1} / $totalPages',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const Spacer(),
-              Text(
-                'Pág. ${safeCurrentPage + 1} / $totalPages',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.70,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
             ),
-            itemCount: pageItems.length,
-            itemBuilder: (context, index) {
-              final product = pageItems[index];
-              return AdminProductCard(
-                product: product,
-                onSale: () => onSale(product),
-                onToggleActive: () => onToggleActive(product),
-                onEdit: () => onEdit(product),
-                highlightIngredient: searchByIngredient ? searchTerm : null,
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-          child: AdminPageBlocks(
-            currentPage: safeCurrentPage,
-            totalPages: totalPages,
-            onPageChanged: onPageChanged,
-          ),
-        ),
-      ],
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: aspectRatio,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemCount: pageItems.length,
+                itemBuilder: (context, index) {
+                  final product = pageItems[index];
+                  return AdminProductCard(
+                    product: product,
+                    onSale: () => onSale(product),
+                    onToggleActive: () => onToggleActive(product),
+                    onEdit: () => onEdit(product),
+                    highlightIngredient: searchByIngredient ? searchTerm : null,
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+              child: AdminPageBlocks(
+                currentPage: safeCurrentPage,
+                totalPages: totalPages,
+                onPageChanged: onPageChanged,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

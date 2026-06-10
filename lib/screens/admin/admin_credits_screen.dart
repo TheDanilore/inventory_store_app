@@ -961,19 +961,43 @@ class _CreditAccountModalState extends State<_CreditAccountModal> {
 
     setState(() => _isSearching = true);
     try {
+      // 1. Obtener IDs de perfiles que ya tienen línea de crédito
+      //    (excluyendo el perfil que se está editando actualmente, si aplica)
+      final existingCredits = await _supabase
+          .from('customer_credits')
+          .select('profile_id');
+
+      final existingProfileIds =
+          (existingCredits as List)
+              .map((e) => e['profile_id'] as String)
+              .where(
+                (id) =>
+                    id != (_isEditing ? widget.accountToEdit!.profileId : null),
+              )
+              .toSet();
+
+      // 2. Buscar clientes normalmente
       final response = await _supabase
           .from('profiles')
           .select('id, full_name, document_number, document_type, phone')
-          .eq('role', 'customer') // ← solo clientes
+          .eq('role', 'customer')
           .eq('is_active', true)
           .or(
             'full_name.ilike.%$text%,document_number.ilike.%$text%,phone.ilike.%$text%',
           )
-          .limit(6);
+          .limit(20); // traemos más para compensar el filtro local
+
+      // 3. Excluir los que ya tienen crédito
+      final filtered =
+          (response as List)
+              .cast<Map<String, dynamic>>()
+              .where((p) => !existingProfileIds.contains(p['id'] as String))
+              .take(6)
+              .toList();
 
       if (mounted) {
         setState(() {
-          _matches = List<Map<String, dynamic>>.from(response);
+          _matches = filtered;
           _isSearching = false;
         });
       }
@@ -1626,7 +1650,10 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
         'amount': amount,
         // Guardamos el nombre de la cuenta como payment_method (ej: "Yape", "BCP")
         'payment_method': _selectedAccount!.paymentMethodLabel,
-        'notes': _notesCtrl.text.trim().isEmpty ? "Abono registrado desde Admin Credits" : _notesCtrl.text.trim(),
+        'notes':
+            _notesCtrl.text.trim().isEmpty
+                ? "Abono registrado desde Admin Credits"
+                : _notesCtrl.text.trim(),
         if (adminProfileId != null) 'created_by': adminProfileId,
       });
 
