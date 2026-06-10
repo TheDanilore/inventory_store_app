@@ -49,7 +49,19 @@ class _BatchAssignment {
 }
 
 class AdminPosCheckoutScreen extends StatefulWidget {
-  const AdminPosCheckoutScreen({super.key});
+  /// Cuando es [true] el widget se renderiza sin [AdminLayout] (sin AppBar
+  /// propio) para poder embeberse en el panel derecho del split-POS.
+  final bool embeddedMode;
+
+  /// Callback que se ejecuta cuando la venta se completa exitosamente.
+  /// El split-POS lo usa para refrescar el catálogo y actualizar stocks.
+  final VoidCallback? onSaleCompleted;
+
+  const AdminPosCheckoutScreen({
+    super.key,
+    this.embeddedMode = false,
+    this.onSaleCompleted,
+  });
 
   @override
   State<AdminPosCheckoutScreen> createState() => _AdminPosCheckoutScreenState();
@@ -736,7 +748,10 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
 
       pos.clearPos();
-      if (mounted) Navigator.pop(context, true);
+      widget.onSaleCompleted?.call();
+      // En modo embebido no hay ruta a hacer pop; el panel simplemente queda
+      // en pantalla listo para la siguiente venta.
+      if (mounted && !widget.embeddedMode) Navigator.pop(context, true);
     } catch (e) {
       // ignore: use_build_context_synchronously
       AppSnackbar.show(context, message: 'Error: $e', type: SnackbarType.error);
@@ -883,411 +898,410 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         !creditoSinCliente &&
         !noCajaAbierta;
 
+    // En modo embebido (split-POS) prescindimos de AdminLayout para no
+    // duplicar AppBar ni padding de Scaffold. El layout ya lo provee el panel.
+    final bodyContent =
+        _isProcessingSale
+            ? const _ProcessingOverlay()
+            : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── 1. PRODUCTOS EN CAJA ──────────────────────────────
+                  _SectionLabel(
+                    icon: Icons.shopping_cart_rounded,
+                    label: 'Productos en caja',
+                    trailing: Text(
+                      '${pos.itemCount} item${pos.itemCount != 1 ? "s" : ""}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.teal,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _CartItemsList(
+                    pos: pos,
+                    batchOverrides:
+                        Map<String, List<_BatchAssignment>>.fromEntries(
+                          pos.batchOverrides.entries
+                              .where((e) => e.value.isNotEmpty)
+                              .map(
+                                (e) => MapEntry(
+                                  e.key,
+                                  e.value.cast<_BatchAssignment>(),
+                                ),
+                              ),
+                        ),
+                    onEditBatches: _showBatchEditSheet,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── 2. CLIENTE ────────────────────────────────────────
+                  _SectionLabel(
+                    icon: Icons.person_search_rounded,
+                    label: 'Cliente',
+                    trailing: const Text(
+                      'Opcional',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  AdminSaleClientSection(
+                    controller: _clienteCtrl,
+                    onSearchChanged: _onClientSearchChanged,
+                    searching: _searchingClients,
+                    matches: _clientMatches,
+                    selectedClientId: pos.selectedClientId,
+                    onClientTap: _selectClient,
+                    saldoActualCliente: pos.saldoActualCliente,
+                    creditInfo: _creditInfo,
+                    isCredito: isCredito,
+                  ),
+
+                  // ── 3. PUNTOS ─────────────────────────────────────────
+                  AdminSalePointsSection(
+                    show:
+                        pos.selectedClientId != null &&
+                        pos.saldoActualCliente > 0 &&
+                        !isCredito,
+                    saldoActualCliente: pos.saldoActualCliente,
+                    maxPuntosAplicables: _maxPuntosAplicables(
+                      pos,
+                      pointsToSolesRatio,
+                    ),
+                    pointsToSolesRatio: pointsToSolesRatio,
+                    pointsController: _puntosCtrl,
+                    onPointsChanged: (p) {
+                      final next = _clampPointsValue(
+                        p,
+                        pos,
+                        pointsToSolesRatio,
+                      );
+                      pos.setPuntosAUsar(next);
+                      _puntosCtrl.value = TextEditingValue(
+                        text: next.toString(),
+                        selection: TextSelection.collapsed(
+                          offset: next.toString().length,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── 4. PAGO Y ALMACÉN Y CUENTA ─────────────────────────
+                  const _SectionLabel(
+                    icon: Icons.tune_rounded,
+                    label: 'Configuración de venta',
+                  ),
+                  const SizedBox(height: 8),
+                  _PaymentWarehouseAccountCard(
+                    paymentMethod: pos.paymentMethod,
+                    warehouseList: _warehouseList,
+                    selectedWarehouseId: pos.selectedWarehouseId,
+                    accountsList: _accountsList,
+                    selectedAccountId: _selectedAccountId,
+                    activeShift: _activeShift,
+                    isCredito: isCredito,
+                    onCreditoToggle: (isCredito) {
+                      final pos = context.read<PosProvider>();
+                      if (isCredito) {
+                        pos.setPaymentMethod('CRÉDITO');
+                        pos.setPuntosAUsar(0);
+                        _puntosCtrl.text = '0';
+                      } else {
+                        // Volver al nombre exacto de la cuenta seleccionada
+                        if (_selectedAccountId != null) {
+                          final acc = _accountsList.firstWhere(
+                            (a) => a['id'] == _selectedAccountId,
+                            orElse: () => {},
+                          );
+                          final accName = acc['name'] as String? ?? 'EFECTIVO';
+                          pos.setPaymentMethod(accName);
+                        } else {
+                          pos.setPaymentMethod('EFECTIVO');
+                        }
+                      }
+                      setState(() {});
+                    },
+                    onWarehouseChanged: (v) => pos.setWarehouse(v),
+                    onAccountChanged: (v) {
+                      setState(() => _selectedAccountId = v);
+                      if (v != null) {
+                        final acc = _accountsList.firstWhere(
+                          (a) => a['id'] == v,
+                          orElse: () => {},
+                        );
+                        final accName = acc['name'] as String? ?? 'OTRO';
+                        // Siempre asignamos el nombre exacto de la cuenta seleccionada
+                        pos.setPaymentMethod(accName);
+                      }
+                      _checkActiveShift();
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── AVISO DE CRÉDITO ──────────────────────────────────
+                  if (isCredito)
+                    _CreditWarningCard(
+                      clienteSeleccionado: pos.selectedClientId != null,
+                      creditActivo: _creditActivo,
+                      creditDisponible: _creditDisponible,
+                      totalFinal: totalFinal,
+                      creditInfo: _creditInfo,
+                    ),
+                  if (isCredito) const SizedBox(height: 20),
+
+                  // ── DESCUENTO EXTRA (ocultar en crédito) ─────────────
+                  if (!isCredito)
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppColors.radius),
+                        border: Border.all(
+                          color:
+                              descuentoExcedido
+                                  ? AppColors.danger
+                                  : AppColors.border,
+                        ),
+                        boxShadow: AppColors.cardShadow(),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _SectionLabel(
+                            icon: Icons.discount_rounded,
+                            label: 'Descuento extra',
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.bg,
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusSm + 2,
+                                    ),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: TextField(
+                                    controller: _descuentoCtrl,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    onChanged: (_) => setState(() {}),
+                                    decoration: const InputDecoration(
+                                      hintText: '0.00',
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 1,
+                                child: Container(
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.bg,
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusSm + 2,
+                                    ),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap:
+                                              () => setState(
+                                                () =>
+                                                    _isDiscountPercentage =
+                                                        false,
+                                              ),
+                                          child: Container(
+                                            color:
+                                                !_isDiscountPercentage
+                                                    ? AppColors.teal.withValues(
+                                                      alpha: 0.1,
+                                                    )
+                                                    : Colors.transparent,
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'S/',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color:
+                                                    !_isDiscountPercentage
+                                                        ? AppColors.teal
+                                                        : AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        color: AppColors.border,
+                                      ),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap:
+                                              () => setState(
+                                                () =>
+                                                    _isDiscountPercentage =
+                                                        true,
+                                              ),
+                                          child: Container(
+                                            color:
+                                                _isDiscountPercentage
+                                                    ? AppColors.teal.withValues(
+                                                      alpha: 0.1,
+                                                    )
+                                                    : Colors.transparent,
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              '%',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color:
+                                                    _isDiscountPercentage
+                                                        ? AppColors.teal
+                                                        : AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (descuentoExcedido)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.warning_rounded,
+                                    size: 14,
+                                    color: AppColors.danger,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'No puede superar los S/ ${(pos.totalAmount - (puntosSeguros * pointsToSolesRatio)).toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        color: AppColors.danger,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  if (!isCredito) const SizedBox(height: 16),
+
+                  // ── 5. RESUMEN TOTAL ──────────────────────────────────
+                  AdminSaleTotalSummarySection(
+                    subtotalAntesDePuntos: pos.totalAmount,
+                    puntosAplicables: isCredito ? 0 : puntosSeguros,
+                    descuentoPuntos:
+                        isCredito ? 0 : puntosSeguros * pointsToSolesRatio,
+                    descuentoExtra:
+                        isCredito ? 0 : _getCustomDiscountAmount(pos),
+                    totalFinal: totalFinal,
+                    pointsToSolesRatio: pointsToSolesRatio,
+                    earningRate: earningRate,
+                    isCredito: isCredito,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── 6. BOTONES DE ACCIÓN ──────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AdminSaleConfirmButton(
+                          loading: _isProcessingSale,
+                          enabled: puedeVender,
+                          label:
+                              isCredito
+                                  ? 'Vender a crédito'
+                                  : 'Confirmar venta',
+                          onPressed: () => _processSale(pos, isDraft: false),
+                        ),
+                      ),
+                      if (!isCredito) ...[
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: Tooltip(
+                            message: 'Guardar borrador',
+                            child: OutlinedButton(
+                              onPressed:
+                                  (_isProcessingSale ||
+                                          pos.itemCount == 0 ||
+                                          descuentoExcedido)
+                                      ? null
+                                      : () => _processSale(pos, isDraft: true),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.teal,
+                                padding: EdgeInsets.zero,
+                                side: BorderSide(
+                                  color: AppColors.teal.withValues(alpha: 0.4),
+                                  width: 1.5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radius,
+                                  ),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.save_as_rounded,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            );
+
+    if (widget.embeddedMode) {
+      // Modo split: devolvemos el contenido directamente con fondo y padding
+      return ColoredBox(color: AppColors.background, child: bodyContent);
+    }
+
     return AdminLayout(
       title: 'Caja POS',
       showBackButton: true,
-      body:
-          _isProcessingSale
-              ? const _ProcessingOverlay()
-              : SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── 1. PRODUCTOS EN CAJA ──────────────────────────────
-                    _SectionLabel(
-                      icon: Icons.shopping_cart_rounded,
-                      label: 'Productos en caja',
-                      trailing: Text(
-                        '${pos.itemCount} item${pos.itemCount != 1 ? "s" : ""}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.teal,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _CartItemsList(
-                      pos: pos,
-                      batchOverrides:
-                          Map<String, List<_BatchAssignment>>.fromEntries(
-                            pos.batchOverrides.entries
-                                .where((e) => e.value.isNotEmpty)
-                                .map(
-                                  (e) => MapEntry(
-                                    e.key,
-                                    e.value.cast<_BatchAssignment>(),
-                                  ),
-                                ),
-                          ),
-                      onEditBatches: _showBatchEditSheet,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── 2. CLIENTE ────────────────────────────────────────
-                    _SectionLabel(
-                      icon: Icons.person_search_rounded,
-                      label: 'Cliente',
-                      trailing: const Text(
-                        'Opcional',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    AdminSaleClientSection(
-                      controller: _clienteCtrl,
-                      onSearchChanged: _onClientSearchChanged,
-                      searching: _searchingClients,
-                      matches: _clientMatches,
-                      selectedClientId: pos.selectedClientId,
-                      onClientTap: _selectClient,
-                      saldoActualCliente: pos.saldoActualCliente,
-                      creditInfo: _creditInfo,
-                      isCredito: isCredito,
-                    ),
-
-                    // ── 3. PUNTOS ─────────────────────────────────────────
-                    AdminSalePointsSection(
-                      show:
-                          pos.selectedClientId != null &&
-                          pos.saldoActualCliente > 0 &&
-                          !isCredito,
-                      saldoActualCliente: pos.saldoActualCliente,
-                      maxPuntosAplicables: _maxPuntosAplicables(
-                        pos,
-                        pointsToSolesRatio,
-                      ),
-                      pointsToSolesRatio: pointsToSolesRatio,
-                      pointsController: _puntosCtrl,
-                      onPointsChanged: (p) {
-                        final next = _clampPointsValue(
-                          p,
-                          pos,
-                          pointsToSolesRatio,
-                        );
-                        pos.setPuntosAUsar(next);
-                        _puntosCtrl.value = TextEditingValue(
-                          text: next.toString(),
-                          selection: TextSelection.collapsed(
-                            offset: next.toString().length,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── 4. PAGO Y ALMACÉN Y CUENTA ─────────────────────────
-                    const _SectionLabel(
-                      icon: Icons.tune_rounded,
-                      label: 'Configuración de venta',
-                    ),
-                    const SizedBox(height: 8),
-                    _PaymentWarehouseAccountCard(
-                      paymentMethod: pos.paymentMethod,
-                      warehouseList: _warehouseList,
-                      selectedWarehouseId: pos.selectedWarehouseId,
-                      accountsList: _accountsList,
-                      selectedAccountId: _selectedAccountId,
-                      activeShift: _activeShift,
-                      isCredito: isCredito,
-                      onCreditoToggle: (isCredito) {
-                        final pos = context.read<PosProvider>();
-                        if (isCredito) {
-                          pos.setPaymentMethod('CRÉDITO');
-                          pos.setPuntosAUsar(0);
-                          _puntosCtrl.text = '0';
-                        } else {
-                          // Volver al nombre exacto de la cuenta seleccionada
-                          if (_selectedAccountId != null) {
-                            final acc = _accountsList.firstWhere(
-                              (a) => a['id'] == _selectedAccountId,
-                              orElse: () => {},
-                            );
-                            final accName =
-                                acc['name'] as String? ?? 'EFECTIVO';
-                            pos.setPaymentMethod(accName);
-                          } else {
-                            pos.setPaymentMethod('EFECTIVO');
-                          }
-                        }
-                        setState(() {});
-                      },
-                      onWarehouseChanged: (v) => pos.setWarehouse(v),
-                      onAccountChanged: (v) {
-                        setState(() => _selectedAccountId = v);
-                        if (v != null) {
-                          final acc = _accountsList.firstWhere(
-                            (a) => a['id'] == v,
-                            orElse: () => {},
-                          );
-                          final accName = acc['name'] as String? ?? 'OTRO';
-                          // Siempre asignamos el nombre exacto de la cuenta seleccionada
-                          pos.setPaymentMethod(accName);
-                        }
-                        _checkActiveShift();
-                      },
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── AVISO DE CRÉDITO ──────────────────────────────────
-                    if (isCredito)
-                      _CreditWarningCard(
-                        clienteSeleccionado: pos.selectedClientId != null,
-                        creditActivo: _creditActivo,
-                        creditDisponible: _creditDisponible,
-                        totalFinal: totalFinal,
-                        creditInfo: _creditInfo,
-                      ),
-                    if (isCredito) const SizedBox(height: 20),
-
-                    // ── DESCUENTO EXTRA (ocultar en crédito) ─────────────
-                    if (!isCredito)
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppColors.radius),
-                          border: Border.all(
-                            color:
-                                descuentoExcedido
-                                    ? AppColors.danger
-                                    : AppColors.border,
-                          ),
-                          boxShadow: AppColors.cardShadow(),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const _SectionLabel(
-                              icon: Icons.discount_rounded,
-                              label: 'Descuento extra',
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.bg,
-                                      borderRadius: BorderRadius.circular(
-                                        AppColors.radiusSm + 2,
-                                      ),
-                                      border: Border.all(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    child: TextField(
-                                      controller: _descuentoCtrl,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
-                                      onChanged: (_) => setState(() {}),
-                                      decoration: const InputDecoration(
-                                        hintText: '0.00',
-                                        border: InputBorder.none,
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 1,
-                                  child: Container(
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.bg,
-                                      borderRadius: BorderRadius.circular(
-                                        AppColors.radiusSm + 2,
-                                      ),
-                                      border: Border.all(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: GestureDetector(
-                                            onTap:
-                                                () => setState(
-                                                  () =>
-                                                      _isDiscountPercentage =
-                                                          false,
-                                                ),
-                                            child: Container(
-                                              color:
-                                                  !_isDiscountPercentage
-                                                      ? AppColors.teal
-                                                          .withValues(
-                                                            alpha: 0.1,
-                                                          )
-                                                      : Colors.transparent,
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                'S/',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color:
-                                                      !_isDiscountPercentage
-                                                          ? AppColors.teal
-                                                          : AppColors.textMuted,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 1,
-                                          color: AppColors.border,
-                                        ),
-                                        Expanded(
-                                          child: GestureDetector(
-                                            onTap:
-                                                () => setState(
-                                                  () =>
-                                                      _isDiscountPercentage =
-                                                          true,
-                                                ),
-                                            child: Container(
-                                              color:
-                                                  _isDiscountPercentage
-                                                      ? AppColors.teal
-                                                          .withValues(
-                                                            alpha: 0.1,
-                                                          )
-                                                      : Colors.transparent,
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                '%',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color:
-                                                      _isDiscountPercentage
-                                                          ? AppColors.teal
-                                                          : AppColors.textMuted,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (descuentoExcedido)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.warning_rounded,
-                                      size: 14,
-                                      color: AppColors.danger,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        'No puede superar los S/ ${(pos.totalAmount - (puntosSeguros * pointsToSolesRatio)).toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          color: AppColors.danger,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    if (!isCredito) const SizedBox(height: 16),
-
-                    // ── 5. RESUMEN TOTAL ──────────────────────────────────
-                    AdminSaleTotalSummarySection(
-                      subtotalAntesDePuntos: pos.totalAmount,
-                      puntosAplicables: isCredito ? 0 : puntosSeguros,
-                      descuentoPuntos:
-                          isCredito ? 0 : puntosSeguros * pointsToSolesRatio,
-                      descuentoExtra:
-                          isCredito ? 0 : _getCustomDiscountAmount(pos),
-                      totalFinal: totalFinal,
-                      pointsToSolesRatio: pointsToSolesRatio,
-                      earningRate: earningRate,
-                      isCredito: isCredito,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── 6. BOTONES DE ACCIÓN ──────────────────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AdminSaleConfirmButton(
-                            loading: _isProcessingSale,
-                            enabled: puedeVender,
-                            label:
-                                isCredito
-                                    ? 'Vender a crédito'
-                                    : 'Confirmar venta',
-                            onPressed: () => _processSale(pos, isDraft: false),
-                          ),
-                        ),
-                        if (!isCredito) ...[
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 56,
-                            height: 56,
-                            child: Tooltip(
-                              message: 'Guardar borrador',
-                              child: OutlinedButton(
-                                onPressed:
-                                    (_isProcessingSale ||
-                                            pos.itemCount == 0 ||
-                                            descuentoExcedido)
-                                        ? null
-                                        : () =>
-                                            _processSale(pos, isDraft: true),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.teal,
-                                  padding: EdgeInsets.zero,
-                                  side: BorderSide(
-                                    color: AppColors.teal.withValues(
-                                      alpha: 0.4,
-                                    ),
-                                    width: 1.5,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radius,
-                                    ),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.save_as_rounded,
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+      body: bodyContent,
     );
   }
 }
