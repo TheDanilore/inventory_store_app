@@ -53,6 +53,7 @@ class _DrawerSubItem {
     required this.icon,
     required this.title,
     required this.onTap,
+    // ignore: unused_element_parameter
     this.trailing,
   });
 }

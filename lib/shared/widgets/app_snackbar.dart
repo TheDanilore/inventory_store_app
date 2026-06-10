@@ -81,7 +81,6 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   
   bool _isDismissedBySwipe = false;
   bool _isBeingPressed = false; // Rastrea si el usuario está tocando la alerta
-  DateTime? _endTime; // Almacena el momento exacto en el que debía cerrar
 
   @override
   void initState() {
@@ -111,7 +110,6 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
 
   // Configura el temporizador de cierre automático
   void _startAutoDismissTimer(Duration duration) {
-    _endTime = DateTime.now().add(duration);
     
     Future.delayed(duration, () async {
       // Solo procede si sigue montado, nadie lo arrastró y no está siendo retenido por el dedo

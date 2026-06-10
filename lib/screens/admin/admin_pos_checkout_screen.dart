@@ -789,8 +789,10 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
       return;
     }
-
     if (batches.isEmpty) {
+      // Usa la propiedad nativa del State directamente
+      if (!mounted) return;
+
       AppSnackbar.show(
         context,
         message: 'No hay lotes con stock para este producto.',

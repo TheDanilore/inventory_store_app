@@ -44,10 +44,10 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen>
   String? _productsError;
 
   // Recomendaciones
-  List<ProductModel> _recommended = [];
-  List<ProductModel> _topSelling = [];
-  bool _loadingRecs = false;
-  bool _loadingTop = false;
+  final List<ProductModel> _recommended = [];
+  final List<ProductModel> _topSelling = [];
+  final bool _loadingRecs = false;
+  final bool _loadingTop = false;
 
   static const Map<String, IconData> _categoryIcons = {
     'Bebidas': Icons.local_drink_outlined,

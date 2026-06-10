@@ -634,8 +634,9 @@ class _MovementFormSheetState extends State<_MovementFormSheet> {
               decoration: _inputDeco('0.00').copyWith(prefixText: 'S/ '),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Ingresa un monto';
-                if ((double.tryParse(v.replaceAll(',', '.')) ?? 0) <= 0)
+                if ((double.tryParse(v.replaceAll(',', '.')) ?? 0) <= 0) {
                   return 'Monto inválido';
+                }
                 return null;
               },
             ),

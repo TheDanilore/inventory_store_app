@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_image_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/models/warehouse_stock_batch_model.dart';

@@ -388,18 +388,15 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                                   color: AppColors.textMuted,
                                 ),
                               ),
-                              onChanged:
-                                  productId == null
-                                      ? null
-                                      : (checked) {
-                                        setLocalState(() {
-                                          if (checked == true) {
-                                            selectedIds.add(productId);
-                                          } else {
-                                            selectedIds.remove(productId);
-                                          }
-                                        });
-                                      },
+                              onChanged: (checked) {
+                                setLocalState(() {
+                                  if (checked == true) {
+                                    selectedIds.add(productId);
+                                  } else {
+                                    selectedIds.remove(productId);
+                                  }
+                                });
+                              },
                             );
                           },
                         ),
@@ -674,10 +671,8 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                             ),
                             ...variants.map((variant) {
                               final variantId = variant.id;
-                              final stock =
-                                  variantId == null
-                                      ? 0
-                                      : (stockByVariant[variantId] ?? 0);
+                              final stock = stockByVariant[variantId] ?? 0;
+
                               final variantPrice =
                                   variant.salePrice ?? product.salePrice;
                               return pw.TableRow(

@@ -127,7 +127,9 @@ class _PointsScreenState extends State<PointsScreen> {
     final config      = context.read<AppConfigProvider>();
     final boxesLimit  = config.getDouble('boxes_daily_limit', 1).round();
     if (_profileId == null || _boxesPlaysToday >= boxesLimit ||
-        _isPlayingMiniGame || _isPreparingBoxes) return;
+        _isPlayingMiniGame || _isPreparingBoxes) {
+      return;
+    }
 
     final previewBoxes  = _buildMiniGameBoxes(config);
     final shuffledBoxes = List<int>.from(previewBoxes)..shuffle(_random);
@@ -317,7 +319,9 @@ class _PointsScreenState extends State<PointsScreen> {
     final config     = context.read<AppConfigProvider>();
     final boxesLimit = config.getDouble('boxes_daily_limit', 1).round();
     if (_profileId == null || _boxesPlaysToday >= boxesLimit ||
-        _isPlayingMiniGame || !_boxesRoundReady) return;
+        _isPlayingMiniGame || !_boxesRoundReady) {
+      return;
+    }
     if (boxIndex < 0 || boxIndex >= _miniGameBoxes.length) return;
 
     setState(() => _isPlayingMiniGame = true);

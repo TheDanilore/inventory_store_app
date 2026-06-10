@@ -797,27 +797,27 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                               fontSize: 12,
                             ),
                           ),
-                          if (order.warehouseName != null) ...[
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.store_outlined,
-                                  size: 12,
+                          ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.store_outlined,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                order.warehouseName,
+                                style: const TextStyle(
                                   color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  order.warehouseName!,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
+                        ],
                         ],
                       ),
                     ),

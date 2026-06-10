@@ -1323,6 +1323,7 @@ class _CartScreenState extends State<CartScreen> {
       if (outOfStockMessages.isNotEmpty) {
         if (mounted) {
           showDialog(
+            // ignore: use_build_context_synchronously
             context: context,
             builder:
                 (ctx) => AlertDialog(

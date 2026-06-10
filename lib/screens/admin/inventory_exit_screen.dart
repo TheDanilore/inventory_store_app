@@ -991,8 +991,9 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                     isRemove: true,
                     isDisabled: item.quantity <= 1,
                     onTap: () {
-                      if (item.quantity > 1)
+                      if (item.quantity > 1) {
                         setState(() => _items[index].quantity--);
+                      }
                     },
                   ),
                   const SizedBox(width: 6),

@@ -645,6 +645,7 @@ class _FormularioScreenState extends State<FormularioScreen> {
       _removedVariantIds.clear();
 
       // 3. Procesar Variantes y sus imágenes
+      // ignore: unused_local_variable
       String primaryVariantId = ''; // Variable clave para vincular lotes
 
       if (_variantDrafts.isEmpty) {
