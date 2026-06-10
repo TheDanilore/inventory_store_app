@@ -74,6 +74,7 @@ class AppColors {
   static const radius = 16.0;
   static const radiusSm = 8.0;
   static const radiusXl = 24.0;
+  static const radiusLg = 20.0;
 
   static const slate = Color(0xFF3D5168);
   static const slateLight = Color(0xFFDFE8F0);

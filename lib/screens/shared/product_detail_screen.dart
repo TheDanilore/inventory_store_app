@@ -47,6 +47,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<ProductImageModel> _images = [];
   List<ProductVariantModel> _variants = [];
   List<Map<String, dynamic>> _reviewsList = [];
+  List<Map<String, dynamic>> _activeIngredients = [];
 
   // Para Decisiones Rápidas
   int _totalSold = 0;
@@ -190,6 +191,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             .select('rating, comment, user_name, created_at')
             .eq('product_id', widget.product.id)
             .order('created_at', ascending: false),
+        _supabase
+            .from('product_active_ingredients')
+            .select(
+              'concentration, unit, active_ingredients(id, name, description)',
+            )
+            .eq('product_id', widget.product.id),
       ];
 
       // Se agrega el inner join para filtrar solo órdenes completadas
@@ -253,6 +260,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       final fetchedReviews = List<Map<String, dynamic>>.from(
         results[3] as List,
       );
+      final fetchedIngredients = List<Map<String, dynamic>>.from(
+        results[4] as List,
+      );
 
       double totalRating = 0;
       for (final r in fetchedReviews) {
@@ -263,8 +273,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       int soldUnits = 0;
       double reinvestment = 0.0;
 
-      if (widget.isAdmin && results.length > 4) {
-        final orderItemsData = results[4] as List<dynamic>;
+      if (widget.isAdmin && results.length > 5) {
+        final orderItemsData = results[5] as List<dynamic>;
         for (final row in orderItemsData) {
           final q = (row['quantity'] as num?)?.toInt() ?? 0;
           final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
@@ -281,6 +291,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _images = fetchedImages;
         _variants = fetchedVariants;
         _reviewsList = fetchedReviews;
+        _activeIngredients = fetchedIngredients;
         _averageRating =
             fetchedReviews.isEmpty ? 0.0 : totalRating / fetchedReviews.length;
 
@@ -1083,6 +1094,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
               ProductDetailsCard(details: mergedDetails),
               if (mergedDetails.isNotEmpty) const SizedBox(height: 16),
+
+              // ── INGREDIENTES ACTIVOS / COMPONENTES QUÍMICOS ──
+              if (_activeIngredients.isNotEmpty) ...[
+                _ActiveIngredientsCard(ingredients: _activeIngredients),
+                const SizedBox(height: 16),
+              ],
 
               ProductDescriptionCard(
                 description: widget.product.description ?? '',
@@ -2550,6 +2567,194 @@ class _CardHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── INGREDIENTES ACTIVOS / COMPONENTES QUÍMICOS ────────────────────────────
+
+class _ActiveIngredientsCard extends StatelessWidget {
+  final List<Map<String, dynamic>> ingredients;
+
+  const _ActiveIngredientsCard({required this.ingredients});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ──────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.science_rounded,
+                    size: 20,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Ingredientes Activos',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${ingredients.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          const SizedBox(height: 8),
+
+          // ── Lista de ingredientes ────────────────────────────────────────
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            itemCount: ingredients.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final item = ingredients[index];
+              final ingredient =
+                  item['active_ingredients'] as Map<String, dynamic>? ?? {};
+              final name = ingredient['name'] as String? ?? '—';
+              final description = ingredient['description'] as String?;
+              final concentration = item['concentration'];
+              final unit = item['unit'] as String?;
+
+              final hasConc = concentration != null;
+              final concText =
+                  hasConc
+                      ? '${(concentration as num).toStringAsFixed(concentration is int || (concentration) % 1 == 0 ? 0 : 2)}${unit != null ? ' $unit' : ''}'
+                      : null;
+
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE0E7FF), width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Bullet ícono
+                    Container(
+                      width: 28,
+                      height: 28,
+                      margin: const EdgeInsets.only(top: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.biotech_rounded,
+                        size: 14,
+                        color: Color(0xFF6366F1),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Nombre + descripción
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          if (description != null &&
+                              description.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              description,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    // Concentración (si tiene)
+                    if (concText != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          concText,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
