@@ -65,7 +65,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   List<Map<String, dynamic>> _accounts = []; // NUEVO: Cuentas financieras
 
   Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
-  Map<String, bool> _usesBatchesMap = {};
+  final Map<String, bool> _usesBatchesMap = {};
   final Map<String, List<BatchAssignment>> _batchOverrides = {};
 
   bool _isLoading = true;
