@@ -124,6 +124,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   }
 
   Map<String, dynamic>? _creditInfo;
+
   @override
   void initState() {
     super.initState();
@@ -142,7 +143,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     _customerSearchCtrl.dispose();
     _pointsUsedCtrl.dispose();
     _manualNameCtrl.dispose();
-    _pointsUsedCtrl.dispose();
     for (final controller in _quantityControllers) {
       controller.dispose();
     }
@@ -493,253 +493,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       (sum, item) =>
           sum + ((item.appliedPrice - item.unitCost) * item.quantity),
     );
-  }
-
-  // ─── DEVOLUCIÓN ────────────────────────────────────────────────────────────
-
-  Future<void> _confirmReturn() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.assignment_return_rounded,
-                  color: Colors.red.shade600,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Registrar Devolución',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: const Text(
-              'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\\n\\n'
-              '• Stock de productos devuelto al almacén\\n'
-              '• Monedas de fidelidad revertidas\\n'
-              '• Deuda de crédito ajustada (si aplica)\\n\\n'
-              '¿Deseas continuar?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.assignment_return_rounded, size: 18),
-                label: const Text('Confirmar Devolución'),
-                onPressed: () => Navigator.pop(ctx, true),
-              ),
-            ],
-          ),
-    );
-    if (confirmed == true && mounted) {
-      await _processReturn();
-    }
-  }
-
-  Future<void> _processReturn() async {
-    setState(() => _isReturning = true);
-    try {
-      final authUserId = _supabase.auth.currentUser?.id;
-      String? currentProfileId;
-      if (authUserId != null) {
-        final profileResp =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        if (profileResp != null) currentProfileId = profileResp['id'] as String;
-      }
-
-      final orderData =
-          await _supabase
-              .from('orders')
-              .select('warehouse_id, total_amount, payment_method, customer_id')
-              .eq('id', widget.order.id)
-              .single();
-
-      final warehouseId = orderData['warehouse_id'];
-      final origAmount = (orderData['total_amount'] as num).toDouble();
-      final origPaymentMethod = orderData['payment_method'] as String;
-      final origCustomerId = orderData['customer_id'] as String?;
-
-      // ─── Revertir stock ───
-      for (final item in _items) {
-        final safeVariantId = item.variantId ?? '';
-        final movs = await _supabase
-            .from('inventory_movements')
-            .select('quantity, stock_batch_id')
-            .eq('order_id', widget.order.id)
-            .eq('variant_id', safeVariantId)
-            .eq('reason', 'SALE');
-
-        for (final mov in (movs as List)) {
-          final batchId = mov['stock_batch_id'];
-          final qtyDeducted =
-              ((mov['quantity'] as num).toDouble()).abs().toInt();
-          if (batchId != null && qtyDeducted > 0) {
-            final batchResp =
-                await _supabase
-                    .from('warehouse_stock_batches')
-                    .select('available_quantity')
-                    .eq('id', batchId)
-                    .maybeSingle();
-            if (batchResp != null) {
-              final currentStock =
-                  (batchResp['available_quantity'] as num).toInt();
-              final newStock = currentStock + qtyDeducted;
-              await _supabase
-                  .from('warehouse_stock_batches')
-                  .update({'available_quantity': newStock})
-                  .eq('id', batchId);
-              await _supabase.from('inventory_movements').insert({
-                'variant_id': safeVariantId,
-                'warehouse_id': warehouseId,
-                'stock_batch_id': batchId,
-                'order_id': widget.order.id,
-                'quantity': qtyDeducted,
-                'previous_stock': currentStock,
-                'new_stock': newStock,
-                'reason': 'RETURN',
-                'notes': 'Devolución registrada desde detalles del pedido',
-                if (currentProfileId != null) 'created_by': currentProfileId,
-              });
-            }
-          }
-        }
-      }
-
-      // ─── Revertir crédito si aplica ───
-      if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
-        final creditResp =
-            await _supabase
-                .from('customer_credits')
-                .select('id, current_debt')
-                .eq('profile_id', origCustomerId)
-                .maybeSingle();
-        if (creditResp != null) {
-          final creditId = creditResp['id'];
-          final currentDebt = (creditResp['current_debt'] as num).toDouble();
-          final newDebt =
-              (currentDebt - origAmount) < 0 ? 0.0 : currentDebt - origAmount;
-          await _supabase
-              .from('customer_credits')
-              .update({
-                'current_debt': newDebt,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', creditId);
-          await _supabase.from('credit_movements').insert({
-            'credit_id': creditId,
-            'order_id': widget.order.id,
-            'movement_type': 'PAYMENT',
-            'amount': origAmount,
-            'notes': 'Reembolso por devolución de pedido',
-            if (currentProfileId != null) 'created_by': currentProfileId,
-          });
-        }
-      }
-
-      // ─── Revertir monedas ganadas ───
-      if (origCustomerId != null) {
-        final earnedMov =
-            await _supabase
-                .from('wallet_movements')
-                .select('id, points')
-                .eq('order_id', widget.order.id)
-                .eq('movement_type', 'EARNED')
-                .maybeSingle();
-        if (earnedMov != null) {
-          final ptsGanados = (earnedMov['points'] as num).toInt();
-          final profileData =
-              await _supabase
-                  .from('profiles')
-                  .select('wallet_balance')
-                  .eq('id', origCustomerId)
-                  .single();
-          final currentBal = (profileData['wallet_balance'] as num).toInt();
-          final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
-          await _supabase
-              .from('profiles')
-              .update({'wallet_balance': newBal})
-              .eq('id', origCustomerId);
-          await _supabase.from('wallet_movements').insert({
-            'profile_id': origCustomerId,
-            'order_id': widget.order.id,
-            'points': -ptsGanados,
-            'movement_type': 'ADJUSTMENT',
-            'description': 'Reversión de monedas por devolución de pedido',
-          });
-        }
-
-        // ─── Devolver monedas canjeadas ───
-        final redeemedMov =
-            await _supabase
-                .from('wallet_movements')
-                .select('id, points')
-                .eq('order_id', widget.order.id)
-                .eq('movement_type', 'REDEEMED')
-                .maybeSingle();
-        if (redeemedMov != null) {
-          final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
-          if (ptsCanjeados > 0) {
-            final profileData =
-                await _supabase
-                    .from('profiles')
-                    .select('wallet_balance')
-                    .eq('id', origCustomerId)
-                    .single();
-            final currentBal = (profileData['wallet_balance'] as num).toInt();
-            await _supabase
-                .from('profiles')
-                .update({'wallet_balance': currentBal + ptsCanjeados})
-                .eq('id', origCustomerId);
-            await _supabase.from('wallet_movements').insert({
-              'profile_id': origCustomerId,
-              'order_id': widget.order.id,
-              'points': ptsCanjeados,
-              'movement_type': 'ADJUSTMENT',
-              'description':
-                  'Devolución de monedas canjeadas por devolución de pedido',
-            });
-          }
-        }
-      }
-
-      // ─── Actualizar orden a CANCELLED ───
-      await _supabase
-          .from('orders')
-          .update({
-            'status': 'CANCELLED',
-            'payment_status': 'PAID',
-            'amount_paid': 0,
-          })
-          .eq('id', widget.order.id);
-
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message: 'Devolución registrada correctamente.',
-        type: SnackbarType.success,
-      );
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
-      _showErrorSnackBar('Error al registrar devolución: $e');
-    } finally {
-      if (mounted) setState(() => _isReturning = false);
-    }
   }
 
   Future<void> _saveChanges() async {
@@ -1246,6 +999,253 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
   }
 
+  // ─── DEVOLUCIÓN ────────────────────────────────────────────────────────────
+
+  Future<void> _confirmReturn() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.assignment_return_rounded,
+                  color: Colors.red.shade600,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Registrar Devolución',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\n\n'
+              '• Stock de productos devuelto al almacén\n'
+              '• Monedas de fidelidad revertidas\n'
+              '• Deuda de crédito ajustada (si aplica)\n\n'
+              '¿Deseas continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.assignment_return_rounded, size: 18),
+                label: const Text('Confirmar Devolución'),
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+    );
+    if (confirmed == true && mounted) {
+      await _processReturn();
+    }
+  }
+
+  Future<void> _processReturn() async {
+    setState(() => _isReturning = true);
+    try {
+      final authUserId = _supabase.auth.currentUser?.id;
+      String? currentProfileId;
+      if (authUserId != null) {
+        final profileResp =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
+        if (profileResp != null) currentProfileId = profileResp['id'] as String;
+      }
+
+      final orderData =
+          await _supabase
+              .from('orders')
+              .select('warehouse_id, total_amount, payment_method, customer_id')
+              .eq('id', widget.order.id)
+              .single();
+
+      final warehouseId = orderData['warehouse_id'];
+      final origAmount = (orderData['total_amount'] as num).toDouble();
+      final origPaymentMethod = orderData['payment_method'] as String;
+      final origCustomerId = orderData['customer_id'] as String?;
+
+      // ─── Revertir stock ───
+      for (final item in _items) {
+        final safeVariantId = item.variantId ?? '';
+        final movs = await _supabase
+            .from('inventory_movements')
+            .select('quantity, stock_batch_id')
+            .eq('order_id', widget.order.id)
+            .eq('variant_id', safeVariantId)
+            .eq('reason', 'SALE');
+
+        for (final mov in (movs as List)) {
+          final batchId = mov['stock_batch_id'];
+          final qtyDeducted =
+              ((mov['quantity'] as num).toDouble()).abs().toInt();
+          if (batchId != null && qtyDeducted > 0) {
+            final batchResp =
+                await _supabase
+                    .from('warehouse_stock_batches')
+                    .select('available_quantity')
+                    .eq('id', batchId)
+                    .maybeSingle();
+            if (batchResp != null) {
+              final currentStock =
+                  (batchResp['available_quantity'] as num).toInt();
+              final newStock = currentStock + qtyDeducted;
+              await _supabase
+                  .from('warehouse_stock_batches')
+                  .update({'available_quantity': newStock})
+                  .eq('id', batchId);
+              await _supabase.from('inventory_movements').insert({
+                'variant_id': safeVariantId,
+                'warehouse_id': warehouseId,
+                'stock_batch_id': batchId,
+                'order_id': widget.order.id,
+                'quantity': qtyDeducted,
+                'previous_stock': currentStock,
+                'new_stock': newStock,
+                'reason': 'RETURN',
+                'notes': 'Devolución registrada desde detalles del pedido',
+                if (currentProfileId != null) 'created_by': currentProfileId,
+              });
+            }
+          }
+        }
+      }
+
+      // ─── Revertir crédito si aplica ───
+      if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
+        final creditResp =
+            await _supabase
+                .from('customer_credits')
+                .select('id, current_debt')
+                .eq('profile_id', origCustomerId)
+                .maybeSingle();
+        if (creditResp != null) {
+          final creditId = creditResp['id'];
+          final currentDebt = (creditResp['current_debt'] as num).toDouble();
+          final newDebt =
+              (currentDebt - origAmount) < 0 ? 0.0 : currentDebt - origAmount;
+          await _supabase
+              .from('customer_credits')
+              .update({
+                'current_debt': newDebt,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', creditId);
+          await _supabase.from('credit_movements').insert({
+            'credit_id': creditId,
+            'order_id': widget.order.id,
+            'movement_type': 'PAYMENT',
+            'amount': origAmount,
+            'notes': 'Reembolso por devolución de pedido',
+            if (currentProfileId != null) 'created_by': currentProfileId,
+          });
+        }
+      }
+
+      // ─── Revertir monedas ganadas ───
+      if (origCustomerId != null) {
+        final earnedMov =
+            await _supabase
+                .from('wallet_movements')
+                .select('id, points')
+                .eq('order_id', widget.order.id)
+                .eq('movement_type', 'EARNED')
+                .maybeSingle();
+        if (earnedMov != null) {
+          final ptsGanados = (earnedMov['points'] as num).toInt();
+          final profileData =
+              await _supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', origCustomerId)
+                  .single();
+          final currentBal = (profileData['wallet_balance'] as num).toInt();
+          final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
+          await _supabase
+              .from('profiles')
+              .update({'wallet_balance': newBal})
+              .eq('id', origCustomerId);
+          await _supabase.from('wallet_movements').insert({
+            'profile_id': origCustomerId,
+            'order_id': widget.order.id,
+            'points': -ptsGanados,
+            'movement_type': 'ADJUSTMENT',
+            'description': 'Reversión de monedas por devolución de pedido',
+          });
+        }
+
+        // ─── Devolver monedas canjeadas ───
+        final redeemedMov =
+            await _supabase
+                .from('wallet_movements')
+                .select('id, points')
+                .eq('order_id', widget.order.id)
+                .eq('movement_type', 'REDEEMED')
+                .maybeSingle();
+        if (redeemedMov != null) {
+          final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
+          if (ptsCanjeados > 0) {
+            final profileData =
+                await _supabase
+                    .from('profiles')
+                    .select('wallet_balance')
+                    .eq('id', origCustomerId)
+                    .single();
+            final currentBal = (profileData['wallet_balance'] as num).toInt();
+            await _supabase
+                .from('profiles')
+                .update({'wallet_balance': currentBal + ptsCanjeados})
+                .eq('id', origCustomerId);
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': origCustomerId,
+              'order_id': widget.order.id,
+              'points': ptsCanjeados,
+              'movement_type': 'ADJUSTMENT',
+              'description':
+                  'Devolución de monedas canjeadas por devolución de pedido',
+            });
+          }
+        }
+      }
+
+      // ─── Actualizar orden a CANCELLED ───
+      await _supabase
+          .from('orders')
+          .update({
+            'status': 'CANCELLED',
+            'payment_status': 'PAID',
+            'amount_paid': 0,
+          })
+          .eq('id', widget.order.id);
+
+      if (!mounted) return;
+      AppSnackbar.show(
+        context,
+        message: 'Devolución registrada correctamente.',
+        type: SnackbarType.success,
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorSnackBar('Error al registrar devolución: $e');
+    } finally {
+      if (mounted) setState(() => _isReturning = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pointsToSolesRatio = context.watch<AppConfigProvider>().getDouble(
@@ -1496,7 +1496,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 }
 
 // ─── NUEVO COMPONENTE: SELECTOR DE ESTADO ───
-
 class OrderDetailStatusSection extends StatelessWidget {
   final String currentStatus;
   final String originalStatus;
