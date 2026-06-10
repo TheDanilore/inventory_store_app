@@ -152,7 +152,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               )
               .toList();
 
-      await OrderPdfGenerator.generateTicket(order, items: items);
+      await OrderPdfGenerator.printTicket(order, items: items);
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(

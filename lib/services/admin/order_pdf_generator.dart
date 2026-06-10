@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -5,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
+import 'package:file_saver/file_saver.dart';
 
 class OrderPdfGenerator {
   /// Helper para convertir cualquier fecha de UTC a Hora de Perú (UTC-5)
@@ -39,7 +42,7 @@ class OrderPdfGenerator {
     }
   }
 
-  static Future<void> generateTicket(
+  static Future<Uint8List> _buildPdf(
     OrderModel order, {
     required List<OrderItemModel> items,
   }) async {
@@ -257,10 +260,60 @@ class OrderPdfGenerator {
       ),
     );
 
-    // 3. Imprimir / Compartir el PDF generado
+    // hasta antes de Printing.layoutPdf()
+
+    return pdf.save();
+  }
+
+  static Future<void> printTicket(
+    OrderModel order, {
+    required List<OrderItemModel> items,
+  }) async {
+    final bytes = await _buildPdf(order, items: items);
+
     await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+      onLayout: (_) async => bytes,
       name: 'Pedido_${order.id.substring(0, 8)}.pdf',
+    );
+  }
+
+  static Future<void> shareTicket(
+    OrderModel order, {
+    required List<OrderItemModel> items,
+  }) async {
+    final bytes = await _buildPdf(order, items: items);
+
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'Pedido_${order.id.substring(0, 8)}.pdf',
+    );
+  }
+
+  static Future<void> saveTicket(
+    OrderModel order, {
+    required List<OrderItemModel> items,
+  }) async {
+    final bytes = await _buildPdf(order, items: items);
+
+    await FileSaver.instance.saveFile(
+      name: 'Pedido_${order.id.substring(0, 8)}',
+      bytes: bytes,
+      fileExtension: 'pdf',
+      mimeType: MimeType.pdf,
+    );
+  }
+
+  static Future<void> saveTicketAs(
+    OrderModel order, {
+    required List<OrderItemModel> items,
+  }) async {
+    final bytes = await _buildPdf(order, items: items);
+
+    await FileSaver.instance.saveAs(
+      name: 'Pedido_${order.id.substring(0, 8)}',
+      bytes: bytes,
+      fileExtension: 'pdf',
+      mimeType: MimeType.pdf,
     );
   }
 

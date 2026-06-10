@@ -1272,7 +1272,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               canToggleEdit: _canToggleEdit,
               onToggleEditing: () => setState(() => _isEditing = !_isEditing),
               onPrint:
-                  () => OrderPdfGenerator.generateTicket(
+                  () => OrderPdfGenerator.printTicket(
+                    widget.order,
+                    items: _items,
+                  ),
+              onShare:
+                  () => OrderPdfGenerator.shareTicket(
                     widget.order,
                     items: _items,
                   ),
@@ -1628,6 +1633,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
   final bool canToggleEdit;
   final VoidCallback onToggleEditing;
   final VoidCallback onPrint;
+  final VoidCallback onShare;
 
   const OrderDetailHeaderRow({
     super.key,
@@ -1637,6 +1643,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
     this.canToggleEdit = true,
     required this.onToggleEditing,
     required this.onPrint,
+    required this.onShare,
   });
 
   @override
@@ -1672,6 +1679,11 @@ class OrderDetailHeaderRow extends StatelessWidget {
               icon: const Icon(Icons.print_rounded, color: Colors.blueGrey),
               onPressed: onPrint,
               tooltip: 'Imprimir Ticket',
+            ),
+            IconButton(
+              icon: const Icon(Icons.share_rounded, color: Colors.blueGrey),
+              onPressed: onShare,
+              tooltip: 'Compartir Ticket',
             ),
             if (canToggleEdit)
               IconButton(

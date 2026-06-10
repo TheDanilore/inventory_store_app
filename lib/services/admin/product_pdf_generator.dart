@@ -5,6 +5,8 @@ import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 
 class ProductPdfGenerator {
+
+  
   static Future<void> generateProductPdf({
     required ProductModel product,
     required List<ProductVariantModel> variants,
