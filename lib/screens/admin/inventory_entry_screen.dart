@@ -14,7 +14,7 @@ import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:collection/collection.dart';
 
 // ─── Modelo de UI local ───────────────────────────────────────────────────────
-class _EntryItemUI {
+class EntryItemUI {
   final ProductModel product;
   final ProductVariantModel variant;
   double quantity;
@@ -22,7 +22,7 @@ class _EntryItemUI {
   final String batchNumber;
   final DateTime? expiryDate;
 
-  _EntryItemUI({
+  EntryItemUI({
     required this.product,
     required this.variant,
     required this.quantity,
@@ -69,7 +69,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
   bool _loadingAccounts = true;
 
   // ── Items e ítems de UI ───────────────────────────────────────────────────
-  final List<_EntryItemUI> _items = [];
+  final List<EntryItemUI> _items = [];
   bool _saving = false;
   final _notesCtrl = TextEditingController();
 
@@ -169,7 +169,18 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                   ),
                 )
                 .toList();
-        // Preseleccionar la primera cuenta disponible
+
+        // 1. ORDENAR: Cuentas tipo CAJA primero, y luego alfabéticamente
+        _financialAccounts.sort((a, b) {
+          final isCajaA = a.type.toUpperCase() == 'CAJA';
+          final isCajaB = b.type.toUpperCase() == 'CAJA';
+
+          if (isCajaA && !isCajaB) return -1; // 'a' va antes
+          if (!isCajaA && isCajaB) return 1; // 'b' va antes
+          return a.name.compareTo(b.name); // Empate: orden alfabético
+        });
+
+        // 2. PRESELECCIONAR: Como ordenamos arriba, la primera será CAJA (si existe)
         if (_financialAccounts.isNotEmpty) {
           _selectedAccountId = _financialAccounts.first.id;
           _checkActiveShift(_selectedAccountId!);
@@ -218,7 +229,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
   // ── Añadir producto desde bottom sheet ───────────────────────────────────
 
   Future<void> _showAddProductSheet() async {
-    final newItem = await showModalBottomSheet<_EntryItemUI>(
+    final newItem = await showModalBottomSheet<EntryItemUI>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -342,14 +353,19 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
       return;
     }
 
-    // Si el modo de pago es CONTADO, la cuenta seleccionada debe tener un turno de caja abierto.
-    if (_paymentMode == 'CONTADO' && _activeShiftId == null) {
-      AppSnackbar.show(
-        context,
-        message: 'La cuenta seleccionada no tiene un turno de caja abierto.',
-        type: SnackbarType.error,
+    // Si el modo de pago es CONTADO y la cuenta es de tipo CAJA, debe tener un turno abierto.
+    if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
+      final accountData = _financialAccounts.firstWhereOrNull(
+        (a) => a.id == _selectedAccountId,
       );
-      return;
+      if (accountData?.type.toUpperCase() == 'CAJA' && _activeShiftId == null) {
+        AppSnackbar.show(
+          context,
+          message: 'La caja seleccionada no tiene un turno abierto.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
     }
 
     // Validar que al pagar al contado la cuenta tenga saldo suficiente.
@@ -811,7 +827,15 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                   ),
 
                                   // --- INICIO UI DE TURNO ABIERTO/CERRADO ---
-                                  if (_selectedAccountId != null)
+                                  if (_selectedAccountId != null &&
+                                      _financialAccounts
+                                              .firstWhereOrNull(
+                                                (a) =>
+                                                    a.id == _selectedAccountId,
+                                              )
+                                              ?.type
+                                              .toUpperCase() ==
+                                          'CAJA')
                                     Padding(
                                       padding: const EdgeInsets.only(
                                         top: 8,
@@ -1061,7 +1085,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
 
   // ── Card de ítem ──────────────────────────────────────────────────────────
 
-  Widget _buildEntryItemCard(_EntryItemUI item, int index) {
+  Widget _buildEntryItemCard(EntryItemUI item, int index) {
     String? imageUrl;
     if (item.variant.images.isNotEmpty) {
       imageUrl = item.variant.images.first.imageUrl;
@@ -1223,7 +1247,6 @@ class _PaymentModeButton extends StatelessWidget {
   }
 }
 
-
 // ─── Helpers de decoración ────────────────────────────────────────────────────
 
 InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
@@ -1291,7 +1314,6 @@ class _SectionTitle extends StatelessWidget {
     );
   }
 }
-
 
 class _EmptyState extends StatelessWidget {
   final IconData icon;
@@ -1447,7 +1469,6 @@ class _BatchInfo extends StatelessWidget {
   }
 }
 
-
 class _VerticalStepper extends StatelessWidget {
   final int value;
   final VoidCallback onAdd;
@@ -1515,7 +1536,6 @@ Widget _stepperBtn(IconData icon, bool disabled, VoidCallback onTap) {
     ),
   );
 }
-
 
 class _BottomBar extends StatelessWidget {
   final String leftLabel;

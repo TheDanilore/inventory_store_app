@@ -3,29 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/models/warehouse_stock_batch_model.dart';
+import 'package:inventory_store_app/screens/admin/inventory_entry_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class _EntryItemUI {
-  final ProductModel product;
-  final ProductVariantModel variant;
-  double quantity;
-  double unitCost;
-  final String batchNumber;
-  final DateTime? expiryDate;
 
-  _EntryItemUI({
-    required this.product,
-    required this.variant,
-    required this.quantity,
-    required this.unitCost,
-    this.batchNumber = 'DEFAULT',
-    this.expiryDate,
-  });
-
-  double get subtotal => quantity * unitCost;
-}
 
 // ─── Bottom Sheet: Añadir Producto ───────────────────────────────────────────
 
@@ -229,7 +212,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
 
     Navigator.pop(
       context,
-      _EntryItemUI(
+      EntryItemUI(
         product: _selectedProduct!,
         variant: variantToUse,
         quantity: _quantity,
