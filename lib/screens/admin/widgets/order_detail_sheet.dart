@@ -427,11 +427,51 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
   }
 
-  void _changeQuantity(int index, int delta) {
+  Future<void> _changeQuantity(int index, int delta) async {
     if (!_isEditing) return;
+
+    final item = _items[index];
+    final currentQty = item.quantity;
+    final nextValue = (currentQty + delta) < 1 ? 1 : currentQty + delta;
+
+    // Validar el stock disponible únicamente al intentar incrementar la cantidad
+    if (delta > 0) {
+      final warehouseId = widget.order.warehouseId;
+
+      if (warehouseId != null && item.variantId != null) {
+        try {
+          final batchesResp = await _supabase
+              .from('warehouse_stock_batches')
+              .select('available_quantity')
+              .eq('warehouse_id', warehouseId)
+              .eq('variant_id', item.variantId!);
+
+          final availableStock = (batchesResp as List).fold<int>(
+            0,
+            (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
+          );
+
+          if (nextValue > availableStock) {
+            if (mounted) {
+              AppSnackbar.show(
+                context,
+                message:
+                    'Stock insuficiente. Máximo disponible: $availableStock',
+                type: SnackbarType.warning,
+              );
+            }
+            return; // Detiene la actualización de estado si excede el stock
+          }
+        } catch (_) {
+          // Si falla la consulta por red, no bloqueamos rígidamente.
+          // La validación estricta y final siempre ocurrirá en _saveChanges.
+        }
+      }
+    }
+
+    if (!mounted) return;
+
     setState(() {
-      final currentQty = _items[index].quantity;
-      final nextValue = (currentQty + delta) < 1 ? 1 : currentQty + delta;
       _items[index].quantity = nextValue;
       _quantityControllers[index].text = nextValue.toString();
       _quantityControllers[index].selection = TextSelection.collapsed(
