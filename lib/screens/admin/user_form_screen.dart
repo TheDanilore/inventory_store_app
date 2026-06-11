@@ -7,7 +7,13 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 class UserFormScreen extends StatefulWidget {
   final String? initialRole;
 
-  const UserFormScreen({super.key, this.initialRole});
+  /// Si se pasa [existingUser], el formulario opera en modo EDICIÓN.
+  final Map<String, dynamic>? existingUser;
+
+  const UserFormScreen({super.key, this.initialRole, this.existingUser});
+
+  /// Modo edición
+  bool get isEditing => existingUser != null;
 
   @override
   State<UserFormScreen> createState() => _UserFormScreenState();
@@ -27,11 +33,24 @@ class _UserFormScreenState extends State<UserFormScreen> {
   late String _role;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _isActive = true;
 
   @override
   void initState() {
     super.initState();
-    _role = widget.initialRole ?? AppRoles.customer;
+    if (widget.isEditing) {
+      // Modo edición: pre-llenamos los campos
+      final u = widget.existingUser!;
+      _nameCtrl.text = u['full_name'] ?? '';
+      _emailCtrl.text = u['email'] ?? '';
+      _phoneCtrl.text = u['phone'] ?? '';
+      _docCtrl.text = u['document_number'] ?? '';
+      _docType = u['document_type'] ?? 'DNI';
+      _role = u['role'] ?? AppRoles.customer;
+      _isActive = u['is_active'] ?? true;
+    } else {
+      _role = widget.initialRole ?? AppRoles.customer;
+    }
   }
 
   @override
@@ -45,46 +64,34 @@ class _UserFormScreenState extends State<UserFormScreen> {
   }
 
   String? _required(String? value, String fieldName) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Ingresa $fieldName';
-    }
+    if (value == null || value.trim().isEmpty) return 'Ingresa $fieldName';
     return null;
   }
 
-  Future<void> _saveUser() async {
+  // ─── CREAR USUARIO ──────────────────────────────────────────────────────────
+  Future<void> _createUser() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailCtrl.text.trim();
-      final password = _passwordCtrl.text;
-      final name = _nameCtrl.text.trim();
-      final phone = _phoneCtrl.text.trim();
-      final docNum = _docCtrl.text.trim();
-
-      // 1) Llamar a la Edge Function enviando TODOS los datos
       final response = await _supabase.functions.invoke(
         'crear-usuario-admin',
         body: {
-          'email': email,
-          'password': password,
+          'email': _emailCtrl.text.trim(),
+          'password': _passwordCtrl.text,
           'role': _role,
-          'name': name,
-          'phone': phone.isNotEmpty ? phone : null,
+          'name': _nameCtrl.text.trim(),
+          'phone':
+              _phoneCtrl.text.trim().isNotEmpty ? _phoneCtrl.text.trim() : null,
           'document_type': _docType,
-          'document_number': docNum.isNotEmpty ? docNum : null,
+          'document_number':
+              _docCtrl.text.trim().isNotEmpty ? _docCtrl.text.trim() : null,
         },
       );
 
-      // Si el status no es 200, algo falló en el servidor
       if (response.status != 200) {
-        throw Exception(
-          'Error al crear usuario en el servidor: ${response.data}',
-        );
+        throw Exception('Error al crear usuario: ${response.data}');
       }
-
-      // ¡Hemos eliminado la inserción a la tabla 'profiles' de aquí!
-      // La Edge Function ya se encarga de guardar el perfil de forma segura.
 
       if (mounted) {
         AppSnackbar.show(
@@ -96,16 +103,12 @@ class _UserFormScreenState extends State<UserFormScreen> {
       }
     } catch (e) {
       if (mounted) {
-        String mensajeError =
-            'Ocurrió un error inesperado al crear el usuario.';
-
+        String mensajeError = 'Ocurrió un error inesperado.';
         if (e.toString().contains('already been registered')) {
-          mensajeError =
-              'Este correo electrónico ya se encuentra registrado en el sistema.';
+          mensajeError = 'Este correo ya está registrado en el sistema.';
         } else {
           mensajeError = 'Error: $e';
         }
-
         AppSnackbar.show(
           context,
           message: mensajeError,
@@ -117,17 +120,81 @@ class _UserFormScreenState extends State<UserFormScreen> {
     }
   }
 
+  // ─── EDITAR USUARIO ─────────────────────────────────────────────────────────
+  Future<void> _updateUser() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final profileId = widget.existingUser!['id'];
+
+      // 1. Actualizar datos del perfil en la tabla profiles
+      await _supabase
+          .from('profiles')
+          .update({
+            'full_name': _nameCtrl.text.trim(),
+            'phone':
+                _phoneCtrl.text.trim().isNotEmpty
+                    ? _phoneCtrl.text.trim()
+                    : null,
+            'document_type': _docType,
+            'document_number':
+                _docCtrl.text.trim().isNotEmpty ? _docCtrl.text.trim() : null,
+            'role': _role,
+            'is_active': _isActive,
+          })
+          .eq('id', profileId);
+
+      // 2. Si cambió la contraseña, actualizarla vía Edge Function
+      if (_passwordCtrl.text.trim().isNotEmpty) {
+        final pwResponse = await _supabase.functions.invoke(
+          'actualizar-password-admin',
+          body: {
+            'auth_user_id': widget.existingUser!['auth_user_id'],
+            'new_password': _passwordCtrl.text,
+          },
+        );
+        if (pwResponse.status != 200) {
+          throw Exception(
+            'Perfil guardado, pero error al cambiar contraseña: ${pwResponse.data}',
+          );
+        }
+      }
+
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Usuario actualizado correctamente',
+          type: SnackbarType.success,
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al actualizar: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.isEditing;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, // Fondo moderno claro
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Nuevo Usuario',
-          style: TextStyle(
+        title: Text(
+          isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
+          style: const TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -148,7 +215,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── SELECTOR DE ROL (Visual) ──────────────────────────────────
+                    // ─── SELECTOR DE ROL ─────────────────────────────────────
                     const Text(
                       'Tipo de cuenta',
                       style: TextStyle(
@@ -184,7 +251,54 @@ class _UserFormScreenState extends State<UserFormScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ─── CREDENCIALES (Auth) ──────────────────────────────────────
+                    // ─── ESTADO ACTIVO (solo en modo edición) ────────────────
+                    if (isEditing) ...[
+                      _SectionCard(
+                        title: 'Estado de la cuenta',
+                        icon: Icons.toggle_on_rounded,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Usuario activo',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    _isActive
+                                        ? 'Puede iniciar sesión'
+                                        : 'Acceso bloqueado',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          _isActive
+                                              ? Colors.green.shade600
+                                              : Colors.red.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: _isActive,
+                                activeColor: AppColors.primary,
+                                onChanged:
+                                    (val) => setState(() => _isActive = val),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // ─── CREDENCIALES ────────────────────────────────────────
                     _SectionCard(
                       title: 'Credenciales de Acceso',
                       icon: Icons.lock_person_rounded,
@@ -195,17 +309,35 @@ class _UserFormScreenState extends State<UserFormScreen> {
                           hint: 'ejemplo@correo.com',
                           icon: Icons.email_rounded,
                           keyboardType: TextInputType.emailAddress,
+                          // En edición el email es solo lectura
+                          readOnly: isEditing,
                           validator:
-                              (v) => _required(v, 'el correo electrónico'),
+                              isEditing
+                                  ? null
+                                  : (v) =>
+                                      _required(v, 'el correo electrónico'),
                         ),
                         const SizedBox(height: 16),
                         _CustomTextField(
                           controller: _passwordCtrl,
-                          label: 'Contraseña temporal',
-                          hint: 'Mínimo 6 caracteres',
+                          label:
+                              isEditing
+                                  ? 'Nueva contraseña (opcional)'
+                                  : 'Contraseña temporal',
+                          hint:
+                              isEditing
+                                  ? 'Dejar vacío para no cambiar'
+                                  : 'Mínimo 6 caracteres',
                           icon: Icons.vpn_key_rounded,
                           obscureText: _obscurePassword,
                           validator: (v) {
+                            if (isEditing) {
+                              // Solo validar si se ingresó algo
+                              if (v != null && v.isNotEmpty && v.length < 6) {
+                                return 'Mínimo 6 caracteres';
+                              }
+                              return null;
+                            }
                             if (v == null || v.isEmpty) {
                               return 'Ingresa una contraseña';
                             }
@@ -230,7 +362,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ─── DATOS PERSONALES ──────────────────────────────────────────
+                    // ─── DATOS PERSONALES ────────────────────────────────────
                     _SectionCard(
                       title: 'Datos Personales',
                       icon: Icons.person_rounded,
@@ -324,7 +456,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
             ),
           ),
 
-          // ─── BOTÓN FIJO INFERIOR ──────────────────────────────────────────────
+          // ─── BOTÓN FIJO INFERIOR ─────────────────────────────────────────
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             decoration: BoxDecoration(
@@ -341,9 +473,11 @@ class _UserFormScreenState extends State<UserFormScreen> {
               height: 54,
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveUser,
+                onPressed:
+                    _isLoading ? null : (isEditing ? _updateUser : _createUser),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor:
+                      isEditing ? Colors.indigo : AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -363,16 +497,20 @@ class _UserFormScreenState extends State<UserFormScreen> {
                         : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.person_add_rounded,
+                            Icon(
+                              isEditing
+                                  ? Icons.save_rounded
+                                  : Icons.person_add_rounded,
                               size: 20,
                               color: Colors.white,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              _role == AppRoles.admin
-                                  ? 'Crear Administrador'
-                                  : 'Crear Cliente',
+                              isEditing
+                                  ? 'Guardar cambios'
+                                  : (_role == AppRoles.admin
+                                      ? 'Crear Administrador'
+                                      : 'Crear Cliente'),
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
@@ -510,6 +648,7 @@ class _CustomTextField extends StatelessWidget {
   final IconData? icon;
   final TextInputType? keyboardType;
   final bool obscureText;
+  final bool readOnly;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final TextCapitalization textCapitalization;
@@ -521,6 +660,7 @@ class _CustomTextField extends StatelessWidget {
     this.icon,
     this.keyboardType,
     this.obscureText = false,
+    this.readOnly = false,
     this.suffixIcon,
     this.validator,
     this.textCapitalization = TextCapitalization.none,
@@ -547,7 +687,12 @@ class _CustomTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          readOnly: readOnly,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: readOnly ? Colors.grey.shade500 : Colors.black87,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
@@ -557,7 +702,7 @@ class _CustomTextField extends StatelessWidget {
                     : null,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: AppColors.surface,
+            fillColor: readOnly ? Colors.grey.shade100 : AppColors.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
@@ -572,8 +717,8 @@ class _CustomTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primary,
+              borderSide: BorderSide(
+                color: readOnly ? Colors.grey.shade300 : AppColors.primary,
                 width: 1.5,
               ),
             ),

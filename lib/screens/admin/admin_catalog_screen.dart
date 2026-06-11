@@ -24,11 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
-  /// Cuando es [true] (modo split-POS) oculta el FAB de carrito porque
-  /// el panel de checkout ya es visible al lado.
-  final bool hidePosCartButton;
-
-  const AdminCatalogScreen({super.key, this.hidePosCartButton = false});
+  const AdminCatalogScreen({super.key});
 
   @override
   State<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
@@ -1101,79 +1097,89 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
           // ── Estado de carga ───────────────────────────────────────────
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return CustomScrollView(
-              slivers: [
-                headerSliver,
-                if (chipsSliver != null) chipsSliver,
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(AppColors.teal),
+            return RefreshIndicator(
+              color: AppColors.teal,
+              onRefresh: () async => _refreshProducts(),
+              child: CustomScrollView(
+                slivers: [
+                  headerSliver,
+                  if (chipsSliver != null) chipsSliver,
+                  const SliverFillRemaining(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation(AppColors.teal),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           }
 
           // ── Error ─────────────────────────────────────────────────────
           if (snapshot.hasError) {
-            return CustomScrollView(
-              slivers: [
-                headerSliver,
-                if (chipsSliver != null) chipsSliver,
-                SliverFillRemaining(
-                  child: _ErrorState(message: '${snapshot.error}'),
-                ),
-              ],
+            return RefreshIndicator(
+              color: AppColors.teal,
+              onRefresh: () async => _refreshProducts(),
+              child: CustomScrollView(
+                slivers: [
+                  headerSliver,
+                  if (chipsSliver != null) chipsSliver,
+                  SliverFillRemaining(
+                    child: _ErrorState(message: '${snapshot.error}'),
+                  ),
+                ],
+              ),
             );
           }
 
           // ── Sin resultados ────────────────────────────────────────────
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return CustomScrollView(
-              slivers: [
-                headerSliver,
-                if (chipsSliver != null) chipsSliver,
-                SliverFillRemaining(
-                  child: _EmptyState(
-                    searchByIngredient: _searchByIngredient,
-                    searchTerm: _searchCtrl.text.trim(),
+            return RefreshIndicator(
+              color: AppColors.teal,
+              onRefresh: () async => _refreshProducts(),
+              child: CustomScrollView(
+                slivers: [
+                  headerSliver,
+                  if (chipsSliver != null) chipsSliver,
+                  SliverFillRemaining(
+                    child: _EmptyState(
+                      searchByIngredient: _searchByIngredient,
+                      searchTerm: _searchCtrl.text.trim(),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           }
 
           // ── Grid con datos ────────────────────────────────────────────
-          return CustomScrollView(
-            slivers: [
-              headerSliver,
-              if (chipsSliver != null) chipsSliver,
-              SliverFillRemaining(
-                child: CatalogGrid(
-                  products: snapshot.data!,
-                  pageSize: _pageSize,
-                  currentPage: _currentPage,
-                  onPageChanged: (page) => setState(() => _currentPage = page),
-                  onSale: _irAVenta,
-                  onToggleActive: _toggleProductoActivo,
-                  searchByIngredient: _searchByIngredient,
-                  matchedIngredients: _matchedIngredients,
-                  bottomPadding: fabsBottomPadding,
-                  onEdit: (product) async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => FormularioScreen(productToEdit: product),
-                      ),
-                    );
-                    if (result == true) _refreshProducts();
-                  },
-                ),
-              ),
-            ],
+          final allProducts = snapshot.data!;
+          return RefreshIndicator(
+            color: AppColors.teal,
+            onRefresh: () async => _refreshProducts(),
+            child: CatalogGridScrollView(
+              products: allProducts,
+              pageSize: _pageSize,
+              currentPage: _currentPage,
+              onPageChanged: (page) => setState(() => _currentPage = page),
+              onSale: _irAVenta,
+              onToggleActive: _toggleProductoActivo,
+              searchByIngredient: _searchByIngredient,
+              matchedIngredients: _matchedIngredients,
+              bottomPadding: fabsBottomPadding,
+              headerSliver: headerSliver,
+              chipsSliver: chipsSliver,
+              onEdit: (product) async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FormularioScreen(productToEdit: product),
+                  ),
+                );
+                if (result == true) _refreshProducts();
+              },
+            ),
           );
         },
       ),
@@ -1184,9 +1190,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         children: [
           Consumer<PosProvider>(
             builder: (posContext, pos, child) {
-              // En modo split-POS el carrito flotante se oculta porque el
-              // panel de checkout ya está visible al lado.
-              if (widget.hidePosCartButton) return const SizedBox.shrink();
               if (pos.itemCount == 0) return const SizedBox.shrink();
               return _PosCartButton(
                 itemCount: pos.itemCount,
@@ -2417,9 +2420,11 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-// ─── CATALOG GRID ─────────────────────────────────────────────────────────────
+// ─── CATALOG GRID SCROLL VIEW ─────────────────────────────────────────────────
+// Un único CustomScrollView que integra header, chips y grid en un solo scroll,
+// eliminando el scroll anidado. El RefreshIndicator vive en el padre.
 
-class CatalogGrid extends StatelessWidget {
+class CatalogGridScrollView extends StatelessWidget {
   final List<ProductModel> products;
   final int pageSize;
   final int currentPage;
@@ -2429,10 +2434,11 @@ class CatalogGrid extends StatelessWidget {
   final void Function(ProductModel) onEdit;
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
-
   final double bottomPadding;
+  final Widget headerSliver;
+  final Widget? chipsSliver;
 
-  const CatalogGrid({
+  const CatalogGridScrollView({
     super.key,
     required this.products,
     required this.pageSize,
@@ -2441,6 +2447,8 @@ class CatalogGrid extends StatelessWidget {
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
+    required this.headerSliver,
+    this.chipsSliver,
     this.searchByIngredient = false,
     this.matchedIngredients = const {},
     this.bottomPadding = 0,
@@ -2456,61 +2464,71 @@ class CatalogGrid extends StatelessWidget {
     final end = (start + pageSize) > total ? total : (start + pageSize);
     final pageItems = products.sublist(start, end);
 
-    // Usamos LayoutBuilder para leer el ancho exacto asignado a la vista
     return LayoutBuilder(
       builder: (context, constraints) {
-        int crossAxisCount = 2; // Por defecto móvil
+        int crossAxisCount = 2;
         double aspectRatio = 0.70;
 
         if (constraints.maxWidth >= 1024) {
-          crossAxisCount = 5; // Laptops / PCs
-          aspectRatio =
-              1; // <--- CAMBIA ESTO (Antes 0.75). Prueba valores entre 1.0 y 1.2
+          crossAxisCount = 5;
+          aspectRatio = 1;
         } else if (constraints.maxWidth >= 600) {
-          crossAxisCount = 3; // Tablets
-          aspectRatio = 0.85; // <--- SÚBELO UN POCO TAMBIÉN (Antes 0.72)
+          crossAxisCount = 3;
+          aspectRatio = 0.85;
         } else {
-          crossAxisCount = 2; // Móvil
-          aspectRatio =
-              0.80; // Se queda igual para que se vea alargado en celis
+          crossAxisCount = 2;
+          aspectRatio = 0.80;
         }
 
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                children: [
-                  Text(
-                    'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+        return CustomScrollView(
+          // physics con always para que el RefreshIndicator funcione
+          // incluso cuando el contenido no llena la pantalla
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // Header (buscador, botones)
+            headerSliver,
+
+            // Chips de categorías (horizontal scroll interno, no afecta)
+            if (chipsSliver != null) chipsSliver!,
+
+            // Contador de resultados / paginación
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Row(
+                  children: [
+                    Text(
+                      'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'Pág. ${safeCurrentPage + 1} / $totalPages',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
+                    const Spacer(),
+                    Text(
+                      'Pág. ${safeCurrentPage + 1} / $totalPages',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            Expanded(
-              child: GridView.builder(
-                padding: EdgeInsets.fromLTRB(12, 6, 12, 12 + bottomPadding),
+
+            // Grid de productos como SliverGrid (sin scroll propio)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(12, 6, 12, 8),
+              sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   childAspectRatio: aspectRatio,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
-                itemCount: pageItems.length,
-                itemBuilder: (context, index) {
+                delegate: SliverChildBuilderDelegate((context, index) {
                   final product = pageItems[index];
                   return AdminProductCard(
                     product: product,
@@ -2522,15 +2540,19 @@ class CatalogGrid extends StatelessWidget {
                             ? matchedIngredients[product.id]
                             : null,
                   );
-                },
+                }, childCount: pageItems.length),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-              child: AdminPageBlocks(
-                currentPage: safeCurrentPage,
-                totalPages: totalPages,
-                onPageChanged: onPageChanged,
+
+            // Paginación + padding inferior para los FABs
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(8, 0, 8, 12 + bottomPadding),
+                child: AdminPageBlocks(
+                  currentPage: safeCurrentPage,
+                  totalPages: totalPages,
+                  onPageChanged: onPageChanged,
+                ),
               ),
             ),
           ],
@@ -2539,6 +2561,9 @@ class CatalogGrid extends StatelessWidget {
     );
   }
 }
+
+/// Alias mantenido por compatibilidad (no se usa en el build principal).
+typedef CatalogGrid = CatalogGridScrollView;
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
 

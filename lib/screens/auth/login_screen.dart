@@ -113,17 +113,35 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _redirectUser(User user) async {
     try {
+      // 1. Añadimos 'is_active' al select
       final data =
           await _supabase
               .from('profiles')
-              .select('role')
+              .select('role, is_active')
               .eq('auth_user_id', user.id)
               .single();
+
       if (!mounted) return;
+
+      // 2. Validamos si el usuario está desactivado
+      if (data['is_active'] == false) {
+        // Cerramos la sesión de Supabase inmediatamente
+        await _supabase.auth.signOut();
+
+        // Mostramos el mensaje de error y detenemos el flujo
+        _showMessage(
+          'Tu cuenta ha sido desactivada. Contacta al administrador.',
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // 3. Si está activo, procedemos con la redirección normal
       final dest =
           data['role'] == AppRoles.admin
               ? const AdminCatalogScreen()
               : const CustomerMainScreen();
+
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
@@ -132,16 +150,12 @@ class _LoginScreenState extends State<LoginScreen>
           reverseTransitionDuration: Duration.zero,
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const CustomerMainScreen(),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
-      );
+      // 4. Por seguridad, si falla la lectura del perfil, cerramos la sesión
+      await _supabase.auth.signOut();
+      _showMessage('Error al verificar el perfil. Intenta nuevamente.');
+      setState(() => _isLoading = false);
     }
   }
 

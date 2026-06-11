@@ -46,8 +46,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   Future<void> _fetchUsers() async {
     setState(() => _isLoading = true);
     try {
+      // ✅ Usamos la vista profiles_with_email para obtener el correo también
       final response = await _supabase
-          .from('profiles')
+          .from('profiles_with_email')
           .select()
           .order('created_at', ascending: false);
 
@@ -80,7 +81,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (context) => Container(
-            height: MediaQuery.of(context).size.height * 0.85,
+            height: MediaQuery.of(context).size.height * 0.90,
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -91,29 +92,27 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   }
 
   Widget _buildRoleTab(String role) {
-    // 1. Filtrar por rol, texto y estado
     final query = _searchCtrl.text.toLowerCase();
     final filtered =
         _profiles.where((p) {
           final isRole = p['role'] == role;
           if (!isRole) return false;
-
           if (_onlyActive && p['is_active'] != true) return false;
-
           if (query.isNotEmpty) {
             final name = (p['full_name'] as String? ?? '').toLowerCase();
             final phone = (p['phone'] as String? ?? '').toLowerCase();
             final doc = (p['document_number'] as String? ?? '').toLowerCase();
+            final email = (p['email'] as String? ?? '').toLowerCase();
             if (!name.contains(query) &&
                 !phone.contains(query) &&
-                !doc.contains(query)) {
+                !doc.contains(query) &&
+                !email.contains(query)) {
               return false;
             }
           }
           return true;
         }).toList();
 
-    // 2. Paginación
     final totalPages =
         filtered.isEmpty ? 1 : (filtered.length / _pageSize).ceil();
     int currentPage = _pageByRole[role] ?? 0;
@@ -138,7 +137,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No se encontraron $role.',
+              'No se encontraron usuarios.',
               style: TextStyle(
                 color: Colors.grey.shade500,
                 fontSize: 16,
@@ -174,8 +173,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
             itemBuilder: (context, index) {
               final user = pageItems[index];
               final String fullName = user['full_name'] ?? 'Sin nombre';
+              final String? email = user['email'];
               final String? phone = user['phone'];
-              final String? docNum = user['document_number'];
               final bool isActive = user['is_active'] ?? true;
               final int walletBalance = user['wallet_balance'] ?? 0;
               final String initial =
@@ -221,7 +220,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                           ),
                         ),
                         const SizedBox(width: 14),
-                        // Info Central
+
+                        // Nombre + email/teléfono
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,87 +229,64 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                               Text(
                                 fullName,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.black87,
                                 ),
-                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              const SizedBox(height: 3),
+                              if (email != null && email.isNotEmpty)
+                                Text(
+                                  email,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade500,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              else if (phone != null && phone.isNotEmpty)
+                                Text(
+                                  phone,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade500,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               const SizedBox(height: 6),
-                              if (phone != null || docNum != null)
-                                Row(
-                                  children: [
-                                    if (phone != null && phone.isNotEmpty) ...[
-                                      Icon(
-                                        Icons.phone_rounded,
-                                        size: 11,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        phone,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade600,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                    ],
-                                    if (docNum != null &&
-                                        docNum.isNotEmpty) ...[
-                                      Icon(
-                                        Icons.badge_rounded,
-                                        size: 11,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        docNum,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade600,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              if (role == AppRoles.customer &&
-                                  walletBalance > 0) ...[
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.stars_rounded,
-                                      size: 12,
-                                      color: Colors.amber.shade600,
+                              // Monedas
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.stars_rounded,
+                                    size: 13,
+                                    color: Colors.amber.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$walletBalance monedas',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.amber.shade700,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '$walletBalance monedas',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.amber.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
-                        // Badge Status y Flecha
-                        const SizedBox(width: 10),
+
+                        // Estado + chevron
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 4,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 color:
@@ -398,7 +375,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Buscar por nombre, teléfono o DNI...',
+                      hintText: 'Buscar por nombre, correo, teléfono o DNI...',
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,

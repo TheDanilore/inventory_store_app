@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/screens/admin/user_form_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,6 +25,15 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
   final _pointsCtrl = TextEditingController();
   bool _isSaving = false;
 
+  // Copia local para reflejar cambios tras edición sin cerrar el sheet
+  late Map<String, dynamic> _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = Map<String, dynamic>.from(widget.userData);
+  }
+
   @override
   void dispose() {
     _pointsCtrl.dispose();
@@ -35,19 +45,15 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
     setState(() => _isSaving = true);
 
     try {
-      final String profileId = widget.userData['id'];
-      final int currentBalance = widget.userData['wallet_balance'] ?? 0;
-
-      // Calculamos el nuevo saldo (evitando saldos negativos si es resta)
+      final String profileId = _user['id'];
+      final int currentBalance = _user['wallet_balance'] ?? 0;
       final int newBalance = (currentBalance + amount).clamp(0, 9999999);
 
-      // 1. Actualizamos el saldo en el perfil del usuario
       await _supabase
           .from('profiles')
           .update({'wallet_balance': newBalance})
           .eq('id', profileId);
 
-      // 2. Registramos el movimiento en el historial
       await _supabase.from('wallet_movements').insert({
         'profile_id': profileId,
         'points': amount,
@@ -59,6 +65,12 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
       });
 
       if (!mounted) return;
+
+      setState(() {
+        _user['wallet_balance'] = newBalance;
+        _pointsCtrl.clear();
+      });
+
       AppSnackbar.show(
         context,
         message: 'Saldo actualizado correctamente',
@@ -66,7 +78,6 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
       );
 
       widget.onUserUpdated();
-      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(
@@ -76,6 +87,27 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _openEditForm() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserFormScreen(existingUser: _user)),
+    );
+
+    if (result == true && mounted) {
+      // Recargamos datos frescos de la vista
+      try {
+        final updated =
+            await Supabase.instance.client
+                .from('profiles_with_email')
+                .select()
+                .eq('id', _user['id'])
+                .single();
+        setState(() => _user = Map<String, dynamic>.from(updated));
+      } catch (_) {}
+      widget.onUserUpdated();
     }
   }
 
@@ -92,14 +124,18 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final user = widget.userData;
 
-    final String fullName = user['full_name'] ?? 'Usuario';
+    final String fullName = _user['full_name'] ?? 'Usuario';
     final String initial =
         fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
-    final String role = user['role'] ?? 'customer';
-    final bool isActive = user['is_active'] ?? true;
-    final int balance = user['wallet_balance'] ?? 0;
+    final String role = _user['role'] ?? 'customer';
+    final bool isActive = _user['is_active'] ?? true;
+    final int balance = _user['wallet_balance'] ?? 0;
+    final String? email = _user['email'];
+    final String? phone = _user['phone'];
+    final String? docType = _user['document_type'];
+    final String? docNumber = _user['document_number'];
+    final String? createdAt = _user['created_at'];
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 24),
@@ -107,18 +143,17 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      // Añadimos SingleChildScrollView para evitar el overflow
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ─── HANDLE ──────────────────────────────────────────────────────────
+            // ─── HANDLE ──────────────────────────────────────────────────────
             Center(
               child: Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
@@ -126,7 +161,7 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
               ),
             ),
 
-            // ─── CABECERA DEL PERFIL ───────────────────────────────────────────
+            // ─── CABECERA DEL PERFIL + BOTÓN EDITAR ──────────────────────────
             Row(
               children: [
                 Container(
@@ -222,7 +257,7 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
                               isActive ? 'ACTIVO' : 'INACTIVO',
                               style: TextStyle(
                                 fontSize: 10,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
                                 color:
                                     isActive
                                         ? Colors.green.shade700
@@ -235,11 +270,29 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
                     ],
                   ),
                 ),
+
+                // ✅ Botón Editar
+                IconButton(
+                  onPressed: _openEditForm,
+                  tooltip: 'Editar usuario',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.edit_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
               ],
             ),
+
             const SizedBox(height: 24),
 
-            // ─── DATOS DE CONTACTO E IDENTIFICACIÓN ────────────────────────────
+            // ─── INFORMACIÓN DEL USUARIO ─────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -249,35 +302,38 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow(
-                    Icons.email_outlined,
-                    'Correo',
-                    user['email'] ?? 'No registrado',
-                  ),
-                  const Divider(height: 20),
-                  _buildInfoRow(
-                    Icons.phone_outlined,
-                    'Teléfono',
-                    user['phone'] ?? 'No registrado',
-                  ),
-                  const Divider(height: 20),
-                  _buildInfoRow(
-                    Icons.badge_outlined,
-                    'Documento',
-                    '${user['document_type'] ?? 'DNI'}: ${user['document_number'] ?? 'No registrado'}',
-                  ),
-                  const Divider(height: 20),
+                  if (email != null && email.isNotEmpty) ...[
+                    _buildInfoRow(
+                      Icons.email_rounded,
+                      'Correo electrónico',
+                      email,
+                    ),
+                    const Divider(height: 24),
+                  ],
+                  if (phone != null && phone.isNotEmpty) ...[
+                    _buildInfoRow(Icons.phone_rounded, 'Teléfono', phone),
+                    const Divider(height: 24),
+                  ],
+                  if (docNumber != null && docNumber.isNotEmpty) ...[
+                    _buildInfoRow(
+                      Icons.badge_rounded,
+                      'Documento',
+                      '${docType ?? 'DNI'}: $docNumber',
+                    ),
+                    const Divider(height: 24),
+                  ],
                   _buildInfoRow(
                     Icons.calendar_today_rounded,
-                    'Registrado',
-                    _formatDate(user['created_at']),
+                    'Fecha de registro',
+                    _formatDate(createdAt),
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
 
-            // ─── SECCIÓN DE MONEDAS / BILLETERA ────────────────────────────────
+            // ─── SECCIÓN DE MONEDAS / BILLETERA ─────────────────────────────
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -331,7 +387,6 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Formulario para sumar/restar
                   const Text(
                     'Ajustar saldo manualmente',
                     style: TextStyle(
@@ -454,7 +509,14 @@ class _UserDetailSheetState extends State<UserDetailSheet> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey.shade500),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: AppColors.primary),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
