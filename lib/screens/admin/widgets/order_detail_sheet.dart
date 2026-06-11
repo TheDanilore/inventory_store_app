@@ -86,7 +86,14 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
   bool get _isCancelled => _currentStatus.toUpperCase() == 'CANCELLED';
-  bool get _canToggleEdit => widget.order.status.toUpperCase() != 'CANCELLED';
+  // CANCELLED nunca editable. COMPLETED solo editable si el pago NO es CRÉDITO.
+  bool get _canToggleEdit =>
+      widget.order.status.toUpperCase() != 'CANCELLED' &&
+      !(widget.order.status.toUpperCase() == 'COMPLETED' &&
+          widget.order.paymentMethod == 'CRÉDITO');
+  // En COMPLETED, solo se puede editar el cliente (no items, no método de pago).
+  bool get _editingCompletedOrder =>
+      _isEditing && widget.order.status.toUpperCase() == 'COMPLETED';
 
   String get _currentPaymentStatus {
     if (_isEditing) {
@@ -853,10 +860,44 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       }
 
       // ─── 4. ACTUALIZAR ORDEN Y PAGOS ───
+      // Bloquear si el método es 'POR ACORDAR' al completar
       if (isNowCompleted &&
           (_paymentMethod == 'POR ACORDAR' || _paymentMethod.trim().isEmpty)) {
-        _paymentMethod =
-            _accounts.isNotEmpty ? _accounts.first['name'] : 'EFECTIVO';
+        setState(() => _isSaving = false);
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder:
+              (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text(
+                      'Método de pago requerido',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  'El método de pago es \'POR ACORDAR\'. Selecciona una cuenta '
+                  'o método de cobro antes de completar el pedido.',
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Entendido'),
+                  ),
+                ],
+              ),
+        );
+        return;
       }
 
       if (_paymentMethod == 'CRÉDITO') {
@@ -940,6 +981,91 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'description':
                   'Monedas obtenidas al completar pedido #${widget.order.id}',
             });
+          }
+        }
+      }
+
+      // ─── 6. REASIGNAR MONEDAS SI CAMBIÓ EL CLIENTE (solo en COMPLETED) ───
+      if (wasCompleted && isNowCompleted) {
+        final prevCustomerId = widget.order.customerId;
+        final newCustomerId = _selectedCustomerId;
+        final customerChanged =
+            prevCustomerId != newCustomerId &&
+            !(prevCustomerId == null && newCustomerId == null);
+
+        if (customerChanged) {
+          // Buscar monedas EARNED originales de esta orden
+          final earnedMov =
+              await _supabase
+                  .from('wallet_movements')
+                  .select('id, points, profile_id')
+                  .eq('order_id', widget.order.id)
+                  .eq('movement_type', 'EARNED')
+                  .maybeSingle();
+
+          if (earnedMov != null) {
+            final pts = (earnedMov['points'] as num).toInt();
+            final fromProfileId = earnedMov['profile_id'] as String?;
+
+            // Quitar monedas al cliente anterior
+            if (fromProfileId != null && pts > 0) {
+              final oldProfile =
+                  await _supabase
+                      .from('profiles')
+                      .select('wallet_balance')
+                      .eq('id', fromProfileId)
+                      .maybeSingle();
+              if (oldProfile != null) {
+                final oldBal = (oldProfile['wallet_balance'] as num).toInt();
+                await _supabase
+                    .from('profiles')
+                    .update({'wallet_balance': (oldBal - pts).clamp(0, oldBal)})
+                    .eq('id', fromProfileId);
+                await _supabase.from('wallet_movements').insert({
+                  'profile_id': fromProfileId,
+                  'order_id': widget.order.id,
+                  'points': -pts,
+                  'movement_type': 'ADJUSTMENT',
+                  'description':
+                      'Monedas reasignadas por cambio de cliente en pedido #'
+                      '${widget.order.id.substring(0, 8)}',
+                });
+              }
+            }
+
+            // Dar monedas al nuevo cliente (si hay uno)
+            if (newCustomerId != null && pts > 0) {
+              final newProfile =
+                  await _supabase
+                      .from('profiles')
+                      .select('wallet_balance')
+                      .eq('id', newCustomerId)
+                      .maybeSingle();
+              if (newProfile != null) {
+                final newBal = (newProfile['wallet_balance'] as num).toInt();
+                await _supabase
+                    .from('profiles')
+                    .update({'wallet_balance': newBal + pts})
+                    .eq('id', newCustomerId);
+                await _supabase.from('wallet_movements').insert({
+                  'profile_id': newCustomerId,
+                  'order_id': widget.order.id,
+                  'points': pts,
+                  'movement_type': 'ADJUSTMENT',
+                  'description':
+                      'Monedas recibidas por reasignación de pedido #'
+                      '${widget.order.id.substring(0, 8)}',
+                });
+              }
+            }
+
+            // Actualizar el profile_id del wallet_movement EARNED original
+            if (newCustomerId != null) {
+              await _supabase
+                  .from('wallet_movements')
+                  .update({'profile_id': newCustomerId})
+                  .eq('id', earnedMov['id'] as String);
+            }
           }
         }
       }
@@ -1155,6 +1281,53 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         }
       }
 
+      // ─── Revertir movimiento financiero (egreso de cuenta) ───
+      // Solo aplica si el pago no fue por CRÉDITO (el crédito no mueve caja)
+      if (origPaymentMethod != 'CRÉDITO' && origAmount > 0) {
+        // Buscar el movimiento de ingreso original asociado a esta orden
+        final origAccountMov =
+            await _supabase
+                .from('account_movements')
+                .select('id, account_id, amount')
+                .eq('reference_id', widget.order.id)
+                .eq('reference_type', 'orders')
+                .eq('movement_type', 'INCOME')
+                .maybeSingle();
+
+        if (origAccountMov != null) {
+          final accountId = origAccountMov['account_id'] as String;
+          final movedAmount = (origAccountMov['amount'] as num).toDouble();
+
+          // Obtener balance actual de la cuenta
+          final accountResp =
+              await _supabase
+                  .from('financial_accounts')
+                  .select('balance')
+                  .eq('id', accountId)
+                  .single();
+          final currentBalance = (accountResp['balance'] as num).toDouble();
+          final newBalance = currentBalance - movedAmount;
+
+          // Descontar de la cuenta financiera
+          await _supabase
+              .from('financial_accounts')
+              .update({'balance': newBalance})
+              .eq('id', accountId);
+
+          // Registrar el egreso de devolución
+          await _supabase.from('account_movements').insert({
+            'account_id': accountId,
+            'movement_type': 'EXPENSE',
+            'amount': movedAmount,
+            'description':
+                'Reembolso por devolución · Pedido #${widget.order.id.substring(0, 8)}',
+            'reference_type': 'orders',
+            'reference_id': widget.order.id,
+            if (currentProfileId != null) 'created_by': currentProfileId,
+          });
+        }
+      }
+
       // ─── Revertir monedas ganadas ───
       if (origCustomerId != null) {
         final earnedMov =
@@ -1345,6 +1518,42 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 ),
               ),
 
+            // ─── BANNER INFORMATIVO EN MODO EDICIÓN DE COMPLETED ───
+            if (_editingCompletedOrder)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: Colors.blue.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Pedido completado: solo puedes cambiar el cliente asignado. '
+                        'Los ítems, cantidades y método de pago no se pueden modificar.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade800,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // ─── BOTÓN DE DEVOLUCIÓN (solo visible cuando COMPLETED y no editando) ───
             if (_isCompleted && !_isEditing)
               Padding(
@@ -1399,7 +1608,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
             OrderDetailPaymentSection(
               currentPaymentMethod: _paymentMethod,
-              isEditing: _isEditing,
+              // En COMPLETED solo se puede cambiar el cliente, no el método de pago
+              isEditing: _isEditing && !_editingCompletedOrder,
               isCompleted: _isCompleted,
               accounts: _accounts,
               onChanged: (val) {

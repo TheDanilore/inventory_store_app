@@ -211,6 +211,48 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     if (confirm != true) return;
 
+    // ─── Aviso si el método de pago es 'POR ACORDAR' al completar ───
+    if (newStatus == 'COMPLETED' &&
+        (order.paymentMethod == 'POR ACORDAR' ||
+            order.paymentMethod.trim().isEmpty)) {
+      await showDialog<void>(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Método de pago pendiente',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'Este pedido tiene el método de pago como \'POR ACORDAR\'. '
+                'Abre el detalle del pedido y selecciona la cuenta o método '
+                'de cobro antes de completarlo.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
+
     try {
       String? currentUserId;
       final authUserId = _supabase.auth.currentUser?.id;

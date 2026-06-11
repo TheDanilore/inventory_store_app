@@ -1063,50 +1063,95 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   Widget build(BuildContext context) {
     return AdminLayout(
       title: 'Catálogo',
-      body: Column(
-        children: [
-          CatalogHeader(
-            searchController: _searchCtrl,
-            isExporting: _isExportingPdf,
-            onExport: _exportCatalogPdf,
-            onSearchChanged: _onSearchChanged,
-            searchByIngredient: _searchByIngredient,
-            onToggleIngredientSearch: _toggleIngredientSearch,
-          ),
-          if (_categories.isNotEmpty && !_searchByIngredient)
-            CategoryChips(
-              categories: _categories,
-              selectedCategoryId: _selectedCategoryId,
-              onSelected: (id) {
-                setState(() {
-                  _selectedCategoryId = id;
-                  _currentPage = 0;
-                });
-                _refreshProducts();
-              },
+      body: FutureBuilder<List<ProductModel>>(
+        future: _productsFuture,
+        builder: (context, snapshot) {
+          // Calculamos el padding inferior para que el contenido no quede
+          // tapado por los botones flotantes (carrito + FAB)
+          const double fabsBottomPadding = 140;
+
+          // ── Header + chips como sliver para que hagan scroll ──────────
+          final headerSliver = SliverToBoxAdapter(
+            child: CatalogHeader(
+              searchController: _searchCtrl,
+              isExporting: _isExportingPdf,
+              onExport: _exportCatalogPdf,
+              onSearchChanged: _onSearchChanged,
+              searchByIngredient: _searchByIngredient,
+              onToggleIngredientSearch: _toggleIngredientSearch,
             ),
-          Expanded(
-            child: FutureBuilder<List<ProductModel>>(
-              future: _productsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
+          );
+
+          final chipsSliver =
+              (_categories.isNotEmpty && !_searchByIngredient)
+                  ? SliverToBoxAdapter(
+                    child: CategoryChips(
+                      categories: _categories,
+                      selectedCategoryId: _selectedCategoryId,
+                      onSelected: (id) {
+                        setState(() {
+                          _selectedCategoryId = id;
+                          _currentPage = 0;
+                        });
+                        _refreshProducts();
+                      },
+                    ),
+                  )
+                  : null;
+
+          // ── Estado de carga ───────────────────────────────────────────
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CustomScrollView(
+              slivers: [
+                headerSliver,
+                if (chipsSliver != null) chipsSliver,
+                const SliverFillRemaining(
+                  child: Center(
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation(AppColors.teal),
                     ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return _ErrorState(message: '${snapshot.error}');
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return _EmptyState(
+                  ),
+                ),
+              ],
+            );
+          }
+
+          // ── Error ─────────────────────────────────────────────────────
+          if (snapshot.hasError) {
+            return CustomScrollView(
+              slivers: [
+                headerSliver,
+                if (chipsSliver != null) chipsSliver,
+                SliverFillRemaining(
+                  child: _ErrorState(message: '${snapshot.error}'),
+                ),
+              ],
+            );
+          }
+
+          // ── Sin resultados ────────────────────────────────────────────
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return CustomScrollView(
+              slivers: [
+                headerSliver,
+                if (chipsSliver != null) chipsSliver,
+                SliverFillRemaining(
+                  child: _EmptyState(
                     searchByIngredient: _searchByIngredient,
                     searchTerm: _searchCtrl.text.trim(),
-                  );
-                }
+                  ),
+                ),
+              ],
+            );
+          }
 
-                return CatalogGrid(
+          // ── Grid con datos ────────────────────────────────────────────
+          return CustomScrollView(
+            slivers: [
+              headerSliver,
+              if (chipsSliver != null) chipsSliver,
+              SliverFillRemaining(
+                child: CatalogGrid(
                   products: snapshot.data!,
                   pageSize: _pageSize,
                   currentPage: _currentPage,
@@ -1115,6 +1160,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   onToggleActive: _toggleProductoActivo,
                   searchByIngredient: _searchByIngredient,
                   matchedIngredients: _matchedIngredients,
+                  bottomPadding: fabsBottomPadding,
                   onEdit: (product) async {
                     final result = await Navigator.push(
                       context,
@@ -1125,11 +1171,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     );
                     if (result == true) _refreshProducts();
                   },
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2384,6 +2430,8 @@ class CatalogGrid extends StatelessWidget {
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
 
+  final double bottomPadding;
+
   const CatalogGrid({
     super.key,
     required this.products,
@@ -2395,6 +2443,7 @@ class CatalogGrid extends StatelessWidget {
     required this.onEdit,
     this.searchByIngredient = false,
     this.matchedIngredients = const {},
+    this.bottomPadding = 0,
   });
 
   @override
@@ -2453,7 +2502,7 @@ class CatalogGrid extends StatelessWidget {
             ),
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                padding: EdgeInsets.fromLTRB(12, 6, 12, 12 + bottomPadding),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   childAspectRatio: aspectRatio,

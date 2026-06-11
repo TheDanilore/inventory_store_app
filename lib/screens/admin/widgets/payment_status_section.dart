@@ -15,7 +15,8 @@ class PaymentStatusSection extends StatefulWidget {
   final List<Map<String, dynamic>> accounts; // cuentas financieras ordenadas
   final VoidCallback onPaymentRegistered;
 
-  const PaymentStatusSection({super.key, 
+  const PaymentStatusSection({
+    super.key,
     required this.paymentStatus,
     required this.totalAmount,
     required this.amountPaid,
@@ -62,12 +63,13 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
   Future<void> _checkActiveShift(String accountId) async {
     try {
-      final resp = await widget.supabase
-          .from('cash_shifts')
-          .select('id, opened_at')
-          .eq('account_id', accountId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
+      final resp =
+          await widget.supabase
+              .from('cash_shifts')
+              .select('id, opened_at')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
       if (mounted) setState(() => _activeShift = resp);
     } catch (_) {
       if (mounted) setState(() => _activeShift = null);
@@ -86,19 +88,27 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
   IconData _iconForType(String type) {
     switch (type) {
-      case 'CAJA':     return Icons.point_of_sale_rounded;
-      case 'BANCO':    return Icons.account_balance_rounded;
-      case 'DIGITAL':  return Icons.smartphone_rounded;
-      default:         return Icons.wallet_rounded;
+      case 'CAJA':
+        return Icons.point_of_sale_rounded;
+      case 'BANCO':
+        return Icons.account_balance_rounded;
+      case 'DIGITAL':
+        return Icons.smartphone_rounded;
+      default:
+        return Icons.wallet_rounded;
     }
   }
 
   Color _colorForType(String type) {
     switch (type) {
-      case 'CAJA':    return const Color(0xFFF59E0B);
-      case 'BANCO':   return const Color(0xFF2563EB);
-      case 'DIGITAL': return const Color(0xFF7C3AED);
-      default:        return const Color(0xFF6B7280);
+      case 'CAJA':
+        return const Color(0xFFF59E0B);
+      case 'BANCO':
+        return const Color(0xFF2563EB);
+      case 'DIGITAL':
+        return const Color(0xFF7C3AED);
+      default:
+        return const Color(0xFF6B7280);
     }
   }
 
@@ -117,7 +127,10 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     } else if (amount <= 0) {
       setState(() => _errorMessage = 'Debe ser mayor a 0');
     } else if (amount > pendingOrderAmount) {
-      setState(() => _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}');
+      setState(
+        () =>
+            _errorMessage = 'Máx: S/ ${pendingOrderAmount.toStringAsFixed(2)}',
+      );
     } else {
       setState(() => _errorMessage = null);
     }
@@ -126,15 +139,20 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
   Future<void> _registrarAbono() async {
     if (_errorMessage != null || _abonoCtrl.text.trim().isEmpty) return;
     if (_selectedAccount == null) {
-      AppSnackbar.show(context,
-          message: 'Selecciona una cuenta de destino', type: SnackbarType.warning);
+      AppSnackbar.show(
+        context,
+        message: 'Selecciona una cuenta de destino',
+        type: SnackbarType.warning,
+      );
       return;
     }
     final isCaja = _selectedAccount!['type'] == 'CAJA';
     if (isCaja && _activeShift == null) {
-      AppSnackbar.show(context,
-          message: 'La caja no tiene un turno abierto. Abre el turno primero.',
-          type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: 'La caja no tiene un turno abierto. Abre el turno primero.',
+        type: SnackbarType.error,
+      );
       return;
     }
 
@@ -145,22 +163,27 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
       final authUserId = widget.supabase.auth.currentUser?.id;
       String? adminProfileId;
       if (authUserId != null) {
-        final p = await widget.supabase
-            .from('profiles')
-            .select('id')
-            .eq('auth_user_id', authUserId)
-            .maybeSingle();
+        final p =
+            await widget.supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', authUserId)
+                .maybeSingle();
         adminProfileId = p?['id'] as String?;
       }
 
       final creditId = widget.creditInfo!['id'] as String;
-      final currentDebt = (widget.creditInfo!['current_debt'] as num).toDouble();
+      final currentDebt =
+          (widget.creditInfo!['current_debt'] as num).toDouble();
       final newGeneralDebt = (currentDebt - amount).clamp(0.0, currentDebt);
 
       // 1. Actualizar deuda en customer_credits
       await widget.supabase
           .from('customer_credits')
-          .update({'current_debt': newGeneralDebt, 'updated_at': DateTime.now().toIso8601String()})
+          .update({
+            'current_debt': newGeneralDebt,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('id', creditId);
 
       // 2. Registrar en credit_movements con el nombre de la cuenta como payment_method
@@ -176,21 +199,27 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
 
       // 3. Actualizar orders.amount_paid y payment_status
       final newOrderAmountPaid = widget.amountPaid + amount;
-      final newPaymentStatus = newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
+      final newPaymentStatus =
+          newOrderAmountPaid >= widget.totalAmount ? 'PAID' : 'PARTIAL';
       await widget.supabase
           .from('orders')
-          .update({'payment_status': newPaymentStatus, 'amount_paid': newOrderAmountPaid})
+          .update({
+            'payment_status': newPaymentStatus,
+            'amount_paid': newOrderAmountPaid,
+          })
           .eq('id', widget.orderId);
 
       // 4. Registrar INGRESO en account_movements
-      final shiftId = isCaja && _activeShift != null
-          ? _activeShift!['id'] as String?
-          : null;
+      final shiftId =
+          isCaja && _activeShift != null
+              ? _activeShift!['id'] as String?
+              : null;
       await widget.supabase.from('account_movements').insert({
         'account_id': _selectedAccount!['id'],
         'movement_type': 'INCOME',
         'amount': amount,
-        'description': 'Cobro de crédito — Pedido #\${widget.orderId.substring(0, 8).toUpperCase()}',
+        'description':
+            'Cobro de crédito — Pedido #${widget.orderId.substring(0, 8).toUpperCase()}',
         'reference_type': 'orders',
         'reference_id': widget.orderId,
         if (shiftId != null) 'shift_id': shiftId,
@@ -198,21 +227,29 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
       });
 
       // 5. Actualizar saldo de la cuenta financiera
-      final currentBalance = ((_selectedAccount!['balance'] as num?)?.toDouble() ?? 0.0);
+      final currentBalance =
+          ((_selectedAccount!['balance'] as num?)?.toDouble() ?? 0.0);
       await widget.supabase
           .from('financial_accounts')
           .update({'balance': currentBalance + amount})
           .eq('id', _selectedAccount!['id'] as String);
 
       if (mounted) {
-        AppSnackbar.show(context,
-            message: 'Abono de S/ ${amount.toStringAsFixed(2)} registrado en ${_selectedAccount!['name']}.',
-            type: SnackbarType.success);
+        AppSnackbar.show(
+          context,
+          message:
+              'Abono de S/ ${amount.toStringAsFixed(2)} registrado en ${_selectedAccount!['name']}.',
+          type: SnackbarType.success,
+        );
         widget.onPaymentRegistered();
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, message: 'Error al registrar abono: $e', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: 'Error al registrar abono: $e',
+          type: SnackbarType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isRegistering = false);
@@ -226,12 +263,17 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
     String badgeLabel;
     switch (widget.paymentStatus) {
       case 'PAID':
-        badgeColor = Colors.teal; badgeLabel = 'Pagado completo'; break;
+        badgeColor = Colors.teal;
+        badgeLabel = 'Pagado completo';
+        break;
       case 'PARTIAL':
-        badgeColor = Colors.amber.shade700; badgeLabel = 'Pago parcial'; break;
+        badgeColor = Colors.amber.shade700;
+        badgeLabel = 'Pago parcial';
+        break;
       case 'PENDING':
       default:
-        badgeColor = Colors.deepOrange; badgeLabel = 'Pendiente de pago';
+        badgeColor = Colors.deepOrange;
+        badgeLabel = 'Pendiente de pago';
     }
 
     final bool cajaSinTurno =
@@ -255,15 +297,23 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
                 ),
-                child: Text(badgeLabel,
-                    style: TextStyle(
-                      color: badgeColor, fontSize: 12, fontWeight: FontWeight.w700)),
+                child: Text(
+                  badgeLabel,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -272,19 +322,28 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           // Fila de totales
           Row(
             children: [
-              Expanded(child: _PStatRow(
+              Expanded(
+                child: _PStatRow(
                   label: 'Total',
-                  value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}')),
-              Expanded(child: _PStatRow(
+                  value: 'S/ ${widget.totalAmount.toStringAsFixed(2)}',
+                ),
+              ),
+              Expanded(
+                child: _PStatRow(
                   label: 'Pagado',
                   value: 'S/ ${widget.amountPaid.toStringAsFixed(2)}',
-                  valueColor: Colors.teal)),
+                  valueColor: Colors.teal,
+                ),
+              ),
               if (widget.paymentStatus != 'PAID')
-                Expanded(child: _PStatRow(
+                Expanded(
+                  child: _PStatRow(
                     label: 'Pendiente',
                     value: 'S/ ${pendingAmount.toStringAsFixed(2)}',
                     valueColor: Colors.deepOrange,
-                    bold: true)),
+                    bold: true,
+                  ),
+                ),
             ],
           ),
 
@@ -296,14 +355,20 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
             const Divider(height: 1),
             const SizedBox(height: 14),
 
-            const Text('Registrar abono',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
-                    color: Colors.black87)),
+            const Text(
+              'Registrar abono',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+              ),
+            ),
             const SizedBox(height: 10),
 
             // ── Montos rápidos ─────────────────────────────────────────
             Wrap(
-              spacing: 8, runSpacing: 6,
+              spacing: 8,
+              runSpacing: 6,
               children: [
                 if (pendingAmount >= 50)
                   _AbonoQuickChip(
@@ -337,7 +402,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                   ),
                 _AbonoQuickChip(
                   label: 'Total (S/ ${pendingAmount.toStringAsFixed(2)})',
-                  isSelected: _selectedQuickAmount == pendingAmount.toStringAsFixed(2),
+                  isSelected:
+                      _selectedQuickAmount == pendingAmount.toStringAsFixed(2),
                   isTotal: true,
                   onTap: () {
                     final v = pendingAmount.toStringAsFixed(2);
@@ -353,8 +419,12 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
             // ── Campo de monto ─────────────────────────────────────────
             TextField(
               controller: _abonoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+              ],
               onChanged: _validarEntrada,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               decoration: InputDecoration(
@@ -362,34 +432,59 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 errorText: _errorMessage,
                 errorMaxLines: 2,
-                prefixIcon: Icon(Icons.attach_money_rounded,
-                    color: _errorMessage != null ? Colors.deepOrange : Colors.grey.shade500),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                prefixIcon: Icon(
+                  Icons.attach_money_rounded,
+                  color:
+                      _errorMessage != null
+                          ? Colors.deepOrange
+                          : Colors.grey.shade500,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 isDense: true,
               ),
             ),
             const SizedBox(height: 14),
 
             // ── Selector de cuenta destino (scroll horizontal) ─────────
-            const Text('Cuenta de destino',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                    color: Colors.black54)),
+            const Text(
+              'Cuenta de destino',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.black54,
+              ),
+            ),
             const SizedBox(height: 8),
             if (widget.accounts.isEmpty)
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.red.shade200),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.warning_rounded, size: 13, color: Colors.red),
-                  SizedBox(width: 6),
-                  Expanded(child: Text('No hay cuentas activas.',
-                      style: TextStyle(fontSize: 11, color: Colors.red,
-                          fontWeight: FontWeight.w600))),
-                ]),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_rounded, size: 13, color: Colors.red),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'No hay cuentas activas.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               )
             else
               SizedBox(
@@ -409,55 +504,101 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                       onTap: () => _onAccountTap(acc),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected ? Colors.teal : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? Colors.teal : Colors.grey.shade300,
+                            color:
+                                isSelected ? Colors.teal : Colors.grey.shade300,
                             width: isSelected ? 1.5 : 1,
                           ),
-                          boxShadow: isSelected ? [BoxShadow(
-                            color: Colors.teal.withValues(alpha: 0.18),
-                            blurRadius: 6, offset: const Offset(0, 2),
-                          )] : null,
+                          boxShadow:
+                              isSelected
+                                  ? [
+                                    BoxShadow(
+                                      color: Colors.teal.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                  : null,
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(_iconForType(type), size: 13,
-                                  color: isSelected ? Colors.white : typeColor),
-                              const SizedBox(width: 5),
-                              Text(acc['name'] as String,
-                                  style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w700,
-                                    color: isSelected ? Colors.white : Colors.black87,
-                                  )),
-                            ]),
-                            const SizedBox(height: 3),
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.white.withValues(alpha: 0.2)
-                                      : typeColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _iconForType(type),
+                                  size: 13,
+                                  color: isSelected ? Colors.white : typeColor,
                                 ),
-                                child: Text(type, style: TextStyle(
-                                  fontSize: 9, fontWeight: FontWeight.w700,
-                                  color: isSelected ? Colors.white70 : typeColor,
-                                )),
-                              ),
-                              const SizedBox(width: 5),
-                              Text('S/ ${balance.toStringAsFixed(2)}',
+                                const SizedBox(width: 5),
+                                Text(
+                                  acc['name'] as String,
                                   style: TextStyle(
-                                    fontSize: 10, fontWeight: FontWeight.w600,
-                                    color: isSelected ? Colors.white70 : Colors.grey.shade500,
-                                  )),
-                            ]),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? Colors.white.withValues(
+                                              alpha: 0.2,
+                                            )
+                                            : typeColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    type,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          isSelected
+                                              ? Colors.white70
+                                              : typeColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'S/ ${balance.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isSelected
+                                            ? Colors.white70
+                                            : Colors.grey.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -470,20 +611,31 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
             if (cajaSinTurno) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.red.shade200),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.lock_rounded, size: 13, color: Colors.red),
-                  SizedBox(width: 6),
-                  Expanded(child: Text(
-                    'Esta caja no tiene turno abierto. Abre el turno antes de registrar el abono.',
-                    style: TextStyle(fontSize: 11, color: Colors.red,
-                        fontWeight: FontWeight.w600),
-                  )),
-                ]),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lock_rounded, size: 13, color: Colors.red),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Esta caja no tiene turno abierto. Abre el turno antes de registrar el abono.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
 
@@ -493,18 +645,33 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                 _activeShift != null) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.teal.shade50, borderRadius: BorderRadius.circular(8),
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.teal.shade200),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.check_circle_rounded, size: 13, color: Colors.teal),
-                  SizedBox(width: 6),
-                  Text('Turno abierto · Se registrará en el turno activo',
-                      style: TextStyle(fontSize: 11, color: Colors.teal,
-                          fontWeight: FontWeight.w600)),
-                ]),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 13,
+                      color: Colors.teal,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Turno abierto · Se registrará en el turno activo',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.teal,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 14),
@@ -520,21 +687,32 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                   disabledForegroundColor: Colors.grey.shade500,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
                 onPressed: isButtonEnabled ? _registrarAbono : null,
-                icon: _isRegistering
-                    ? const SizedBox(width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check_rounded, size: 18),
+                icon:
+                    _isRegistering
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.check_rounded, size: 18),
                 label: Text(
                   _isRegistering
                       ? 'Registrando...'
                       : _selectedAccount != null
-                          ? 'Abonar a ${_selectedAccount!['name']}'
-                          : 'Abonar',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ? 'Abonar a ${_selectedAccount!['name']}'
+                      : 'Abonar',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
@@ -588,10 +766,16 @@ class _AbonoQuickChip extends StatelessWidget {
           color: bgColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
-          boxShadow: isSelected ? [BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.2),
-            blurRadius: 6, offset: const Offset(0, 2),
-          )] : null,
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: Colors.teal.withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -600,8 +784,14 @@ class _AbonoQuickChip extends StatelessWidget {
               Icon(Icons.check_rounded, size: 11, color: textColor),
               const SizedBox(width: 4),
             ],
-            Text(label, style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: textColor)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
           ],
         ),
       ),
