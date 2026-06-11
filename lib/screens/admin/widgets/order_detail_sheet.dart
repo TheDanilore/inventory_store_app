@@ -459,6 +459,148 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     });
   }
 
+  /// Muestra el diálogo de cantidad exacta con validación de stock disponible.
+  Future<void> _showQuantityDialog(int index) async {
+    if (!_isEditing) return;
+
+    final item = _items[index];
+    final warehouseId = widget.order.warehouseId;
+
+    // Consultar stock disponible en el warehouse para esta variante
+    int? availableStock;
+    if (warehouseId != null && item.variantId != null) {
+      try {
+        final batchesResp = await _supabase
+            .from('warehouse_stock_batches')
+            .select('available_quantity')
+            .eq('warehouse_id', warehouseId)
+            .eq('variant_id', item.variantId!);
+        availableStock = (batchesResp as List).fold<int>(
+          0,
+          (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
+        );
+      } catch (_) {
+        // Si falla la consulta, no bloqueamos — se valida en _saveChanges
+      }
+    }
+
+    if (!mounted) return;
+
+    final qtyCtrl = TextEditingController(text: item.quantity.toString());
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Cantidad exacta',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  if (availableStock != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Stock disponible: $availableStock',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            availableStock > 0
+                                ? Colors.teal.shade600
+                                : Colors.red.shade600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: qtyCtrl,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 20),
+                      errorText: dialogError,
+                    ),
+                    onChanged: (val) {
+                      final parsed = int.tryParse(val.trim());
+                      String? err;
+                      if (parsed == null || parsed < 1) {
+                        err = 'Debe ser un número mayor a 0';
+                      } else if (availableStock != null &&
+                          parsed > availableStock) {
+                        err = 'Máximo disponible: $availableStock';
+                      }
+                      setDialogState(() => dialogError = err);
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed:
+                      dialogError != null
+                          ? null
+                          : () {
+                            final newQty = int.tryParse(qtyCtrl.text.trim());
+                            if (newQty != null && newQty > 0) {
+                              setState(() {
+                                _items[index].quantity = newQty;
+                                _quantityControllers[index].text =
+                                    newQty.toString();
+                                _pointsEarned = _calculatePointsEarned();
+                                _batchOverrides.remove(_items[index].id);
+                              });
+                            }
+                            Navigator.pop(dialogContext);
+                          },
+                  child: const Text(
+                    'Guardar',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    qtyCtrl.dispose();
+  }
+
   double _calculateOrderTotalAmount() {
     return _items.fold<double>(0, (sum, item) => sum + item.subtotal);
   }
@@ -739,8 +881,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'account_id': targetAccount['id'],
               'movement_type': 'INCOME',
               'amount': totalAmount,
-              'description':
-                  'Cobro de venta — Pedido #${widget.order.id}',
+              'description': 'Cobro de venta — Pedido #${widget.order.id}',
               'reference_type': 'orders',
               'reference_id': widget.order.id,
               if (shiftId != null) 'shift_id': shiftId,
@@ -1801,6 +1942,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               onDecrease: (index) => _changeQuantity(index, -1),
               onIncrease: (index) => _changeQuantity(index, 1),
               onQuantityChanged: (index, value) => _setQuantity(index, value),
+              onQuantityTap: (index) => _showQuantityDialog(index),
               onEditBatches: isActivatingDraft ? _showBatchEditSheet : null,
             ),
             if (_isEditing)
@@ -2778,6 +2920,7 @@ class OrderDetailItemCard extends StatelessWidget {
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
   final ValueChanged<String> onQuantityChanged;
+  final VoidCallback? onQuantityTap;
   final VoidCallback? onEditBatches;
 
   const OrderDetailItemCard({
@@ -2791,6 +2934,7 @@ class OrderDetailItemCard extends StatelessWidget {
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
+    this.onQuantityTap,
     this.onEditBatches,
   });
 
@@ -3017,22 +3161,25 @@ class OrderDetailItemCard extends StatelessWidget {
                         icon: const Icon(Icons.remove_circle_outline),
                         onPressed: onDecrease,
                       ),
-                      SizedBox(
-                        width: 48,
-                        child: TextFormField(
-                          controller: quantityController,
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          enabled: isEditing,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 8,
+                      GestureDetector(
+                        onTap: onQuantityTap,
+                        child: Container(
+                          width: 48,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.white,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            quantityController.text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          onChanged: onQuantityChanged,
                         ),
                       ),
                       IconButton(
@@ -3087,6 +3234,7 @@ class OrderDetailItemsSection extends StatelessWidget {
   final void Function(int index) onDecrease;
   final void Function(int index) onIncrease;
   final void Function(int index, String value) onQuantityChanged;
+  final void Function(int index)? onQuantityTap;
   final void Function(OrderItemModel item)? onEditBatches;
 
   const OrderDetailItemsSection({
@@ -3102,6 +3250,7 @@ class OrderDetailItemsSection extends StatelessWidget {
     required this.onDecrease,
     required this.onIncrease,
     required this.onQuantityChanged,
+    this.onQuantityTap,
     this.onEditBatches,
   });
 
@@ -3141,6 +3290,10 @@ class OrderDetailItemsSection extends StatelessWidget {
                     onIncrease: () => onIncrease(index),
                     onQuantityChanged:
                         (value) => onQuantityChanged(index, value),
+                    onQuantityTap:
+                        onQuantityTap != null
+                            ? () => onQuantityTap!(index)
+                            : null,
                     onEditBatches:
                         onEditBatches != null
                             ? () => onEditBatches!(item)
