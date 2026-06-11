@@ -1,7 +1,144 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODELOS TIPADOS
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _BatchModel {
+  final String id;
+  final String batchNumber;
+  final String? expiryDate;
+  final int availableQuantity;
+  final String warehouseId;
+  final String? warehouseName;
+  final String? supplierId;
+  final String? supplierName;
+  final String variantId;
+  final String productId;
+  // Enriquecidos desde joins
+  final String? productName;
+  final String? variantAttrs;
+  final String? sku;
+  // Calculados en cliente
+  String status;
+  int? daysRemaining;
+
+  _BatchModel({
+    required this.id,
+    required this.batchNumber,
+    this.expiryDate,
+    required this.availableQuantity,
+    required this.warehouseId,
+    this.warehouseName,
+    this.supplierId,
+    this.supplierName,
+    required this.variantId,
+    required this.productId,
+    this.productName,
+    this.variantAttrs,
+    this.sku,
+    this.status = 'sin_vencimiento',
+    this.daysRemaining,
+  });
+
+  factory _BatchModel.fromMap(Map<String, dynamic> m) {
+    final wh = m['warehouses'] as Map<String, dynamic>?;
+    final sup = m['suppliers'] as Map<String, dynamic>?;
+    final prod = m['products'] as Map<String, dynamic>?;
+    final variant = m['product_variants'] as Map<String, dynamic>?;
+    final attrs = Map<String, dynamic>.from(
+      (variant?['attributes'] as Map?) ?? {},
+    );
+    final attrsText = attrs.values.map((e) => '$e').join(' · ');
+    return _BatchModel(
+      id: m['id'] as String,
+      batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
+      expiryDate: m['expiry_date'] as String?,
+      availableQuantity: (m['available_quantity'] as num?)?.toInt() ?? 0,
+      warehouseId: m['warehouse_id'] as String,
+      warehouseName: wh?['name'] as String?,
+      supplierId: m['supplier_id'] as String?,
+      supplierName: sup?['name'] as String?,
+      variantId: m['variant_id'] as String,
+      productId: m['product_id'] as String,
+      productName: prod?['name'] as String?,
+      variantAttrs: attrsText.isNotEmpty ? attrsText : null,
+      sku: variant?['sku'] as String?,
+    );
+  }
+
+  void computeExpiryStatus() {
+    if (expiryDate == null) {
+      status = 'sin_vencimiento';
+      daysRemaining = null;
+      return;
+    }
+    final expiry = DateTime.tryParse(expiryDate!);
+    if (expiry == null) {
+      status = 'sin_vencimiento';
+      return;
+    }
+    final diff = expiry.difference(DateTime.now()).inDays;
+    daysRemaining = diff;
+    if (diff < 0) {
+      status = 'vencido';
+    } else if (diff <= 30) {
+      status = 'critico';
+    } else if (diff <= 90) {
+      status = 'proximo';
+    } else {
+      status = 'normal';
+    }
+  }
+}
+
+class _VariantStockItem {
+  final String productId;
+  final String productName;
+  final String category;
+  final String productType;
+  final bool usesBatches;
+  final bool stockControl;
+  final double unitCost;
+  final double salePrice;
+  final double? wholesalePrice;
+  final int wholesaleMinQty;
+  final String variantId;
+  final String? sku;
+  final Map<String, dynamic> attributes;
+  final int reorderPoint;
+  final int stock;
+  final List<_BatchModel> batches;
+  final bool isLowStock;
+
+  const _VariantStockItem({
+    required this.productId,
+    required this.productName,
+    required this.category,
+    required this.productType,
+    required this.usesBatches,
+    required this.stockControl,
+    required this.unitCost,
+    required this.salePrice,
+    this.wholesalePrice,
+    required this.wholesaleMinQty,
+    required this.variantId,
+    this.sku,
+    required this.attributes,
+    required this.reorderPoint,
+    required this.stock,
+    required this.batches,
+    required this.isLowStock,
+  });
+
+  double get profit => salePrice - unitCost;
+  double get margin => unitCost > 0 ? (profit / salePrice) * 100 : 0;
+  String get attrsText => attributes.values.map((e) => '$e').join(' · ');
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INVENTORY SCREEN — Pantalla principal con tabs
@@ -39,16 +176,24 @@ class _InventoryScreenState extends State<InventoryScreen>
         children: [
           // ── Tab Bar ────────────────────────────────────────────────────
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
@@ -57,6 +202,7 @@ class _InventoryScreenState extends State<InventoryScreen>
               labelStyle: const TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
+                letterSpacing: 0.1,
               ),
               unselectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w500,
@@ -64,12 +210,12 @@ class _InventoryScreenState extends State<InventoryScreen>
               ),
               tabs: const [
                 Tab(
-                  icon: Icon(Icons.inventory_2_rounded, size: 18),
+                  icon: Icon(Icons.inventory_2_rounded, size: 17),
                   text: 'Stock General',
                   iconMargin: EdgeInsets.only(bottom: 2),
                 ),
                 Tab(
-                  icon: Icon(Icons.event_busy_rounded, size: 18),
+                  icon: Icon(Icons.event_busy_rounded, size: 17),
                   text: 'Estado de Lotes',
                   iconMargin: EdgeInsets.only(bottom: 2),
                 ),
@@ -92,7 +238,6 @@ class _InventoryScreenState extends State<InventoryScreen>
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TAB 1: STOCK GENERAL
-// Solo productos con stock > 0. Muestra variantes con stock real.
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _StockTab extends StatefulWidget {
@@ -110,8 +255,10 @@ class _StockTabState extends State<_StockTab>
   String _filterCategory = 'Todos';
   List<String> _categories = ['Todos'];
 
-  // Cacheamos el future para evitar recargas en cada rebuild
-  late Future<List<Map<String, dynamic>>> _stockFuture;
+  static const int _pageSize = 8;
+  int _currentPage = 0;
+
+  late Future<List<_VariantStockItem>> _stockFuture;
 
   @override
   void initState() {
@@ -119,11 +266,21 @@ class _StockTabState extends State<_StockTab>
     _stockFuture = _loadStock();
   }
 
-  void _refresh() => setState(() => _stockFuture = _loadStock());
+  void _refresh() {
+    setState(() {
+      _currentPage = 0;
+      _stockFuture = _loadStock();
+    });
+  }
 
-  Future<List<Map<String, dynamic>>> _loadStock() async {
-    // Los lotes están relacionados con product_variants (wsb.variant_id → pv.id),
-    // por eso el join anidado va dentro de product_variants.
+  void _onFilterChanged(VoidCallback fn) {
+    setState(() {
+      fn();
+      _currentPage = 0;
+    });
+  }
+
+  Future<List<_VariantStockItem>> _loadStock() async {
     final response = await _supabase
         .from('products')
         .select('''
@@ -134,21 +291,21 @@ class _StockTabState extends State<_StockTab>
             id, sku, attributes, sale_price, wholesale_price,
             wholesale_min_quantity, reorder_point, is_active,
             warehouse_stock_batches(
-              id, variant_id, available_quantity, expiry_date, batch_number,
-              warehouse_id, warehouses(name)
+              id, variant_id, product_id, available_quantity, expiry_date,
+              batch_number, warehouse_id, supplier_id,
+              warehouses(name),
+              suppliers(name)
             )
           )
         ''')
         .eq('is_active', true)
         .eq('product_variants.is_active', true);
 
-
-    final List<Map<String, dynamic>> result = [];
+    final List<_VariantStockItem> result = [];
     final Set<String> cats = {};
 
     for (final rawProd in (response as List)) {
       final prod = rawProd as Map<String, dynamic>;
-
       final usesBatches = prod['uses_batches'] as bool? ?? false;
       final stockControl = prod['stock_control'] as bool? ?? true;
       final catName =
@@ -163,26 +320,20 @@ class _StockTabState extends State<_StockTab>
       final int prodWholesaleMinQty =
           (prod['wholesale_min_quantity'] as int?) ?? 1;
 
-      final variants = (prod['product_variants'] as List?) ?? [];
-
-      for (final rawVariant in variants) {
+      for (final rawVariant in (prod['product_variants'] as List? ?? [])) {
         final variant = rawVariant as Map<String, dynamic>;
-        final variantId = variant['id'] as String;
+
         final batches =
-            (variant['warehouse_stock_batches'] as List?)
-                ?.map((b) => Map<String, dynamic>.from(b as Map))
-                .toList() ??
-            [];
+            ((variant['warehouse_stock_batches'] as List?) ?? [])
+                .map(
+                  (b) =>
+                      _BatchModel.fromMap(Map<String, dynamic>.from(b as Map)),
+                )
+                .toList();
 
         int stock = 0;
-
         if (stockControl) {
-          stock = batches.fold<int>(
-            0,
-            (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
-          );
-
-          // Solo incluir si tiene stock
+          stock = batches.fold(0, (s, b) => s + b.availableQuantity);
           if (stock <= 0) continue;
         }
 
@@ -195,39 +346,36 @@ class _StockTabState extends State<_StockTab>
         final int variantWholesaleMinQty =
             (variant['wholesale_min_quantity'] as int?) ?? prodWholesaleMinQty;
 
-        result.add({
-          'product_id': prod['id'] as String,
-          'product_name': prod['name'] as String,
-          'category': catName,
-          'product_type': prod['product_type'] as String? ?? 'good',
-          'uses_batches': usesBatches,
-          'stock_control': stockControl,
-          'unit_cost': unitCost,
-          'sale_price': variantSalePrice,
-          'wholesale_price': variantWholesalePrice,
-          'wholesale_min_qty': variantWholesaleMinQty,
-          'variant_id': variantId,
-          'sku': variant['sku'] as String?,
-          'attributes': Map<String, dynamic>.from(
-            (variant['attributes'] as Map?) ?? {},
+        result.add(
+          _VariantStockItem(
+            productId: prod['id'] as String,
+            productName: prod['name'] as String,
+            category: catName,
+            productType: prod['product_type'] as String? ?? 'good',
+            usesBatches: usesBatches,
+            stockControl: stockControl,
+            unitCost: unitCost,
+            salePrice: variantSalePrice,
+            wholesalePrice: variantWholesalePrice,
+            wholesaleMinQty: variantWholesaleMinQty,
+            variantId: variant['id'] as String,
+            sku: variant['sku'] as String?,
+            attributes: Map<String, dynamic>.from(
+              (variant['attributes'] as Map?) ?? {},
+            ),
+            reorderPoint: reorderPoint,
+            stock: stock,
+            batches: batches,
+            isLowStock: stockControl && stock <= reorderPoint,
           ),
-          'reorder_point': reorderPoint,
-          'stock': stock,
-          'batches': batches,
-          'is_low_stock': stockControl && stock <= reorderPoint,
-        });
+        );
       }
     }
 
-    // Ordenar: bajo stock primero, luego alfabético
     result.sort((a, b) {
-      final aLow = a['is_low_stock'] as bool;
-      final bLow = b['is_low_stock'] as bool;
-      if (aLow && !bLow) return -1;
-      if (!aLow && bLow) return 1;
-      return (a['product_name'] as String).compareTo(
-        b['product_name'] as String,
-      );
+      if (a.isLowStock && !b.isLowStock) return -1;
+      if (!a.isLowStock && b.isLowStock) return 1;
+      return a.productName.compareTo(b.productName);
     });
 
     if (mounted) {
@@ -239,15 +387,15 @@ class _StockTabState extends State<_StockTab>
     return result;
   }
 
-  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> data) {
+  List<_VariantStockItem> _applyFilters(List<_VariantStockItem> data) {
     return data.where((item) {
-      final name = (item['product_name'] as String).toLowerCase();
-      final sku = ((item['sku'] as String?) ?? '').toLowerCase();
+      final name = item.productName.toLowerCase();
+      final sku = (item.sku ?? '').toLowerCase();
       final search = _searchText.toLowerCase();
       final matchesSearch =
           search.isEmpty || name.contains(search) || sku.contains(search);
       final matchesCat =
-          _filterCategory == 'Todos' || item['category'] == _filterCategory;
+          _filterCategory == 'Todos' || item.category == _filterCategory;
       return matchesSearch && matchesCat;
     }).toList();
   }
@@ -258,126 +406,159 @@ class _StockTabState extends State<_StockTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<_VariantStockItem>>(
       future: _stockFuture,
       builder: (context, snapshot) {
         final allItems = snapshot.data ?? [];
-        final items = _applyFilters(allItems);
+        final filteredItems = _applyFilters(allItems);
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-        final totalStock = allItems.fold<int>(
-          0,
-          (s, i) => s + ((i['stock'] as int?) ?? 0),
-        );
-        final lowStockCount = allItems.where((i) => i['is_low_stock']).length;
-        final totalProducts = allItems.length;
+        final totalStock = allItems.fold<int>(0, (s, i) => s + i.stock);
+        final lowStockCount = allItems.where((i) => i.isLowStock).length;
+        final totalVariants = allItems.length;
 
-        return Column(
-          children: [
-            // ── Resumen ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Row(
-                children: [
-                  _SummaryChip(
-                    label: 'Variantes',
-                    value: '$totalProducts',
-                    color: AppColors.primary,
-                    icon: Icons.layers_rounded,
+        // Paginación en cliente (ya tenemos todo cargado para las métricas)
+        final totalPages =
+            filteredItems.isEmpty
+                ? 1
+                : (filteredItems.length / _pageSize).ceil();
+        final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+        final pageStart = safePage * _pageSize;
+        final pageEnd = (pageStart + _pageSize).clamp(0, filteredItems.length);
+        final items = filteredItems.sublist(pageStart, pageEnd);
+        final showing = filteredItems.length;
+
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async => _refresh(),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // ── Métricas ──────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Row(
+                    children: [
+                      _MetricCard(
+                        label: 'Variantes',
+                        value: '$totalVariants',
+                        icon: Icons.layers_rounded,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      _MetricCard(
+                        label: 'Stock total',
+                        value: '$totalStock',
+                        icon: Icons.inventory_rounded,
+                        color: AppColors.teal,
+                      ),
+                      const SizedBox(width: 10),
+                      _MetricCard(
+                        label: 'Bajo stock',
+                        value: '$lowStockCount',
+                        icon: Icons.warning_amber_rounded,
+                        color:
+                            lowStockCount > 0
+                                ? AppColors.warning
+                                : AppColors.success,
+                        highlight: lowStockCount > 0,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _SummaryChip(
-                    label: 'Stock total',
-                    value: '$totalStock',
-                    color: AppColors.teal,
-                    icon: Icons.inventory_rounded,
-                  ),
-                  const SizedBox(width: 8),
-                  _SummaryChip(
-                    label: 'Bajo stock',
-                    value: '$lowStockCount',
-                    color:
-                        lowStockCount > 0
-                            ? AppColors.warning
-                            : AppColors.success,
-                    icon: Icons.warning_amber_rounded,
-                  ),
-                ],
+                ),
               ),
-            ),
 
-            // ── Búsqueda + Filtro categoría ───────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _searchText = v),
-                      decoration: InputDecoration(
-                        hintText: 'Buscar producto o SKU...',
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                        suffixIcon:
-                            _searchText.isNotEmpty
-                                ? IconButton(
-                                  icon: const Icon(
-                                    Icons.clear_rounded,
-                                    size: 18,
-                                  ),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    setState(() => _searchText = '');
-                                  },
-                                )
-                                : null,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
+              // ── Búsqueda + Filtro ─────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _SearchField(
+                          controller: _searchCtrl,
+                          hint: 'Buscar producto o SKU...',
+                          onChanged:
+                              (v) => _onFilterChanged(() => _searchText = v),
+                          onClear: () {
+                            _searchCtrl.clear();
+                            _onFilterChanged(() => _searchText = '');
+                          },
                         ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.surface,
+                      ),
+                      const SizedBox(width: 8),
+                      _CategoryDropdown(
+                        categories: _categories,
+                        selected: _filterCategory,
+                        onChanged:
+                            (v) => _onFilterChanged(() => _filterCategory = v),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+              // ── Info de paginación ────────────────────────────────────
+              if (!isLoading && filteredItems.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                    child: Text(
+                      'Mostrando ${pageStart + 1}–$pageEnd de $showing variantes',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _CategoryDropdown(
-                    categories: _categories,
-                    selected: _filterCategory,
-                    onChanged: (v) => setState(() => _filterCategory = v),
+                ),
+
+              // ── Lista ─────────────────────────────────────────────────
+              if (isLoading)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                    ),
                   ),
-                ],
-              ),
-            ),
+                )
+              else if (filteredItems.isEmpty)
+                const SliverFillRemaining(
+                  child: _EmptyState(
+                    icon: Icons.inventory_2_outlined,
+                    message: 'No hay productos con stock disponible',
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  sliver: SliverList.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) => _StockItemCard(item: items[i]),
+                  ),
+                ),
 
-            const SizedBox(height: 10),
+              // ── Paginación ────────────────────────────────────────────
+              if (!isLoading && totalPages > 1)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                    child: AdminPageBlocks(
+                      currentPage: safePage,
+                      totalPages: totalPages,
+                      onPageChanged: (p) => setState(() => _currentPage = p),
+                    ),
+                  ),
+                ),
 
-            // ── Lista ─────────────────────────────────────────────
-            Expanded(
-              child:
-                  isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : items.isEmpty
-                      ? const _EmptyState(
-                        icon: Icons.inventory_2_outlined,
-                        message: 'No hay productos con stock disponible',
-                      )
-                      : RefreshIndicator(
-                        onRefresh: () async => _refresh(),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                          itemCount: items.length,
-                          separatorBuilder:
-                              (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (_, i) => _StockItemCard(item: items[i]),
-                        ),
-                      ),
-            ),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         );
       },
     );
@@ -387,82 +568,61 @@ class _StockTabState extends State<_StockTab>
 // ── Card de item de stock ─────────────────────────────────────────────────────
 
 class _StockItemCard extends StatelessWidget {
-  final Map<String, dynamic> item;
+  final _VariantStockItem item;
   const _StockItemCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final name = item['product_name'] as String;
-    final sku = item['sku'] as String?;
-    final stock = item['stock'] as int;
-    final reorderPoint = item['reorder_point'] as int;
-    final salePrice = (item['sale_price'] as num).toDouble();
-    final unitCost = (item['unit_cost'] as num).toDouble();
-    final wholesalePrice = (item['wholesale_price'] as num?)?.toDouble();
-    final wholesaleMinQty = (item['wholesale_min_qty'] as int?) ?? 1;
-    final isLowStock = item['is_low_stock'] as bool;
-    final usesBatches = item['uses_batches'] as bool;
-    final attrs = Map<String, dynamic>.from((item['attributes'] as Map?) ?? {});
-    final category = item['category'] as String;
-    final batches =
-        (item['batches'] as List)
-            .map((b) => Map<String, dynamic>.from(b as Map))
-            .toList();
-
-    final attrsText = attrs.entries.map((e) => '${e.value}').join(' · ');
-    final profit = salePrice - unitCost;
-    final margin = unitCost > 0 ? (profit / salePrice) * 100 : 0.0;
-
-    // Color de stock
-    Color stockColor;
-    if (stock <= 0) {
+    final Color stockColor;
+    if (item.stock <= 0) {
       stockColor = AppColors.danger;
-    } else if (isLowStock) {
+    } else if (item.isLowStock) {
       stockColor = AppColors.warning;
     } else {
       stockColor = AppColors.success;
     }
 
+    // Porcentaje de stock respecto al reorder * 3 como "saludable"
+    final double stockRatio =
+        item.stockControl && item.reorderPoint > 0
+            ? (item.stock / (item.reorderPoint * 4)).clamp(0.0, 1.0)
+            : 1.0;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border:
-            isLowStock
+            item.isLowStock
                 ? Border.all(
-                  color: AppColors.warning.withValues(alpha: 0.5),
+                  color: AppColors.warning.withValues(alpha: 0.4),
                   width: 1.5,
                 )
                 : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Stock indicator circle
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: stockColor.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$stock',
-                      style: TextStyle(
-                        color: stockColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: stock > 99 ? 12 : 16,
-                      ),
-                    ),
-                  ),
+                // ── Stock badge ──────────────────────────────────────
+                _StockBadge(
+                  stock: item.stock,
+                  color: stockColor,
+                  isLowStock: item.isLowStock,
                 ),
                 const SizedBox(width: 12),
 
+                // ── Info principal ───────────────────────────────────
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,44 +631,32 @@ class _StockItemCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              name,
+                              item.productName,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
+                                height: 1.2,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (isLowStock)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(
-                                  alpha: 0.15,
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '⚠ Bajo stock',
-                                style: TextStyle(
-                                  color: AppColors.warning,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                          if (item.isLowStock) ...[
+                            const SizedBox(width: 6),
+                            _Badge(
+                              label: '⚠ Bajo stock',
+                              color: AppColors.warning,
                             ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         [
-                          category,
-                          if (attrsText.isNotEmpty) attrsText,
-                          if (sku != null && sku.isNotEmpty) 'SKU: $sku',
+                          item.category,
+                          if (item.attrsText.isNotEmpty) item.attrsText,
+                          if (item.sku != null && item.sku!.isNotEmpty)
+                            'SKU: ${item.sku}',
                         ].join(' · '),
                         style: TextStyle(
                           fontSize: 11,
@@ -517,49 +665,51 @@ class _StockItemCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
 
                       // Precios
-                      Row(
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           _PriceTag(
                             label: 'Venta',
-                            value: 'S/ ${salePrice.toStringAsFixed(2)}',
+                            value: 'S/ ${item.salePrice.toStringAsFixed(2)}',
                             color: AppColors.primary,
                           ),
-                          const SizedBox(width: 8),
                           _PriceTag(
                             label: 'Costo',
-                            value: 'S/ ${unitCost.toStringAsFixed(2)}',
+                            value: 'S/ ${item.unitCost.toStringAsFixed(2)}',
                             color: AppColors.textSecondary,
                           ),
-                          if (wholesalePrice != null) ...[
-                            const SizedBox(width: 8),
+                          if (item.wholesalePrice != null)
                             _PriceTag(
-                              label: 'Mayor×$wholesaleMinQty',
-                              value: 'S/ ${wholesalePrice.toStringAsFixed(2)}',
+                              label: 'Mayor×${item.wholesaleMinQty}',
+                              value:
+                                  'S/ ${item.wholesalePrice!.toStringAsFixed(2)}',
                               color: AppColors.teal,
                             ),
-                          ],
                         ],
                       ),
                     ],
                   ),
                 ),
 
-                // Margen
+                const SizedBox(width: 10),
+
+                // ── Margen ───────────────────────────────────────────
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${margin.toStringAsFixed(0)}%',
+                      '${item.margin.toStringAsFixed(0)}%',
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        fontSize: 18,
+                        fontSize: 20,
                         color:
-                            margin >= 30
+                            item.margin >= 30
                                 ? AppColors.success
-                                : margin >= 15
+                                : item.margin >= 15
                                 ? AppColors.warning
                                 : AppColors.danger,
                       ),
@@ -569,6 +719,7 @@ class _StockItemCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 9,
                         color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -577,56 +728,55 @@ class _StockItemCard extends StatelessWidget {
             ),
           ),
 
-          // ── Footer: reorder point + lotes si aplica ─────────────────
-          if (usesBatches && batches.isNotEmpty)
-            _BatchMiniList(batches: batches),
+          // ── Barra de stock ────────────────────────────────────────────
+          if (item.stockControl)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: stockRatio,
+                      backgroundColor: stockColor.withValues(alpha: 0.12),
+                      valueColor: AlwaysStoppedAnimation(stockColor),
+                      minHeight: 5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
+          // ── Lotes (si aplica) ─────────────────────────────────────────
+          if (item.usesBatches && item.batches.isNotEmpty)
+            _BatchMiniList(batches: item.batches),
+
+          // ── Footer ────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
             child: Row(
               children: [
                 Icon(
                   Icons.flag_outlined,
-                  size: 13,
+                  size: 12,
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Punto de reorden: $reorderPoint uds.',
+                  'Reorden: ${item.reorderPoint} uds.',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
                 ),
                 const Spacer(),
-                if (usesBatches)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.batch_prediction_rounded,
-                          size: 11,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${batches.length} lote${batches.length != 1 ? 's' : ''}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                if (item.usesBatches)
+                  _Badge(
+                    icon: Icons.batch_prediction_rounded,
+                    label:
+                        '${item.batches.length} lote${item.batches.length != 1 ? 's' : ''}',
+                    color: AppColors.primary,
                   ),
               ],
             ),
@@ -637,22 +787,75 @@ class _StockItemCard extends StatelessWidget {
   }
 }
 
+// ── Stock Badge ───────────────────────────────────────────────────────────────
+
+class _StockBadge extends StatelessWidget {
+  final int stock;
+  final Color color;
+  final bool isLowStock;
+
+  const _StockBadge({
+    required this.stock,
+    required this.color,
+    required this.isLowStock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$stock',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w900,
+                fontSize:
+                    stock > 999
+                        ? 11
+                        : stock > 99
+                        ? 14
+                        : 18,
+              ),
+            ),
+            Text(
+              'uds.',
+              style: TextStyle(
+                color: color.withValues(alpha: 0.7),
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── BatchMiniList ─────────────────────────────────────────────────────────────
+
 class _BatchMiniList extends StatelessWidget {
-  final List<Map<String, dynamic>> batches;
+  final List<_BatchModel> batches;
   const _BatchMiniList({required this.batches});
 
   @override
   Widget build(BuildContext context) {
-    // Solo los lotes con stock
-    final activeBatches =
-        batches
-            .where((b) => ((b['available_quantity'] as num?)?.toInt() ?? 0) > 0)
-            .toList();
-    if (activeBatches.isEmpty) return const SizedBox.shrink();
+    final active = batches.where((b) => b.availableQuantity > 0).toList();
+    if (active.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(10),
@@ -660,15 +863,12 @@ class _BatchMiniList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children:
-            activeBatches.map((b) {
-              final batchNum = b['batch_number'] as String? ?? '–';
-              final qty = (b['available_quantity'] as num?)?.toInt() ?? 0;
-              final expiryStr = b['expiry_date'] as String?;
+            active.map((b) {
               Color expiryColor = AppColors.textSecondary;
               String expiryLabel = 'Sin vencimiento';
 
-              if (expiryStr != null) {
-                final expiry = DateTime.tryParse(expiryStr);
+              if (b.expiryDate != null) {
+                final expiry = DateTime.tryParse(b.expiryDate!);
                 if (expiry != null) {
                   final diff = expiry.difference(DateTime.now()).inDays;
                   if (diff < 0) {
@@ -686,20 +886,20 @@ class _BatchMiniList extends StatelessWidget {
               }
 
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+                padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Row(
                   children: [
                     Container(
-                      width: 6,
-                      height: 6,
+                      width: 7,
+                      height: 7,
                       decoration: BoxDecoration(
                         color: expiryColor,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 7),
                     Text(
-                      'Lote $batchNum',
+                      'Lote ${b.batchNumber}',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -707,13 +907,26 @@ class _BatchMiniList extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '$qty uds.',
+                      '${b.availableQuantity} uds.',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const Spacer(),
+                    if (b.warehouseName != null) ...[
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '· ${b.warehouseName}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ] else
+                      const Spacer(),
                     Text(
                       expiryLabel,
                       style: TextStyle(
@@ -732,8 +945,7 @@ class _BatchMiniList extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// TAB 2: ESTADO DE LOTES (solo productos uses_batches = true)
-// Lista completa de lotes ordenados por fecha de vencimiento.
+// TAB 2: ESTADO DE LOTES
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _BatchesTab extends StatefulWidget {
@@ -746,13 +958,20 @@ class _BatchesTab extends StatefulWidget {
 class _BatchesTabState extends State<_BatchesTab>
     with AutomaticKeepAliveClientMixin {
   final _supabase = Supabase.instance.client;
-  String _filterStatus =
-      'Todos'; // Todos | Vencido | Crítico | Próximo | Normal
+  String _filterStatus = 'Todos';
   String _searchText = '';
   final _searchCtrl = TextEditingController();
 
-  // Cacheamos el future para evitar recargas en cada rebuild
-  late Future<List<Map<String, dynamic>>> _batchesFuture;
+  static const int _pageSize = 8;
+  int _currentPage = 0;
+
+  // Conteos globales por estado (cargados una vez)
+  int _countVencido = 0;
+  int _countCritico = 0;
+  int _countProximo = 0;
+  int _countNormal = 0;
+
+  late Future<List<_BatchModel>> _batchesFuture;
 
   @override
   void initState() {
@@ -760,94 +979,89 @@ class _BatchesTabState extends State<_BatchesTab>
     _batchesFuture = _loadBatches();
   }
 
-  void _refresh() => setState(() => _batchesFuture = _loadBatches());
+  void _refresh() {
+    setState(() {
+      _currentPage = 0;
+      _batchesFuture = _loadBatches();
+    });
+  }
 
-  Future<List<Map<String, dynamic>>> _loadBatches() async {
-    // Traemos todos los lotes con stock > 0.
-    // El filtro .eq('products.uses_batches', true) NO funciona sobre relaciones
-    // en Supabase Flutter — filtramos del lado cliente tras recibir los datos.
-    final response = await _supabase
+  void _onFilterChanged(VoidCallback fn) {
+    setState(() {
+      fn();
+      _currentPage = 0;
+      _batchesFuture = _loadBatches();
+    });
+  }
+
+  Future<List<_BatchModel>> _loadBatches() async {
+    // 1. Definimos la consulta base SOLO con los select y los filtros (.gt)
+    // NO agregamos el .order() todavía.
+    var baseQuery = _supabase
         .from('warehouse_stock_batches')
         .select('''
-          id, batch_number, expiry_date, available_quantity, updated_at,
-          variant_id, warehouse_id,
+          id, batch_number, expiry_date, available_quantity,
+          variant_id, warehouse_id, product_id, supplier_id,
           products!inner(id, name, uses_batches),
           product_variants(id, sku, attributes),
           warehouses(name),
           suppliers(name)
         ''')
-        .gt('available_quantity', 0)
-        .order('expiry_date', ascending: true, nullsFirst: false);
+        .gt('available_quantity', 0);
 
-    // Filtrar del lado cliente: solo productos que usan lotes
-    final allBatches =
+    // 2. Aplicamos el filtro de búsqueda dinámico si es necesario
+    if (_searchText.isNotEmpty) {
+      baseQuery = baseQuery.ilike('batch_number', '%$_searchText%');
+    }
+
+    // 3. AHORA aplicamos el modificador .order() y ejecutamos el await
+    final response = await baseQuery.order(
+      'expiry_date',
+      ascending: true,
+      nullsFirst: false,
+    );
+
+    final allRaw =
         (response as List)
-            .map((b) => Map<String, dynamic>.from(b as Map))
             .where(
-              (b) =>
-                  ((b['products'] as Map?)?['uses_batches'] as bool?) == true,
+              (raw) =>
+                  ((raw['products'] as Map?)?['uses_batches'] as bool?) == true,
+            )
+            .map(
+              (b) => _BatchModel.fromMap(Map<String, dynamic>.from(b as Map)),
             )
             .toList();
 
-    // Enriquecer con estado de vencimiento
-    for (final b in allBatches) {
-      final expiryStr = b['expiry_date'] as String?;
-      if (expiryStr == null) {
-        b['_status'] = 'sin_vencimiento';
-        b['_days_remaining'] = null;
-      } else {
-        final expiry = DateTime.tryParse(expiryStr);
-        if (expiry == null) {
-          b['_status'] = 'sin_vencimiento';
-          b['_days_remaining'] = null;
-        } else {
-          final diff = expiry.difference(DateTime.now()).inDays;
-          b['_days_remaining'] = diff;
-          if (diff < 0) {
-            b['_status'] = 'vencido';
-          } else if (diff <= 30) {
-            b['_status'] = 'critico';
-          } else if (diff <= 90) {
-            b['_status'] = 'proximo';
-          } else {
-            b['_status'] = 'normal';
-          }
-        }
-      }
+    for (final b in allRaw) {
+      b.computeExpiryStatus();
     }
 
-    return allBatches;
-  }
+    // Actualizar conteos globales
+    _countVencido = allRaw.where((b) => b.status == 'vencido').length;
+    _countCritico = allRaw.where((b) => b.status == 'critico').length;
+    _countProximo = allRaw.where((b) => b.status == 'proximo').length;
+    _countNormal = allRaw.where((b) => b.status == 'normal').length;
 
-  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> data) {
-    return data.where((b) {
-      final productName =
-          ((b['products'] as Map?)?['name'] as String? ?? '').toLowerCase();
-      final batchNum = (b['batch_number'] as String? ?? '').toLowerCase();
-      final search = _searchText.toLowerCase();
-      final matchSearch =
-          search.isEmpty ||
-          productName.contains(search) ||
-          batchNum.contains(search);
+    // Filtrar por estado en cliente
+    final filtered =
+        _filterStatus == 'Todos'
+            ? allRaw
+            : allRaw.where((b) {
+              switch (_filterStatus) {
+                case 'Vencido':
+                  return b.status == 'vencido';
+                case 'Crítico':
+                  return b.status == 'critico';
+                case 'Próximo':
+                  return b.status == 'proximo';
+                case 'Normal':
+                  return b.status == 'normal';
+                default:
+                  return true;
+              }
+            }).toList();
 
-      bool matchStatus = true;
-      switch (_filterStatus) {
-        case 'Vencido':
-          matchStatus = b['_status'] == 'vencido';
-          break;
-        case 'Crítico':
-          matchStatus = b['_status'] == 'critico';
-          break;
-        case 'Próximo':
-          matchStatus = b['_status'] == 'proximo';
-          break;
-        case 'Normal':
-          matchStatus = b['_status'] == 'normal';
-          break;
-      }
-
-      return matchSearch && matchStatus;
-    }).toList();
+    return filtered;
   }
 
   @override
@@ -856,147 +1070,172 @@ class _BatchesTabState extends State<_BatchesTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<List<_BatchModel>>(
       future: _batchesFuture,
       builder: (context, snapshot) {
-        final allBatches = snapshot.data ?? [];
-        final batches = _applyFilters(allBatches);
+        final allFiltered = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-        final vencidos =
-            allBatches.where((b) => b['_status'] == 'vencido').length;
-        final criticos =
-            allBatches.where((b) => b['_status'] == 'critico').length;
-        final proximos =
-            allBatches.where((b) => b['_status'] == 'proximo').length;
-        final normales =
-            allBatches.where((b) => b['_status'] == 'normal').length;
+        // Paginación en cliente sobre la lista ya filtrada por estado
+        final totalPages =
+            allFiltered.isEmpty ? 1 : (allFiltered.length / _pageSize).ceil();
+        final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+        final pageStart = safePage * _pageSize;
+        final pageEnd = (pageStart + _pageSize).clamp(0, allFiltered.length);
+        final pageBatches = allFiltered.sublist(pageStart, pageEnd);
 
-        return Column(
-          children: [
-            // ── Contador de estados ──────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Row(
-                children: [
-                  _StatusChip(
-                    label: 'Vencido',
-                    count: vencidos,
-                    color: AppColors.danger,
-                    selected: _filterStatus == 'Vencido',
-                    onTap:
-                        () => setState(
-                          () =>
-                              _filterStatus =
-                                  _filterStatus == 'Vencido'
-                                      ? 'Todos'
-                                      : 'Vencido',
-                        ),
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async => _refresh(),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // ── Chips de estado ───────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Row(
+                    children: [
+                      _StatusChip(
+                        label: 'Vencido',
+                        count: _countVencido,
+                        color: AppColors.danger,
+                        selected: _filterStatus == 'Vencido',
+                        onTap:
+                            () => _onFilterChanged(
+                              () =>
+                                  _filterStatus =
+                                      _filterStatus == 'Vencido'
+                                          ? 'Todos'
+                                          : 'Vencido',
+                            ),
+                      ),
+                      const SizedBox(width: 6),
+                      _StatusChip(
+                        label: '≤30 días',
+                        count: _countCritico,
+                        color: AppColors.warning,
+                        selected: _filterStatus == 'Crítico',
+                        onTap:
+                            () => _onFilterChanged(
+                              () =>
+                                  _filterStatus =
+                                      _filterStatus == 'Crítico'
+                                          ? 'Todos'
+                                          : 'Crítico',
+                            ),
+                      ),
+                      const SizedBox(width: 6),
+                      _StatusChip(
+                        label: '≤90 días',
+                        count: _countProximo,
+                        color: Colors.orange.shade400,
+                        selected: _filterStatus == 'Próximo',
+                        onTap:
+                            () => _onFilterChanged(
+                              () =>
+                                  _filterStatus =
+                                      _filterStatus == 'Próximo'
+                                          ? 'Todos'
+                                          : 'Próximo',
+                            ),
+                      ),
+                      const SizedBox(width: 6),
+                      _StatusChip(
+                        label: 'Normal',
+                        count: _countNormal,
+                        color: AppColors.success,
+                        selected: _filterStatus == 'Normal',
+                        onTap:
+                            () => _onFilterChanged(
+                              () =>
+                                  _filterStatus =
+                                      _filterStatus == 'Normal'
+                                          ? 'Todos'
+                                          : 'Normal',
+                            ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  _StatusChip(
-                    label: '≤30d',
-                    count: criticos,
-                    color: AppColors.warning,
-                    selected: _filterStatus == 'Crítico',
-                    onTap:
-                        () => setState(
-                          () =>
-                              _filterStatus =
-                                  _filterStatus == 'Crítico'
-                                      ? 'Todos'
-                                      : 'Crítico',
-                        ),
-                  ),
-                  const SizedBox(width: 6),
-                  _StatusChip(
-                    label: '≤90d',
-                    count: proximos,
-                    color: Colors.orange.shade400,
-                    selected: _filterStatus == 'Próximo',
-                    onTap:
-                        () => setState(
-                          () =>
-                              _filterStatus =
-                                  _filterStatus == 'Próximo'
-                                      ? 'Todos'
-                                      : 'Próximo',
-                        ),
-                  ),
-                  const SizedBox(width: 6),
-                  _StatusChip(
-                    label: 'Normal',
-                    count: normales,
-                    color: AppColors.success,
-                    selected: _filterStatus == 'Normal',
-                    onTap:
-                        () => setState(
-                          () =>
-                              _filterStatus =
-                                  _filterStatus == 'Normal'
-                                      ? 'Todos'
-                                      : 'Normal',
-                        ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Búsqueda ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: (v) => setState(() => _searchText = v),
-                decoration: InputDecoration(
-                  hintText: 'Buscar producto o número de lote...',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon:
-                      _searchText.isNotEmpty
-                          ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _searchText = '');
-                            },
-                          )
-                          : null,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.surface,
                 ),
               ),
-            ),
 
-            const SizedBox(height: 10),
+              // ── Búsqueda ──────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  child: _SearchField(
+                    controller: _searchCtrl,
+                    hint: 'Buscar producto o lote...',
+                    onChanged: (v) => _onFilterChanged(() => _searchText = v),
+                    onClear: () {
+                      _searchCtrl.clear();
+                      _onFilterChanged(() => _searchText = '');
+                    },
+                  ),
+                ),
+              ),
 
-            // ── Lista de lotes ────────────────────────────────────────
-            Expanded(
-              child:
-                  isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : batches.isEmpty
-                      ? const _EmptyState(
-                        icon: Icons.event_available_rounded,
-                        message: 'No hay lotes con stock disponible',
-                      )
-                      : RefreshIndicator(
-                        onRefresh: () async => _refresh(),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                          itemCount: batches.length,
-                          separatorBuilder:
-                              (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (_, i) => _BatchCard(batch: batches[i]),
-                        ),
+              // ── Info paginación ───────────────────────────────────────
+              if (!isLoading && allFiltered.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                    child: Text(
+                      'Mostrando ${allFiltered.isEmpty ? 0 : pageStart + 1}–$pageEnd de ${allFiltered.length} lotes',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
-            ),
-          ],
+                    ),
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
+
+              // ── Lista ─────────────────────────────────────────────────
+              if (isLoading)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                    ),
+                  ),
+                )
+              else if (allFiltered.isEmpty)
+                const SliverFillRemaining(
+                  child: _EmptyState(
+                    icon: Icons.event_available_rounded,
+                    message: 'No hay lotes con stock disponible',
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  sliver: SliverList.separated(
+                    itemCount: pageBatches.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) => _BatchCard(batch: pageBatches[i]),
+                  ),
+                ),
+
+              // ── Paginación ────────────────────────────────────────────
+              if (!isLoading && totalPages > 1)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                    child: AdminPageBlocks(
+                      currentPage: safePage,
+                      totalPages: totalPages,
+                      onPageChanged: (p) => setState(() => _currentPage = p),
+                    ),
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
         );
       },
     );
@@ -1006,37 +1245,17 @@ class _BatchesTabState extends State<_BatchesTab>
 // ── Card de lote ──────────────────────────────────────────────────────────────
 
 class _BatchCard extends StatelessWidget {
-  final Map<String, dynamic> batch;
+  final _BatchModel batch;
+
   const _BatchCard({required this.batch});
 
   @override
   Widget build(BuildContext context) {
-    final productName =
-        (batch['products'] as Map<String, dynamic>?)?['name'] as String? ?? '–';
-    final batchNumber = batch['batch_number'] as String? ?? '–';
-    final qty = (batch['available_quantity'] as num?)?.toInt() ?? 0;
-    final warehouseName =
-        (batch['warehouses'] as Map<String, dynamic>?)?['name'] as String? ??
-        '–';
-    final supplierName =
-        (batch['suppliers'] as Map<String, dynamic>?)?['name'] as String?;
-    final variantMap = batch['product_variants'] as Map<String, dynamic>? ?? {};
-    final variantAttrs = Map<String, dynamic>.from(
-      (variantMap['attributes'] as Map?) ?? {},
-    );
-    final sku = variantMap['sku'] as String?;
-    final expiryStr = batch['expiry_date'] as String?;
-    final status = batch['_status'] as String;
-    final daysRemaining = batch['_days_remaining'] as int?;
+    final Color statusColor;
+    final String statusLabel;
+    final IconData statusIcon;
 
-    final attrsText = variantAttrs.entries.map((e) => '${e.value}').join(' · ');
-
-    // Color y label según estado
-    Color statusColor;
-    String statusLabel;
-    IconData statusIcon;
-
-    switch (status) {
+    switch (batch.status) {
       case 'vencido':
         statusColor = AppColors.danger;
         statusLabel = 'VENCIDO';
@@ -1044,7 +1263,7 @@ class _BatchCard extends StatelessWidget {
         break;
       case 'critico':
         statusColor = AppColors.warning;
-        final d = daysRemaining!;
+        final d = batch.daysRemaining!;
         statusLabel =
             d == 0
                 ? 'HOY'
@@ -1055,15 +1274,17 @@ class _BatchCard extends StatelessWidget {
         break;
       case 'proximo':
         statusColor = Colors.orange.shade400;
-        statusLabel = 'EN $daysRemaining DÍAS';
+        statusLabel = 'EN ${batch.daysRemaining} DÍAS';
         statusIcon = Icons.schedule_rounded;
         break;
       case 'normal':
         statusColor = AppColors.success;
-        final expiry = DateTime.tryParse(expiryStr ?? '');
+        final expiry = DateTime.tryParse(batch.expiryDate ?? '');
         statusLabel =
             expiry != null
-                ? '${expiry.day.toString().padLeft(2, '0')}/${expiry.month.toString().padLeft(2, '0')}/${expiry.year}'
+                ? '${expiry.day.toString().padLeft(2, '0')}/'
+                    '${expiry.month.toString().padLeft(2, '0')}/'
+                    '${expiry.year}'
                 : 'NORMAL';
         statusIcon = Icons.check_circle_rounded;
         break;
@@ -1076,35 +1297,49 @@ class _BatchCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border(left: BorderSide(color: statusColor, width: 4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Encabezado ─────────────────────────────────────────────
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        productName,
+                        batch.productName ??
+                            'Producto ${batch.productId.substring(0, 8)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
+                          height: 1.2,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         [
-                          if (attrsText.isNotEmpty) attrsText,
-                          if (sku != null && sku.isNotEmpty) 'SKU: $sku',
-                          warehouseName,
+                          if (batch.variantAttrs != null &&
+                              batch.variantAttrs!.isNotEmpty)
+                            batch.variantAttrs!,
+                          if (batch.sku != null && batch.sku!.isNotEmpty)
+                            'SKU: ${batch.sku}',
+                          if (batch.warehouseName != null) batch.warehouseName!,
                         ].join(' · '),
                         style: TextStyle(
                           fontSize: 11,
@@ -1117,15 +1352,15 @@ class _BatchCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Estado badge
+                // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 9,
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1147,55 +1382,35 @@ class _BatchCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
-            // Detalle del lote
-            Row(
+            // ── Pills de detalle ───────────────────────────────────────
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 _DetailPill(
                   icon: Icons.numbers_rounded,
-                  label: 'Lote: $batchNumber',
+                  label: 'Lote: ${batch.batchNumber}',
                 ),
-                const SizedBox(width: 6),
                 _DetailPill(
                   icon: Icons.inventory_2_rounded,
-                  label: '$qty uds.',
+                  label: '${batch.availableQuantity} uds.',
                   color: AppColors.primary,
                 ),
-                if (supplierName != null) ...[
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: _DetailPill(
-                      icon: Icons.business_rounded,
-                      label: supplierName,
-                      maxWidth: true,
-                    ),
+                if (batch.supplierName != null)
+                  _DetailPill(
+                    icon: Icons.business_rounded,
+                    label: batch.supplierName!,
                   ),
-                ],
-              ],
-            ),
-
-            if (expiryStr != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 12,
+                if (batch.expiryDate != null)
+                  _DetailPill(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Vence: ${batch.expiryDate!.substring(0, 10)}',
                     color: statusColor,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Vence: ${expiryStr.substring(0, 10)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: statusColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ],
         ),
       ),
@@ -1207,32 +1422,47 @@ class _BatchCard extends StatelessWidget {
 // WIDGETS AUXILIARES
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _SummaryChip extends StatelessWidget {
+/// Tarjeta de métrica con icono y valor destacado
+class _MetricCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
   final IconData icon;
+  final bool highlight;
 
-  const _SummaryChip({
+  const _MetricCard({
     required this.label,
     required this.value,
     required this.color,
     required this.icon,
+    this.highlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          color: color.withValues(alpha: highlight ? 0.15 : 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border:
+              highlight
+                  ? Border.all(color: color.withValues(alpha: 0.35), width: 1.5)
+                  : null,
         ),
         child: Row(
           children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 6),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1241,15 +1471,16 @@ class _SummaryChip extends StatelessWidget {
                     value,
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
-                      fontSize: 15,
+                      fontSize: 18,
                       color: color,
+                      height: 1.1,
                     ),
                   ),
                   Text(
                     label,
                     style: TextStyle(
                       fontSize: 9,
-                      color: color.withValues(alpha: 0.7),
+                      color: color.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1263,6 +1494,50 @@ class _SummaryChip extends StatelessWidget {
   }
 }
 
+/// Campo de búsqueda reutilizable
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _SearchField({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+        suffixIcon:
+            controller.text.isNotEmpty
+                ? IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  onPressed: onClear,
+                )
+                : null,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 11),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        filled: true,
+        fillColor: AppColors.surface,
+      ),
+    );
+  }
+}
+
+/// Chip de estado para filtrar lotes
 class _StatusChip extends StatelessWidget {
   final String label;
   final int count;
@@ -1285,10 +1560,14 @@ class _StatusChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? color : color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
+            color: selected ? color : color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border:
+                selected
+                    ? null
+                    : Border.all(color: color.withValues(alpha: 0.2), width: 1),
           ),
           child: Column(
             children: [
@@ -1296,7 +1575,7 @@ class _StatusChip extends StatelessWidget {
                 '$count',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  fontSize: 16,
+                  fontSize: 17,
                   color: selected ? Colors.white : color,
                 ),
               ),
@@ -1310,6 +1589,7 @@ class _StatusChip extends StatelessWidget {
                           ? Colors.white.withValues(alpha: 0.85)
                           : color.withValues(alpha: 0.8),
                 ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -1319,6 +1599,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+/// Dropdown de categorías
 class _CategoryDropdown extends StatelessWidget {
   final List<String> categories;
   final String selected;
@@ -1336,7 +1617,7 @@ class _CategoryDropdown extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -1365,6 +1646,7 @@ class _CategoryDropdown extends StatelessWidget {
   }
 }
 
+/// Etiqueta de precio
 class _PriceTag extends StatelessWidget {
   final String label;
   final String value;
@@ -1379,10 +1661,10 @@ class _PriceTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1398,7 +1680,7 @@ class _PriceTag extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: color,
               fontWeight: FontWeight.w700,
             ),
@@ -1409,30 +1691,25 @@ class _PriceTag extends StatelessWidget {
   }
 }
 
+/// Pill de detalle con icono
 class _DetailPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color? color;
-  final bool maxWidth;
 
-  const _DetailPill({
-    required this.icon,
-    required this.label,
-    this.color,
-    this.maxWidth = false,
-  });
+  const _DetailPill({required this.icon, required this.label, this.color});
 
   @override
   Widget build(BuildContext context) {
     final c = color ?? AppColors.textSecondary;
-    final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
-        mainAxisSize: maxWidth ? MainAxisSize.min : MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 11, color: c),
           const SizedBox(width: 4),
@@ -1449,10 +1726,47 @@ class _DetailPill extends StatelessWidget {
         ],
       ),
     );
-    return pill;
   }
 }
 
+/// Badge pequeño inline
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  const _Badge({required this.label, required this.color, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Estado vacío
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
@@ -1465,12 +1779,20 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 52,
-            color: AppColors.textSecondary.withValues(alpha: 0.4),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.textSecondary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 34,
+              color: AppColors.textSecondary.withValues(alpha: 0.45),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
             message,
             style: TextStyle(
