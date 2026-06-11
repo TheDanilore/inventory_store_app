@@ -86,12 +86,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
   bool get _isCancelled => _currentStatus.toUpperCase() == 'CANCELLED';
-  // CANCELLED nunca editable. COMPLETED solo editable si el pago NO es CRÉDITO.
-  bool get _canToggleEdit =>
-      widget.order.status.toUpperCase() != 'CANCELLED' &&
-      !(widget.order.status.toUpperCase() == 'COMPLETED' &&
-          widget.order.paymentMethod == 'CRÉDITO');
-  // En COMPLETED, solo se puede editar el cliente (no items, no método de pago).
+  // Solo se puede editar si el pedido está PENDIENTE
+  bool get _canToggleEdit => widget.order.status.toUpperCase() == 'PENDING';
+  // _editingCompletedOrder ya no aplica, pero se mantiene por compatibilidad con widgets hijos
   bool get _editingCompletedOrder =>
       _isEditing && widget.order.status.toUpperCase() == 'COMPLETED';
 
@@ -697,6 +694,66 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             'notes': 'Activación de pedido desde detalles',
             if (currentProfileId != null) 'created_by': currentProfileId,
           });
+        } else {
+          // Pago directo: registrar ingreso en cuenta financiera
+          final accountsResp = await _supabase
+              .from('financial_accounts')
+              .select('id, name, type, balance')
+              .eq('is_active', true)
+              .order('name');
+
+          final accounts = List<Map<String, dynamic>>.from(accountsResp);
+
+          // Buscar cuenta cuyo nombre coincida con el método de pago; si no, primera activa
+          Map<String, dynamic>? targetAccount;
+          if (accounts.isNotEmpty) {
+            try {
+              targetAccount = accounts.firstWhere(
+                (a) =>
+                    (a['name'] as String).toUpperCase().contains(
+                      _paymentMethod.toUpperCase(),
+                    ) ||
+                    _paymentMethod.toUpperCase().contains(
+                      (a['name'] as String).toUpperCase(),
+                    ),
+              );
+            } catch (_) {
+              targetAccount = accounts.first;
+            }
+          }
+
+          if (targetAccount != null) {
+            String? shiftId;
+            if (targetAccount['type'] == 'CAJA') {
+              final shiftResp =
+                  await _supabase
+                      .from('cash_shifts')
+                      .select('id')
+                      .eq('account_id', targetAccount['id'] as String)
+                      .eq('status', 'OPEN')
+                      .maybeSingle();
+              shiftId = shiftResp?['id'] as String?;
+            }
+
+            await _supabase.from('account_movements').insert({
+              'account_id': targetAccount['id'],
+              'movement_type': 'INCOME',
+              'amount': totalAmount,
+              'description':
+                  'Cobro de venta — Pedido #${widget.order.id}',
+              'reference_type': 'orders',
+              'reference_id': widget.order.id,
+              if (shiftId != null) 'shift_id': shiftId,
+              if (currentProfileId != null) 'created_by': currentProfileId,
+            });
+
+            final currentBalance =
+                (targetAccount['balance'] as num?)?.toDouble() ?? 0.0;
+            await _supabase
+                .from('financial_accounts')
+                .update({'balance': currentBalance + totalAmount})
+                .eq('id', targetAccount['id'] as String);
+          }
         }
       }
       // ─── 3. CANCELAR UN PEDIDO COMPLETADO (COMPLETED -> CANCELLED) ───
@@ -792,6 +849,67 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'notes': 'Reembolso por cancelación de pedido',
               if (currentProfileId != null) 'created_by': currentProfileId,
             });
+          }
+        } else if (origPaymentMethod != 'CRÉDITO') {
+          // Revertir ingreso en cuenta financiera al cancelar venta directa
+          // Buscar el account_movement original de esta orden (INCOME)
+          final origMovResp =
+              await _supabase
+                  .from('account_movements')
+                  .select('account_id, amount')
+                  .eq('reference_id', widget.order.id)
+                  .eq('reference_type', 'orders')
+                  .eq('movement_type', 'INCOME')
+                  .maybeSingle();
+
+          if (origMovResp != null) {
+            final accountId = origMovResp['account_id'] as String;
+            final origMovAmount = (origMovResp['amount'] as num).toDouble();
+
+            // Verificar turno activo si es CAJA
+            String? shiftId;
+            final acctResp =
+                await _supabase
+                    .from('financial_accounts')
+                    .select('type, balance')
+                    .eq('id', accountId)
+                    .maybeSingle();
+            if (acctResp != null && acctResp['type'] == 'CAJA') {
+              final shiftResp =
+                  await _supabase
+                      .from('cash_shifts')
+                      .select('id')
+                      .eq('account_id', accountId)
+                      .eq('status', 'OPEN')
+                      .maybeSingle();
+              shiftId = shiftResp?['id'] as String?;
+            }
+
+            await _supabase.from('account_movements').insert({
+              'account_id': accountId,
+              'movement_type': 'EXPENSE',
+              'amount': origMovAmount,
+              'description':
+                  'Reversión por cancelación — Pedido #${widget.order.id}',
+              'reference_type': 'orders',
+              'reference_id': widget.order.id,
+              if (shiftId != null) 'shift_id': shiftId,
+              if (currentProfileId != null) 'created_by': currentProfileId,
+            });
+
+            if (acctResp != null) {
+              final currentBalance =
+                  (acctResp['balance'] as num?)?.toDouble() ?? 0.0;
+              await _supabase
+                  .from('financial_accounts')
+                  .update({
+                    'balance': (currentBalance - origMovAmount).clamp(
+                      0.0,
+                      double.infinity,
+                    ),
+                  })
+                  .eq('id', accountId);
+            }
           }
         }
 
@@ -1028,7 +1146,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   'movement_type': 'ADJUSTMENT',
                   'description':
                       'Monedas reasignadas por cambio de cliente en pedido #'
-                      '${widget.order.id.substring(0, 8)}',
+                      '${widget.order.id}',
                 });
               }
             }
@@ -1054,7 +1172,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   'movement_type': 'ADJUSTMENT',
                   'description':
                       'Monedas recibidas por reasignación de pedido #'
-                      '${widget.order.id.substring(0, 8)}',
+                      '${widget.order.id}',
                 });
               }
             }
@@ -1320,7 +1438,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             'movement_type': 'EXPENSE',
             'amount': movedAmount,
             'description':
-                'Reembolso por devolución · Pedido #${widget.order.id.substring(0, 8)}',
+                'Reembolso por devolución · Pedido #${widget.order.id}',
             'reference_type': 'orders',
             'reference_id': widget.order.id,
             if (currentProfileId != null) 'created_by': currentProfileId,

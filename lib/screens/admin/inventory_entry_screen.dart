@@ -509,7 +509,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
           'movement_type': 'EXPENSE',
           'amount': totalCost,
           'description':
-              'Compra de inventario — Entrada #${entryId.substring(0, 8).toUpperCase()}'
+              'Compra de inventario — Entrada #$entryId'
               '${_selectedSupplierId != null ? ' · ${_suppliers.firstWhere((s) => s.id == _selectedSupplierId).name}' : ''}',
           'reference_type': 'inventory_entry',
           'reference_id': entryId,

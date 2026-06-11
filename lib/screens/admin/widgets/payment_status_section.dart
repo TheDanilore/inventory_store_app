@@ -219,7 +219,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
         'movement_type': 'INCOME',
         'amount': amount,
         'description':
-            'Cobro de crédito — Pedido #${widget.orderId.substring(0, 8).toUpperCase()}',
+            'Cobro de crédito — Pedido #${widget.orderId}',
         'reference_type': 'orders',
         'reference_id': widget.orderId,
         if (shiftId != null) 'shift_id': shiftId,

@@ -418,10 +418,71 @@ class _OrdersScreenState extends State<OrdersScreen> {
             'notes': 'Activación de pedido',
             if (currentUserId != null) 'created_by': currentUserId,
           });
+        } else {
+          // Pago directo: registrar ingreso en cuenta financiera
+          // Buscar la cuenta activa con ese nombre/método de pago
+          final accountsResp = await _supabase
+              .from('financial_accounts')
+              .select('id, name, type, balance')
+              .eq('is_active', true)
+              .order('name');
+
+          final accounts = List<Map<String, dynamic>>.from(accountsResp);
+
+          // Intentar encontrar una cuenta cuyo nombre coincida con el método de pago
+          // Si no hay coincidencia, usar la primera cuenta activa
+          Map<String, dynamic>? targetAccount;
+          if (accounts.isNotEmpty) {
+            try {
+              targetAccount = accounts.firstWhere(
+                (a) =>
+                    (a['name'] as String).toUpperCase().contains(
+                      order.paymentMethod.toUpperCase(),
+                    ) ||
+                    order.paymentMethod.toUpperCase().contains(
+                      (a['name'] as String).toUpperCase(),
+                    ),
+              );
+            } catch (_) {
+              targetAccount = accounts.first;
+            }
+          }
+
+          if (targetAccount != null) {
+            // Verificar turno activo si es CAJA
+            String? shiftId;
+            if (targetAccount['type'] == 'CAJA') {
+              final shiftResp =
+                  await _supabase
+                      .from('cash_shifts')
+                      .select('id')
+                      .eq('account_id', targetAccount['id'] as String)
+                      .eq('status', 'OPEN')
+                      .maybeSingle();
+              shiftId = shiftResp?['id'] as String?;
+            }
+
+            await _supabase.from('account_movements').insert({
+              'account_id': targetAccount['id'],
+              'movement_type': 'INCOME',
+              'amount': order.totalAmount,
+              'description':
+                  'Cobro de venta — Pedido #${order.id}',
+              'reference_type': 'orders',
+              'reference_id': order.id,
+              if (shiftId != null) 'shift_id': shiftId,
+              if (currentUserId != null) 'created_by': currentUserId,
+            });
+
+            final currentBalance =
+                (targetAccount['balance'] as num?)?.toDouble() ?? 0.0;
+            await _supabase
+                .from('financial_accounts')
+                .update({'balance': currentBalance + order.totalAmount})
+                .eq('id', targetAccount['id'] as String);
+          }
         }
-      } else if (newStatus == 'CANCELLED' && order.status == 'COMPLETED') {
-        // Lógica de cancelación
-      }
+      } 
 
       final updates = <String, dynamic>{'status': newStatus};
 
