@@ -288,7 +288,7 @@ class _StockTabState extends State<_StockTab>
           uses_batches, stock_control, product_type,
           categories(name),
           product_variants!inner(
-            id, sku, attributes, sale_price, wholesale_price,
+            id, sku, attributes, sale_price, unit_cost, wholesale_price,
             wholesale_min_quantity, reorder_point, is_active,
             warehouse_stock_batches(
               id, variant_id, product_id, available_quantity, expiry_date,
@@ -338,6 +338,10 @@ class _StockTabState extends State<_StockTab>
         }
 
         final reorderPoint = (variant['reorder_point'] as int?) ?? 3;
+        final double variantUnitCost =
+            ((variant['unit_cost'] as num?)?.toDouble() ?? 0) > 0
+                ? (variant['unit_cost'] as num).toDouble()
+                : unitCost;
         final double variantSalePrice =
             (variant['sale_price'] as num?)?.toDouble() ?? prodSalePrice;
         final double? variantWholesalePrice =
@@ -354,7 +358,7 @@ class _StockTabState extends State<_StockTab>
             productType: prod['product_type'] as String? ?? 'good',
             usesBatches: usesBatches,
             stockControl: stockControl,
-            unitCost: unitCost,
+            unitCost: variantUnitCost,
             salePrice: variantSalePrice,
             wholesalePrice: variantWholesalePrice,
             wholesaleMinQty: variantWholesaleMinQty,

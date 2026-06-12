@@ -85,7 +85,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
       final variantsResp = await _supabase
           .from('product_variants')
           .select(
-            'id, product_id, sku, attributes, product_images(*), sale_price, is_active',
+            'id, product_id, sku, attributes, product_images(*), sale_price, unit_cost, is_active',
           )
           .eq('is_active', true)
           .order('created_at', ascending: true);

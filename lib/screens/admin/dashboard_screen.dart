@@ -21,7 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .from('products')
         .select('''
           id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, 
-          product_variants(id, wholesale_price, wholesale_min_quantity, reorder_point, is_active),
+          product_variants(id, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active),
           warehouse_stock_batches(variant_id, available_quantity)
         ''')
         .eq('is_active', true)
@@ -155,53 +155,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final products = snapshot.data ?? [];
 
                 for (var row in products) {
-                  final stock =
-                      (row['total_active_stock'] as num?)?.toInt() ?? 0;
-
-                  totalProductos++;
-                  if (stock <= 0) continue;
-
-                  final unitCost =
+                  final prodUnitCost =
                       (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-                  final salePrice =
+                  final prodSalePrice =
                       (row['sale_price'] as num?)?.toDouble() ?? 0.0;
+                  final prodWholesalePrice =
+                      (row['wholesale_price'] as num?)?.toDouble();
+                  final prodWholesaleMinQty =
+                      (row['wholesale_min_quantity'] as num?)?.toInt() ?? 3;
 
                   final activeVariants =
                       row['active_variants_list']
                           as List<Map<String, dynamic>>? ??
                       [];
 
-                  Map<String, dynamic>? pricingVariant =
-                      activeVariants.isNotEmpty ? activeVariants.first : null;
+                  totalProductos++;
 
-                  final wholesalePrice =
-                      (pricingVariant?['wholesale_price'] as num?)
-                          ?.toDouble() ??
-                      (row['wholesale_price'] as num?)?.toDouble();
-                  final wholesaleMinQuantity =
-                      (pricingVariant?['wholesale_min_quantity'] as num?)
-                          ?.toInt() ??
-                      (row['wholesale_min_quantity'] as num?)?.toInt() ??
-                      3;
-                  final reorderPoint =
-                      (pricingVariant?['reorder_point'] as num?)?.toInt() ?? 3;
+                  // Calculamos por variante para usar su unit_cost/sale_price
+                  // con fallback al del producto padre.
+                  final batches = List<Map<String, dynamic>>.from(
+                    row['warehouse_stock_batches'] ?? [],
+                  );
 
-                  totalStock += stock;
-                  inversionTotal += stock * unitCost;
-                  valorVentaMinorista += stock * salePrice;
+                  bool prodHasLowStock = false;
 
-                  gananciaBruta += (stock * salePrice) - (stock * unitCost);
-                  gananciaEsperadaMax +=
-                      (stock * salePrice) - (stock * unitCost);
+                  for (final variant in activeVariants) {
+                    final variantId = variant['id'] as String?;
+                    if (variantId == null) continue;
 
-                  final canApplyWholesale =
-                      wholesalePrice != null && stock >= wholesaleMinQuantity;
-                  final effectiveWholesale =
-                      canApplyWholesale ? wholesalePrice : salePrice;
-                  gananciaEsperadaMin +=
-                      (stock * effectiveWholesale) - (stock * unitCost);
+                    final variantStock = batches
+                        .where((b) => b['variant_id'] == variantId)
+                        .fold<int>(
+                          0,
+                          (s, b) =>
+                              s +
+                              ((b['available_quantity'] as num?)?.toInt() ?? 0),
+                        );
 
-                  if (stock <= reorderPoint) productosBajoStock++;
+                    if (variantStock <= 0) continue;
+
+                    final varUnitCost =
+                        ((variant['unit_cost'] as num?)?.toDouble() ?? 0) > 0
+                            ? (variant['unit_cost'] as num).toDouble()
+                            : prodUnitCost;
+
+                    final varSalePrice =
+                        (variant['sale_price'] as num?)?.toDouble() ??
+                        prodSalePrice;
+
+                    final varWholesalePrice =
+                        (variant['wholesale_price'] as num?)?.toDouble() ??
+                        prodWholesalePrice;
+                    final varWholesaleMinQty =
+                        (variant['wholesale_min_quantity'] as num?)?.toInt() ??
+                        prodWholesaleMinQty;
+                    final reorderPoint =
+                        (variant['reorder_point'] as num?)?.toInt() ?? 3;
+
+                    totalStock += variantStock;
+                    inversionTotal += variantStock * varUnitCost;
+                    valorVentaMinorista += variantStock * varSalePrice;
+
+                    gananciaBruta +=
+                        (variantStock * varSalePrice) -
+                        (variantStock * varUnitCost);
+                    gananciaEsperadaMax +=
+                        (variantStock * varSalePrice) -
+                        (variantStock * varUnitCost);
+
+                    final canApplyWholesale =
+                        varWholesalePrice != null &&
+                        variantStock >= varWholesaleMinQty;
+                    final effectiveWholesale =
+                        canApplyWholesale ? varWholesalePrice : varSalePrice;
+                    gananciaEsperadaMin +=
+                        (variantStock * effectiveWholesale) -
+                        (variantStock * varUnitCost);
+
+                    if (variantStock <= reorderPoint) prodHasLowStock = true;
+                  }
+
+                  if (prodHasLowStock) productosBajoStock++;
                 }
 
                 final margenBruto =

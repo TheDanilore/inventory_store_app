@@ -29,6 +29,13 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   Map<String, dynamic>? _selectedBatch; // Para productos con gestión de lotes
   double _quantity = 1;
 
+  /// Costo efectivo: usa el de la variante si > 0, si no el del producto.
+  double _effectiveCost({ProductVariantModel? variant, ProductModel? product}) {
+    final variantCost = variant?.unitCost ?? 0;
+    if (variantCost > 0) return variantCost;
+    return product?.unitCost ?? 0;
+  }
+
   void _onProductChanged(ProductModel? val) {
     setState(() {
       _selectedProduct = val;
@@ -182,7 +189,10 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
       variant: variantToUse,
       selectedBatch: usesBatches ? _selectedBatch : null,
       quantity: _quantity,
-      unitCost: _selectedProduct!.unitCost,
+      unitCost: _effectiveCost(
+        variant: _selectedVariant,
+        product: _selectedProduct,
+      ),
     );
 
     Navigator.pop(context, newItem);
