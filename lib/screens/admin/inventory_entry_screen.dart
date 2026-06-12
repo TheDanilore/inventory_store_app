@@ -469,6 +469,15 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                 'updated_by': createdByProfileId,
               })
               .eq('id', stockBatchId);
+
+          // Actualizar unit_cost de la variante al último costo de compra
+          await _supabase
+              .from('product_variants')
+              .update({
+                'unit_cost': item.unitCost,
+                'updated_by': createdByProfileId,
+              })
+              .eq('id', item.variant.id);
         } else {
           newStock = item.quantity;
           final newBatch =
@@ -489,6 +498,15 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                   .select('id')
                   .single();
           stockBatchId = newBatch['id'] as String;
+
+          // Actualizar unit_cost de la variante al último costo de compra
+          await _supabase
+              .from('product_variants')
+              .update({
+                'unit_cost': item.unitCost,
+                'updated_by': createdByProfileId,
+              })
+              .eq('id', item.variant.id);
         }
 
         // 4. ── Registrar en inventory_movements (kardex) ─────────────────
