@@ -65,6 +65,14 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     super.dispose();
   }
 
+  /// Devuelve el costo unitario efectivo: primero el de la variante
+  /// (si es > 0), luego el del producto como fallback.
+  double _effectiveCost({ProductVariantModel? variant, ProductModel? product}) {
+    final variantCost = variant?.unitCost ?? 0;
+    if (variantCost > 0) return variantCost;
+    return product?.unitCost ?? 0;
+  }
+
   void _onProductChanged(ProductModel? val) {
     setState(() {
       _selectedProduct = val;
@@ -73,6 +81,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _batchCtrl.clear();
       _expiryDate = null;
       _existingBatches = [];
+      // Mostramos el costo del producto como valor por defecto;
+      // se sobreescribirá cuando se seleccione la variante.
       if (val != null) {
         _costCtrl.text = val.unitCost.toStringAsFixed(2);
       } else {
@@ -84,9 +94,11 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   void _onVariantChanged(ProductVariantModel? val) {
     setState(() {
       _selectedVariant = val;
-      if (_selectedProduct != null && _costCtrl.text.isEmpty) {
-        _costCtrl.text = _selectedProduct!.unitCost.toStringAsFixed(2);
-      }
+      // Siempre actualizamos el costo al seleccionar variante:
+      // usa el unit_cost de la variante si es > 0, si no cae al del producto.
+      final cost = _effectiveCost(variant: val, product: _selectedProduct);
+      _costCtrl.text = cost.toStringAsFixed(2);
+
       if (val != null && _selectedProduct?.usesBatches == true) {
         _fetchExistingBatches(val.id);
       }

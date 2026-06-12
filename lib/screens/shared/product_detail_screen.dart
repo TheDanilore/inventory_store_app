@@ -53,6 +53,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _totalSold = 0;
   double _reinvestmentNeeded = 0.0;
   double _inventoryValue = 0.0; // Valor total del inventario actual
+  double _totalRevenue = 0.0; // Ingresos totales por ventas
 
   double _averageRating = 0.0;
 
@@ -205,7 +206,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         queries.add(
           _supabase
               .from('order_items')
-              .select('quantity, unit_cost, orders!inner(status)')
+              .select(
+                'quantity, unit_cost, applied_price, orders!inner(status)',
+              )
               .eq('product_id', widget.product.id)
               .eq('orders.status', 'COMPLETED'),
         );
@@ -269,20 +272,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       for (final r in fetchedReviews) {
         totalRating += (r['rating'] as num).toDouble();
       }
-
       // Parseo de Decisiones Rápidas (Histórico)
       int soldUnits = 0;
       double reinvestment = 0.0;
+      double revenue =
+          0.0; // <-- Declarada aquí para que tenga un alcance global en esta función
 
       if (widget.isAdmin && results.length > 5) {
         final orderItemsData = results[5] as List<dynamic>;
+        // Se elimina la declaración local anterior
         for (final row in orderItemsData) {
           final q = (row['quantity'] as num?)?.toInt() ?? 0;
           final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
+          final ap = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
 
           soldUnits += q;
-          reinvestment +=
-              (q * uc); // Costo histórico exacto para reponer lo vendido
+          reinvestment += (q * uc);
+          revenue += (q * ap);
         }
       }
 
@@ -298,6 +304,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
         _totalSold = soldUnits;
         _reinvestmentNeeded = reinvestment;
+        _totalRevenue =
+            revenue; // <-- Ahora sí puede acceder a la variable sin problemas
 
         // Valor de inventario actual: stock × costo unitario por variante
         double invValue = 0.0;
@@ -1110,6 +1118,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   totalSold: _totalSold,
                   reinvestmentNeeded: _reinvestmentNeeded,
                   inventoryValue: _inventoryValue,
+                  totalRevenue: _totalRevenue,
                 ),
                 const SizedBox(height: 16),
               ],
