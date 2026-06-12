@@ -1062,7 +1062,8 @@ class _RecentOrdersSection extends StatelessWidget {
                 ),
               )
               : Column(
-                children: orders.map((o) => _OrderRow(order: o)).toList(),
+                children:
+                    orders.take(5).map((o) => _OrderRow(order: o)).toList(),
               ),
     );
   }

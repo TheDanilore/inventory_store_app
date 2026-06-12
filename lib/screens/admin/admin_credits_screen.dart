@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/screens/admin/admin_credit_movements_screen.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -88,6 +89,10 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
   List<CreditAccountModel> _all = [];
   List<CreditAccountModel> _filtered = [];
   bool _isLoading = true;
+
+  // Paginación
+  static const int _pageSize = 8;
+  int _currentPage = 0;
 
   // Stats globales
   double _totalDebt = 0;
@@ -186,6 +191,7 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
       list = list.where((a) => a.currentDebt > 0 && a.isActive).toList();
     }
     _filtered = list;
+    _currentPage = 0;
   }
 
   void _onSearchChanged(String query) {
@@ -379,6 +385,17 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Paginación
+    final totalPages =
+        _filtered.isEmpty ? 1 : (_filtered.length / _pageSize).ceil();
+    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+    final pageStart = safePage * _pageSize;
+    final pageEnd = (pageStart + _pageSize).clamp(0, _filtered.length);
+    final pageItems = _filtered.sublist(
+      _filtered.isEmpty ? 0 : pageStart,
+      _filtered.isEmpty ? 0 : pageEnd,
+    );
+
     return AdminLayout(
       title: 'Cuentas de Crédito',
       showBackButton: true,
@@ -523,11 +540,11 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
                     : RefreshIndicator(
                       onRefresh: _fetchAccounts,
                       child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                        itemCount: _filtered.length,
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        itemCount: pageItems.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
-                          final account = _filtered[index];
+                          final account = pageItems[index];
                           return _CreditCard(
                             account: account,
                             onTap: () => _openAccountOptions(account),
@@ -536,6 +553,17 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
                       ),
                     ),
           ),
+
+          // ── Paginación FIJA ──────────────────────────────────────────────
+          if (!_isLoading && totalPages > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+              child: AdminPageBlocks(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                onPageChanged: (page) => setState(() => _currentPage = page),
+              ),
+            ),
         ],
       ),
     );

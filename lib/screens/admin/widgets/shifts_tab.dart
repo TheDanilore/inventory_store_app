@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/cash_shift_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -21,6 +22,10 @@ class _ShiftsTabState extends State<ShiftsTab>
   final _supabase = Supabase.instance.client;
   late Future<_ShiftsData> _future;
   String _filterStatus = 'Todos';
+
+  // 🟢 NUEVAS variables de paginación
+  static const int _pageSize = 8;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -60,7 +65,7 @@ class _ShiftsTabState extends State<ShiftsTab>
 
     final accountsRes = await _supabase
         .from('financial_accounts')
-        .select('id, name, type, balance') 
+        .select('id, name, type, balance')
         .eq('is_active', true)
         .eq('type', 'CAJA')
         .order('name');
@@ -183,6 +188,13 @@ class _ShiftsTabState extends State<ShiftsTab>
         final closedCount = allShifts.where((s) => s.status == 'CLOSED').length;
         final openShifts = allShifts.where((s) => s.status == 'OPEN').toList();
 
+        final totalPages =
+            shifts.isEmpty ? 1 : (shifts.length / _pageSize).ceil();
+        final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+        final pageStart = safePage * _pageSize;
+        final pageEnd = (pageStart + _pageSize).clamp(0, shifts.length);
+        final pageItems = shifts.sublist(pageStart, pageEnd);
+
         return Stack(
           children: [
             Column(
@@ -220,13 +232,11 @@ class _ShiftsTabState extends State<ShiftsTab>
                         color: AppColors.success,
                         selected: _filterStatus == 'OPEN',
                         onTap:
-                            () => setState(
-                              () =>
-                                  _filterStatus =
-                                      _filterStatus == 'OPEN'
-                                          ? 'Todos'
-                                          : 'OPEN',
-                            ),
+                            () => setState(() {
+                              _filterStatus =
+                                  _filterStatus == 'OPEN' ? 'Todos' : 'OPEN';
+                              _currentPage = 0;
+                            }),
                       ),
                       const SizedBox(width: 6),
                       _StatusChip(
@@ -235,13 +245,13 @@ class _ShiftsTabState extends State<ShiftsTab>
                         color: AppColors.textSecondary,
                         selected: _filterStatus == 'CLOSED',
                         onTap:
-                            () => setState(
-                              () =>
-                                  _filterStatus =
-                                      _filterStatus == 'CLOSED'
-                                          ? 'Todos'
-                                          : 'CLOSED',
-                            ),
+                            () => setState(() {
+                              _filterStatus =
+                                  _filterStatus == 'CLOSED'
+                                      ? 'Todos'
+                                      : 'CLOSED';
+                              _currentPage = 0;
+                            }),
                       ),
                       const Spacer(),
                       Text(
@@ -266,23 +276,76 @@ class _ShiftsTabState extends State<ShiftsTab>
                             icon: Icons.point_of_sale_outlined,
                             message: 'No hay turnos registrados',
                           )
-                          : RefreshIndicator(
-                            onRefresh: () async => _refresh(),
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                              itemCount: shifts.length,
-                              separatorBuilder:
-                                  (_, __) => const SizedBox(height: 8),
-                              itemBuilder:
-                                  (_, i) => _ShiftCard(
-                                    shift: shifts[i],
-                                    onClose:
-                                        shifts[i].status == 'OPEN'
-                                            ? () =>
-                                                _openCloseShiftSheet(shifts[i])
-                                            : null,
+                          // 🟢 NUEVO: Columna para separar la lista de la paginación
+                          : Column(
+                            children: [
+                              // Info de "Mostrando X de Y"
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  4,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Mostrando ${shifts.isEmpty ? 0 : pageStart + 1}–$pageEnd de ${shifts.length} turnos',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                            ),
+                                ),
+                              ),
+                              // La lista scrolleable
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh: () async => _refresh(),
+                                  child: ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      16,
+                                    ),
+                                    itemCount:
+                                        pageItems.length, // Usamos pageItems
+                                    separatorBuilder:
+                                        (_, __) => const SizedBox(height: 8),
+                                    itemBuilder:
+                                        (_, i) => _ShiftCard(
+                                          shift:
+                                              pageItems[i], // Usamos pageItems
+                                          onClose:
+                                              pageItems[i].status == 'OPEN'
+                                                  ? () => _openCloseShiftSheet(
+                                                    pageItems[i],
+                                                  )
+                                                  : null,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                              // La paginación FIJA en la parte inferior
+                              if (totalPages > 1)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    10,
+                                  ),
+                                  child: AdminPageBlocks(
+                                    currentPage: _currentPage,
+                                    totalPages: totalPages,
+                                    onPageChanged:
+                                        (page) =>
+                                            setState(() => _currentPage = page),
+                                  ),
+                                ),
+                            ],
                           ),
                 ),
               ],

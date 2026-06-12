@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/account_movement_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,6 +27,9 @@ class _MovementsTabState extends State<MovementsTab>
   List<String>? _pendingAccountNames;
   final _searchCtrl = TextEditingController();
   String _searchText = '';
+
+  static const int _pageSize = 15;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -113,6 +117,14 @@ class _MovementsTabState extends State<MovementsTab>
             .where((m) => m.movementType == 'EXPENSE')
             .fold<double>(0, (s, m) => s + m.amount);
 
+        // 🟢 NUEVO: Lógica de paginación en cliente
+        final totalPages =
+            movements.isEmpty ? 1 : (movements.length / _pageSize).ceil();
+        final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+        final pageStart = safePage * _pageSize;
+        final pageEnd = (pageStart + _pageSize).clamp(0, movements.length);
+        final pageItems = movements.sublist(pageStart, pageEnd);
+
         return Stack(
           children: [
             Column(
@@ -161,11 +173,10 @@ class _MovementsTabState extends State<MovementsTab>
                             color: _typeColor(t),
                             selected: _filterType == t,
                             onTap:
-                                () => setState(
-                                  () =>
-                                      _filterType =
-                                          _filterType == t ? 'Todos' : t,
-                                ),
+                                () => setState(() {
+                                  _filterType = _filterType == t ? 'Todos' : t;
+                                  _currentPage = 0;
+                                }),
                           ),
                         ),
                     ],
@@ -178,7 +189,11 @@ class _MovementsTabState extends State<MovementsTab>
                       Expanded(
                         child: TextField(
                           controller: _searchCtrl,
-                          onChanged: (v) => setState(() => _searchText = v),
+                          onChanged:
+                              (v) => setState(() {
+                                _searchText = v;
+                                _currentPage = 0;
+                              }),
                           decoration: InputDecoration(
                             hintText: 'Buscar descripción...',
                             prefixIcon: const Icon(
@@ -194,7 +209,10 @@ class _MovementsTabState extends State<MovementsTab>
                                       ),
                                       onPressed: () {
                                         _searchCtrl.clear();
-                                        setState(() => _searchText = '');
+                                        setState(() {
+                                          _searchText = '';
+                                          _currentPage = 0;
+                                        });
                                       },
                                     )
                                     : null,
@@ -215,7 +233,11 @@ class _MovementsTabState extends State<MovementsTab>
                       _AccountDropdown(
                         accounts: _accountNames,
                         selected: _filterAccount,
-                        onChanged: (v) => setState(() => _filterAccount = v),
+                        onChanged:
+                            (v) => setState(() {
+                              _filterAccount = v;
+                              _currentPage = 0;
+                            }),
                       ),
                     ],
                   ),
@@ -230,17 +252,69 @@ class _MovementsTabState extends State<MovementsTab>
                             icon: Icons.swap_horiz_outlined,
                             message: 'No hay movimientos registrados',
                           )
-                          : RefreshIndicator(
-                            onRefresh: () async => _refresh(),
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                              itemCount: movements.length,
-                              separatorBuilder:
-                                  (_, __) => const SizedBox(height: 8),
-                              itemBuilder:
-                                  (_, i) =>
-                                      _MovementCard(movement: movements[i]),
-                            ),
+                          : Column(
+                            children: [
+                              // Info de "Mostrando X de Y"
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  4,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Mostrando ${movements.isEmpty ? 0 : pageStart + 1}–$pageEnd de ${movements.length} registros',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // La lista scrolleable
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh: () async => _refresh(),
+                                  child: ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      16,
+                                    ),
+                                    itemCount:
+                                        pageItems
+                                            .length, // Usamos la lista de la página
+                                    separatorBuilder:
+                                        (_, __) => const SizedBox(height: 8),
+                                    itemBuilder:
+                                        (_, i) => _MovementCard(
+                                          movement: pageItems[i],
+                                        ), // Usamos la lista de la página
+                                  ),
+                                ),
+                              ),
+                              // La paginación FIJA en la parte inferior
+                              if (totalPages > 1)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    10,
+                                  ),
+                                  child: AdminPageBlocks(
+                                    currentPage: _currentPage,
+                                    totalPages: totalPages,
+                                    onPageChanged:
+                                        (page) =>
+                                            setState(() => _currentPage = page),
+                                  ),
+                                ),
+                            ],
                           ),
                 ),
               ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/credit_movement_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:intl/intl.dart';
@@ -30,6 +31,9 @@ class _AdminCreditMovementsScreenState
 
   bool _isLoading = true;
   List<CreditMovementModel> _movements = [];
+
+  static const int _pageSize = 8;
+  int _currentPage = 0;
 
   // Totales calculados localmente a partir de los movimientos
   double _totalCharged = 0.0;
@@ -86,9 +90,13 @@ class _AdminCreditMovementsScreenState
             ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
             : 0.0;
 
-    // debugPrint('currentDebt: ${widget.currentDebt}');
-    // debugPrint('creditLimit: ${widget.creditLimit}');
-    // debugPrint('debtPercent: $debtPercent');
+    // Paginación
+    final totalPages =
+        _movements.isEmpty ? 1 : (_movements.length / _pageSize).ceil();
+    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+    final pageStart = safePage * _pageSize;
+    final pageEnd = (pageStart + _pageSize).clamp(0, _movements.length);
+    final pageItems = _movements.sublist(pageStart, pageEnd);
 
     return AdminLayout(
       title: 'Historial de Crédito',
@@ -96,71 +104,112 @@ class _AdminCreditMovementsScreenState
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : CustomScrollView(
-                slivers: [
-                  // ── Encabezado con resumen ──────────────────────────────
-                  SliverToBoxAdapter(
-                    child: _SummaryHeader(
-                      customerName: widget.customerName,
-                      currentDebt: widget.currentDebt,
-                      creditLimit: widget.creditLimit,
-                      debtPercent: debtPercent,
-                      totalCharged: _totalCharged,
-                      totalPaid: _totalPaid,
+              : Column(
+                children: [
+                  // ── Contenido scrolleable ─────────────────────────────────
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
+                        // ── Encabezado con resumen ────────────────────────
+                        SliverToBoxAdapter(
+                          child: _SummaryHeader(
+                            customerName: widget.customerName,
+                            currentDebt: widget.currentDebt,
+                            creditLimit: widget.creditLimit,
+                            debtPercent: debtPercent,
+                            totalCharged: _totalCharged,
+                            totalPaid: _totalPaid,
+                          ),
+                        ),
+
+                        // ── Contador ──────────────────────────────────────
+                        if (_movements.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                              child: Text(
+                                'Mostrando ${pageStart + 1}–$pageEnd de ${_movements.length} movimientos',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // ── Lista de movimientos ──────────────────────────
+                        if (_movements.isEmpty)
+                          const SliverFillRemaining(
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.receipt_long_outlined,
+                                    size: 56,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Sin movimientos registrados',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final movement = pageItems[index];
+                                // Para el separador de fecha, comparamos con el
+                                // item anterior dentro de la página (o inicio de página)
+                                final globalIndex = pageStart + index;
+                                final showDateLabel =
+                                    globalIndex == 0 ||
+                                    index == 0 ||
+                                    !_sameDay(
+                                      movement.createdAt,
+                                      _movements[globalIndex - 1].createdAt,
+                                    );
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (showDateLabel) ...[
+                                      const SizedBox(height: 16),
+                                      _DateDivider(date: movement.createdAt),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    _MovementCard(movement: movement),
+                                    const SizedBox(height: 8),
+                                  ],
+                                );
+                              }, childCount: pageItems.length),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
 
-                  // ── Lista de movimientos ────────────────────────────────
-                  if (_movements.isEmpty)
-                    const SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.receipt_long_outlined,
-                              size: 56,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Sin movimientos registrados',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          // Separador de fecha entre días distintos
-                          final movement = _movements[index];
-                          final showDateLabel =
-                              index == 0 ||
-                              !_sameDay(
-                                movement.createdAt,
-                                _movements[index - 1].createdAt,
-                              );
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (showDateLabel) ...[
-                                const SizedBox(height: 16),
-                                _DateDivider(date: movement.createdAt),
-                                const SizedBox(height: 8),
-                              ],
-                              _MovementCard(movement: movement),
-                              const SizedBox(height: 8),
-                            ],
-                          );
-                        }, childCount: _movements.length),
+                  // ── Paginación FIJA ───────────────────────────────────────
+                  if (totalPages > 1)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                      child: AdminPageBlocks(
+                        currentPage: _currentPage,
+                        totalPages: totalPages,
+                        onPageChanged:
+                            (page) => setState(() => _currentPage = page),
                       ),
                     ),
                 ],

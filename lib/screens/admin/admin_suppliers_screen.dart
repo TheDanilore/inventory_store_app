@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -21,6 +22,9 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
   List<SupplierModel> _allSuppliers = [];
   List<SupplierModel> _filteredSuppliers = [];
   bool _isLoading = true;
+
+  static const int _pageSize = 8;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -79,7 +83,9 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                 (s.contactName?.toLowerCase().contains(term) ?? false);
           }).toList();
     }
-    setState(() {});
+    setState(() {
+      _currentPage = 0;
+    });
   }
 
   void _onSearchChanged(String query) {
@@ -197,21 +203,90 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                         ],
                       ),
                     )
-                    : RefreshIndicator(
-                      onRefresh: _fetchSuppliers,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                        itemCount: _filteredSuppliers.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final supplier = _filteredSuppliers[index];
-                          return _SupplierCard(
-                            supplier: supplier,
-                            onEdit: () => _openSupplierModal(supplier),
-                            onToggleStatus: () => _toggleStatus(supplier),
-                          );
-                        },
-                      ),
+                    : Builder(
+                      builder: (context) {
+                        // 🟢 NUEVO: Lógica de paginación
+                        final totalPages =
+                            (_filteredSuppliers.length / _pageSize).ceil();
+                        final safePage =
+                            _currentPage >= totalPages ? 0 : _currentPage;
+                        final pageStart = safePage * _pageSize;
+                        final pageEnd = (pageStart + _pageSize).clamp(
+                          0,
+                          _filteredSuppliers.length,
+                        );
+                        final pageItems = _filteredSuppliers.sublist(
+                          pageStart,
+                          pageEnd,
+                        );
+
+                        return Column(
+                          children: [
+                            // Info "Mostrando X de Y"
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Mostrando ${pageStart + 1}–$pageEnd de ${_filteredSuppliers.length} proveedores',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Lista scrolleable
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: _fetchSuppliers,
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    4,
+                                    16,
+                                    16,
+                                  ),
+                                  itemCount:
+                                      pageItems
+                                          .length, // Usamos la página actual
+                                  separatorBuilder:
+                                      (_, __) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final supplier =
+                                        pageItems[index]; // Usamos la página actual
+                                    return _SupplierCard(
+                                      supplier: supplier,
+                                      onEdit:
+                                          () => _openSupplierModal(supplier),
+                                      onToggleStatus:
+                                          () => _toggleStatus(supplier),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            // Paginación FIJA
+                            if (totalPages > 1)
+                              Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    10,
+                                  ),
+                                  child: AdminPageBlocks(
+                                    currentPage: _currentPage,
+                                    totalPages: totalPages,
+                                    onPageChanged:
+                                        (page) =>
+                                            setState(() => _currentPage = page),
+                                  ),
+                                ),
+                          ],
+                        );
+                      },
                     ),
           ),
         ],

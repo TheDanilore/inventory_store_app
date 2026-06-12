@@ -381,14 +381,15 @@ class _WarehousesManagementScreenState
           ),
 
           if (filteredWarehouses.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: AdminPageBlocks(
-                currentPage: currentPage,
-                totalPages: totalPages,
-                onPageChanged: (page) => setState(() => _currentPage = page),
+            if (totalPages > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                child: AdminPageBlocks(
+                  currentPage: _currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: (page) => setState(() => _currentPage = page),
+                ),
               ),
-            ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

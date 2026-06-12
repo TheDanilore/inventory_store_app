@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/customer_detail_screen.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_form_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -68,6 +69,10 @@ class _CustomersScreenState extends State<CustomersScreen>
   List<CustomerSummary> _filtered = [];
   bool _isLoading = true;
 
+  // Paginación
+  static const int _pageSize = 8;
+  int _currentPage = 0;
+
   // Stats globales
   int _totalCustomers = 0;
   int _activeCustomers = 0;
@@ -78,7 +83,11 @@ class _CustomersScreenState extends State<CustomersScreen>
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
-    _tabCtrl.addListener(() => setState(() {}));
+    _tabCtrl.addListener(
+      () => setState(() {
+        _currentPage = 0;
+      }),
+    );
     _load();
   }
 
@@ -193,6 +202,7 @@ class _CustomersScreenState extends State<CustomersScreen>
     _debounce = Timer(const Duration(milliseconds: 300), () {
       final term = q.trim().toLowerCase();
       setState(() {
+        _currentPage = 0;
         _filtered =
             _all.where((c) {
               return c.fullName.toLowerCase().contains(term) ||
@@ -228,128 +238,179 @@ class _CustomersScreenState extends State<CustomersScreen>
 
   @override
   Widget build(BuildContext context) {
+    // ── Paginación ──────────────────────────────────────────────────────────
+    final list = _currentList;
+    final totalPages = list.isEmpty ? 1 : (list.length / _pageSize).ceil();
+    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+    final pageStart = safePage * _pageSize;
+    final pageEnd = (pageStart + _pageSize).clamp(0, list.length);
+    final pageItems = list.sublist(pageStart, pageEnd);
+
     return AdminLayout(
       title: 'Clientes',
       showBackButton: true,
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                onRefresh: _load,
-                child: CustomScrollView(
-                  slivers: [
-                    // ── Stats globales ──────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: _GlobalStatsBar(
-                        total: _totalCustomers,
-                        active: _activeCustomers,
-                        revenue: _totalRevenue,
-                        totalDebt: _totalDebt,
-                      ),
-                    ),
+              : Column(
+                children: [
+                  // ── Lista scrolleable (todo menos la paginación) ────────
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _load,
+                      child: CustomScrollView(
+                        slivers: [
+                          // ── Stats globales ────────────────────────────
+                          SliverToBoxAdapter(
+                            child: _GlobalStatsBar(
+                              total: _totalCustomers,
+                              active: _activeCustomers,
+                              revenue: _totalRevenue,
+                              totalDebt: _totalDebt,
+                            ),
+                          ),
 
-                    // ── Top 5 clientes ──────────────────────────────────
-                    if (_topCustomers.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: _TopCustomersSection(
-                          top: _topCustomers,
-                          onTap: _openDetail,
-                        ),
-                      ),
-
-                    // ── Buscador + Tabs ─────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Buscador
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: TextField(
-                                controller: _searchCtrl,
-                                onChanged: _onSearch,
-                                decoration: const InputDecoration(
-                                  hintText:
-                                      'Buscar por nombre, DNI o teléfono...',
-                                  prefixIcon: Icon(
-                                    Icons.search_rounded,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                ),
+                          // ── Top 5 clientes ────────────────────────────
+                          if (_topCustomers.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: _TopCustomersSection(
+                                top: _topCustomers,
+                                onTap: _openDetail,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            // Tabs
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.bg,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: TabBar(
-                                controller: _tabCtrl,
-                                labelColor: Colors.white,
-                                unselectedLabelColor: AppColors.textMuted,
-                                indicator: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                indicatorSize: TabBarIndicatorSize.tab,
-                                dividerColor: Colors.transparent,
-                                padding: const EdgeInsets.all(4),
-                                tabs: const [
-                                  Tab(text: 'Todos'),
-                                  Tab(text: 'Mayor compra'),
+
+                          // ── Buscador + Tabs ───────────────────────────
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: _searchCtrl,
+                                      onChanged: _onSearch,
+                                      decoration: const InputDecoration(
+                                        hintText:
+                                            'Buscar por nombre, DNI o teléfono...',
+                                        prefixIcon: Icon(
+                                          Icons.search_rounded,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bg,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: TabBar(
+                                      controller: _tabCtrl,
+                                      labelColor: Colors.white,
+                                      unselectedLabelColor: AppColors.textMuted,
+                                      indicator: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      indicatorSize: TabBarIndicatorSize.tab,
+                                      dividerColor: Colors.transparent,
+                                      padding: const EdgeInsets.all(4),
+                                      tabs: const [
+                                        Tab(text: 'Todos'),
+                                        Tab(text: 'Mayor compra'),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                          ],
-                        ),
+                          ),
+
+                          // ── Contador ──────────────────────────────────
+                          if (list.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  2,
+                                ),
+                                child: Text(
+                                  'Mostrando ${pageStart + 1}–$pageEnd de ${list.length} clientes',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // ── Lista de clientes ─────────────────────────
+                          if (list.isEmpty)
+                            const SliverFillRemaining(
+                              child: Center(
+                                child: Text(
+                                  'Sin resultados',
+                                  style: TextStyle(color: AppColors.textMuted),
+                                ),
+                              ),
+                            )
+                          else
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final c = pageItems[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _CustomerCard(
+                                      customer: c,
+                                      rank:
+                                          _tabCtrl.index == 1
+                                              ? pageStart + index + 1
+                                              : null,
+                                      onTap: () => _openDetail(c),
+                                    ),
+                                  );
+                                }, childCount: pageItems.length),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+                  ),
 
-                    // ── Lista ───────────────────────────────────────────
-                    if (_currentList.isEmpty)
-                      const SliverFillRemaining(
-                        child: Center(
-                          child: Text(
-                            'Sin resultados',
-                            style: TextStyle(color: AppColors.textMuted),
-                          ),
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final c = _currentList[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _CustomerCard(
-                                customer: c,
-                                rank: _tabCtrl.index == 1 ? index + 1 : null,
-                                onTap: () => _openDetail(c),
-                              ),
-                            );
-                          }, childCount: _currentList.length),
-                        ),
+                  // ── Paginación FIJA al fondo ────────────────────────────
+                  if (totalPages > 1)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                      child: AdminPageBlocks(
+                        currentPage: _currentPage,
+                        totalPages: totalPages,
+                        onPageChanged:
+                            (page) => setState(() => _currentPage = page),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => CustomerFormSheet.show(context, onSaved: _load),

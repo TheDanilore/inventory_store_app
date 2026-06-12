@@ -331,7 +331,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
         ),
         if (totalPages > 1)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
             child: AdminPageBlocks(
               currentPage: currentPage,
               totalPages: totalPages,

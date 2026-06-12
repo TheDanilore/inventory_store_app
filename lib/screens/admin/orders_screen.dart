@@ -466,8 +466,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               'account_id': targetAccount['id'],
               'movement_type': 'INCOME',
               'amount': order.totalAmount,
-              'description':
-                  'Cobro de venta — Pedido #${order.id}',
+              'description': 'Cobro de venta — Pedido #${order.id}',
               'reference_type': 'orders',
               'reference_id': order.id,
               if (shiftId != null) 'shift_id': shiftId,
@@ -482,7 +481,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 .eq('id', targetAccount['id'] as String);
           }
         }
-      } 
+      }
 
       final updates = <String, dynamic>{'status': newStatus};
 
@@ -905,15 +904,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             },
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                          child: AdminPageBlocks(
-                            currentPage: _currentPage,
-                            totalPages: totalPages,
-                            onPageChanged:
-                                (page) => setState(() => _currentPage = page),
+                        if (totalPages > 1)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                            child: AdminPageBlocks(
+                              currentPage: _currentPage,
+                              totalPages: totalPages,
+                              onPageChanged:
+                                  (page) => setState(() => _currentPage = page),
+                            ),
                           ),
-                        ),
                       ],
                     ),
           ),

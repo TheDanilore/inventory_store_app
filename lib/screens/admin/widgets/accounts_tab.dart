@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,6 +20,10 @@ class _AccountsTabState extends State<AccountsTab>
     with AutomaticKeepAliveClientMixin {
   final _supabase = Supabase.instance.client;
   late Future<List<FinancialAccountModel>> _future;
+
+  // 🟢 NUEVAS variables de paginación
+  static const int _pageSize = 8;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -78,6 +83,14 @@ class _AccountsTabState extends State<AccountsTab>
             .fold<double>(0, (s, a) => s + a.balance);
         final activeCount = accounts.where((a) => a.isActive).length;
 
+        // 🟢 NUEVO: Lógica de paginación
+        final totalPages =
+            accounts.isEmpty ? 1 : (accounts.length / _pageSize).ceil();
+        final safePage = _currentPage >= totalPages ? 0 : _currentPage;
+        final pageStart = safePage * _pageSize;
+        final pageEnd = (pageStart + _pageSize).clamp(0, accounts.length);
+        final pageItems = accounts.sublist(pageStart, pageEnd);
+
         return Stack(
           children: [
             Column(
@@ -115,22 +128,75 @@ class _AccountsTabState extends State<AccountsTab>
                             icon: Icons.account_balance_outlined,
                             message: 'No hay cuentas registradas',
                           )
-                          : RefreshIndicator(
-                            onRefresh: () async => _refresh(),
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                              itemCount: accounts.length,
-                              separatorBuilder:
-                                  (_, __) => const SizedBox(height: 8),
-                              itemBuilder:
-                                  (_, i) => _AccountCard(
-                                    account: accounts[i],
-                                    onTap:
-                                        () => _openAccountSheet(
-                                          account: accounts[i],
+                          // 🟢 NUEVO: Columna para separar lista y paginación
+                          : Column(
+                            children: [
+                              // Info de "Mostrando X de Y"
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  4,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Mostrando ${accounts.isEmpty ? 0 : pageStart + 1}–$pageEnd de ${accounts.length} cuentas',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Lista scrolleable
+                              Expanded(
+                                child: RefreshIndicator(
+                                  onRefresh: () async => _refresh(),
+                                  child: ListView.separated(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      16,
+                                    ),
+                                    itemCount:
+                                        pageItems
+                                            .length, // Usamos la lista cortada
+                                    separatorBuilder:
+                                        (_, __) => const SizedBox(height: 8),
+                                    itemBuilder:
+                                        (_, i) => _AccountCard(
+                                          account:
+                                              pageItems[i], // Usamos la lista cortada
+                                          onTap:
+                                              () => _openAccountSheet(
+                                                account: pageItems[i],
+                                              ),
                                         ),
                                   ),
-                            ),
+                                ),
+                              ),
+                              // Paginación FIJA
+                              if (totalPages > 1)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    10,
+                                  ),
+                                  child: AdminPageBlocks(
+                                    currentPage: _currentPage,
+                                    totalPages: totalPages,
+                                    onPageChanged:
+                                        (page) =>
+                                            setState(() => _currentPage = page),
+                                  ),
+                                ),
+                            ],
                           ),
                 ),
               ],

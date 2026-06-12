@@ -25,7 +25,7 @@ class CustomerCatalogScreen extends StatefulWidget {
 class _CustomerCatalogScreenState extends State<CustomerCatalogScreen>
     with SingleTickerProviderStateMixin {
   Timer? _debounce;
-  static const int _pageSize = 10;
+  static const int _pageSize = 8;
 
   final _supabase = Supabase.instance.client;
   final _searchCtrl = TextEditingController();

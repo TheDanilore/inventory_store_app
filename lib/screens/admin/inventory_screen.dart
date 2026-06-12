@@ -428,137 +428,124 @@ class _StockTabState extends State<_StockTab>
         final items = filteredItems.sublist(pageStart, pageEnd);
         final showing = filteredItems.length;
 
-        return RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async => _refresh(),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              // ── Métricas ──────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Row(
-                    children: [
-                      _MetricCard(
-                        label: 'Variantes',
-                        value: '$totalVariants',
-                        icon: Icons.layers_rounded,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 10),
-                      _MetricCard(
-                        label: 'Stock total',
-                        value: '$totalStock',
-                        icon: Icons.inventory_rounded,
-                        color: AppColors.teal,
-                      ),
-                      const SizedBox(width: 10),
-                      _MetricCard(
-                        label: 'Bajo stock',
-                        value: '$lowStockCount',
-                        icon: Icons.warning_amber_rounded,
-                        color:
-                            lowStockCount > 0
-                                ? AppColors.warning
-                                : AppColors.success,
-                        highlight: lowStockCount > 0,
-                      ),
-                    ],
+        return Column(
+          children: [
+            // ── Métricas ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  _MetricCard(
+                    label: 'Variantes',
+                    value: '$totalVariants',
+                    icon: Icons.layers_rounded,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  _MetricCard(
+                    label: 'Stock total',
+                    value: '$totalStock',
+                    icon: Icons.inventory_rounded,
+                    color: AppColors.teal,
+                  ),
+                  const SizedBox(width: 10),
+                  _MetricCard(
+                    label: 'Bajo stock',
+                    value: '$lowStockCount',
+                    icon: Icons.warning_amber_rounded,
+                    color:
+                        lowStockCount > 0
+                            ? AppColors.warning
+                            : AppColors.success,
+                    highlight: lowStockCount > 0,
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Búsqueda + Filtro ──────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _SearchField(
+                      controller: _searchCtrl,
+                      hint: 'Buscar producto o SKU...',
+                      onChanged: (v) => _onFilterChanged(() => _searchText = v),
+                      onClear: () {
+                        _searchCtrl.clear();
+                        _onFilterChanged(() => _searchText = '');
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _CategoryDropdown(
+                    categories: _categories,
+                    selected: _filterCategory,
+                    onChanged:
+                        (v) => _onFilterChanged(() => _filterCategory = v),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Info de paginación ─────────────────────────────────────
+            if (!isLoading && filteredItems.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Mostrando ${pageStart + 1}–$pageEnd de $showing variantes',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
 
-              // ── Búsqueda + Filtro ─────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _SearchField(
-                          controller: _searchCtrl,
-                          hint: 'Buscar producto o SKU...',
-                          onChanged:
-                              (v) => _onFilterChanged(() => _searchText = v),
-                          onClear: () {
-                            _searchCtrl.clear();
-                            _onFilterChanged(() => _searchText = '');
-                          },
+            // ── Lista (scrolleable) ────────────────────────────────────
+            Expanded(
+              child:
+                  isLoading
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                        ),
+                      )
+                      : filteredItems.isEmpty
+                      ? const _EmptyState(
+                        icon: Icons.inventory_2_outlined,
+                        message: 'No hay productos con stock disponible',
+                      )
+                      : RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () async => _refresh(),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: items.length,
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (_, i) => _StockItemCard(item: items[i]),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      _CategoryDropdown(
-                        categories: _categories,
-                        selected: _filterCategory,
-                        onChanged:
-                            (v) => _onFilterChanged(() => _filterCategory = v),
-                      ),
-                    ],
-                  ),
+            ),
+
+            // ── Paginación FIJA ────────────────────────────────────────
+            if (!isLoading && totalPages > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                child: AdminPageBlocks(
+                  currentPage: _currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: (page) => setState(() => _currentPage = page),
                 ),
               ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-              // ── Info de paginación ────────────────────────────────────
-              if (!isLoading && filteredItems.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                    child: Text(
-                      'Mostrando ${pageStart + 1}–$pageEnd de $showing variantes',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Lista ─────────────────────────────────────────────────
-              if (isLoading)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                  ),
-                )
-              else if (filteredItems.isEmpty)
-                const SliverFillRemaining(
-                  child: _EmptyState(
-                    icon: Icons.inventory_2_outlined,
-                    message: 'No hay productos con stock disponible',
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                  sliver: SliverList.separated(
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) => _StockItemCard(item: items[i]),
-                  ),
-                ),
-
-              // ── Paginación ────────────────────────────────────────────
-              if (!isLoading && totalPages > 1)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                    child: AdminPageBlocks(
-                      currentPage: safePage,
-                      totalPages: totalPages,
-                      onPageChanged: (p) => setState(() => _currentPage = p),
-                    ),
-                  ),
-                ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-          ),
+          ],
         );
       },
     );
@@ -1084,158 +1071,147 @@ class _BatchesTabState extends State<_BatchesTab>
         final pageEnd = (pageStart + _pageSize).clamp(0, allFiltered.length);
         final pageBatches = allFiltered.sublist(pageStart, pageEnd);
 
-        return RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async => _refresh(),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              // ── Chips de estado ───────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Row(
-                    children: [
-                      _StatusChip(
-                        label: 'Vencido',
-                        count: _countVencido,
-                        color: AppColors.danger,
-                        selected: _filterStatus == 'Vencido',
-                        onTap:
-                            () => _onFilterChanged(
-                              () =>
-                                  _filterStatus =
-                                      _filterStatus == 'Vencido'
-                                          ? 'Todos'
-                                          : 'Vencido',
-                            ),
-                      ),
-                      const SizedBox(width: 6),
-                      _StatusChip(
-                        label: '≤30 días',
-                        count: _countCritico,
-                        color: AppColors.warning,
-                        selected: _filterStatus == 'Crítico',
-                        onTap:
-                            () => _onFilterChanged(
-                              () =>
-                                  _filterStatus =
-                                      _filterStatus == 'Crítico'
-                                          ? 'Todos'
-                                          : 'Crítico',
-                            ),
-                      ),
-                      const SizedBox(width: 6),
-                      _StatusChip(
-                        label: '≤90 días',
-                        count: _countProximo,
-                        color: Colors.orange.shade400,
-                        selected: _filterStatus == 'Próximo',
-                        onTap:
-                            () => _onFilterChanged(
-                              () =>
-                                  _filterStatus =
-                                      _filterStatus == 'Próximo'
-                                          ? 'Todos'
-                                          : 'Próximo',
-                            ),
-                      ),
-                      const SizedBox(width: 6),
-                      _StatusChip(
-                        label: 'Normal',
-                        count: _countNormal,
-                        color: AppColors.success,
-                        selected: _filterStatus == 'Normal',
-                        onTap:
-                            () => _onFilterChanged(
-                              () =>
-                                  _filterStatus =
-                                      _filterStatus == 'Normal'
-                                          ? 'Todos'
-                                          : 'Normal',
-                            ),
-                      ),
-                    ],
+        return Column(
+          children: [
+            // ── Chips de estado ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  _StatusChip(
+                    label: 'Vencido',
+                    count: _countVencido,
+                    color: AppColors.danger,
+                    selected: _filterStatus == 'Vencido',
+                    onTap:
+                        () => _onFilterChanged(
+                          () =>
+                              _filterStatus =
+                                  _filterStatus == 'Vencido'
+                                      ? 'Todos'
+                                      : 'Vencido',
+                        ),
+                  ),
+                  const SizedBox(width: 6),
+                  _StatusChip(
+                    label: '≤30 días',
+                    count: _countCritico,
+                    color: AppColors.warning,
+                    selected: _filterStatus == 'Crítico',
+                    onTap:
+                        () => _onFilterChanged(
+                          () =>
+                              _filterStatus =
+                                  _filterStatus == 'Crítico'
+                                      ? 'Todos'
+                                      : 'Crítico',
+                        ),
+                  ),
+                  const SizedBox(width: 6),
+                  _StatusChip(
+                    label: '≤90 días',
+                    count: _countProximo,
+                    color: Colors.orange.shade400,
+                    selected: _filterStatus == 'Próximo',
+                    onTap:
+                        () => _onFilterChanged(
+                          () =>
+                              _filterStatus =
+                                  _filterStatus == 'Próximo'
+                                      ? 'Todos'
+                                      : 'Próximo',
+                        ),
+                  ),
+                  const SizedBox(width: 6),
+                  _StatusChip(
+                    label: 'Normal',
+                    count: _countNormal,
+                    color: AppColors.success,
+                    selected: _filterStatus == 'Normal',
+                    onTap:
+                        () => _onFilterChanged(
+                          () =>
+                              _filterStatus =
+                                  _filterStatus == 'Normal'
+                                      ? 'Todos'
+                                      : 'Normal',
+                        ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Búsqueda ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: _SearchField(
+                controller: _searchCtrl,
+                hint: 'Buscar producto o lote...',
+                onChanged: (v) => _onFilterChanged(() => _searchText = v),
+                onClear: () {
+                  _searchCtrl.clear();
+                  _onFilterChanged(() => _searchText = '');
+                },
+              ),
+            ),
+
+            // ── Info paginación ──────────────────────────────────────────
+            if (!isLoading && allFiltered.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Mostrando ${allFiltered.isEmpty ? 0 : pageStart + 1}–$pageEnd de ${allFiltered.length} lotes',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
 
-              // ── Búsqueda ──────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: _SearchField(
-                    controller: _searchCtrl,
-                    hint: 'Buscar producto o lote...',
-                    onChanged: (v) => _onFilterChanged(() => _searchText = v),
-                    onClear: () {
-                      _searchCtrl.clear();
-                      _onFilterChanged(() => _searchText = '');
-                    },
-                  ),
+            // ── Lista (scrolleable) ──────────────────────────────────────
+            Expanded(
+              child:
+                  isLoading
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                        ),
+                      )
+                      : allFiltered.isEmpty
+                      ? const _EmptyState(
+                        icon: Icons.event_available_rounded,
+                        message: 'No hay lotes con stock disponible',
+                      )
+                      : RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () async => _refresh(),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: pageBatches.length,
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 10),
+                          itemBuilder:
+                              (_, i) => _BatchCard(batch: pageBatches[i]),
+                        ),
+                      ),
+            ),
+
+            // ── Paginación FIJA ──────────────────────────────────────────
+            if (!isLoading && totalPages > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                child: AdminPageBlocks(
+                  currentPage: _currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: (page) => setState(() => _currentPage = page),
                 ),
               ),
-
-              // ── Info paginación ───────────────────────────────────────
-              if (!isLoading && allFiltered.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-                    child: Text(
-                      'Mostrando ${allFiltered.isEmpty ? 0 : pageStart + 1}–$pageEnd de ${allFiltered.length} lotes',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 6)),
-
-              // ── Lista ─────────────────────────────────────────────────
-              if (isLoading)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                  ),
-                )
-              else if (allFiltered.isEmpty)
-                const SliverFillRemaining(
-                  child: _EmptyState(
-                    icon: Icons.event_available_rounded,
-                    message: 'No hay lotes con stock disponible',
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                  sliver: SliverList.separated(
-                    itemCount: pageBatches.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) => _BatchCard(batch: pageBatches[i]),
-                  ),
-                ),
-
-              // ── Paginación ────────────────────────────────────────────
-              if (!isLoading && totalPages > 1)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                    child: AdminPageBlocks(
-                      currentPage: safePage,
-                      totalPages: totalPages,
-                      onPageChanged: (p) => setState(() => _currentPage = p),
-                    ),
-                  ),
-                ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-          ),
+          ],
         );
       },
     );
