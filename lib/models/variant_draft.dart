@@ -11,6 +11,7 @@ class VariantDraft {
   final TextEditingController wholesalePriceCtrl;
   final TextEditingController wholesaleMinQuantityCtrl;
   final TextEditingController reorderPointCtrl;
+  final TextEditingController unitCostCtrl;
   bool isActive;
 
   Uint8List? imageBytes; // Para fotos nuevas desde la galería
@@ -27,6 +28,7 @@ class VariantDraft {
     String? wholesalePrice,
     String? wholesaleMinQuantity,
     String? reorderPoint,
+    String? unitCost,
     this.imageUrlExistente,
     this.isActive = true,
   }) : skuCtrl = TextEditingController(text: sku ?? ''),
@@ -36,7 +38,8 @@ class VariantDraft {
        wholesaleMinQuantityCtrl = TextEditingController(
          text: wholesaleMinQuantity ?? '',
        ),
-       reorderPointCtrl = TextEditingController(text: reorderPoint ?? '3');
+       reorderPointCtrl = TextEditingController(text: reorderPoint ?? '3'),
+       unitCostCtrl = TextEditingController(text: unitCost ?? '');
 
   factory VariantDraft.fromVariant(ProductVariantModel variant) {
     return VariantDraft(
@@ -45,9 +48,10 @@ class VariantDraft {
       attributes:
           variant.attributes.isEmpty ? '' : jsonEncode(variant.attributes),
       price: variant.salePrice?.toString() ?? '',
-        wholesalePrice: variant.wholesalePrice?.toString() ?? '',
+      wholesalePrice: variant.wholesalePrice?.toString() ?? '',
       wholesaleMinQuantity: variant.wholesaleMinQuantity?.toString() ?? '',
-        reorderPoint: variant.reorderPoint.toString(),
+      reorderPoint: variant.reorderPoint.toString(),
+      unitCost: variant.unitCost?.toString() ?? '',
 
       // Extrae la URL de la lista de imágenes si contiene elementos
       imageUrlExistente:
@@ -75,18 +79,22 @@ class VariantDraft {
           priceCtrl.text.trim().isEmpty
               ? null
               : double.parse(priceCtrl.text.trim()),
-        'wholesale_price':
+      'wholesale_price':
           wholesalePriceCtrl.text.trim().isEmpty
-            ? null
-            : double.parse(wholesalePriceCtrl.text.trim()),
-        'wholesale_min_quantity':
-            wholesaleMinQuantityCtrl.text.trim().isEmpty
+              ? null
+              : double.parse(wholesalePriceCtrl.text.trim()),
+      'wholesale_min_quantity':
+          wholesaleMinQuantityCtrl.text.trim().isEmpty
               ? null
               : int.parse(wholesaleMinQuantityCtrl.text.trim()),
-        'reorder_point':
+      'reorder_point':
           reorderPointCtrl.text.trim().isEmpty
-            ? 3
-            : int.parse(reorderPointCtrl.text.trim()),
+              ? 3
+              : int.parse(reorderPointCtrl.text.trim()),
+      'unit_cost':
+          unitCostCtrl.text.trim().isEmpty
+              ? null
+              : double.parse(unitCostCtrl.text.trim()),
       'is_active': isActive,
     };
   }
@@ -98,5 +106,6 @@ class VariantDraft {
     wholesalePriceCtrl.dispose();
     wholesaleMinQuantityCtrl.dispose();
     reorderPointCtrl.dispose();
+    unitCostCtrl.dispose();
   }
 }

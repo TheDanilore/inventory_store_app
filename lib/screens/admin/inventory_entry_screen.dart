@@ -3,7 +3,7 @@ import 'package:inventory_store_app/models/warehouse_model.dart';
 import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
-import 'package:inventory_store_app/screens/admin/widgets/add_product_sheet_state.dart';
+import 'package:inventory_store_app/screens/admin/widgets/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_entry_item_model.dart';
@@ -234,7 +234,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (context) => AddProductSheet(
+          (context) => AddEntryProductSheet(
             allProducts: _allProducts,
             variantsByProduct: _variantsByProduct,
             warehouseId: _selectedWarehouseId,

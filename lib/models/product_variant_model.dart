@@ -7,6 +7,7 @@ class ProductVariantModel {
   final String productId;
   final String? sku;
   final Map<String, dynamic> attributes;
+  final double? unitCost;
   final double? salePrice;
   final bool isActive;
   final DateTime? createdAt;
@@ -22,6 +23,7 @@ class ProductVariantModel {
     required this.productId,
     this.sku,
     this.attributes = const {},
+    this.unitCost,
     this.salePrice,
     this.isActive = true,
     this.createdAt,
@@ -55,6 +57,10 @@ class ProductVariantModel {
           json['attributes'] is String
               ? jsonDecode(json['attributes'] as String) as Map<String, dynamic>
               : (json['attributes'] as Map<String, dynamic>?) ?? {},
+      unitCost:
+          json['unit_cost'] != null
+              ? (json['unit_cost'] as num).toDouble()
+              : null,
       salePrice:
           json['sale_price'] != null
               ? (json['sale_price'] as num).toDouble()
@@ -93,6 +99,7 @@ class ProductVariantModel {
       'product_id': productId,
       'sku': sku,
       'attributes': attributes,
+      'unit_cost': unitCost,
       'sale_price': salePrice,
       'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
@@ -110,6 +117,7 @@ class ProductVariantModel {
     String? productId,
     String? sku,
     Map<String, dynamic>? attributes,
+    double? unitCost,
     double? salePrice,
     bool? isActive,
     DateTime? createdAt,
@@ -125,6 +133,7 @@ class ProductVariantModel {
       productId: productId ?? this.productId,
       sku: sku ?? this.sku,
       attributes: attributes ?? this.attributes,
+      unitCost: unitCost ?? this.unitCost,
       salePrice: salePrice ?? this.salePrice,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,

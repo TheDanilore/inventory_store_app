@@ -1,3 +1,5 @@
+// ─── Bottom Sheet: Añadir Producto ───────────────────────────────────────────
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -8,16 +10,12 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-
-
-// ─── Bottom Sheet: Añadir Producto ───────────────────────────────────────────
-
-class AddProductSheet extends StatefulWidget {
+class AddEntryProductSheet extends StatefulWidget {
   final List<ProductModel> allProducts;
   final Map<String, List<ProductVariantModel>> variantsByProduct;
   final String? warehouseId;
 
-  const AddProductSheet({
+  const AddEntryProductSheet({
     super.key,
     required this.allProducts,
     required this.variantsByProduct,
@@ -25,10 +23,10 @@ class AddProductSheet extends StatefulWidget {
   });
 
   @override
-  State<AddProductSheet> createState() => _AddProductSheetState();
+  State<AddEntryProductSheet> createState() => _AddEntryProductSheetState();
 }
 
-class _AddProductSheetState extends State<AddProductSheet> {
+class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   ProductModel? _selectedProduct;
   ProductVariantModel? _selectedVariant;
   double _quantity = 1;

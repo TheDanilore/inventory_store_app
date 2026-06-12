@@ -1,4 +1,3 @@
-
 // ─── COMPONENTE NUEVO: DECISIONES RÁPIDAS ────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -7,21 +6,24 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 class ProductQuickDecisionsCard extends StatelessWidget {
   final int totalSold;
   final double reinvestmentNeeded;
+  final double inventoryValue;
 
   const ProductQuickDecisionsCard({
     super.key,
     required this.totalSold,
     required this.reinvestmentNeeded,
+    required this.inventoryValue,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (totalSold == 0) return const SizedBox.shrink();
+    final hasData = totalSold > 0 || inventoryValue > 0;
+    if (!hasData) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4), // Verde sutil (DS Success light)
+        color: const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
         border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
       ),
@@ -55,15 +57,16 @@ class ProductQuickDecisionsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Has vendido $totalSold unidades en total.',
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF15803D),
-              fontWeight: FontWeight.w600,
+          if (totalSold > 0)
+            Text(
+              'Has vendido $totalSold unidades en total.',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF15803D),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
+          if (totalSold > 0) const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -73,13 +76,31 @@ class ProductQuickDecisionsCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _DecisionRow(
-                  icon: Icons.inventory_2_outlined,
-                  color: AppColors.amberDark,
-                  label: 'Fondo de reposición',
-                  value: 'S/ ${reinvestmentNeeded.toStringAsFixed(2)}',
-                  subtitle: 'Ideal para reinvertir en stock.',
-                ),
+                // Valor de inventario actual (siempre visible si hay stock)
+                if (inventoryValue > 0) ...[
+                  _DecisionRow(
+                    icon: Icons.account_balance_wallet_rounded,
+                    color: AppColors.primary,
+                    label: 'Capital en inventario',
+                    value: 'S/ ${inventoryValue.toStringAsFixed(2)}',
+                    subtitle: 'Valor del stock actual al costo.',
+                  ),
+                ],
+                // Fondo de reposición (solo si hay ventas históricas)
+                if (totalSold > 0 && reinvestmentNeeded > 0) ...[
+                  if (inventoryValue > 0)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(height: 1, color: Color(0xFFBBF7D0)),
+                    ),
+                  _DecisionRow(
+                    icon: Icons.inventory_2_outlined,
+                    color: AppColors.amberDark,
+                    label: 'Fondo de reposición',
+                    value: 'S/ ${reinvestmentNeeded.toStringAsFixed(2)}',
+                    subtitle: 'Ideal para reinvertir en stock.',
+                  ),
+                ],
               ],
             ),
           ),
@@ -125,7 +146,10 @@ class _DecisionRow extends StatelessWidget {
               if (subtitle != null)
                 Text(
                   subtitle!,
-                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
                 ),
             ],
           ),

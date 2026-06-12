@@ -699,6 +699,7 @@ class _FormularioScreenState extends State<FormularioScreen> {
           final payload = {
             'sku': skuValue.isEmpty ? null : skuValue,
             'attributes': attrsMap,
+            'unit_cost': _parseDecimal(draft.unitCostCtrl.text) ?? 0.0,
             'sale_price': _parseDecimal(draft.priceCtrl.text),
             'wholesale_price': _parseDecimal(draft.wholesalePriceCtrl.text),
             'wholesale_min_quantity': int.tryParse(

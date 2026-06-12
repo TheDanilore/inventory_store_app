@@ -52,6 +52,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // Para Decisiones Rápidas
   int _totalSold = 0;
   double _reinvestmentNeeded = 0.0;
+  double _inventoryValue = 0.0; // Valor total del inventario actual
 
   double _averageRating = 0.0;
 
@@ -181,7 +182,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _supabase
             .from('product_variants')
             .select(
-              'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active',
+              'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost',
             )
             .eq('product_id', widget.product.id)
             .eq('is_active', true)
@@ -298,6 +299,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _totalSold = soldUnits;
         _reinvestmentNeeded = reinvestment;
 
+        // Valor de inventario actual: stock × costo unitario por variante
+        double invValue = 0.0;
+        for (final v in fetchedVariants) {
+          // Costo efectivo: variante primero (si tiene), sino el del producto
+          final cost =
+              ((v.unitCost ?? 0) > 0) ? v.unitCost! : widget.product.unitCost;
+          // Sumar stock de esta variante en todos los almacenes
+          int variantStock = 0;
+          for (final row in fetchedStocks) {
+            if (row['variant_id'] == v.id) {
+              variantStock += (row['available_quantity'] as num?)?.toInt() ?? 0;
+            }
+          }
+          invValue += variantStock * cost;
+        }
+        _inventoryValue = invValue;
+
         _isLoadingExtra = false;
 
         // AUTO-SELECCIONAR LA PRIMERA VARIANTE CON STOCK
@@ -373,11 +391,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   bool get _isActive => widget.product.isActive;
   bool get _canBuy => _isActive && _effectiveStock > 0;
-  double get _profit => _effectivePrice - widget.product.unitCost;
+  double get _effectiveUnitCost =>
+      ((_selectedVariant?.unitCost ?? 0) > 0)
+          ? _selectedVariant!.unitCost!
+          : widget.product.unitCost;
+
+  double get _profit => _effectivePrice - _effectiveUnitCost;
   double get _margin =>
-      widget.product.unitCost > 0
-          ? (_profit / widget.product.unitCost) * 100
-          : 0.0;
+      _effectiveUnitCost > 0 ? (_profit / _effectiveUnitCost) * 100 : 0.0;
 
   List<Map<String, dynamic>> get _selectedVariantStockRows {
     final vid = _selectedVariantIdSafe;
@@ -1071,7 +1092,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
               if (widget.isAdmin) ...[
                 ProductAdminInfoCard(
-                  unitCost: widget.product.unitCost,
+                  unitCost: _effectiveUnitCost,
                   profit: _profit,
                   margin: _margin,
                   wholesalePrice:
@@ -1088,6 +1109,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ProductQuickDecisionsCard(
                   totalSold: _totalSold,
                   reinvestmentNeeded: _reinvestmentNeeded,
+                  inventoryValue: _inventoryValue,
                 ),
                 const SizedBox(height: 16),
               ],
