@@ -39,7 +39,16 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       try {
         final Map<String, dynamic> decoded = jsonDecode(rawJson);
         decoded.forEach((key, value) {
-          _addAttributeRow(key: key, value: value.toString(), sync: false);
+          // Llenamos la lista directamente sin usar setState
+          // ya que estamos dentro de la fase de initState.
+          final keyCtrl = TextEditingController(text: key);
+          final valueCtrl = TextEditingController(text: value.toString());
+          keyCtrl.addListener(_synchronizeToJson);
+          valueCtrl.addListener(_synchronizeToJson);
+
+          _attributeRows.add(
+            _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),
+          );
         });
       } catch (e) {
         debugPrint('Error al parsear atributos iniciales: $e');
@@ -56,6 +65,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     final valueCtrl = TextEditingController(text: value);
     keyCtrl.addListener(_synchronizeToJson);
     valueCtrl.addListener(_synchronizeToJson);
+
+    // Este setState SÍ es necesario porque este método se llama
+    // cuando el usuario presiona el botón "Añadir propiedad"
     setState(() {
       _attributeRows.add(
         _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),

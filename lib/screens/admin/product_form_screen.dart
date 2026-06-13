@@ -17,15 +17,15 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_text_field.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 
-class FormularioScreen extends StatefulWidget {
+class ProductFormScreen extends StatefulWidget {
   final ProductModel? productToEdit;
-  const FormularioScreen({super.key, this.productToEdit});
+  const ProductFormScreen({super.key, this.productToEdit});
 
   @override
-  State<FormularioScreen> createState() => _FormularioScreenState();
+  State<ProductFormScreen> createState() => _ProductFormScreenState();
 }
 
-class _FormularioScreenState extends State<FormularioScreen> {
+class _ProductFormScreenState extends State<ProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Controladores
@@ -46,6 +46,9 @@ class _FormularioScreenState extends State<FormularioScreen> {
   bool _loadingVariants = false;
   bool _guardando = false;
 
+  // Estado global para bloquear la pantalla al entrar a editar
+  bool _isInitializingData = false;
+
   // ── Configuración del Producto ─────────────────────────────────────────────
   String _productType = 'good';
   bool _stockControl = true;
@@ -65,9 +68,57 @@ class _FormularioScreenState extends State<FormularioScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchCategories();
-    _fetchProductImages();
-    _loadInitialData();
+    if (widget.productToEdit != null) {
+      // Si es edición, usamos el nuevo flujo bloqueante
+      _loadAllDataForEdit();
+    } else {
+      // Si es nuevo producto, solo cargamos categorías
+      _cantidadMayorCtrl.text = '3';
+      _fetchCategories();
+    }
+  }
+
+  // Carga todo en paralelo antes de mostrar la UI
+  Future<void> _loadAllDataForEdit() async {
+    setState(() => _isInitializingData = true);
+
+    // 1. Cargar datos básicos síncronos en los controladores
+    final p = widget.productToEdit!;
+    _nombreCtrl.text = p.name;
+    _costoCtrl.text = p.unitCost.toString();
+    _precioCtrl.text = p.salePrice.toString();
+    _precioMayorCtrl.text = p.wholesalePrice?.toString() ?? '';
+    _cantidadMayorCtrl.text = p.wholesaleMinQuantity.toString();
+    _descCtrl.text = p.description ?? '';
+    _selectedCategoryId = p.categoryId;
+
+    _productType = p.productType;
+    _stockControl = p.stockControl;
+    _batchManagementEnabled = p.usesBatches;
+
+    if (p.details.isNotEmpty) {
+      p.details.forEach((key, value) {
+        _detailRows.add(
+          _DetailControllers(
+            keyCtrl: TextEditingController(text: key),
+            valueCtrl: TextEditingController(text: value.toString()),
+          ),
+        );
+      });
+    }
+
+    // 2. Esperar a que TODAS las consultas a la BD terminen (en paralelo)
+    await Future.wait([
+      _fetchCategories(),
+      _fetchProductImages(),
+      _fetchIngredients(p.id),
+      _fetchVariants(),
+    ]);
+
+    // 3. Quitar el loader. Ahora Flutter construirá todo el formulario UNA SOLA VEZ.
+    if (mounted) {
+      setState(() => _isInitializingData = false);
+    }
   }
 
   // ── Cargar ingredientes existentes ─────────────────────────────────────────
@@ -95,39 +146,6 @@ class _FormularioScreenState extends State<FormularioScreen> {
     });
   }
 
-  void _loadInitialData() {
-    if (widget.productToEdit != null) {
-      final p = widget.productToEdit!;
-      _nombreCtrl.text = p.name;
-      _costoCtrl.text = p.unitCost.toString();
-      _precioCtrl.text = p.salePrice.toString();
-      _precioMayorCtrl.text = p.wholesalePrice?.toString() ?? '';
-      _cantidadMayorCtrl.text = p.wholesaleMinQuantity.toString();
-      _descCtrl.text = p.description ?? '';
-      _selectedCategoryId = p.categoryId;
-
-      // Asignar los nuevos campos de la base de datos
-      _productType = p.productType;
-      _stockControl = p.stockControl;
-      _batchManagementEnabled = p.usesBatches;
-
-      if (p.details.isNotEmpty) {
-        p.details.forEach((key, value) {
-          _detailRows.add(
-            _DetailControllers(
-              keyCtrl: TextEditingController(text: key),
-              valueCtrl: TextEditingController(text: value.toString()),
-            ),
-          );
-        });
-      }
-
-      _fetchVariants();
-      _fetchIngredients(p.id);
-    } else {
-      _cantidadMayorCtrl.text = '3';
-    }
-  }
 
   Future<void> _fetchCategories() async {
     try {
@@ -151,9 +169,6 @@ class _FormularioScreenState extends State<FormularioScreen> {
   Future<void> _fetchVariants() async {
     final productId = widget.productToEdit?.id;
     if (productId == null) return;
-
-    setState(() => _loadingVariants = true);
-    await Future.delayed(const Duration(milliseconds: 100));
 
     try {
       final supabase = Supabase.instance.client;
@@ -179,10 +194,10 @@ class _FormularioScreenState extends State<FormularioScreen> {
             return draft;
           }).toList();
 
-      setState(() {
-        _variantDrafts.clear();
-        _variantDrafts.addAll(drafts);
-      });
+      // 🟢 CORRECCIÓN: Agregamos todas las variantes de golpe sin usar múltiples setStates.
+      // Ya no hay "Future.delayed" aquí.
+      _variantDrafts.clear();
+      _variantDrafts.addAll(drafts);
     } catch (e) {
       debugPrint('Error cargando variantes: $e');
       if (mounted) {
@@ -192,8 +207,6 @@ class _FormularioScreenState extends State<FormularioScreen> {
           backgroundColor: AppColors.error,
         );
       }
-    } finally {
-      if (mounted) setState(() => _loadingVariants = false);
     }
   }
 
@@ -870,7 +883,8 @@ class _FormularioScreenState extends State<FormularioScreen> {
       showBackButton: true,
       showProfileButton: false,
       body:
-          _guardando
+          // Si está guardando o inicializando, mostramos el loader central
+          (_guardando || _isInitializingData)
               ? const Center(child: CircularProgressIndicator())
               : Form(
                 key: _formKey,
