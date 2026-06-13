@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://github.com" > <!-- AGREGA ESTA LÍNEA AQUÍ -->
+    xmlns:tools="http://schemas.android.com/tools"> <!-- URL OFICIAL CORREGIDA -->
     
     <!-- Permisos de Red y Conectividad (Requeridos por Supabase, Http y Connectivity_plus) -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -8,7 +8,7 @@
     <!-- Permisos de Almacenamiento (Compatibilidad con Android 10 e inferiores para guardar PDFs) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     
-    <!-- SE MODIFICÓ ESTA LÍNEA AÑADIENDO tools:replace PARA RESOLVER EL CONFLICTO CON FILE_SAVER -->
+    <!-- SE CORRIGIÓ LA DECLARACIÓN DE REEMPLAZO BAJO LAS REGLAS DE ANDROID -->
     <uses-permission 
         android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="29" 
@@ -41,7 +41,8 @@
         android:fullBackupContent="false"
         android:label="inventory_store_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        tools:replace="android:allowBackup"> <!-- AÑADIDA REGLA DE UNIFICACIÓN PARA PROCESAR EL EMBEBIDO -->
         
         <activity
             android:name=".MainActivity"
