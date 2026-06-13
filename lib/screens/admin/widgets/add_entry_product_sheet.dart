@@ -1,5 +1,6 @@
 // ─── Bottom Sheet: Añadir Producto ───────────────────────────────────────────
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -296,7 +297,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
             // Selector de producto
             DropdownButtonFormField<ProductModel>(
-              value: _selectedProduct,
+              initialValue: _selectedProduct,
               isExpanded: true,
               icon: const Icon(Icons.expand_more_rounded),
               decoration: _dropdownDecoration('Selecciona el Producto'),
@@ -322,7 +323,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
             // Selector de variante
             if (availableVariants.isNotEmpty) ...[
               DropdownButtonFormField<ProductVariantModel>(
-                value: _selectedVariant,
+                initialValue: _selectedVariant,
                 isExpanded: true,
                 icon: const Icon(Icons.expand_more_rounded),
                 decoration: _dropdownDecoration(
@@ -771,11 +772,22 @@ class _ProductThumbnail extends StatelessWidget {
         borderRadius: BorderRadius.circular(11),
         child:
             imageUrl != null
-                ? Image.network(
-                  imageUrl!,
+                ? CachedNetworkImage(
+                  imageUrl: imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder:
-                      (_, __, ___) => const Icon(
+                  placeholder:
+                      (context, url) => const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                  errorWidget:
+                      (context, url, error) => const Icon(
                         Icons.image_not_supported_rounded,
                         color: AppColors.textHint,
                       ),
@@ -783,6 +795,7 @@ class _ProductThumbnail extends StatelessWidget {
                 : const Icon(
                   Icons.inventory_2_rounded,
                   color: AppColors.textHint,
+                  size: 28,
                 ),
       ),
     );

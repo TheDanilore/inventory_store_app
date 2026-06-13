@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/warehouse_model.dart';
 import 'package:inventory_store_app/models/supplier_model.dart';
@@ -634,7 +635,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
 
                                 // Almacén
                                 DropdownButtonFormField<String>(
-                                  value: _selectedWarehouseId,
+                                  initialValue: _selectedWarehouseId,
                                   icon: const Icon(Icons.expand_more_rounded),
                                   decoration: _dropdownDecoration(
                                     'Almacén de Recepción',
@@ -665,7 +666,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
 
                                 // Proveedor (opcional)
                                 DropdownButtonFormField<String>(
-                                  value: _selectedSupplierId,
+                                  initialValue: _selectedSupplierId,
                                   icon: const Icon(Icons.expand_more_rounded),
                                   decoration: _dropdownDecoration(
                                     'Proveedor (opcional)',
@@ -769,7 +770,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                 if (_paymentMode == 'CONTADO') ...[
                                   const SizedBox(height: 12),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedAccountId,
+                                    initialValue: _selectedAccountId,
                                     icon: const Icon(Icons.expand_more_rounded),
                                     decoration: _dropdownDecoration(
                                       'Cuenta que realizará el pago',
@@ -1402,11 +1403,22 @@ class _ProductThumbnail extends StatelessWidget {
         borderRadius: BorderRadius.circular(11),
         child:
             imageUrl != null
-                ? Image.network(
-                  imageUrl!,
+                ? CachedNetworkImage(
+                  imageUrl: imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder:
-                      (_, __, ___) => const Icon(
+                  placeholder:
+                      (context, url) => const Center(
+                        child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                  errorWidget:
+                      (context, url, error) => const Icon(
                         Icons.image_not_supported_rounded,
                         color: AppColors.textHint,
                       ),
