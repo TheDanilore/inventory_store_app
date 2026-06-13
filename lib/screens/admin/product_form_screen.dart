@@ -146,7 +146,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     });
   }
 
-
   Future<void> _fetchCategories() async {
     try {
       final supabase = Supabase.instance.client;
