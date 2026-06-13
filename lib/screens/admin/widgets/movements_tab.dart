@@ -117,7 +117,7 @@ class _MovementsTabState extends State<MovementsTab>
             .where((m) => m.movementType == 'EXPENSE')
             .fold<double>(0, (s, m) => s + m.amount);
 
-        // 🟢 NUEVO: Lógica de paginación en cliente
+        // Lógica de paginación en cliente
         final totalPages =
             movements.isEmpty ? 1 : (movements.length / _pageSize).ceil();
         final safePage = _currentPage >= totalPages ? 0 : _currentPage;

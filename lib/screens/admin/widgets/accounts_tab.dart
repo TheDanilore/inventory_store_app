@@ -21,7 +21,7 @@ class _AccountsTabState extends State<AccountsTab>
   final _supabase = Supabase.instance.client;
   late Future<List<FinancialAccountModel>> _future;
 
-  // 🟢 NUEVAS variables de paginación
+  // variables de paginación
   static const int _pageSize = 8;
   int _currentPage = 0;
 
@@ -83,7 +83,7 @@ class _AccountsTabState extends State<AccountsTab>
             .fold<double>(0, (s, a) => s + a.balance);
         final activeCount = accounts.where((a) => a.isActive).length;
 
-        // 🟢 NUEVO: Lógica de paginación
+        // Lógica de paginación
         final totalPages =
             accounts.isEmpty ? 1 : (accounts.length / _pageSize).ceil();
         final safePage = _currentPage >= totalPages ? 0 : _currentPage;
@@ -128,7 +128,7 @@ class _AccountsTabState extends State<AccountsTab>
                             icon: Icons.account_balance_outlined,
                             message: 'No hay cuentas registradas',
                           )
-                          // 🟢 NUEVO: Columna para separar lista y paginación
+                          // Columna para separar lista y paginación
                           : Column(
                             children: [
                               // Info de "Mostrando X de Y"

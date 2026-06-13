@@ -43,7 +43,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   String? _selectedCategoryId;
   List<CategoryModel> _categories = [];
   bool _loadingCategories = true;
-  bool _loadingVariants = false;
   bool _guardando = false;
 
   // Estado global para bloquear la pantalla al entrar a editar
@@ -193,7 +192,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             return draft;
           }).toList();
 
-      // 🟢 CORRECCIÓN: Agregamos todas las variantes de golpe sin usar múltiples setStates.
+      // Agregamos todas las variantes de golpe sin usar múltiples setStates.
       // Ya no hay "Future.delayed" aquí.
       _variantDrafts.clear();
       _variantDrafts.addAll(drafts);
@@ -882,99 +881,206 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       showBackButton: true,
       showProfileButton: false,
       body:
-          // Si está guardando o inicializando, mostramos el loader central
           (_guardando || _isInitializingData)
               ? const Center(child: CircularProgressIndicator())
               : Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── NUEVO: Botón superior para guardar rápido ──
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: ElevatedButton.icon(
-                          onPressed: _guardarProducto,
-                          icon: const Icon(Icons.save_rounded, size: 20),
-                          label: Text(
-                            widget.productToEdit != null
-                                ? 'Actualizar'
-                                : 'Guardar',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
+                // Cambiamos SingleChildScrollView por CustomScrollView
+                child: CustomScrollView(
+                  slivers: [
+                    // 1. Todo el formulario superior renderizado normalmente
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16.0),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: ElevatedButton.icon(
+                              onPressed: _guardarProducto,
+                              icon: const Icon(Icons.save_rounded, size: 20),
+                              label: Text(
+                                widget.productToEdit != null
+                                    ? 'Actualizar'
+                                    : 'Guardar',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Imágenes del Producto',
+                            child: _buildImageGallery(),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Información Básica',
+                            child: _buildBasicInfo(),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Configuración',
+                            child: _buildConfigInfo(),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Detalles y Especificaciones',
+                            child: _buildDetailsInfo(),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Precios e Inventario',
+                            child: _buildPricingInfo(),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Ingredientes Activos / Componentes',
+                            child: _buildIngredientsSection(),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSectionCard(
+                            title: 'Gestión por Lotes',
+                            child: _buildBatchSection(),
+                          ),
+                          const SizedBox(height: 16),
 
-                      // ───────────────────────────────────────────────
-                      _buildSectionCard(
-                        title: 'Imágenes del Producto',
-                        child: _buildImageGallery(),
+                          // Encabezado de la sección de Variantes
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Variantes',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _addVariantDraft,
+                                icon: const Icon(Icons.add_circle_outline),
+                                label: const Text('Agregar'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (_variantDrafts.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
+                              ),
+                            ),
+                        ]),
                       ),
-                      const SizedBox(height: 16),
-                      _buildSectionCard(
-                        title: 'Información Básica',
-                        child: _buildBasicInfo(),
-                      ),
-                      const SizedBox(height: 16),
-                      // ── NUEVA SECCIÓN DE CONFIGURACIÓN ──
-                      _buildSectionCard(
-                        title: 'Configuración',
-                        child: _buildConfigInfo(),
-                      ),
-                      const SizedBox(height: 16),
-                      // ────────────────────────────────────
-                      _buildSectionCard(
-                        title: 'Detalles y Especificaciones',
-                        child: _buildDetailsInfo(),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildSectionCard(
-                        title: 'Precios e Inventario',
-                        child: _buildPricingInfo(),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildSectionCard(
-                        title: 'Ingredientes Activos / Componentes',
-                        child: _buildIngredientsSection(),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildSectionCard(
-                        title: 'Gestión por Lotes',
-                        child: _buildBatchSection(),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildVariantsSection(),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: AppPrimaryButton(
-                          label:
-                              widget.productToEdit != null
-                                  ? 'Actualizar Producto'
-                                  : 'Guardar Producto',
-                          onPressed: _guardarProducto,
-                          backgroundColor: AppColors.success,
-                          foregroundColor: Colors.white,
+                    ),
+
+                    // 2. CONSTRUCCIÓN PEREZOSA (LAZY) DE LAS VARIANTES
+                    // Flutter solo dibujará las tarjetas que se vean en pantalla.
+                    if (_variantDrafts.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              return VariantDraftCard(
+                                index: index,
+                                draft: _variantDrafts[index],
+                                onRemove: () => _removeVariantDraft(index),
+                                onActiveChanged:
+                                    (val) => setState(
+                                      () =>
+                                          _variantDrafts[index].isActive = val,
+                                    ),
+                                onPickImage:
+                                    () => _pickVariantImage(
+                                      _variantDrafts[index],
+                                    ),
+                              );
+                            },
+                            childCount:
+                                _variantDrafts
+                                    .length, // Sabe exactamente cuántas renderizar bajo demanda
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+
+                    // 3. Botones finales (Agregar otra variante y Guardar Producto)
+                    if (_variantDrafts.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _addVariantDraft,
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  label: const Text('Agregar otra variante'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: BorderSide(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16.0),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: AppPrimaryButton(
+                                label:
+                                    widget.productToEdit != null
+                                        ? 'Actualizar Producto'
+                                        : 'Guardar Producto',
+                                onPressed: _guardarProducto,
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
     );
@@ -1536,73 +1642,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildVariantsSection() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Variantes',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _addVariantDraft,
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Agregar'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_loadingVariants)
-          const CircularProgressIndicator()
-        else if (_variantDrafts.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
-            ),
-          )
-        else ...[
-          ...List.generate(_variantDrafts.length, (index) {
-            return VariantDraftCard(
-              index: index,
-              draft: _variantDrafts[index],
-              onRemove: () => _removeVariantDraft(index),
-              onActiveChanged:
-                  (val) => setState(() => _variantDrafts[index].isActive = val),
-              onPickImage: () => _pickVariantImage(_variantDrafts[index]),
-            );
-          }),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _addVariantDraft,
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Agregar otra variante'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: BorderSide(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }

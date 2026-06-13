@@ -205,7 +205,7 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                     )
                     : Builder(
                       builder: (context) {
-                        // 🟢 NUEVO: Lógica de paginación
+                        // Lógica de paginación
                         final totalPages =
                             (_filteredSuppliers.length / _pageSize).ceil();
                         final safePage =

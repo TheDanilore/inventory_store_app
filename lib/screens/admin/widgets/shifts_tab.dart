@@ -23,7 +23,7 @@ class _ShiftsTabState extends State<ShiftsTab>
   late Future<_ShiftsData> _future;
   String _filterStatus = 'Todos';
 
-  // 🟢 NUEVAS variables de paginación
+  // variables de paginación
   static const int _pageSize = 8;
   int _currentPage = 0;
 
@@ -276,7 +276,7 @@ class _ShiftsTabState extends State<ShiftsTab>
                             icon: Icons.point_of_sale_outlined,
                             message: 'No hay turnos registrados',
                           )
-                          // 🟢 NUEVO: Columna para separar la lista de la paginación
+                          // Columna para separar la lista de la paginación
                           : Column(
                             children: [
                               // Info de "Mostrando X de Y"
