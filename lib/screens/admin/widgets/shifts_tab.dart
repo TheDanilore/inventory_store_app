@@ -27,6 +27,60 @@ class _ShiftsTabState extends State<ShiftsTab>
   static const int _pageSize = 8;
   int _currentPage = 0;
 
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final theme = Theme.of(context).copyWith(
+      colorScheme: ColorScheme.light(
+        primary: AppColors.primary,
+        onPrimary: Colors.white,
+        surface: Colors.white,
+        onSurface: Colors.black87,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+
+    final from = await showDatePicker(
+      context: context,
+      initialDate: _dateFrom ?? now,
+      firstDate: DateTime(2020),
+      lastDate: now,
+      helpText: 'Fecha inicio',
+      builder: (context, child) => Theme(data: theme, child: child!),
+    );
+    if (from == null || !mounted) return;
+
+    final to = await showDatePicker(
+      context: context,
+      initialDate:
+          (_dateTo != null && _dateTo!.isAfter(from)) ? _dateTo! : from,
+      firstDate: from,
+      lastDate: now,
+      helpText: 'Fecha fin',
+      builder: (context, child) => Theme(data: theme, child: child!),
+    );
+    if (to == null) return;
+
+    setState(() {
+      _dateFrom = from;
+      _dateTo = DateTime(to.year, to.month, to.day, 23, 59, 59);
+      _currentPage = 0;
+    });
+  }
+
+  void _clearDates() => setState(() {
+    _dateFrom = null;
+    _dateTo = null;
+    _currentPage = 0;
+  });
+
   @override
   void initState() {
     super.initState();
@@ -164,8 +218,13 @@ class _ShiftsTabState extends State<ShiftsTab>
   }
 
   List<CashShiftModel> _applyFilters(List<CashShiftModel> shifts) {
-    if (_filterStatus == 'Todos') return shifts;
-    return shifts.where((s) => s.status == _filterStatus).toList();
+    return shifts.where((s) {
+      final matchStatus = _filterStatus == 'Todos' || s.status == _filterStatus;
+      final matchDate =
+          (_dateFrom == null || !s.openedAt.isBefore(_dateFrom!)) &&
+          (_dateTo == null || !s.openedAt.isAfter(_dateTo!));
+      return matchStatus && matchDate;
+    }).toList();
   }
 
   @override
@@ -254,6 +313,13 @@ class _ShiftsTabState extends State<ShiftsTab>
                             }),
                       ),
                       const Spacer(),
+                      _DateFilterButton(
+                        dateFrom: _dateFrom,
+                        dateTo: _dateTo,
+                        onTap: _pickDateRange,
+                        onClear: _clearDates,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         '${shifts.length} turno${shifts.length != 1 ? 's' : ''}',
                         style: const TextStyle(
@@ -1536,6 +1602,84 @@ class _Badge extends StatelessWidget {
           fontWeight: FontWeight.w800,
           fontSize: 11,
           letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Botón de filtro de fecha ─────────────────────────────────────────────────
+class _DateFilterButton extends StatelessWidget {
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  const _DateFilterButton({
+    required this.dateFrom,
+    required this.dateTo,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  String get _label {
+    if (dateFrom == null && dateTo == null) return 'Fechas';
+    final f =
+        '${dateFrom!.day.toString().padLeft(2, '0')}/${dateFrom!.month.toString().padLeft(2, '0')}';
+    final t =
+        '${dateTo!.day.toString().padLeft(2, '0')}/${dateTo!.month.toString().padLeft(2, '0')}';
+    return '$f–$t';
+  }
+
+  bool get _active => dateFrom != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color:
+              _active
+                  ? AppColors.primary.withValues(alpha: 0.12)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _active ? AppColors.primary : Colors.grey.shade300,
+            width: _active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.calendar_today_rounded,
+              size: 14,
+              color: _active ? AppColors.primary : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              _label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _active ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+            if (_active) ...[
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: onClear,
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 13,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

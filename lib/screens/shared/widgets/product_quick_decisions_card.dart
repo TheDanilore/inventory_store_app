@@ -207,13 +207,13 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                           bold: true,
                         ),
                         _ColValue(
-                          'S/${inventoryValue.toStringAsFixed(0)}',
+                          'S/${inventoryValue.toStringAsFixed(2)}',
                           bold: true,
                           color: AppColors.primary,
                         ),
                         _ColValue('$totalSold', bold: true),
                         _ColValue(
-                          'S/${totalRevenue.toStringAsFixed(0)}',
+                          'S/${totalRevenue.toStringAsFixed(2)}',
                           bold: true,
                           color: const Color(0xFF059669),
                         ),
@@ -321,12 +321,12 @@ class _VariantRow extends StatelessWidget {
           ),
           _ColValue('${s.stockQuantity}'),
           _ColValue(
-            'S/${s.inventoryValue.toStringAsFixed(0)}',
+            'S/${s.inventoryValue.toStringAsFixed(2)}',
             color: s.inventoryValue > 0 ? AppColors.primary : null,
           ),
           _ColValue('${s.soldQuantity}'),
           _ColValue(
-            'S/${s.soldRevenue.toStringAsFixed(0)}',
+            'S/${s.soldRevenue.toStringAsFixed(2)}',
             color: s.soldRevenue > 0 ? const Color(0xFF059669) : null,
           ),
         ],

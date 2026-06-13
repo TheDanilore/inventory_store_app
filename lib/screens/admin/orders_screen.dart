@@ -732,10 +732,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       initialDateRange: _dateRange,
+      initialEntryMode: DatePickerEntryMode.input,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(primary: AppColors.primary),
+            inputDecorationTheme: const InputDecorationTheme(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
           ),
           child: child!,
         );

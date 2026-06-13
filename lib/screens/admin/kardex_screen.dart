@@ -309,11 +309,19 @@ class _KardexScreenState extends State<KardexScreen> {
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2100),
                         initialDateRange: _dateRange,
+                        initialEntryMode: DatePickerEntryMode.input,
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(context).copyWith(
                               colorScheme: ColorScheme.light(
                                 primary: Theme.of(context).primaryColor,
+                              ),
+                              inputDecorationTheme: const InputDecorationTheme(
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                               ),
                             ),
                             child: child!,

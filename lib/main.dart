@@ -17,10 +17,6 @@ Future<void> main() async {
   // Inicializa los datos de fecha para español
   await initializeDateFormatting('es', null);
 
-  // 1. ESTO DEBE SER LA PRIMERA LÍNEA SÍ O SÍ
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 2. Luego inicializas Supabase u otros plugins que necesiten inicialización antes de correr la app.
   await Supabase.initialize(
     url: 'https://lvupdgdmlmzztjmydqak.supabase.co',
     publishableKey: 'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB',
@@ -37,20 +33,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // AppConfigProvider: se instancia aquí pero carga datos desde SplashScreen
         ChangeNotifierProvider(create: (_) => AppConfigProvider()),
-        // NetworkProvider: solo escucha conectividad, no llama a Supabase
         ChangeNotifierProvider(create: (_) => NetworkProvider()),
-        // CartProvider y WalletProvider arrancan con lazy:true para que no
-        // inicialicen Supabase hasta que se acceda a ellos por primera vez,
-        // garantizando que Supabase.initialize() ya terminó.
         ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
       ],
       child: MaterialApp(
-        title: 'Inventario Store', // título fallback
-        // Quita onGenerateTitle — no funciona en web para la pestaña
+        title: 'Inventario Store',
         theme: AppTheme.light(),
         debugShowCheckedModeBanner: false,
         home: const SplashScreen(),
