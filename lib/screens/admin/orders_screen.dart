@@ -500,6 +500,174 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
       await _supabase.from('orders').update(updates).eq('id', order.id);
 
+      // ─── WALLET: asignar monedas al completar PENDING → COMPLETED ───
+      if (newStatus == 'COMPLETED' &&
+          order.status == 'PENDING' &&
+          order.customerId != null) {
+        // Leer tasas desde app_settings
+        final settingsResp = await _supabase
+            .from('app_settings')
+            .select('key, value')
+            .inFilter('key', ['points_earning_rate', 'points_to_soles_ratio']);
+
+        final settingsMap = {
+          for (final row in List<Map<String, dynamic>>.from(settingsResp))
+            row['key'] as String: (row['value'] as num).toDouble(),
+        };
+        final earningRate = settingsMap['points_earning_rate'] ?? 0.1;
+        final pointsToSoles = settingsMap['points_to_soles_ratio'] ?? 1.0;
+
+        // Calcular monedas ganadas sobre el total de la orden
+        final pointsEarned =
+            pointsToSoles > 0
+                ? (order.totalAmount * earningRate / pointsToSoles).toInt()
+                : 0;
+
+        // Registrar canje de puntos si aplica (pointsUsed > 0)
+        if (order.pointsUsed > 0) {
+          final redemptionExists =
+              await _supabase
+                  .from('wallet_movements')
+                  .select('id')
+                  .eq('order_id', order.id)
+                  .eq('movement_type', 'REDEEMED')
+                  .maybeSingle();
+
+          if (redemptionExists == null) {
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': order.customerId,
+              'order_id': order.id,
+              'points': -order.pointsUsed,
+              'movement_type': 'REDEEMED',
+              'description': 'Canje aplicado al completar pedido #${order.id}',
+            });
+          }
+        }
+
+        // Registrar monedas ganadas
+        if (pointsEarned > 0) {
+          final earnedExists =
+              await _supabase
+                  .from('wallet_movements')
+                  .select('id')
+                  .eq('order_id', order.id)
+                  .eq('movement_type', 'EARNED')
+                  .maybeSingle();
+
+          if (earnedExists == null) {
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': order.customerId,
+              'order_id': order.id,
+              'points': pointsEarned,
+              'movement_type': 'EARNED',
+              'description':
+                  'Monedas obtenidas al completar pedido #${order.id}',
+            });
+
+            // Actualizar wallet_balance en profiles
+            final profileData =
+                await _supabase
+                    .from('profiles')
+                    .select('wallet_balance')
+                    .eq('id', order.customerId!)
+                    .maybeSingle();
+
+            if (profileData != null) {
+              final currentBal =
+                  (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+              await _supabase
+                  .from('profiles')
+                  .update({'wallet_balance': currentBal + pointsEarned})
+                  .eq('id', order.customerId!);
+            }
+          }
+        }
+
+        // Guardar points_earned calculado en la orden
+        if (pointsEarned > 0) {
+          await _supabase
+              .from('orders')
+              .update({'points_earned': pointsEarned})
+              .eq('id', order.id);
+        }
+      }
+
+      // ─── WALLET: revertir monedas al cancelar ───────────────────────
+      if (newStatus == 'CANCELLED' && order.customerId != null) {
+        // Revertir monedas EARNED
+        final earnedMov =
+            await _supabase
+                .from('wallet_movements')
+                .select('id, points')
+                .eq('order_id', order.id)
+                .eq('movement_type', 'EARNED')
+                .maybeSingle();
+
+        if (earnedMov != null) {
+          final ptsGanados = (earnedMov['points'] as num).toInt();
+          final profileData =
+              await _supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', order.customerId!)
+                  .maybeSingle();
+
+          if (profileData != null) {
+            final currentBal =
+                (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+            final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
+            await _supabase
+                .from('profiles')
+                .update({'wallet_balance': newBal})
+                .eq('id', order.customerId!);
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': order.customerId,
+              'order_id': order.id,
+              'points': -ptsGanados,
+              'movement_type': 'ADJUSTMENT',
+              'description':
+                  'Reversión de monedas por cancelación de pedido #${order.id}',
+            });
+          }
+        }
+
+        // Devolver monedas REDEEMED si las hubo
+        final redeemedMov =
+            await _supabase
+                .from('wallet_movements')
+                .select('id, points')
+                .eq('order_id', order.id)
+                .eq('movement_type', 'REDEEMED')
+                .maybeSingle();
+
+        if (redeemedMov != null) {
+          final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
+          final profileData =
+              await _supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', order.customerId!)
+                  .maybeSingle();
+
+          if (profileData != null) {
+            final currentBal =
+                (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+            await _supabase
+                .from('profiles')
+                .update({'wallet_balance': currentBal + ptsCanjeados})
+                .eq('id', order.customerId!);
+            await _supabase.from('wallet_movements').insert({
+              'profile_id': order.customerId,
+              'order_id': order.id,
+              'points': ptsCanjeados,
+              'movement_type': 'ADJUSTMENT',
+              'description':
+                  'Devolución de monedas canjeadas por cancelación #${order.id}',
+            });
+          }
+        }
+      }
+
       if (mounted) {
         AppSnackbar.show(
           context,
