@@ -1,6 +1,7 @@
 // ─── Bottom Sheet Modal para Añadir Producto (Salida) ──────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
@@ -265,7 +266,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             const SizedBox(height: 24),
 
             DropdownButtonFormField<ProductModel>(
-              value: _selectedProduct,
+              initialValue: _selectedProduct,
               isExpanded: true,
               icon: const Icon(Icons.expand_more_rounded),
               decoration: InputDecoration(
@@ -303,7 +304,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
 
             if (availableVariants.isNotEmpty) ...[
               DropdownButtonFormField<ProductVariantModel>(
-                value: _selectedVariant,
+                initialValue: _selectedVariant,
                 isExpanded: true,
                 icon: const Icon(Icons.expand_more_rounded),
                 decoration: InputDecoration(
@@ -344,7 +345,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             if (_selectedProduct?.usesBatches == true &&
                 (_selectedVariant != null || availableVariants.isEmpty)) ...[
               DropdownButtonFormField<Map<String, dynamic>>(
-                value: _selectedBatch,
+                initialValue: _selectedBatch,
                 isExpanded: true,
                 icon: const Icon(Icons.expand_more_rounded),
                 decoration: InputDecoration(
@@ -414,9 +415,24 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                       borderRadius: BorderRadius.circular(13),
                       child:
                           currentImageUrl != null
-                              ? Image.network(
-                                currentImageUrl,
+                              ? CachedNetworkImage(
+                                imageUrl: currentImageUrl,
                                 fit: BoxFit.cover,
+                                placeholder:
+                                    (_, __) => const Center(
+                                      child: SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                errorWidget:
+                                    (_, __, ___) => const Icon(
+                                      Icons.image_not_supported_rounded,
+                                      color: AppColors.textHint,
+                                    ),
                               )
                               : const Icon(
                                 Icons.image_not_supported_rounded,

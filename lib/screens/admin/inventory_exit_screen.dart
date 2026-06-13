@@ -3,6 +3,7 @@ import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/add_exit_product_sheet_state.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
@@ -547,7 +548,7 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedWarehouseId,
+                                  initialValue: _selectedWarehouseId,
                                   icon: const Icon(Icons.expand_more_rounded),
                                   decoration: InputDecoration(
                                     labelText: 'Almacén de Origen',
@@ -882,10 +883,20 @@ class _InventoryExitScreenState extends State<InventoryExitScreen> {
               borderRadius: BorderRadius.circular(11),
               child:
                   imageUrl != null
-                      ? Image.network(
-                        imageUrl,
+                      ? CachedNetworkImage(
+                        imageUrl: imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder:
+                        placeholder:
+                            (_, __) => const Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                        errorWidget:
                             (_, __, ___) => const Icon(
                               Icons.image_not_supported_rounded,
                               color: AppColors.textHint,
