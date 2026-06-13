@@ -1,6 +1,7 @@
 // ─── COMPONENTE: DECISIONES RÁPIDAS ──────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class ProductQuickDecisionsCard extends StatelessWidget {
@@ -8,6 +9,7 @@ class ProductQuickDecisionsCard extends StatelessWidget {
   final double reinvestmentNeeded;
   final double inventoryValue;
   final double totalRevenue;
+  final List<VariantFinancialSummary> variantSummaries;
 
   const ProductQuickDecisionsCard({
     super.key,
@@ -15,6 +17,7 @@ class ProductQuickDecisionsCard extends StatelessWidget {
     required this.reinvestmentNeeded,
     required this.inventoryValue,
     required this.totalRevenue,
+    required this.variantSummaries,
   });
 
   @override
@@ -22,10 +25,9 @@ class ProductQuickDecisionsCard extends StatelessWidget {
     final hasData = totalSold > 0 || inventoryValue > 0;
     if (!hasData) return const SizedBox.shrink();
 
-    // Ganancia realizada = ingresos - costo de lo vendido (reinvestment)
     final double realizedProfit = totalRevenue - reinvestmentNeeded;
-    // Capital total = lo que tengo en stock + lo que ya cobré
     final double totalCapital = inventoryValue + totalRevenue;
+    final bool multiVariant = variantSummaries.length > 1;
 
     return Container(
       decoration: BoxDecoration(
@@ -87,12 +89,11 @@ class ProductQuickDecisionsCard extends StatelessWidget {
             ),
           ),
 
-          // ── Fila de totales resaltados ──────────────────────────────────
+          // ── Totales generales destacados ────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: Row(
               children: [
-                // Capital en inventario
                 _TotalHighlight(
                   label: 'En inventario',
                   value: 'S/ ${inventoryValue.toStringAsFixed(2)}',
@@ -100,7 +101,6 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 8),
-                // Ingresos por ventas
                 _TotalHighlight(
                   label: 'Ingresos ventas',
                   value: 'S/ ${totalRevenue.toStringAsFixed(2)}',
@@ -111,7 +111,121 @@ class ProductQuickDecisionsCard extends StatelessWidget {
             ),
           ),
 
-          // ── Detalle ────────────────────────────────────────────────────
+          // ── Desglose por variante (si hay más de una) ──────────────────
+          if (multiVariant) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.layers_rounded,
+                    size: 13,
+                    color: Colors.grey.shade500,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Por variante',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Column(
+                children: [
+                  // Cabecera de columnas
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          flex: 5,
+                          child: Text(
+                            'Variante',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                        _ColHeader('Stock\nactual'),
+                        _ColHeader('Capital\nstock'),
+                        _ColHeader('Vendido\nuds.'),
+                        _ColHeader('Ingreso\nventa'),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFBBF7D0)),
+                  ...variantSummaries.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final s = entry.value;
+                    final isLast = i == variantSummaries.length - 1;
+                    return Column(
+                      children: [
+                        _VariantRow(summary: s),
+                        if (!isLast)
+                          const Divider(
+                            height: 1,
+                            color: Color(0xFFECFDF5),
+                            indent: 12,
+                            endIndent: 12,
+                          ),
+                      ],
+                    );
+                  }),
+                  // Fila de totales
+                  const Divider(height: 1, color: Color(0xFFBBF7D0)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          flex: 5,
+                          child: Text(
+                            'Total',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF166534),
+                            ),
+                          ),
+                        ),
+                        _ColValue(
+                          '${variantSummaries.fold(0, (s, v) => s + v.stockQuantity)}',
+                          bold: true,
+                        ),
+                        _ColValue(
+                          'S/${inventoryValue.toStringAsFixed(0)}',
+                          bold: true,
+                          color: AppColors.primary,
+                        ),
+                        _ColValue('$totalSold', bold: true),
+                        _ColValue(
+                          'S/${totalRevenue.toStringAsFixed(0)}',
+                          bold: true,
+                          color: const Color(0xFF059669),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // ── Detalle de ganancias ───────────────────────────────────────
           Container(
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             padding: const EdgeInsets.all(12),
@@ -150,7 +264,6 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Divider(height: 1, color: Color(0xFFBBF7D0)),
                 ),
-                // Total general
                 _DecisionRow(
                   icon: Icons.account_balance_rounded,
                   color: const Color(0xFF166534),
@@ -168,8 +281,107 @@ class ProductQuickDecisionsCard extends StatelessWidget {
   }
 }
 
-// ── Tarjeta de total destacado ────────────────────────────────────────────────
+// ── Fila por variante en la tabla ─────────────────────────────────────────────
+class _VariantRow extends StatelessWidget {
+  final VariantFinancialSummary summary;
+  const _VariantRow({required this.summary});
 
+  @override
+  Widget build(BuildContext context) {
+    final s = summary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.variant.label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'C: S/${s.unitCost.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _ColValue('${s.stockQuantity}'),
+          _ColValue(
+            'S/${s.inventoryValue.toStringAsFixed(0)}',
+            color: s.inventoryValue > 0 ? AppColors.primary : null,
+          ),
+          _ColValue('${s.soldQuantity}'),
+          _ColValue(
+            'S/${s.soldRevenue.toStringAsFixed(0)}',
+            color: s.soldRevenue > 0 ? const Color(0xFF059669) : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Widgets auxiliares de tabla ───────────────────────────────────────────────
+class _ColHeader extends StatelessWidget {
+  final String text;
+  const _ColHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      flex: 3,
+      child: Text(
+        text,
+        textAlign: TextAlign.right,
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textMuted,
+          height: 1.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _ColValue extends StatelessWidget {
+  final String text;
+  final bool bold;
+  final Color? color;
+  const _ColValue(this.text, {this.bold = false, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      flex: 3,
+      child: Text(
+        text,
+        textAlign: TextAlign.right,
+        style: TextStyle(
+          fontSize: bold ? 11 : 10,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+          color: color ?? AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tarjeta de total destacado ────────────────────────────────────────────────
 class _TotalHighlight extends StatelessWidget {
   final String label;
   final String value;
@@ -229,7 +441,6 @@ class _TotalHighlight extends StatelessWidget {
 }
 
 // ── Fila de detalle ───────────────────────────────────────────────────────────
-
 class _DecisionRow extends StatelessWidget {
   final IconData icon;
   final Color color;

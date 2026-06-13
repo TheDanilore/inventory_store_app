@@ -54,6 +54,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   double _reinvestmentNeeded = 0.0;
   double _inventoryValue = 0.0; // Valor total del inventario actual
   double _totalRevenue = 0.0; // Ingresos totales por ventas
+  List<VariantFinancialSummary> _variantSummaries = [];
 
   double _averageRating = 0.0;
 
@@ -207,7 +208,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           _supabase
               .from('order_items')
               .select(
-                'quantity, unit_cost, applied_price, orders!inner(status)',
+                'quantity, unit_cost, applied_price, variant_id, orders!inner(status)',
               )
               .eq('product_id', widget.product.id)
               .eq('orders.status', 'COMPLETED'),
@@ -304,25 +305,57 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
         _totalSold = soldUnits;
         _reinvestmentNeeded = reinvestment;
-        _totalRevenue =
-            revenue; // <-- Ahora sí puede acceder a la variable sin problemas
+        _totalRevenue = revenue;
 
-        // Valor de inventario actual: stock × costo unitario por variante
+        // ── Por variante: stock, costo, ingresos, unidades vendidas ─────────
+        // Mapa variant_id → {soldQty, soldCost, soldRevenue}
+        final Map<String, Map<String, double>> variantSales = {};
+        if (widget.isAdmin && results.length > 5) {
+          for (final row in results[5] as List<dynamic>) {
+            final vid = row['variant_id']?.toString() ?? '';
+            if (vid.isEmpty) continue;
+            final q = (row['quantity'] as num?)?.toDouble() ?? 0;
+            final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
+            final ap = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
+            variantSales.putIfAbsent(
+              vid,
+              () => {'qty': 0, 'cost': 0, 'revenue': 0},
+            );
+            variantSales[vid]!['qty'] = variantSales[vid]!['qty']! + q;
+            variantSales[vid]!['cost'] = variantSales[vid]!['cost']! + (q * uc);
+            variantSales[vid]!['revenue'] =
+                variantSales[vid]!['revenue']! + (q * ap);
+          }
+        }
+
         double invValue = 0.0;
+        final summaries = <VariantFinancialSummary>[];
         for (final v in fetchedVariants) {
-          // Costo efectivo: variante primero (si tiene), sino el del producto
           final cost =
               ((v.unitCost ?? 0) > 0) ? v.unitCost! : widget.product.unitCost;
-          // Sumar stock de esta variante en todos los almacenes
           int variantStock = 0;
           for (final row in fetchedStocks) {
             if (row['variant_id'] == v.id) {
               variantStock += (row['available_quantity'] as num?)?.toInt() ?? 0;
             }
           }
-          invValue += variantStock * cost;
+          final vInv = variantStock * cost;
+          invValue += vInv;
+          final sales = variantSales[v.id];
+          summaries.add(
+            VariantFinancialSummary(
+              variant: v,
+              unitCost: cost,
+              stockQuantity: variantStock,
+              inventoryValue: vInv,
+              soldQuantity: sales?['qty']?.toInt() ?? 0,
+              soldCost: sales?['cost'] ?? 0.0,
+              soldRevenue: sales?['revenue'] ?? 0.0,
+            ),
+          );
         }
         _inventoryValue = invValue;
+        _variantSummaries = summaries;
 
         _isLoadingExtra = false;
 
@@ -1119,6 +1152,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   reinvestmentNeeded: _reinvestmentNeeded,
                   inventoryValue: _inventoryValue,
                   totalRevenue: _totalRevenue,
+                  variantSummaries: _variantSummaries,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -2788,4 +2822,27 @@ class _ActiveIngredientsCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Modelo de resumen financiero por variante ────────────────────────────────
+class VariantFinancialSummary {
+  final ProductVariantModel variant;
+  final double unitCost;
+  final int stockQuantity;
+  final double inventoryValue;
+  final int soldQuantity;
+  final double soldCost;
+  final double soldRevenue;
+
+  const VariantFinancialSummary({
+    required this.variant,
+    required this.unitCost,
+    required this.stockQuantity,
+    required this.inventoryValue,
+    required this.soldQuantity,
+    required this.soldCost,
+    required this.soldRevenue,
+  });
+
+  double get soldProfit => soldRevenue - soldCost;
 }
