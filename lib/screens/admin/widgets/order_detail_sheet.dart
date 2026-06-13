@@ -1281,6 +1281,23 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'description':
                   'Canje aplicado al completar pedido #${widget.order.id}',
             });
+            // Descontar el saldo del wallet del cliente
+            final redeemedProfile =
+                await _supabase
+                    .from('profiles')
+                    .select('wallet_balance')
+                    .eq('id', _selectedCustomerId!)
+                    .maybeSingle();
+            if (redeemedProfile != null) {
+              final curBal =
+                  (redeemedProfile['wallet_balance'] as num?)?.toInt() ?? 0;
+              await _supabase
+                  .from('profiles')
+                  .update({
+                    'wallet_balance': (curBal - _pointsUsed).clamp(0, curBal),
+                  })
+                  .eq('id', _selectedCustomerId!);
+            }
           }
         }
         if (_pointsEarned > 0) {
@@ -1300,6 +1317,21 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'description':
                   'Monedas obtenidas al completar pedido #${widget.order.id}',
             });
+            // Acreditar el saldo del wallet del cliente
+            final earnedProfile =
+                await _supabase
+                    .from('profiles')
+                    .select('wallet_balance')
+                    .eq('id', _selectedCustomerId!)
+                    .maybeSingle();
+            if (earnedProfile != null) {
+              final curBal =
+                  (earnedProfile['wallet_balance'] as num?)?.toInt() ?? 0;
+              await _supabase
+                  .from('profiles')
+                  .update({'wallet_balance': curBal + _pointsEarned})
+                  .eq('id', _selectedCustomerId!);
+            }
           }
         }
       }
@@ -1395,7 +1427,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .from('order_items')
             .update({
               'quantity': item.quantity,
-              'unit_cost': item.unitCost, // Sobreescribe por si estaba mal antes
+              'unit_cost':
+                  item.unitCost, // Sobreescribe por si estaba mal antes
               'net_profit': (item.appliedPrice - item.unitCost) * item.quantity,
             })
             .eq('id', item.id ?? '');

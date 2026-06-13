@@ -153,8 +153,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
             // ASIGNAR NOMBRE DE CUENTA COMO MÉTODO DE PAGO
             if (pos.paymentMethod != 'CRÉDITO') {
-              final accountName =
-                  (firstAcc['name'] as String? ?? '').toUpperCase();
+              final accountName = (firstAcc['name'] as String? ?? '');
               pos.setPaymentMethod(accountName);
             }
 
