@@ -931,7 +931,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => FormularioScreen(productToEdit: product),
+                    builder: (_) => ProductFormScreen(productToEdit: product),
                   ),
                 );
                 if (result == true) _refreshProducts();
@@ -968,7 +968,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             onTap: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const FormularioScreen()),
+                MaterialPageRoute(builder: (_) => const ProductFormScreen()),
               );
               if (result == true) setState(() => _currentPage = 0);
             },
