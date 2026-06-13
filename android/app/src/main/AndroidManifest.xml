@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://github.com" > <!-- AGREGA ESTA LÍNEA AQUÍ -->
     
     <!-- Permisos de Red y Conectividad (Requeridos por Supabase, Http y Connectivity_plus) -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -6,7 +7,12 @@
     
     <!-- Permisos de Almacenamiento (Compatibilidad con Android 10 e inferiores para guardar PDFs) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    
+    <!-- SE MODIFICÓ ESTA LÍNEA AÑADIENDO tools:replace PARA RESOLVER EL CONFLICTO CON FILE_SAVER -->
+    <uses-permission 
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="29" 
+        tools:replace="android:maxSdkVersion" />
 
     <!-- Unificación de consultas de visibilidad (Crucial para url_launcher y visor de PDFs) -->
     <queries>
