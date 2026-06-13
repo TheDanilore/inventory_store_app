@@ -1,14 +1,15 @@
 // ─── FULL SCREEN GALLERY ─────────────────────────────────────────────────────
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/models/product_image_model.dart';
 
 class FullScreenGallery extends StatelessWidget {
-  final List<ProductImageModel> images;
+  final List<String> imageUrls; // <-- CAMBIO AQUÍ: Ahora es List<String>
   final int initialIndex;
+
   const FullScreenGallery({
     super.key,
-    required this.images,
+    required this.imageUrls,
     required this.initialIndex,
   });
 
@@ -23,14 +24,21 @@ class FullScreenGallery extends StatelessWidget {
       ),
       body: PageView.builder(
         controller: PageController(initialPage: initialIndex),
-        itemCount: images.length,
+        itemCount: imageUrls.length, // <-- CAMBIO AQUÍ
         itemBuilder:
             (context, index) => InteractiveViewer(
               panEnabled: true,
               boundaryMargin: const EdgeInsets.all(20),
               minScale: 1.0,
               maxScale: 4.0,
-              child: Image.network(images[index].imageUrl, fit: BoxFit.contain),
+              child: CachedNetworkImage(
+                imageUrl: imageUrls[index], // <-- CAMBIO AQUÍ
+                fit: BoxFit.contain,
+                placeholder:
+                    (context, url) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+              ),
             ),
       ),
     );

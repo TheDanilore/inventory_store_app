@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/auth/login_screen.dart';
 import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 import 'package:inventory_store_app/shared/widgets/app_drawer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
@@ -231,6 +233,11 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
   String? _initials;
   bool _loaded = false;
 
+  // Variables estáticas para mantener los datos en memoria RAM mientras la app esté abierta
+  static String? _memAvatarUrl;
+  static String? _memInitials;
+  static bool _hasLoadedOnce = false;
+
   @override
   void initState() {
     super.initState();
@@ -238,16 +245,44 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
   }
 
   Future<void> _loadProfile() async {
+    // 1. CARGA INSTANTÁNEA: Si ya lo consultamos en esta sesión, lo mostramos al instante sin esperar.
+    if (_hasLoadedOnce) {
+      setState(() {
+        _avatarUrl = _memAvatarUrl;
+        _initials = _memInitials;
+        _loaded = true;
+      });
+      // No retornamos aquí, dejamos que actualice en segundo plano por si cambiaste tu foto.
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // 2. CARGA RÁPIDA: Si acabas de abrir la app, leemos la memoria del teléfono (SharedPreferences)
+    if (!_hasLoadedOnce) {
+      if (prefs.containsKey('profile_avatar_url') ||
+          prefs.containsKey('profile_initials')) {
+        setState(() {
+          _avatarUrl = prefs.getString('profile_avatar_url');
+          _initials = prefs.getString('profile_initials');
+          _loaded = true;
+        });
+      }
+    }
+
+    // 3. CONSULTA DE FONDO: Le preguntamos a Supabase silenciosamente por si hubo cambios
     try {
       final authUser = Supabase.instance.client.auth.currentUser;
       if (authUser == null) return;
+
       final data =
           await Supabase.instance.client
               .from('profiles')
               .select('full_name, avatar_url')
               .eq('auth_user_id', authUser.id)
               .maybeSingle();
+
       if (!mounted || data == null) return;
+
       final name = (data['full_name'] as String?)?.trim() ?? '';
       final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
       final initials =
@@ -256,13 +291,28 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
               : name.isNotEmpty
               ? name[0].toUpperCase()
               : '?';
-      setState(() {
-        _avatarUrl = data['avatar_url'] as String?;
-        _initials = initials;
-        _loaded = true;
-      });
+
+      final newUrl = data['avatar_url'] as String?;
+
+      // Guardamos en RAM
+      _memAvatarUrl = newUrl;
+      _memInitials = initials;
+      _hasLoadedOnce = true;
+
+      // Guardamos en el disco del teléfono
+      await prefs.setString('profile_avatar_url', newUrl ?? '');
+      await prefs.setString('profile_initials', initials);
+
+      // Si los datos de Supabase son diferentes a los que mostramos, actualizamos la UI
+      if (_avatarUrl != newUrl || _initials != initials) {
+        setState(() {
+          _avatarUrl = newUrl;
+          _initials = initials;
+          _loaded = true;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _loaded = true);
+      if (mounted && !_loaded) setState(() => _loaded = true);
     }
   }
 
@@ -291,16 +341,27 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
 
   Widget _buildContent() {
     if (!_loaded) {
-      // Mientras carga: ícono placeholder
       return const Icon(Icons.person_rounded, size: 20, color: Colors.white);
     }
     if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
-      return Image.network(
-        _avatarUrl!,
+      return CachedNetworkImage(
+        imageUrl: _avatarUrl!,
         fit: BoxFit.cover,
         width: 38,
         height: 38,
-        errorBuilder: (_, __, ___) => _initialsWidget(),
+        fadeInDuration: const Duration(milliseconds: 150), // Suaviza la entrada
+        placeholder:
+            (context, url) => const Center(
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white70,
+                ),
+              ),
+            ),
+        errorWidget: (context, url, error) => _initialsWidget(),
       );
     }
     return _initialsWidget();

@@ -1,5 +1,6 @@
 // ignore_for_file: unused_element_parameter
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/screens/shared/widgets/full_screen_gallery.dart';
@@ -1083,6 +1084,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   (_showVariantImage && _selectedVariant != null)
                       ? _selectedVariant!.attributes.values.join(' - ')
                       : null,
+              fallbackImageUrl: widget.product.primaryImageUrl,
             ),
           ),
         ),
@@ -1289,7 +1291,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 image:
                     firstImg != null
                         ? DecorationImage(
-                          image: NetworkImage(firstImg),
+                          image: CachedNetworkImageProvider(firstImg),
                           fit: BoxFit.cover,
                         )
                         : null,
@@ -1350,7 +1352,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   image:
                       imgUrl != null
                           ? DecorationImage(
-                            image: NetworkImage(imgUrl),
+                            image: CachedNetworkImageProvider(imgUrl),
                             fit: BoxFit.cover,
                           )
                           : null,
@@ -1476,8 +1478,11 @@ class _GallerySection extends StatelessWidget {
   /// If set, this URL is shown on index 0 (variant image override).
   final String? variantImageOverrideUrl;
 
-  /// NUEVO: Texto de la variante a mostrar sobre la imagen principal
+  /// Texto de la variante a mostrar sobre la imagen principal
   final String? variantLabelOverride;
+
+  /// Imagen de respaldo mientras carga la galería de BD
+  final String? fallbackImageUrl; // <-- NUEVO
 
   const _GallerySection({
     required this.images,
@@ -1486,24 +1491,28 @@ class _GallerySection extends StatelessWidget {
     required this.onPageChanged,
     this.wishlistWidget,
     this.variantImageOverrideUrl,
-    this.variantLabelOverride, // Recibimos el texto aquí
+    this.variantLabelOverride,
+    this.fallbackImageUrl, // <-- NUEVO
   });
 
   @override
   Widget build(BuildContext context) {
+    // Definimos qué URLs se van a mostrar realmente
     final effectiveUrls = <String>[];
     if (variantImageOverrideUrl != null) {
       effectiveUrls.add(variantImageOverrideUrl!);
     } else {
       effectiveUrls.addAll(images.map((img) => img.imageUrl));
+      // Si la galería de BD aún está vacía, usamos la foto de respaldo para que no se vea el ícono
+      if (effectiveUrls.isEmpty && fallbackImageUrl != null) {
+        effectiveUrls.add(fallbackImageUrl!);
+      }
     }
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // White background
         Container(color: Colors.white),
-        // Image pager
         PageView.builder(
           controller: pageController,
           itemCount: effectiveUrls.isNotEmpty ? effectiveUrls.length : 1,
@@ -1525,17 +1534,24 @@ class _GallerySection extends StatelessWidget {
                     MaterialPageRoute(
                       builder:
                           (_) => FullScreenGallery(
-                            images: images,
+                            imageUrls:
+                                effectiveUrls, // <-- CORRECCIÓN: Pasamos solo las URLs que estamos viendo
                             initialIndex: index,
                           ),
                     ),
                   ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Image.network(
-                  effectiveUrls[index],
+                child: CachedNetworkImage(
+                  imageUrl: effectiveUrls[index],
                   fit: BoxFit.contain,
-                  errorBuilder:
+                  placeholder:
+                      (context, url) => const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                  errorWidget:
                       (_, __, ___) => const Center(
                         child: Icon(
                           Icons.broken_image_rounded,
@@ -1553,12 +1569,12 @@ class _GallerySection extends StatelessWidget {
         if (wishlistWidget != null)
           Positioned(top: 14, right: 14, child: wishlistWidget!),
 
-        // NUEVO: Etiqueta con el nombre de la variante centrado abajo
+        // Etiqueta con el nombre de la variante centrado abajo
         if (variantLabelOverride != null)
           Positioned(
-            bottom: 28, // Un poco arriba de los puntitos indicadores
-            left: 20, // Margen izquierdo para que no toque el borde del celular
-            right: 20, // Margen derecho para que no toque el borde del celular
+            bottom: 28,
+            left: 20,
+            right: 20,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -1569,12 +1585,10 @@ class _GallerySection extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                // Se envuelve el texto en Flexible o se deja que el Center+Positioned lo limite
                 child: Text(
                   variantLabelOverride!,
-                  maxLines: 1, // <--- Obliga a que sea una sola línea
-                  overflow:
-                      TextOverflow.ellipsis, // <--- Agrega los "..." al final
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -1585,6 +1599,7 @@ class _GallerySection extends StatelessWidget {
               ),
             ),
           ),
+
         // Expand icon
         if (effectiveUrls.isNotEmpty)
           Positioned(
@@ -1636,6 +1651,7 @@ class _GallerySection extends StatelessWidget {
     );
   }
 }
+
 // ─── PRODUCT TOP SECTION ─────────────────────────────────────────────────────
 
 class _ProductTopSection extends StatelessWidget {
@@ -2052,8 +2068,8 @@ class _VariantSelector extends StatelessWidget {
                                     Positioned.fill(
                                       child:
                                           imgUrl != null
-                                              ? Image.network(
-                                                imgUrl,
+                                              ? CachedNetworkImage(
+                                                imageUrl: imgUrl,
                                                 fit: BoxFit.cover,
                                                 color:
                                                     enabled
@@ -2064,7 +2080,21 @@ class _VariantSelector extends StatelessWidget {
                                                             ),
                                                 colorBlendMode:
                                                     BlendMode.srcATop,
-                                                errorBuilder:
+                                                placeholder:
+                                                    (context, url) => Container(
+                                                      color: AppColors.bg,
+                                                      child: const Center(
+                                                        child: SizedBox(
+                                                          width: 12,
+                                                          height: 12,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth: 2,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                errorWidget:
                                                     (_, __, ___) => Container(
                                                       color: AppColors.bg,
                                                       child: const Icon(

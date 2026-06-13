@@ -27,18 +27,6 @@ class AppTheme {
         ),
       ),
 
-      // =====================================
-      // 2. TARJETAS
-      // =====================================
-      cardTheme: CardTheme(
-        color: AppColors.surface,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16), 
-          side: const BorderSide(color: AppColors.border, width: 1),
-        ),
-      ),
 
       // =====================================
       // 3. CAMPOS DE TEXTO
@@ -124,25 +112,6 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
       ),
 
-      // =====================================
-      // 6. DIALOGS
-      // =====================================
-      dialogTheme: DialogTheme(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        titleTextStyle: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.5,
-        ),
-        contentTextStyle: const TextStyle(
-          fontSize: 15,
-          color: AppColors.textSecondary,
-          height: 1.4,
-        ),
-      ),
 
       // =====================================
       // 7. DIVISORES Y CHIPS
