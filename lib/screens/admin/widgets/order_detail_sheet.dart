@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_points_section.dart';
@@ -3072,12 +3073,28 @@ class OrderDetailItemCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child:
                   imageUrl != null && imageUrl.isNotEmpty
-                      ? Image.network(
-                        imageUrl,
+                      ? CachedNetworkImage(
+                        imageUrl: imageUrl,
                         width: 52,
                         height: 52,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholderIcon(),
+                        placeholder:
+                            (context, url) => Container(
+                              width: 52,
+                              height: 52,
+                              color: Colors.teal.withValues(alpha: 0.1),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.teal,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        errorWidget: (_, __, ___) => _placeholderIcon(),
                       )
                       : _placeholderIcon(),
             ),

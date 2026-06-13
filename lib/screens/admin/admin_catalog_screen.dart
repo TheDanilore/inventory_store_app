@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/models/category_model.dart';
@@ -1506,11 +1507,43 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                 borderRadius: BorderRadius.circular(14),
                 child:
                     imageUrl != null
-                        ? Image.network(
-                          imageUrl,
+                        ? CachedNetworkImage(
+                          imageUrl: imageUrl,
                           width: 72,
                           height: 72,
                           fit: BoxFit.cover,
+                          placeholder:
+                              (context, url) => Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: AppColors.bg,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.teal,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          errorWidget:
+                              (context, url, error) => Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: AppColors.bg,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(
+                                  Icons.image_rounded,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
                         )
                         : Container(
                           width: 72,
@@ -2349,14 +2382,40 @@ class AdminProductCard extends StatelessWidget {
                       opacity: isDesactivado ? 0.45 : 1.0,
                       child:
                           product.images.isNotEmpty
-                              ? Image.network(
-                                product.images
-                                    .firstWhere(
-                                      (img) => img.isMain,
-                                      orElse: () => product.images.first,
-                                    )
-                                    .imageUrl,
+                              ? CachedNetworkImage(
+                                imageUrl:
+                                    product.images
+                                        .firstWhere(
+                                          (img) => img.isMain,
+                                          orElse: () => product.images.first,
+                                        )
+                                        .imageUrl,
                                 fit: BoxFit.cover,
+                                placeholder:
+                                    (context, url) => Container(
+                                      color: const Color(0xFFF1F5F9),
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color:
+                                                AppColors
+                                                    .teal, // Usa tu color primario aquí
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                errorWidget:
+                                    (context, url, error) => Container(
+                                      color: const Color(0xFFF1F5F9),
+                                      child: const Icon(
+                                        Icons.image_not_supported_rounded,
+                                        size: 40,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
                               )
                               : Container(
                                 color: const Color(0xFFF1F5F9),
