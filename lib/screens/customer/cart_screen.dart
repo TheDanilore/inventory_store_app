@@ -248,7 +248,8 @@ class _CartScreenState extends State<CartScreen> {
       final varResp = await _supabase
           .from('product_variants')
           .select(
-            'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active',
+            // Añadir unit_cost a la consulta
+            'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost',
           )
           .eq('product_id', productId2)
           .eq('is_active', true)
@@ -297,6 +298,8 @@ class _CartScreenState extends State<CartScreen> {
                 unitPrice: variant.salePrice ?? product.salePrice,
                 wholesalePrice:
                     variant.wholesalePrice ?? product.wholesalePrice,
+                // 🟢 2. Enviar el costo unitario real al carrito
+                unitCost: variant.unitCost ?? product.unitCost,
                 imageUrl:
                     variant.images.isNotEmpty
                         ? variant.images.first.imageUrl
@@ -1379,6 +1382,12 @@ class _CartScreenState extends State<CartScreen> {
       final puntosAGanar =
           (totalAPagar * earningRate / pointsToSolesRatio).toInt();
 
+      // Calcular la ganancia total real sumando las ganancias netas
+      double totalProfit = 0.0;
+      for (final item in itemsToBuy) {
+        totalProfit += (item.unitPrice - item.unitCost) * item.quantity;
+      }
+
       final orderResp =
           await _supabase
               .from('orders')
@@ -1387,10 +1396,10 @@ class _CartScreenState extends State<CartScreen> {
                 'total_amount': totalAPagar,
                 'points_used': puntosUsados,
                 'points_earned': puntosAGanar,
-                'total_profit': 0,
+                // Usar la ganancia calculada en lugar de 0
+                'total_profit': totalProfit,
                 'payment_method': 'POR ACORDAR',
-                'status':
-                    'PENDING', // Se guarda como pendiente, el stock se descontará cuando se complete en el admin
+                'status': 'PENDING',
                 'warehouse_id': warehouseId,
               })
               .select('id')
@@ -1399,23 +1408,23 @@ class _CartScreenState extends State<CartScreen> {
       final orderId = orderResp['id'];
 
       // Inserta solo los seleccionados
-      // Inserta solo los seleccionados
       final itemsToInsert =
           itemsToBuy.map((item) {
-            final product = item.product;
-
             return {
               'order_id': orderId,
-              'product_id': product.id,
+              'product_id': item.product.id,
               'variant_id': item.variantId,
               'quantity': item.quantity,
-              'unit_cost': product.unitCost,
+              // Usar item.unitCost
+              'unit_cost': item.unitCost,
               'applied_price': item.unitPrice,
-              'net_profit': (item.unitPrice - product.unitCost) * item.quantity,
+              // Calcular usando item.unitCost
+              'net_profit': (item.unitPrice - item.unitCost) * item.quantity,
             };
           }).toList();
 
       await _supabase.from('order_items').insert(itemsToInsert);
+
       final orderIdCorto = orderId.toString().substring(0, 8).toUpperCase();
 
       await _enviarPedidoWhatsApp(

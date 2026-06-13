@@ -1073,7 +1073,12 @@ class _OrderRow extends StatelessWidget {
   final _RecentOrder order;
   const _OrderRow({required this.order});
 
+  bool get _isCancelled => order.status.toUpperCase() == 'CANCELLED';
+
   Color get _statusColor {
+    // Prioridad: Si está cancelado/devuelto, color rojo
+    if (_isCancelled) return AppColors.danger;
+
     switch (order.paymentStatus) {
       case 'PAID':
         return AppColors.success;
@@ -1087,6 +1092,9 @@ class _OrderRow extends StatelessWidget {
   }
 
   String get _statusLabel {
+    // Prioridad: Si está cancelado, etiqueta "Cancelado"
+    if (_isCancelled) return 'Cancelado';
+
     switch (order.paymentStatus) {
       case 'PAID':
         return 'Pagado';
@@ -1117,7 +1125,11 @@ class _OrderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPending = order.paymentStatus != 'PAID' && order.pendingAmount > 0;
+    // Prioridad: Si está cancelado, no debe figurar como "pendiente de pago"
+    final hasPending =
+        !_isCancelled &&
+        order.paymentStatus != 'PAID' &&
+        order.pendingAmount > 0;
     final hasDiscount = order.discountAmount > 0;
 
     return Padding(
@@ -1129,13 +1141,15 @@ class _OrderRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.bg,
+                  color: _isCancelled ? AppColors.dangerLight : AppColors.bg,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.shopping_bag_outlined,
+                child: Icon(
+                  _isCancelled
+                      ? Icons.remove_shopping_cart_rounded
+                      : Icons.shopping_bag_outlined,
                   size: 16,
-                  color: AppColors.primary,
+                  color: _isCancelled ? AppColors.danger : AppColors.primary,
                 ),
               ),
               const SizedBox(width: 10),
@@ -1145,9 +1159,17 @@ class _OrderRow extends StatelessWidget {
                   children: [
                     Text(
                       DateFormat('d MMM yyyy', 'es').format(order.createdAt),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
+                        decoration:
+                            _isCancelled
+                                ? TextDecoration.lineThrough
+                                : null, // Tachado si está cancelado
+                        color:
+                            _isCancelled
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary,
                       ),
                     ),
                     Row(
@@ -1159,8 +1181,8 @@ class _OrderRow extends StatelessWidget {
                             color: AppColors.textMuted,
                           ),
                         ),
-                        // Puntos ganados / usados
-                        if (order.pointsEarned > 0) ...[
+                        // Puntos ganados / usados (solo si no está cancelado)
+                        if (!_isCancelled && order.pointsEarned > 0) ...[
                           const SizedBox(width: 6),
                           Text(
                             '+${order.pointsEarned}pts',
@@ -1171,7 +1193,7 @@ class _OrderRow extends StatelessWidget {
                             ),
                           ),
                         ],
-                        if (order.pointsUsed > 0) ...[
+                        if (!_isCancelled && order.pointsUsed > 0) ...[
                           const SizedBox(width: 4),
                           Text(
                             '-${order.pointsUsed}pts',
@@ -1184,7 +1206,7 @@ class _OrderRow extends StatelessWidget {
                       ],
                     ),
                     // Descuento
-                    if (hasDiscount)
+                    if (hasDiscount && !_isCancelled)
                       Text(
                         'Descuento: S/ ${order.discountAmount.toStringAsFixed(2)}',
                         style: const TextStyle(
@@ -1213,9 +1235,17 @@ class _OrderRow extends StatelessWidget {
                 children: [
                   Text(
                     'S/ ${order.totalAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      decoration:
+                          _isCancelled
+                              ? TextDecoration.lineThrough
+                              : null, // Tachado si se canceló
+                      color:
+                          _isCancelled
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
                     ),
                   ),
                   Container(
@@ -1236,7 +1266,7 @@ class _OrderRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Monto pendiente
+                  // Monto pendiente (se oculta si el pedido está cancelado gracias a la corrección de hasPending)
                   if (hasPending)
                     Text(
                       'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',

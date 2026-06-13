@@ -1710,6 +1710,9 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                         wholesalePrice:
                             _selectedVariant?.wholesalePrice ??
                             widget.product.wholesalePrice,
+                        unitCost:
+                            _selectedVariant?.unitCost ??
+                            widget.product.unitCost,
                         imageUrl: imageUrl,
                         sku: _selectedVariant?.sku,
                         availableStock: stock,

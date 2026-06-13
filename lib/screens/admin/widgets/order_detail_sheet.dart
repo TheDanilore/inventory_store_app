@@ -212,8 +212,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .select('''
               id, order_id, product_id, variant_id, quantity, unit_cost,
               applied_price, net_profit, created_at,
-              products ( name, uses_batches, product_images(*) ),
-              product_variants ( attributes, sku, product_images(*) )
+              products ( name, uses_batches, unit_cost, product_images(*) ),
+              product_variants ( attributes, sku, unit_cost, product_images(*) )
             ''')
             .eq('order_id', widget.order.id),
         _supabase
@@ -247,9 +247,27 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
           itemsRaw.map((row) {
             final variantId = row['variant_id'] as String?;
             final prod = row['products'] as Map<String, dynamic>?;
+            final variant = row['product_variants'] as Map<String, dynamic>?;
+
             if (variantId != null && prod != null) {
               _usesBatchesMap[variantId] = prod['uses_batches'] == true;
             }
+
+            // LÓGICA DE COSTO UNITARIO: variante -> producto -> valor guardado
+            double resolvedUnitCost = 0.0;
+            if (variant != null &&
+                variant['unit_cost'] != null &&
+                (variant['unit_cost'] as num) > 0) {
+              resolvedUnitCost = (variant['unit_cost'] as num).toDouble();
+            } else if (prod != null && prod['unit_cost'] != null) {
+              resolvedUnitCost = (prod['unit_cost'] as num).toDouble();
+            } else {
+              resolvedUnitCost = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
+            }
+
+            // Sobreescribimos el valor crudo para que el modelo lo tome correctamente
+            row['unit_cost'] = resolvedUnitCost;
+
             return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
           }).toList();
 
@@ -830,6 +848,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               'quantity': -seg.take,
               'previous_stock': seg.available,
               'new_stock': seg.available - seg.take,
+              'unit_cost': item.unitCost, // COSTO REAL AÑADIDO
               'reason': 'SALE',
               'notes':
                   'Pedido completado desde detalles · Lote: ${seg.batchNumber}',
@@ -994,6 +1013,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   'quantity': qtyDeducted,
                   'previous_stock': currentStock,
                   'new_stock': newStock,
+                  'unit_cost': item.unitCost, // COSTO REAL AÑADIDO
                   'reason': 'RETURN',
                   'notes': 'Devolución por cancelación desde detalles',
                   if (currentProfileId != null) 'created_by': currentProfileId,
@@ -1375,6 +1395,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .from('order_items')
             .update({
               'quantity': item.quantity,
+              'unit_cost': item.unitCost, // Sobreescribe por si estaba mal antes
               'net_profit': (item.appliedPrice - item.unitCost) * item.quantity,
             })
             .eq('id', item.id ?? '');
@@ -1540,6 +1561,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 'quantity': qtyDeducted,
                 'previous_stock': currentStock,
                 'new_stock': newStock,
+                'unit_cost': item.unitCost, // COSTO REAL AÑADIDO
                 'reason': 'RETURN',
                 'notes': 'Devolución registrada desde detalles del pedido',
                 if (currentProfileId != null) 'created_by': currentProfileId,

@@ -8,6 +8,7 @@ class CartItemModel {
   final String? variantLabel;
   final double unitPrice;
   final double? wholesalePrice;
+  final double unitCost;
   final String? imageUrl;
   final String? sku;
   int availableStock;
@@ -26,6 +27,7 @@ class CartItemModel {
     this.variantLabel,
     double? unitPrice,
     this.wholesalePrice,
+    double? unitCost,
     this.imageUrl,
     this.sku,
     int? availableStock,
@@ -33,6 +35,7 @@ class CartItemModel {
     String? cartKey,
     this.isSelected = true,
   }) : unitPrice = unitPrice ?? product.salePrice,
+       unitCost = unitCost ?? product.unitCost,
        // Si no se pasa explícitamente, lo tomamos del propio ProductModel.
        // Así nunca queda en false por descuido al construir el ítem.
        usesBatches = usesBatches ?? product.usesBatches,
