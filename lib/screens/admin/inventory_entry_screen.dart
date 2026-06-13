@@ -1385,6 +1385,7 @@ class _EmptyState extends StatelessWidget {
 class _ProductThumbnail extends StatelessWidget {
   final String? imageUrl;
   final double size;
+  // ignore: unused_element_parameter
   const _ProductThumbnail({this.imageUrl, this.size = 56});
 
   @override
