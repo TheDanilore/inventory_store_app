@@ -130,7 +130,9 @@ class PosProvider with ChangeNotifier {
           variantLabel: variantLabel,
           unitPrice: unitPrice ?? product.salePrice,
           wholesalePrice: wholesalePrice ?? product.wholesalePrice,
-          unitCost: unitCost,
+
+          // Si el unitCost es 0 o null, lo tomamos del producto para evitar problemas en el checkout
+          unitCost: unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
           imageUrl: imageUrl,
           sku: sku,
           availableStock: availableStock ?? product.totalStock,

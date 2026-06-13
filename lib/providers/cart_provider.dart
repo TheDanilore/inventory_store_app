@@ -359,7 +359,9 @@ class CartProvider with ChangeNotifier {
           variantId: safeVariantId,
           variantLabel: variantLabel,
           unitPrice: unitPrice ?? product.salePrice,
-          unitCost: unitCost,
+
+          // Si el unitCost es 0 o null, lo tomamos del producto para evitar problemas en el checkout
+          unitCost: unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
           wholesalePrice: wholesalePrice,
           imageUrl: imageUrl,
           sku: sku,
