@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_movement_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -287,51 +288,15 @@ class _KardexScreenState extends State<KardexScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(
-                      _dateRange == null
-                          ? 'Filtrar por Fechas'
-                          : '${_dateRange!.start.day}/${_dateRange!.start.month} - ${_dateRange!.end.day}/${_dateRange!.end.month}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onPressed: () async {
-                      final picked = await showDateRangePicker(
-                        context: context,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                        initialDateRange: _dateRange,
-                        initialEntryMode: DatePickerEntryMode.input,
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.light(
-                                primary: Theme.of(context).primaryColor,
-                              ),
-                              inputDecorationTheme: const InputDecorationTheme(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        setState(() => _dateRange = picked);
-                        _fetchMovements();
-                      }
+                  child: DateFilterButton(
+                    dateRange: _dateRange,
+                    onDateRangeSelected: (picked) {
+                      setState(() => _dateRange = picked);
+                      _fetchMovements();
+                    },
+                    onClear: () {
+                      setState(() => _dateRange = null);
+                      _fetchMovements();
                     },
                   ),
                 ),

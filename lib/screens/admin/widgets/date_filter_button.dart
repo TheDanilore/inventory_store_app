@@ -1,36 +1,76 @@
-// ─── Botón de filtro de fecha (reutilizable) ─────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class DateFilterButton extends StatelessWidget {
-  final DateTime? dateFrom;
-  final DateTime? dateTo;
-  final VoidCallback onTap;
+  final DateTimeRange? dateRange;
+  final ValueChanged<DateTimeRange> onDateRangeSelected;
   final VoidCallback onClear;
 
   const DateFilterButton({
     super.key,
-    required this.dateFrom,
-    required this.dateTo,
-    required this.onTap,
+    required this.dateRange,
+    required this.onDateRangeSelected,
     required this.onClear,
   });
 
   String get _label {
-    if (dateFrom == null && dateTo == null) return 'Fechas';
+    if (dateRange == null) return 'Fechas';
     final f =
-        '${dateFrom!.day.toString().padLeft(2, '0')}/${dateFrom!.month.toString().padLeft(2, '0')}';
+        '${dateRange!.start.day.toString().padLeft(2, '0')}/${dateRange!.start.month.toString().padLeft(2, '0')}';
     final t =
-        '${dateTo!.day.toString().padLeft(2, '0')}/${dateTo!.month.toString().padLeft(2, '0')}';
+        '${dateRange!.end.day.toString().padLeft(2, '0')}/${dateRange!.end.month.toString().padLeft(2, '0')}';
     return '$f–$t';
   }
 
-  bool get _active => dateFrom != null;
+  bool get _active => dateRange != null;
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final now = DateTime.now();
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      // 👇 Restringimos el límite máximo al día exacto de hoy
+      lastDate: now,
+      initialDateRange: dateRange,
+      initialEntryMode: DatePickerEntryMode.input,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+            inputDecorationTheme: const InputDecorationTheme(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                textStyle: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      onDateRangeSelected(picked);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => _pickDateRange(context),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -47,6 +87,7 @@ class DateFilterButton extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.calendar_today_rounded,
@@ -65,11 +106,17 @@ class DateFilterButton extends StatelessWidget {
             if (_active) ...[
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: onClear,
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 13,
-                  color: AppColors.primary,
+                onTap: () {
+                  // Evitar que el tap en "cerrar" también abra el calendario
+                  onClear();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(2.0),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ],

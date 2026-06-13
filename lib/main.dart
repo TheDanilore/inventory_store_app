@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// 1. AGREGA ESTA IMPORTACIÓN SÍ O SÍ
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
@@ -43,6 +45,18 @@ class MyApp extends StatelessWidget {
         title: 'Inventario Store',
         theme: AppTheme.light(),
         debugShowCheckedModeBanner: false,
+
+        // 2. AGREGA ESTAS DOS LÍNEAS AQUÍ:
+        supportedLocales: const [
+          Locale('es', 'ES'), // Idioma principal (Español)
+          Locale('en', 'US'), // Opcional (Inglés)
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+
         home: const SplashScreen(),
       ),
     );

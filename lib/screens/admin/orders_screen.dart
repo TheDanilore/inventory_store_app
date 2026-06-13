@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_button.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -726,38 +727,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: _dateRange,
-      initialEntryMode: DatePickerEntryMode.input,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primary),
-            inputDecorationTheme: const InputDecorationTheme(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _dateRange = picked;
-        _currentPage = 0;
-      });
-      _fetchOrders();
-    }
-  }
-
   // ─── FILTROS DISEÑO "CHIP" DESPLEGABLES ────────────────────────────────
 
   Widget _buildDropdownFilter({
@@ -808,68 +777,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 );
               }).toList(),
           onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateFilterButton() {
-    final hasDate = _dateRange != null;
-    return InkWell(
-      onTap: _pickDateRange,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color:
-              hasDate ? AppColors.primary.withValues(alpha: 0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: hasDate ? AppColors.primary : Colors.grey.shade300,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.calendar_month_rounded,
-              size: 16,
-              color: hasDate ? AppColors.primary : Colors.grey.shade700,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              hasDate
-                  ? '${DateFormat('dd/MM').format(_dateRange!.start)} - ${DateFormat('dd/MM').format(_dateRange!.end)}'
-                  : 'Fechas',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: hasDate ? FontWeight.w700 : FontWeight.w600,
-                color: hasDate ? AppColors.primary : Colors.black87,
-              ),
-            ),
-            if (hasDate) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  setState(() => _dateRange = null);
-                  _fetchOrders();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    size: 10,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );
@@ -1011,7 +918,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   },
                 ),
                 const SizedBox(width: 8),
-                _buildDateFilterButton(),
+                DateFilterButton(
+                  dateRange: _dateRange,
+                  onDateRangeSelected: (picked) {
+                    setState(() {
+                      _dateRange = picked;
+                      _currentPage = 0;
+                    });
+                    _fetchOrders();
+                  },
+                  onClear: () {
+                    setState(() {
+                      _dateRange = null;
+                      _currentPage = 0;
+                    });
+                    _fetchOrders();
+                  },
+                ),
               ],
             ),
           ),
