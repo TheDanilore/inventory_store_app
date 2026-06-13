@@ -5,11 +5,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/customer/customer_main_screen.dart';
 import 'package:inventory_store_app/screens/customer/points_screen.dart';
-import 'package:inventory_store_app/screens/customer/orders_screen.dart';
+import 'package:inventory_store_app/screens/customer/customer_orders_screen.dart';
 import 'package:inventory_store_app/screens/customer/wishlist_screen.dart';
 import 'package:inventory_store_app/screens/customer/address_management_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/screens/auth/login_screen.dart';
 import 'package:inventory_store_app/shared/constants/app_roles.dart';
@@ -604,7 +605,9 @@ class ProfileHeaderSection extends StatelessWidget {
                                       ? MemoryImage(imageBytes!)
                                           as ImageProvider
                                       : (avatarUrl != null
-                                          ? NetworkImage(avatarUrl!)
+                                          ? CachedNetworkImageProvider(
+                                            avatarUrl!,
+                                          )
                                           : null),
                               child:
                                   (imageBytes == null && avatarUrl == null)
@@ -1146,7 +1149,7 @@ class ProfileEditFormSection extends StatelessWidget {
               Expanded(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
-                  value: docType,
+                  initialValue: docType,
                   decoration: const InputDecoration(
                     labelText: 'Tipo Doc',
                     prefixIcon: Icon(Icons.badge_outlined),

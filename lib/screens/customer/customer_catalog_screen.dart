@@ -7,6 +7,7 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
@@ -743,7 +744,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen>
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 0.68,
+                            childAspectRatio: 0.62,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 14,
                           ),
@@ -1380,7 +1381,29 @@ class _HorizontalProductCard extends StatelessWidget {
                     ),
                     child:
                         imageUrl != null
-                            ? Image.network(imageUrl, fit: BoxFit.cover)
+                            ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (_, __) => const Center(
+                                    child: SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (_, __, ___) => Container(
+                                    color: AppColors.bg,
+                                    child: const Icon(
+                                      Icons.image_rounded,
+                                      color: AppColors.textMuted,
+                                      size: 28,
+                                    ),
+                                  ),
+                            )
                             : Container(
                               color: AppColors.bg,
                               child: const Icon(
@@ -1821,10 +1844,20 @@ class _ProductCardState extends State<ProductCard> {
                         ),
                         child:
                             imageUrl != null
-                                ? Image.network(
-                                  imageUrl,
+                                ? CachedNetworkImage(
+                                  imageUrl: imageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder:
+                                  placeholder:
+                                      (_, __) => const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ),
+                                  errorWidget:
                                       (_, __, ___) => _buildPlaceholder(),
                                 )
                                 : _buildPlaceholder(),

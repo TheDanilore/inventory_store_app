@@ -1,11 +1,11 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
 import 'package:inventory_store_app/screens/customer/address_management_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
@@ -17,15 +17,15 @@ import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
 
-class CartScreen extends StatefulWidget {
+class CustomerCartScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
-  const CartScreen({super.key, this.onTabSelected});
+  const CustomerCartScreen({super.key, this.onTabSelected});
 
   @override
-  State<CartScreen> createState() => _CartScreenState();
+  State<CustomerCartScreen> createState() => _CustomerCartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
+class _CustomerCartScreenState extends State<CustomerCartScreen> {
   final _supabase = Supabase.instance.client;
   bool _isSending = false;
   bool _usarPuntos = false;
@@ -766,13 +766,24 @@ class _CartScreenState extends State<CartScreen> {
                   child:
                       (cartItem.imageUrl != null ||
                               cartItem.product.images.isNotEmpty)
-                          ? Image.network(
-                            cartItem.imageUrl ??
+                          ? CachedNetworkImage(
+                            imageUrl:
+                                cartItem.imageUrl ??
                                 cartItem.product.images.first.imageUrl,
-                            width: 56, // Reducido de 64
+                            width: 56,
                             height: 56,
                             fit: BoxFit.cover,
-                            errorBuilder:
+                            placeholder:
+                                (_, __) => const Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                            errorWidget:
                                 (_, __, ___) => _buildImagePlaceholder(),
                           )
                           : _buildImagePlaceholder(),
@@ -1697,12 +1708,22 @@ class _VariantPickerSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(10),
                             child:
                                 displayImageUrl != null
-                                    ? Image.network(
-                                      displayImageUrl,
+                                    ? CachedNetworkImage(
+                                      imageUrl: displayImageUrl,
                                       width: 48,
                                       height: 48,
                                       fit: BoxFit.cover,
-                                      errorBuilder:
+                                      placeholder:
+                                          (_, __) => const Center(
+                                            child: SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          ),
+                                      errorWidget:
                                           (_, __, ___) => _imgFallback(),
                                     )
                                     : _imgFallback(),

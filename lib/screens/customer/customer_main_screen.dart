@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
-import 'package:inventory_store_app/screens/customer/cart_screen.dart';
+import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 
 class CustomerMainScreen extends StatefulWidget {
@@ -33,7 +33,7 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
       index: _currentIndex,
       children: [
         CustomerCatalogScreen(onTabSelected: _onTabSelected),
-        CartScreen(onTabSelected: _onTabSelected),
+        CustomerCartScreen(onTabSelected: _onTabSelected),
         ProfileScreen(onTabSelected: _onTabSelected),
       ],
     );

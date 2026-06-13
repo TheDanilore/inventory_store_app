@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -38,9 +39,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
     if (productIds.isEmpty) return {};
 
     final response = await _supabase
-    .from('product_stock_summary')
-    .select()
-    .inFilter('product_id', productIds);
+        .from('product_stock_summary')
+        .select()
+        .inFilter('product_id', productIds);
 
     final stock = <String, int>{};
 
@@ -359,18 +360,36 @@ class _WishlistScreenState extends State<WishlistScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Imagen ────────────────────────────────────────────
+                // ── Imagen ────────────────────────────────────────────
                 Stack(
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
                       child:
                           (imageUrl != null && imageUrl.isNotEmpty)
-                              ? Image.network(
-                                imageUrl,
+                              ? CachedNetworkImage(
+                                imageUrl: imageUrl,
                                 width: 88,
                                 height: 88,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _imgFallback(),
+                                placeholder:
+                                    (context, url) => Container(
+                                      width: 88,
+                                      height: 88,
+                                      color: AppColors.background,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: AppColors.textHint,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                errorWidget:
+                                    (context, url, error) => _imgFallback(),
                               )
                               : _imgFallback(),
                     ),

@@ -4,7 +4,7 @@ import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart'; // ← NUEVO
 import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 import 'package:inventory_store_app/screens/auth/login_screen.dart';
-import 'package:inventory_store_app/screens/customer/cart_screen.dart';
+import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
 import 'package:inventory_store_app/screens/customer/points_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -232,7 +232,7 @@ class CustomerLayout extends StatelessWidget {
                 Navigator.push(
                   context,
                   PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => const CartScreen(),
+                    pageBuilder: (_, __, ___) => const CustomerCartScreen(),
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                   ),
@@ -447,7 +447,7 @@ class CustomerLayout extends StatelessWidget {
             Navigator.pushReplacement(
               context,
               PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const CartScreen(),
+                pageBuilder: (_, __, ___) => const CustomerCartScreen(),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),

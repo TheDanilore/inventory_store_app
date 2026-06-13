@@ -16,7 +16,7 @@ import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/screens/admin/points_settings_screen.dart';
 import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
-import 'package:inventory_store_app/screens/customer/cart_screen.dart';
+import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -176,12 +176,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.shopping_cart_outlined,
                       title: 'Mi Carrito',
-                      screenType: CartScreen,
+                      screenType: CustomerCartScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const CartScreen()),
+                          MaterialPageRoute(builder: (_) => const CustomerCartScreen()),
                         );
                       },
                     ),

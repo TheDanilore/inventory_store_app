@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -24,9 +27,13 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
   bool _isLoading = true;
   bool _isLoadingDetails = false;
+  bool _isStale = false; // true = mostrando caché mientras refresca
   String? _profileId;
   List<OrderModel> _orders = [];
   String _selectedFilter = 'ALL';
+
+  static const _kCacheKey = 'orders_cache';
+  static const _kCacheProfileKey = 'orders_cache_profile';
 
   static const List<Map<String, String>> _filters = [
     {'value': 'ALL', 'label': 'Todo'},
@@ -39,6 +46,41 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     _loadOrders();
+  }
+
+  // ─── Cache helpers ────────────────────────────────────────────────────────
+
+  Future<void> _saveToCache(String profileId, List<OrderModel> orders) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = orders.map((o) => o.toJson()).toList();
+      await prefs.setString(_kCacheKey, jsonEncode(data));
+      await prefs.setString(_kCacheProfileKey, profileId);
+    } catch (_) {}
+  }
+
+  Future<List<OrderModel>?> _loadFromCache(String profileId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedProfile = prefs.getString(_kCacheProfileKey);
+      if (cachedProfile != profileId) return null;
+      final raw = prefs.getString(_kCacheKey);
+      if (raw == null) return null;
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _clearCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kCacheKey);
+      await prefs.remove(_kCacheProfileKey);
+    } catch (_) {}
   }
 
   // ─── Status helpers ───────────────────────────────────────────────────────
@@ -140,8 +182,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
   // ─── Data loading ─────────────────────────────────────────────────────────
 
-  Future<void> _loadOrders() async {
-    // Siempre reseteamos loading al inicio (funciona también en pull-to-refresh)
+  Future<void> _loadOrders({bool forceRefresh = false}) async {
     if (mounted) setState(() => _isLoading = true);
 
     final user = _supabase.auth.currentUser;
@@ -169,21 +210,41 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
         return;
       }
 
+      // ── 1. Mostrar caché inmediatamente si existe ──────────────────────────
+      if (!forceRefresh) {
+        final cached = await _loadFromCache(profileId);
+        if (cached != null && cached.isNotEmpty && mounted) {
+          setState(() {
+            _profileId = profileId;
+            _orders = cached;
+            _isLoading = false;
+            _isStale = true; // indicamos que hay refresh en curso
+          });
+        }
+      }
+
+      // ── 2. Fetch fresco de Supabase ────────────────────────────────────────
       final response = await _supabase
           .from('orders')
           .select(
-            'id, customer_id, total_amount, total_profit, payment_method, status, created_at, warehouse_id, points_used, points_earned, profiles(full_name, phone), warehouses(name)',
+            'id, customer_id, customer_name, total_amount, total_profit, payment_method, status, payment_status, amount_paid, discount_amount, created_at, warehouse_id, points_used, points_earned, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
           )
           .eq('customer_id', profileId)
           .order('created_at', ascending: false);
 
+      final freshOrders =
+          List<Map<String, dynamic>>.from(
+            response,
+          ).map(OrderModel.fromJson).toList();
+
+      // ── 3. Guardar en caché y actualizar UI ────────────────────────────────
+      await _saveToCache(profileId, freshOrders);
+
       if (mounted) {
         setState(() {
           _profileId = profileId;
-          _orders =
-              List<Map<String, dynamic>>.from(
-                response,
-              ).map(OrderModel.fromJson).toList();
+          _orders = freshOrders;
+          _isStale = false;
         });
       }
     } catch (e) {
@@ -191,8 +252,6 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
         AppSnackbar.show(context, message: 'Error al cargar pedidos: $e');
       }
     } finally {
-      // Garantiza que _isLoading siempre vuelve a false,
-      // sin importar si hubo error, éxito o retorno temprano.
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -558,7 +617,6 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   }
 
   // ─── Añadimos OrderModel como parámetro ───
-  // ─── Añadimos OrderModel como parámetro ───
   Widget _buildItemCard(OrderItemModel item, OrderModel order) {
     final imageUrl = item.displayImageUrl;
     // Verificamos si el pedido ya fue completado o entregado
@@ -595,12 +653,21 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                       borderRadius: BorderRadius.circular(10),
                       child:
                           (imageUrl != null && imageUrl.isNotEmpty)
-                              ? Image.network(
-                                imageUrl,
+                              ? CachedNetworkImage(
+                                imageUrl: imageUrl,
                                 width: 60,
                                 height: 60,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _imageFallback(),
+                                placeholder:
+                                    (_, __) => Container(
+                                      color: Colors.grey.shade100,
+                                      child: const Icon(
+                                        Icons.image_rounded,
+                                        color: Colors.grey,
+                                        size: 24,
+                                      ),
+                                    ),
+                                errorWidget: (_, __, ___) => _imageFallback(),
                               )
                               : _imageFallback(),
                     ),
@@ -798,26 +865,26 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                             ),
                           ),
                           ...[
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.store_outlined,
-                                size: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                order.warehouseName,
-                                style: const TextStyle(
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.store_outlined,
+                                  size: 12,
                                   color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  order.warehouseName,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -998,11 +1065,51 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
               )
               : RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: _loadOrders,
+                onRefresh: () async {
+                  await _clearCache();
+                  await _loadOrders(forceRefresh: true);
+                },
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
+                    // ── Indicador de actualización en background ──────
+                    if (_isStale)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Actualizando pedidos...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     // ── Header banner ──────────────────────────────────
                     Container(
                       padding: const EdgeInsets.all(20),
