@@ -37,13 +37,12 @@ class EntryItemUI {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 class InventoryEntryFormScreen extends StatefulWidget {
-  /// Si viene desde una purchase_order, se pasa el id y los items pre-llenados.
   final String? purchaseOrderId;
   final List<EntryItemUI>? prefillItems;
   final String? prefillSupplierId;
   final String? prefillSupplierName;
 
-  // NUEVOS CAMPOS DE PRE-LLENADO
+  // ── Datos heredados del Comprobante ──
   final String? prefillDocumentType;
   final String? prefillDocumentNumber;
   final DateTime? prefillDocumentDate;
@@ -107,7 +106,8 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-llenar datos de comprobante si vienen de la orden
+
+    // ── HEREDAR DATOS DEL COMPROBANTE ──
     if (widget.prefillDocumentType != null) {
       _documentType = widget.prefillDocumentType!;
     }
@@ -190,7 +190,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 )
                 .toList();
 
-        // Pre-llenar proveedor si viene de purchase_order
         if (widget.prefillSupplierId != null) {
           _selectedSupplierId = widget.prefillSupplierId;
         }
@@ -231,7 +230,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         _loadingProducts = false;
         _loadingAccounts = false;
 
-        // Pre-llenar items si viene de purchase_order
         if (widget.prefillItems != null) {
           _items.addAll(widget.prefillItems!);
         }
@@ -567,7 +565,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           stockBatchId = newBatch['id'] as String;
         }
 
-        // Actualizar unit_cost de la variante al último costo de compra
+        // Actualizar unit_cost de la variante
         await _supabase
             .from('product_variants')
             .update({
@@ -682,7 +680,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           final ordered = (poi['quantity_ordered'] as num).toDouble();
           double received = (poi['quantity_received'] as num).toDouble();
 
-          // Sumar lo que estamos recibiendo ahora para esta variante
           final sumReceivedNow = _items
               .where((i) => i.variant.id == variantId)
               .fold(0.0, (s, i) => s + i.quantity);
@@ -753,11 +750,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
     final int totalVariants = _items.length;
 
+    // Evaluamos si es "solo lectura" para los campos de la orden
+    final bool isFromPO = widget.purchaseOrderId != null;
+
     return AdminLayout(
-      title:
-          widget.purchaseOrderId != null
-              ? 'Recepción de Pedido'
-              : 'Recepción de Inventario',
+      title: isFromPO ? 'Recepción de Pedido' : 'Recepción de Inventario',
       showBackButton: true,
       body:
           _saving
@@ -772,8 +769,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Banner si viene de purchase_order
-                          if (widget.purchaseOrderId != null)
+                          if (isFromPO)
                             Container(
                               margin: const EdgeInsets.only(bottom: 16),
                               padding: const EdgeInsets.symmetric(
@@ -855,13 +851,18 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Proveedor
+                                // Proveedor (Bloqueado si viene de PO)
                                 DropdownButtonFormField<String>(
                                   initialValue: _selectedSupplierId,
                                   icon: const Icon(Icons.expand_more_rounded),
                                   decoration: _dropdownDecoration(
                                     'Proveedor (opcional)',
                                     icon: Icons.local_shipping_rounded,
+                                  ).copyWith(
+                                    fillColor:
+                                        isFromPO
+                                            ? Colors.grey.shade100
+                                            : AppColors.background,
                                   ),
                                   items: [
                                     const DropdownMenuItem<String>(
@@ -886,9 +887,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     ),
                                   ],
                                   onChanged:
-                                      (v) => setState(
-                                        () => _selectedSupplierId = v,
-                                      ),
+                                      isFromPO
+                                          ? null
+                                          : (v) => setState(
+                                            () => _selectedSupplierId = v,
+                                          ),
                                 ),
                                 const SizedBox(height: 12),
 
@@ -928,13 +931,18 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Tipo de documento
+                                // Tipo de documento (Bloqueado si viene de PO)
                                 DropdownButtonFormField<String>(
                                   initialValue: _documentType,
                                   icon: const Icon(Icons.expand_more_rounded),
                                   decoration: _dropdownDecoration(
                                     'Tipo de documento',
                                     icon: Icons.description_rounded,
+                                  ).copyWith(
+                                    fillColor:
+                                        isFromPO
+                                            ? Colors.grey.shade100
+                                            : AppColors.background,
                                   ),
                                   items:
                                       _docTypes
@@ -950,11 +958,14 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                             ),
                                           )
                                           .toList(),
-                                  onChanged: (v) {
-                                    if (v != null) {
-                                      setState(() => _documentType = v);
-                                    }
-                                  },
+                                  onChanged:
+                                      isFromPO
+                                          ? null
+                                          : (v) {
+                                            if (v != null) {
+                                              setState(() => _documentType = v);
+                                            }
+                                          },
                                 ),
 
                                 if (_documentType != 'NINGUNO') ...[
@@ -965,6 +976,8 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                         flex: 3,
                                         child: TextField(
                                           controller: _documentNumberCtrl,
+                                          enabled:
+                                              !isFromPO, // Bloqueado si viene de PO
                                           decoration: InputDecoration(
                                             labelText: 'Nº de comprobante',
                                             labelStyle: const TextStyle(
@@ -972,7 +985,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                             ),
                                             hintText: 'Ej: 001-00123456',
                                             filled: true,
-                                            fillColor: AppColors.background,
+                                            fillColor:
+                                                isFromPO
+                                                    ? Colors.grey.shade100
+                                                    : AppColors.background,
                                             prefixIcon: const Icon(
                                               Icons.tag_rounded,
                                               color: AppColors.textHint,
@@ -989,7 +1005,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                       Expanded(
                                         flex: 2,
                                         child: InkWell(
-                                          onTap: _pickDocumentDate,
+                                          onTap:
+                                              isFromPO
+                                                  ? null
+                                                  : _pickDocumentDate, // Bloqueado si viene de PO
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
@@ -999,7 +1018,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                               vertical: 14,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: AppColors.background,
+                                              color:
+                                                  isFromPO
+                                                      ? Colors.grey.shade100
+                                                      : AppColors.background,
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                             ),
@@ -1027,8 +1049,12 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                                     fontWeight: FontWeight.w700,
                                                     color:
                                                         _documentDate != null
-                                                            ? AppColors
-                                                                .textPrimary
+                                                            ? (isFromPO
+                                                                ? Colors
+                                                                    .grey
+                                                                    .shade600
+                                                                : AppColors
+                                                                    .textPrimary)
                                                             : AppColors
                                                                 .textMuted,
                                                   ),
@@ -1047,7 +1073,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           const SizedBox(height: 16),
 
                           // ── Forma de pago (SOLO SI NO ES ORDEN DE COMPRA) ──
-                          if (widget.purchaseOrderId == null) ...[
+                          if (!isFromPO) ...[
                             _SectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1428,13 +1454,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     leftSub: '$totalVariants items · $totalUnits unidades',
                     rightValue: 'S/ ${totalCost.toStringAsFixed(2)}',
                     buttonLabel:
-                        widget.purchaseOrderId != null
+                        isFromPO
                             ? 'Registrar Recepción'
                             : (_paymentMode == 'CONTADO'
                                 ? 'Registrar y Pagar'
                                 : 'Registrar (Crédito)'),
                     buttonIcon:
-                        widget.purchaseOrderId != null
+                        isFromPO
                             ? Icons.inventory_rounded
                             : (_paymentMode == 'CONTADO'
                                 ? Icons.payments_rounded
@@ -1596,7 +1622,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   }
 }
 
-// ─── Widgets auxiliares (mismos que el original) ──────────────────────────────
+// ─── Widgets auxiliares ──────────────────────────────
 
 class _PaymentModeButton extends StatelessWidget {
   final String label;
