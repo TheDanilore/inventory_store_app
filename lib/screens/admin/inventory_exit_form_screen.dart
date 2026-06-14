@@ -31,14 +31,14 @@ class ExitItemUI {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-class InventoryExitScreen extends StatefulWidget {
-  const InventoryExitScreen({super.key});
+class InventoryExitFormScreen extends StatefulWidget {
+  const InventoryExitFormScreen({super.key});
 
   @override
-  State<InventoryExitScreen> createState() => _InventoryExitScreenState();
+  State<InventoryExitFormScreen> createState() => _InventoryExitFormScreenState();
 }
 
-class _InventoryExitScreenState extends State<InventoryExitScreen> {
+class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   final _supabase = Supabase.instance.client;
 
   String? _selectedWarehouseId;

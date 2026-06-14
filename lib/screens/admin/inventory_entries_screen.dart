@@ -84,16 +84,16 @@ class _EntryItemDetail {
 // SCREEN
 // ══════════════════════════════════════════════════════════════════════════════
 
-class InventoryEntriesListScreen extends StatefulWidget {
-  const InventoryEntriesListScreen({super.key});
+class InventoryEntriesScreen extends StatefulWidget {
+  const InventoryEntriesScreen({super.key});
 
   @override
-  State<InventoryEntriesListScreen> createState() =>
-      _InventoryEntriesListScreenState();
+  State<InventoryEntriesScreen> createState() =>
+      _InventoryEntriesScreenState();
 }
 
-class _InventoryEntriesListScreenState
-    extends State<InventoryEntriesListScreen> {
+class _InventoryEntriesScreenState
+    extends State<InventoryEntriesScreen> {
   final _supabase = Supabase.instance.client;
 
   List<_EntryModel> _allEntries = [];
@@ -205,9 +205,8 @@ class _InventoryEntriesListScreenState
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now(),
       initialDateRange: _dateRange,
-      initialEntryMode: DatePickerEntryMode.input,
       builder:
           (context, child) => Theme(
             data: Theme.of(context).copyWith(

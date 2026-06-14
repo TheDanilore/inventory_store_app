@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_exits_screen.dart';
 import 'package:inventory_store_app/screens/admin/supplier_credits_screen.dart';
 import 'package:inventory_store_app/screens/admin/suppliers_screen.dart';
 import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
 import 'package:inventory_store_app/screens/admin/financial_accounts_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entries_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_screen.dart';
 import 'package:inventory_store_app/screens/admin/purchase_orders_screen.dart';
 import 'package:inventory_store_app/screens/admin/warehouses_management_screen.dart';
@@ -249,14 +248,14 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.add_rounded,
                           title: 'Entradas de inventario',
-                          screenType: InventoryEntriesListScreen,
+                          screenType: InventoryEntriesScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder:
-                                    (_) => const InventoryEntriesListScreen(),
+                                    (_) => const InventoryEntriesScreen(),
                               ),
                             );
                           },
@@ -332,13 +331,13 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.remove_rounded,
                           title: 'Registro Salida',
-                          screenType: InventoryExitScreen,
+                          screenType: InventoryExitsScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const InventoryExitScreen(),
+                                builder: (_) => const InventoryExitsScreen(),
                               ),
                             );
                           },
