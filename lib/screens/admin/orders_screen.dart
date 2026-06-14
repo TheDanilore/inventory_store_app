@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
-import 'package:inventory_store_app/screens/admin/widgets/date_filter_button.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -918,7 +918,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   },
                 ),
                 const SizedBox(width: 8),
-                DateFilterButton(
+                DateFilterCalendar(
                   dateRange: _dateRange,
                   onDateRangeSelected: (picked) {
                     setState(() {

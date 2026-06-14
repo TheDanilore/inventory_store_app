@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/widgets/date_filter_button.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_movement_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -288,7 +288,7 @@ class _KardexScreenState extends State<KardexScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: DateFilterButton(
+                  child: DateFilterCalendar(
                     dateRange: _dateRange,
                     onDateRangeSelected: (picked) {
                       setState(() => _dateRange = picked);

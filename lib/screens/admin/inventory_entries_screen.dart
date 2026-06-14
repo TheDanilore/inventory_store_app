@@ -187,7 +187,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               _dateRange == null ||
               (!e.createdAt.isBefore(_dateRange!.start) &&
                   !e.createdAt.isAfter(
-                    _dateRange!.end.add(const Duration(days: 1)),
+                    _dateRange!.end.add(
+                      const Duration(days: 1),
+                    ), // +1 day para incluir todo el día seleccionado
                   ));
 
           return matchSearch && matchWh && matchDate;
@@ -209,13 +211,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           (context, child) => Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(primary: AppColors.primary),
-              inputDecorationTheme: const InputDecorationTheme(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
             ),
             child: child!,
           ),

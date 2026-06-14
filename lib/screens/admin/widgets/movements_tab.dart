@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/account_movement_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/screens/admin/widgets/date_filter_button.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -248,7 +248,7 @@ class _MovementsTabState extends State<MovementsTab>
                       ),
                       const SizedBox(width: 8),
                       // NUEVO USO DEL BOTÓN
-                      DateFilterButton(
+                      DateFilterCalendar(
                         dateRange:
                             _dateFrom != null && _dateTo != null
                                 ? DateTimeRange(
