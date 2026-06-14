@@ -15,7 +15,8 @@ class AppSnackbar {
   }) {
     dismiss();
 
-    final resolvedBackgroundColor = backgroundColor ??
+    final resolvedBackgroundColor =
+        backgroundColor ??
         switch (type) {
           SnackbarType.success => AppColors.success,
           SnackbarType.error => AppColors.accent,
@@ -70,7 +71,8 @@ class _AnimatedSnackbarWidget extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedSnackbarWidget> createState() => _AnimatedSnackbarWidgetState();
+  State<_AnimatedSnackbarWidget> createState() =>
+      _AnimatedSnackbarWidgetState();
 }
 
 class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
@@ -78,7 +80,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
   bool _isDismissedBySwipe = false;
   bool _isBeingPressed = false; // Rastrea si el usuario está tocando la alerta
 
@@ -99,10 +101,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.5),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
     _startAutoDismissTimer(widget.duration);
@@ -110,7 +109,6 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
 
   // Configura el temporizador de cierre automático
   void _startAutoDismissTimer(Duration duration) {
-    
     Future.delayed(duration, () async {
       // Solo procede si sigue montado, nadie lo arrastró y no está siendo retenido por el dedo
       if (mounted && !_isDismissedBySwipe && !_isBeingPressed) {
@@ -130,7 +128,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   // Al soltar el widget, recalculamos un tiempo extra de cortesía para que se vaya
   void _handleTapUpOrCancel() {
     if (!_isBeingPressed) return;
-    
+
     setState(() {
       _isBeingPressed = false;
     });
@@ -169,7 +167,10 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                   widget.onDismissed();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.backgroundColor,
                     borderRadius: BorderRadius.circular(12),
