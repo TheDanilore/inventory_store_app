@@ -1132,6 +1132,12 @@ class _OrderRow extends StatelessWidget {
         order.pendingAmount > 0;
     final hasDiscount = order.discountAmount > 0;
 
+    // Generamos un ID corto para mostrar (primeros 8 caracteres)
+    final shortId =
+        order.id.length >= 8
+            ? order.id.substring(0, 8).toUpperCase()
+            : order.id.toUpperCase();
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
@@ -1157,8 +1163,26 @@ class _OrderRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      DateFormat('d MMM yyyy', 'es').format(order.createdAt),
+                    // ── Aquí incluimos el ID y la Fecha ──
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '#$shortId ',
+                            style: TextStyle(
+                              color:
+                                  _isCancelled
+                                      ? AppColors.textMuted
+                                      : AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '• ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
+                          ),
+                        ],
+                      ),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -1171,6 +1195,8 @@ class _OrderRow extends StatelessWidget {
                                 ? AppColors.textMuted
                                 : AppColors.textPrimary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Row(
                       children: [
@@ -1266,7 +1292,7 @@ class _OrderRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Monto pendiente (se oculta si el pedido está cancelado gracias a la corrección de hasPending)
+                  // Monto pendiente
                   if (hasPending)
                     Text(
                       'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
