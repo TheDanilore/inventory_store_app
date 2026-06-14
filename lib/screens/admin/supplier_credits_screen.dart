@@ -7,7 +7,6 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:intl/intl.dart';
 
 // ─── MODELO LOCAL ─────────────────────────────────────────────────────────────
 
@@ -1178,7 +1177,10 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
           .eq('payment_method', 'CREDITO')
           .inFilter('payment_status', ['PENDING', 'PARTIAL'])
           .inFilter('status', ['SENT', 'PARTIAL', 'RECEIVED'])
-          .order('created_at', ascending: true);
+          .order(
+            'created_at',
+            ascending: true,
+          ); // FIFO: Deudas antiguas primero
       if (mounted) {
         setState(() {
           _pendingOrders = List<Map<String, dynamic>>.from(resp);
@@ -1262,7 +1264,7 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
         setState(
           () =>
               _errorMessage =
-                  'Máx: S/ ${_pendingOf(target).toStringAsFixed(2)}',
+                  'Máx para esta orden: S/ ${_pendingOf(target).toStringAsFixed(2)}',
         );
         return;
       }
@@ -1270,13 +1272,13 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
       setState(
         () =>
             _errorMessage =
-                'Supera la deuda (S/ ${widget.account.currentDebt.toStringAsFixed(2)})',
+                'Supera la deuda total (S/ ${widget.account.currentDebt.toStringAsFixed(2)})',
       );
       return;
     }
 
     if (_selectedAccount != null && amount > _selectedAccount!.balance) {
-      setState(() => _errorMessage = 'Saldo en cuenta insuficiente');
+      setState(() => _errorMessage = 'Saldo insuficiente en cuenta');
       return;
     }
 
@@ -1335,6 +1337,7 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
                   .where((o) => o['id'] == _selectedOrderId)
                   .toList()
               : List<Map<String, dynamic>>.from(_pendingOrders);
+
       double remaining = amount;
       for (final order in ordersToApply) {
         if (remaining <= 0) break;
@@ -1410,6 +1413,12 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // ── Lógica para el Resumen (Caja verde interactiva) ──
+    final double? amountToPay = double.tryParse(_amountCtrl.text.trim());
+    final bool showSummary =
+        amountToPay != null && amountToPay > 0 && _errorMessage == null;
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       decoration: const BoxDecoration(
@@ -1472,7 +1481,7 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
                 child: Row(
                   children: [
                     _OrderChip(
-                      label: 'Automático (Deuda más antigua)',
+                      label: 'Automático (Órdenes antiguas)',
                       isSelected: _selectedOrderId == null,
                       isTotalChip: true,
                       onTap: () {
@@ -1595,6 +1604,77 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
               ),
             ),
             const SizedBox(height: 24),
+
+            // ── NUEVO: Resumen Visual (Caja Verde) ──
+            if (showSummary) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Resumen de la operación',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Pago total:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${amountToPay.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Deuda restante:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${(widget.account.currentDebt - amountToPay).clamp(0.0, double.infinity).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
             ElevatedButton(
               onPressed:
                   (_errorMessage == null &&
@@ -1655,7 +1735,8 @@ class _OrderChip extends StatelessWidget {
               ? AppColors.success.withValues(alpha: 0.1)
               : Colors.blue.withValues(alpha: 0.1);
       borderColor = isTotalChip ? AppColors.success : Colors.blue;
-      textColor = isTotalChip ? AppColors.successDark : Colors.blue.shade800;
+      // Para asimilarse más al cliente usamos colores estándares que contrasten bien
+      textColor = isTotalChip ? Colors.green.shade800 : Colors.blue.shade800;
     } else {
       bgColor = AppColors.bg;
       borderColor = AppColors.border;
