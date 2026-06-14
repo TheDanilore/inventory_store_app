@@ -493,7 +493,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   itemCount: widget.accounts.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final acc = widget.accounts[index];
                     final isSelected = _selectedAccount?['id'] == acc['id'];
