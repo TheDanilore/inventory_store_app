@@ -29,7 +29,6 @@ class AdminCatalogScreen extends StatefulWidget {
 class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   Timer? _debounce;
 
-  // Agrega esta nueva variable:
   Map<String, String> _matchedIngredients = {};
 
   static const int _pageSize = 8;
@@ -212,16 +211,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
       productIds.add(pId);
 
-      // Extraer datos
       final aiMap = row['active_ingredients'] as Map<String, dynamic>?;
       final name = aiMap?['name']?.toString() ?? 'Desconocido';
       final conc = row['concentration'];
       final unit = row['unit']?.toString().trim();
 
-      // Formatear la etiqueta
       String label = name;
       if (conc != null) {
-        // Quitar el ".0" si es entero (ej: 48.0 -> 48)
         final concStr =
             (conc is num && conc == conc.toInt())
                 ? conc.toInt().toString()
@@ -244,13 +240,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       }
     }
 
-    // Guardar los resultados formateados en el estado
     _matchedIngredients = newMatches;
 
     final uniqueProductIds = productIds.toSet().toList();
     if (uniqueProductIds.isEmpty) return [];
 
-    // 3. Traer los productos correspondientes
     var query = supabase
         .from('products')
         .select('''
@@ -269,12 +263,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
     final resp = await query.order('name');
 
-    // Parse defensivo: saltear filas con datos incompletos
     final productsList = <ProductModel>[];
     for (final e in resp as List) {
       try {
         final row = Map<String, dynamic>.from(e as Map);
-        // Garantizar campos string no-null requeridos por fromJson
         if (row['id'] == null || row['name'] == null) continue;
         productsList.add(ProductModel.fromJson(row));
       } catch (err) {
@@ -282,7 +274,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       }
     }
 
-    // 4. Consultar el stock
     final stockResp = await supabase
         .from('warehouse_stock_batches')
         .select('product_id, available_quantity')
@@ -296,7 +287,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       stockByProduct[pId] = (stockByProduct[pId] ?? 0) + qty;
     }
 
-    // 5. Inyectar el stock calculado
     return productsList
         .map((p) => p.copyWith(totalStock: stockByProduct[p.id] ?? 0))
         .toList();
@@ -316,7 +306,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
   // ─── Export Dialog ───────────────────────────────────────────────────────
 
-  // Retornamos 'mode': 0 (Página actual), 1 (Todos máx 50), 2 (Personalizado)
   Future<({int mode, Set<String> selectedIds})?> _showExportOptionsDialog(
     List<ProductModel> max50Products,
     int visibleCount,
@@ -324,7 +313,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     return showDialog<({int mode, Set<String> selectedIds})>(
       context: context,
       builder: (context) {
-        int selectedMode = 1; // Por defecto: Todos (máx 50)
+        int selectedMode = 1;
         final selectedIds = <String>{};
 
         return StatefulBuilder(
@@ -372,7 +361,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // OPCIÓN 1: Solo la página actual
                     _ExportRadioOption(
                       title: 'Solo esta página',
                       subtitle: '$visibleCount productos visibles',
@@ -383,7 +371,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    // OPCIÓN 2: Todos (Limitado a 50)
                     _ExportRadioOption(
                       title: 'Todos los productos',
                       subtitle: 'Máximo 50 productos (recomendado)',
@@ -394,7 +381,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    // OPCIÓN 3: Personalizado
                     _ExportRadioOption(
                       title: 'Selección personalizada',
                       subtitle: 'Elige los productos a incluir',
@@ -439,7 +425,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                'Stock: ${product.totalStock} · ${product.isActive ? "Activo" : "Inactivo"}',
+                                'Stock: ${product.stockControl ? product.totalStock : "Libre"} · ${product.isActive ? "Activo" : "Inactivo"}',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textMuted,
@@ -526,25 +512,18 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     );
   }
 
-  // ─── Export Method ───────────────────────────────────────────────────────
   Future<void> _exportCatalogPdf() async {
     if (_isExportingPdf) return;
     try {
-      // 1. Cargar todos los productos que coincidan con los filtros
       final allProducts = await _loadProducts();
       if (!mounted) return;
 
-      // 2. CALCULAR LOS PRODUCTOS DE LA PÁGINA ACTUAL
-      // Saltamos (skip) los de páginas anteriores y tomamos (take) los de la actual
       final visibleProducts =
           allProducts
-              .skip(
-                _currentPage * _AdminCatalogScreenState._pageSize,
-              ) // o solo _pageSize si no es static
+              .skip(_currentPage * _AdminCatalogScreenState._pageSize)
               .take(_AdminCatalogScreenState._pageSize)
               .toList();
 
-      // 3. Aplicamos el límite de rendimiento para la opción "Todos"
       final max50Products = allProducts.take(50).toList();
 
       if (max50Products.isEmpty) {
@@ -556,7 +535,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         return;
       }
 
-      // Le pasamos la lista de 50 (para el custom) y la cantidad de la página
       final options = await _showExportOptionsDialog(
         max50Products,
         visibleProducts.length,
@@ -564,17 +542,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
       if (!mounted || options == null) return;
 
-      // Filtramos según la opción elegida
       List<ProductModel> filteredProducts = [];
 
       if (options.mode == 0) {
-        // Opción: Solo esta página (los 8 calculados)
         filteredProducts = visibleProducts;
       } else if (options.mode == 1) {
-        // Opción: Todos (máx 50)
         filteredProducts = max50Products;
       } else if (options.mode == 2) {
-        // Opción: Personalizado
         filteredProducts =
             max50Products
                 .where((p) => options.selectedIds.contains(p.id))
@@ -602,18 +576,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               .toList();
       final stockByVariant = await _loadVariantStockByVariantIds(allVariantIds);
 
-      // final bytes = await _buildCatalogPdfBytes(
-      //   filteredProducts,
-      //   variantsByProduct,
-      //   stockByVariant,
-      // );
-      // if (!mounted) return;
       CatalogPdfGenerator.shareCatalog(
         products: filteredProducts,
         variantsByProduct: variantsByProduct,
         stockByVariant: stockByVariant,
       );
-      // await Printing.layoutPdf(onLayout: (_) async => bytes);
     } catch (e) {
       if (!mounted) return;
 
@@ -789,7 +756,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     setState(() {
       _searchByIngredient = value;
       _currentPage = 0;
-      // Resetear categoría al cambiar modo para evitar filtros cruzados confusos
       if (value) _selectedCategoryId = null;
     });
     _refreshProducts();
@@ -820,11 +786,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       body: FutureBuilder<List<ProductModel>>(
         future: _productsFuture,
         builder: (context, snapshot) {
-          // Calculamos el padding inferior para que el contenido no quede
-          // tapado por los botones flotantes (carrito + FAB)
-          const double fabsBottomPadding = 140;
+          const double fabsBottomPadding = 54;
 
-          // ── Header + chips como sliver para que hagan scroll ──────────
           final headerSliver = SliverToBoxAdapter(
             child: CatalogHeader(
               searchController: _searchCtrl,
@@ -853,7 +816,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   )
                   : null;
 
-          // ── Estado de carga ───────────────────────────────────────────
           if (snapshot.connectionState == ConnectionState.waiting) {
             return RefreshIndicator(
               color: AppColors.teal,
@@ -874,7 +836,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
           }
 
-          // ── Error ─────────────────────────────────────────────────────
           if (snapshot.hasError) {
             return RefreshIndicator(
               color: AppColors.teal,
@@ -891,7 +852,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
           }
 
-          // ── Sin resultados ────────────────────────────────────────────
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return RefreshIndicator(
               color: AppColors.teal,
@@ -911,7 +871,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
           }
 
-          // ── Grid con datos ────────────────────────────────────────────
           final allProducts = snapshot.data!;
           return RefreshIndicator(
             color: AppColors.teal,
@@ -1223,9 +1182,9 @@ class _AddProductFab extends StatelessWidget {
 class _ExportRadioOption extends StatelessWidget {
   final String title;
   final String subtitle;
-  final int value; // Cambiado de bool a int
-  final int groupValue; // Cambiado de bool a int
-  final ValueChanged<int?> onChanged; // Cambiado de bool a int
+  final int value;
+  final int groupValue;
+  final ValueChanged<int?> onChanged;
 
   const _ExportRadioOption({
     required this.title,
@@ -1303,6 +1262,7 @@ class _ExportRadioOption extends StatelessWidget {
     );
   }
 }
+
 // ─── BOTTOM SHEET: AGREGAR AL POS ──────────────────────────────────────────
 
 class _AdminAddToCartSheet extends StatefulWidget {
@@ -1341,7 +1301,6 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
             varResp,
           ).map(ProductVariantModel.fromJson).toList();
 
-      // Consultar el stock de las variantes en la nueva tabla sumando los lotes
       if (_variants.isNotEmpty) {
         final variantIds = _variants.map((v) => v.id).toList();
         final invResp = await _supabase
@@ -1371,6 +1330,8 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
     }
   }
 
+  bool get _hasStockControl => widget.product.stockControl;
+
   int get _currentStock {
     if (_variants.isEmpty) return widget.product.totalStock;
     if (_selectedVariant == null) return 0;
@@ -1382,10 +1343,16 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
     return _selectedVariant?.salePrice ?? widget.product.salePrice;
   }
 
+  // Permite vender si:
+  // 1. Hay una variante seleccionada (Requerido por DB)
+  // 2. Y (No hay control de stock OR hay stock > 0)
+  bool get _canSell =>
+      _selectedVariant != null && (!_hasStockControl || _currentStock > 0);
+
   Future<void> _mostrarDialogoCantidad(
     BuildContext context,
     int cantidadActual,
-    int availableStock,
+    int maxStock,
   ) async {
     final qtyCtrl = TextEditingController(text: cantidadActual.toString());
     await showDialog<void>(
@@ -1408,7 +1375,10 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                helperText: 'Stock máximo disponible: $availableStock',
+                helperText:
+                    _hasStockControl
+                        ? 'Stock máximo disponible: $maxStock'
+                        : 'Stock libre (Sin límite)',
                 helperStyle: const TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.bold,
@@ -1430,10 +1400,12 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                 onPressed: () {
                   final newQty = int.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
-                    // AQUÍ ESTÁ LA CORRECCIÓN: Actualizamos el estado local
                     setState(() {
-                      _quantity =
-                          newQty > availableStock ? availableStock : newQty;
+                      if (_hasStockControl) {
+                        _quantity = newQty > maxStock ? maxStock : newQty;
+                      } else {
+                        _quantity = newQty;
+                      }
                     });
                   }
                   Navigator.pop(dialogContext);
@@ -1590,18 +1562,26 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                       ),
                       decoration: BoxDecoration(
                         color:
-                            stock > 0
-                                ? AppColors.successLight
-                                : AppColors.dangerLight,
+                            _hasStockControl
+                                ? (stock > 0
+                                    ? AppColors.successLight
+                                    : AppColors.dangerLight)
+                                : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        stock > 0 ? '$stock disponibles' : 'Agotado',
+                        !_hasStockControl
+                            ? 'Stock Libre'
+                            : (stock > 0 ? '$stock disponibles' : 'Agotado'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color:
-                              stock > 0 ? AppColors.success : AppColors.danger,
+                              !_hasStockControl
+                                  ? Colors.blue.shade800
+                                  : (stock > 0
+                                      ? AppColors.success
+                                      : AppColors.danger),
                         ),
                       ),
                     ),
@@ -1640,10 +1620,14 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                   items:
                       _variants.map((v) {
                         final vStock = _stockByVariant[v.id] ?? 0;
+                        final stockLabel =
+                            _hasStockControl
+                                ? '($vStock en stock)'
+                                : '(Stock Libre)';
                         return DropdownMenuItem(
                           value: v,
                           child: Text(
-                            '${v.label} · S/ ${(v.salePrice ?? widget.product.salePrice).toStringAsFixed(2)} ($vStock en stock)',
+                            '${v.label} · S/ ${(v.salePrice ?? widget.product.salePrice).toStringAsFixed(2)} $stockLabel',
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textPrimary,
@@ -1673,7 +1657,6 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
           ),
           const SizedBox(height: 10),
 
-          // Selector de cantidad refinado
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
@@ -1688,12 +1671,9 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                   enabled: _quantity > 1,
                   onTap: () => setState(() => _quantity--),
                 ),
-                // Aquí usamos Expanded para que ocupe todo el centro
                 Expanded(
                   child: Material(
-                    color:
-                        Colors
-                            .transparent, // Fondo transparente para no alterar tu diseño
+                    color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
                       onTap:
@@ -1708,9 +1688,9 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                           '$_quantity',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontSize: 22, // Devolvemos el tamaño original
+                            fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary, // Color original
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -1719,7 +1699,10 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                 ),
                 _QtyButton(
                   icon: Icons.add_rounded,
-                  enabled: _quantity < stock,
+                  enabled:
+                      !_hasStockControl ||
+                      _quantity <
+                          stock, // Permite incrementar infinito si es Stock Libre
                   onTap: () => setState(() => _quantity++),
                 ),
               ],
@@ -1730,25 +1713,29 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
           // Botón agregar
           GestureDetector(
             onTap:
-                stock > 0
+                _canSell
                     ? () {
                       context.read<PosProvider>().addProductToPos(
                         product: widget.product,
                         quantity: _quantity,
-                        variantId: _selectedVariant?.id,
-                        variantLabel: _selectedVariant?.label,
+                        variantId:
+                            _selectedVariant!
+                                .id, // Seguridad máxima: Ya garantizamos que no es null en _canSell
+                        variantLabel: _selectedVariant!.label,
                         unitPrice:
-                            _selectedVariant?.salePrice ??
+                            _selectedVariant!.salePrice ??
                             widget.product.salePrice,
                         wholesalePrice:
-                            _selectedVariant?.wholesalePrice ??
+                            _selectedVariant!.wholesalePrice ??
                             widget.product.wholesalePrice,
                         unitCost:
-                            _selectedVariant?.unitCost ??
-                            widget.product.unitCost,
+                            _selectedVariant!.unitCost ??
+                            widget
+                                .product
+                                .unitCost, // Vital para el net_profit de la orden
                         imageUrl: imageUrl,
-                        sku: _selectedVariant?.sku,
-                        availableStock: stock,
+                        sku: _selectedVariant!.sku,
+                        availableStock: _hasStockControl ? stock : 999999,
                       );
                       Navigator.pop(context);
                       AppSnackbar.show(
@@ -1763,17 +1750,17 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 gradient:
-                    stock > 0
+                    _canSell
                         ? const LinearGradient(
                           colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
                         : null,
-                color: stock <= 0 ? const Color(0xFFE2E8F0) : null,
+                color: !_canSell ? const Color(0xFFE2E8F0) : null,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 boxShadow:
-                    stock > 0
+                    _canSell
                         ? [
                           BoxShadow(
                             color: AppColors.teal.withValues(alpha: 0.35),
@@ -1788,18 +1775,20 @@ class _AdminAddToCartSheetState extends State<_AdminAddToCartSheet> {
                 children: [
                   Icon(
                     Icons.shopping_cart_checkout_rounded,
-                    color: stock > 0 ? Colors.white : AppColors.textMuted,
+                    color: _canSell ? Colors.white : AppColors.textMuted,
                     size: 20,
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    stock > 0
+                    _canSell
                         ? 'Agregar · S/ ${(_currentPrice * _quantity).toStringAsFixed(2)}'
-                        : 'Sin stock disponible',
+                        : (_selectedVariant == null
+                            ? 'Sin variante activa'
+                            : 'Sin stock disponible'),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: stock > 0 ? Colors.white : AppColors.textMuted,
+                      color: _canSell ? Colors.white : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -1872,7 +1861,6 @@ class CatalogHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
         children: [
-          // ── Fila principal: buscador + botón PDF ──────────────────────────
           Row(
             children: [
               Expanded(
@@ -1936,7 +1924,6 @@ class CatalogHeader extends StatelessWidget {
             ],
           ),
 
-          // ── Toggle: búsqueda por ingrediente ─────────────────────────────
           const SizedBox(height: 8),
           GestureDetector(
             onTap: () => onToggleIngredientSearch(!searchByIngredient),
@@ -1958,7 +1945,6 @@ class CatalogHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Icono animado
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
@@ -1991,7 +1977,6 @@ class CatalogHeader extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  // Mini switch visual
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     width: 34,
@@ -2027,7 +2012,6 @@ class CatalogHeader extends StatelessWidget {
             ),
           ),
 
-          // ── Banner informativo cuando el modo está activo ─────────────────
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
@@ -2169,8 +2153,6 @@ class _CategoryChip extends StatelessWidget {
 }
 
 // ─── CATALOG GRID SCROLL VIEW ─────────────────────────────────────────────────
-// Un único CustomScrollView que integra header, chips y grid en un solo scroll,
-// eliminando el scroll anidado. El RefreshIndicator vive en el padre.
 
 class CatalogGridScrollView extends StatelessWidget {
   final List<ProductModel> products;
@@ -2229,17 +2211,10 @@ class CatalogGridScrollView extends StatelessWidget {
         }
 
         return CustomScrollView(
-          // physics con always para que el RefreshIndicator funcione
-          // incluso cuando el contenido no llena la pantalla
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Header (buscador, botones)
             headerSliver,
-
-            // Chips de categorías (horizontal scroll interno, no afecta)
             if (chipsSliver != null) chipsSliver!,
-
-            // Contador de resultados / paginación
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -2265,8 +2240,6 @@ class CatalogGridScrollView extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Grid de productos como SliverGrid (sin scroll propio)
             SliverPadding(
               padding: EdgeInsets.fromLTRB(12, 6, 12, 8),
               sliver: SliverGrid(
@@ -2291,8 +2264,6 @@ class CatalogGridScrollView extends StatelessWidget {
                 }, childCount: pageItems.length),
               ),
             ),
-
-            // Paginación + padding inferior para los FABs
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(8, 0, 8, 10 + bottomPadding),
@@ -2310,7 +2281,6 @@ class CatalogGridScrollView extends StatelessWidget {
   }
 }
 
-/// Alias mantenido por compatibilidad (no se usa en el build principal).
 typedef CatalogGrid = CatalogGridScrollView;
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
@@ -2320,7 +2290,7 @@ class AdminProductCard extends StatelessWidget {
   final VoidCallback onSale;
   final VoidCallback onToggleActive;
   final VoidCallback onEdit;
-  final String? highlightIngredient; // <-- 1. Añadido aquí
+  final String? highlightIngredient;
 
   const AdminProductCard({
     super.key,
@@ -2328,12 +2298,13 @@ class AdminProductCard extends StatelessWidget {
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
-    this.highlightIngredient, // <-- 2. Añadido aquí
+    this.highlightIngredient,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isAgotado = product.totalStock <= 0;
+    // CORRECCIÓN: Un producto solo está agotado si el control de stock está activado
+    final isAgotado = product.stockControl && product.totalStock <= 0;
     final isDesactivado = !product.isActive;
 
     return GestureDetector(
@@ -2400,9 +2371,7 @@ class AdminProductCard extends StatelessWidget {
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color:
-                                                AppColors
-                                                    .teal, // Usa tu color primario aquí
+                                            color: AppColors.teal,
                                           ),
                                         ),
                                       ),
@@ -2464,8 +2433,7 @@ class AdminProductCard extends StatelessWidget {
                       ),
                     ),
 
-                  // Stock badge esquina
-                  if (!isDesactivado && !isAgotado)
+                  if (!isDesactivado && !isAgotado && product.stockControl)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -2513,7 +2481,6 @@ class AdminProductCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  // Badge de ingrediente activo encontrado
                   if (highlightIngredient != null &&
                       highlightIngredient!.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -2662,14 +2629,11 @@ class _CardAction extends StatelessWidget {
     return Expanded(
       child: Tooltip(
         message: tooltip,
-        // Material transparente necesario para que el efecto Ripple se vea bien
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(
-              8,
-            ), // Suaviza las esquinas del toque
+            borderRadius: BorderRadius.circular(8),
             child: SizedBox(
               height: 36,
               child: Icon(
