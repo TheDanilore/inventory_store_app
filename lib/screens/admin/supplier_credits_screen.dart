@@ -7,6 +7,7 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:intl/intl.dart';
 
 // ─── MODELO LOCAL ─────────────────────────────────────────────────────────────
 
@@ -229,7 +230,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                   ),
                   const Divider(height: 20),
 
-                  // ── INICIO LÍNEAS NUEVAS ──
                   ListTile(
                     leading: const Icon(
                       Icons.history_rounded,
@@ -253,7 +253,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     },
                   ),
 
-                  // ── FIN LÍNEAS NUEVAS ──
                   if (account.isActive && account.currentDebt > 0)
                     ListTile(
                       leading: const Icon(
@@ -1151,7 +1150,6 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
   bool _isSaving = false;
 
   List<Map<String, dynamic>> _pendingOrders = [];
-  // ignore: unused_field
   bool _loadingOrders = true;
   String? _selectedOrderId;
   String? _errorMessage;
@@ -1330,7 +1328,7 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
         if (adminProfileId != null) 'created_by': adminProfileId,
       });
 
-      // 2. Aplicar a órdenes de compra pendientes (FIFO)
+      // 2. Aplicar a órdenes de compra pendientes (FIFO o Específico)
       final ordersToApply =
           _selectedOrderId != null
               ? _pendingOrders
@@ -1434,14 +1432,89 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
                 ),
               ),
             ),
-            Text(
+            const Text(
               'Amortizar Deuda (Pagar)',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
               widget.account.supplierName,
               style: const TextStyle(color: AppColors.textMuted),
             ),
+            const SizedBox(height: 16),
+
+            // ── NUEVO: Dropdown para seleccionar orden o dejar automático ──
+            const Text(
+              'Aplicar pago a',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_loadingOrders)
+              const Center(child: CircularProgressIndicator())
+            else if (_pendingOrders.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'No hay órdenes de compra pendientes. El pago se registrará como abono libre a la cuenta.',
+                  style: TextStyle(color: AppColors.success, fontSize: 13),
+                ),
+              )
+            else
+              DropdownButtonFormField<String?>(
+                initialValue: _selectedOrderId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.bg,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text(
+                      'Automático (Distribuir en deuda antigua)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                  ..._pendingOrders.map((o) {
+                    final pending = _pendingOf(o);
+                    final date = DateFormat(
+                      'dd/MM/yy',
+                    ).format(DateTime.parse(o['created_at']).toLocal());
+                    return DropdownMenuItem<String?>(
+                      value: o['id'],
+                      child: Text(
+                        'Orden #${o['id'].toString().substring(0, 6)} - $date (Deuda: S/ ${pending.toStringAsFixed(2)})',
+                      ),
+                    );
+                  }),
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _selectedOrderId = v;
+                    _validarEntrada(
+                      _amountCtrl.text,
+                    ); // Re-valida el max amount
+                  });
+                },
+              ),
             const SizedBox(height: 16),
 
             // Cuenta de salida de dinero
