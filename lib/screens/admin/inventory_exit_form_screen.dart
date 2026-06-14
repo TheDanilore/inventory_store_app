@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
-import 'package:inventory_store_app/screens/admin/widgets/add_exit_product_sheet_state.dart';
-import 'package:inventory_store_app/shared/theme/app_colors.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/models/warehouse_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/add_exit_product_sheet.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Modelo de UI local ───────────────────────────────────────────────────────
 class ExitItemUI {
   final ProductModel product;
   final ProductVariantModel variant;
-  final Map<String, dynamic>? selectedBatch; // Lote específico seleccionado
+  final Map<String, dynamic>? selectedBatch;
   double quantity;
-  final double unitCost; // Para valorizar la pérdida en el Kardex
+  final double unitCost; // COSTO REAL EXTRAÍDO PARA VALORIZAR PÉRDIDA
 
   ExitItemUI({
     required this.product,
@@ -30,33 +29,38 @@ class ExitItemUI {
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-
 class InventoryExitFormScreen extends StatefulWidget {
   const InventoryExitFormScreen({super.key});
 
   @override
-  State<InventoryExitFormScreen> createState() => _InventoryExitFormScreenState();
+  State<InventoryExitFormScreen> createState() =>
+      _InventoryExitFormScreenState();
 }
 
 class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   final _supabase = Supabase.instance.client;
 
   String? _selectedWarehouseId;
-  List<dynamic> _warehouses = [];
-  bool _loadingWarehouses = true;
+  String _selectedReason = 'AJUSTE';
+  List<WarehouseModel> _warehouses = [];
 
   List<ProductModel> _allProducts = [];
-  bool _loadingProducts = true;
-
   final Map<String, List<ProductVariantModel>> _variantsByProduct = {};
 
-  // Mapa de inventario: [warehouse_id][variant_id] -> Lista de Lotes
-  final Map<String, Map<String, List<Map<String, dynamic>>>> _stockData = {};
-
-  // Lista de ítems de UI (no de BD)
   final List<ExitItemUI> _items = [];
+  final _notesCtrl = TextEditingController();
+
+  bool _loadingData = true;
   bool _saving = false;
-  final _reasonCtrl = TextEditingController();
+
+  static const List<String> _reasons = [
+    'AJUSTE',
+    'MERMA',
+    'DAÑO',
+    'VENCIMIENTO',
+    'ROBO/PÉRDIDA',
+    'CONSUMO INTERNO',
+  ];
 
   @override
   void initState() {
@@ -66,82 +70,54 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
   @override
   void dispose() {
-    _reasonCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _fetchData() async {
     try {
-      final warehousesResp = await _supabase
-          .from('warehouses')
-          .select('id, name')
-          .eq('is_active', true);
-
-      final productsResp = await _supabase
-          .from('products')
-          .select('*, product_images(*)')
-          .eq('is_active', true)
-          .order('name');
-
-      final variantsResp = await _supabase
-          .from('product_variants')
-          .select(
-            'id, product_id, sku, attributes, product_images(*), sale_price, unit_cost, is_active',
-          )
-          .eq('is_active', true)
-          .order('created_at', ascending: true);
-
-      // Cargar inventario detallado para validar salidas y elegir lotes
-      final inventoryResp = await _supabase
-          .from('warehouse_stock_batches')
-          .select(
-            'id, warehouse_id, variant_id, batch_number, expiry_date, available_quantity',
-          )
-          .gt('available_quantity', 0)
-          .order('expiry_date', ascending: true, nullsFirst: false);
+      final results = await Future.wait([
+        _supabase.from('warehouses').select('id, name').eq('is_active', true),
+        _supabase
+            .from('products')
+            .select('*, product_images(*)')
+            .eq('is_active', true)
+            .eq('stock_control', true)
+            .neq('product_type', 'service'),
+        _supabase
+            .from('product_variants')
+            .select(
+              'id, product_id, sku, attributes, product_images(*), unit_cost, is_active',
+            )
+            .eq('is_active', true),
+      ]);
 
       if (!mounted) return;
 
       final variants =
-          (variantsResp as List)
+          (results[2] as List)
               .map(
                 (p) =>
                     ProductVariantModel.fromJson(Map<String, dynamic>.from(p)),
               )
               .toList();
 
-      final Map<String, Map<String, List<Map<String, dynamic>>>> newStockData =
-          {};
-
-      for (final row in List<Map<String, dynamic>>.from(inventoryResp)) {
-        final wId = row['warehouse_id'] as String;
-        // Si no tiene variante, usamos un string vacío como llave por defecto
-        final vId = row['variant_id'] as String? ?? '';
-        newStockData
-            .putIfAbsent(wId, () => {})
-            .putIfAbsent(vId, () => [])
-            .add(row);
-      }
-
       setState(() {
-        _stockData.addAll(newStockData);
-        _warehouses = warehousesResp as List<dynamic>;
-        if (_warehouses.isNotEmpty) {
-          _selectedWarehouseId = _warehouses.first['id'] as String;
-        }
-        _allProducts =
-            (productsResp as List)
-                .map((p) => ProductModel.fromJson(Map<String, dynamic>.from(p)))
+        _warehouses =
+            (results[0] as List)
+                .map(
+                  (w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w)),
+                )
                 .toList();
+        if (_warehouses.isNotEmpty) _selectedWarehouseId = _warehouses.first.id;
 
-        _variantsByProduct.clear();
-        for (final variant in variants) {
-          _variantsByProduct
-              .putIfAbsent(variant.productId, () => [])
-              .add(variant);
+        _allProducts =
+            (results[1] as List).map((p) => ProductModel.fromJson(p)).toList();
+
+        for (final v in variants) {
+          _variantsByProduct.putIfAbsent(v.productId, () => []).add(v);
         }
-        _loadingWarehouses = false;
-        _loadingProducts = false;
+        _loadingData = false;
       });
     } catch (e) {
       if (mounted) {
@@ -150,10 +126,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           message: 'Error cargando datos: $e',
           type: SnackbarType.error,
         );
-        setState(() {
-          _loadingWarehouses = false;
-          _loadingProducts = false;
-        });
+        setState(() => _loadingData = false);
       }
     }
   }
@@ -162,13 +135,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (_selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacén primero',
+        message: 'Primero selecciona el almacén de origen.',
         type: SnackbarType.warning,
       );
       return;
     }
-
-    final warehouseStock = _stockData[_selectedWarehouseId!] ?? {};
 
     final newItem = await showModalBottomSheet<ExitItemUI>(
       context: context,
@@ -178,7 +149,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           (context) => AddExitProductSheet(
             allProducts: _allProducts,
             variantsByProduct: _variantsByProduct,
-            warehouseStock: warehouseStock,
+            warehouseId: _selectedWarehouseId!,
           ),
     );
 
@@ -187,106 +158,16 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         (item) =>
             item.product.id == newItem.product.id &&
             item.variant.id == newItem.variant.id &&
-            item.selectedBatch?['id'] ==
-                newItem.selectedBatch?['id'], // Validar lote específico
+            item.selectedBatch?['id'] == newItem.selectedBatch?['id'],
       );
-
-      // Calculamos el stock máximo disponible para la selección actual
-      double maxStock = 0;
-      final batches = warehouseStock[newItem.variant.id] ?? [];
-      if (newItem.selectedBatch != null) {
-        maxStock =
-            (newItem.selectedBatch!['available_quantity'] as num?)
-                ?.toDouble() ??
-            0.0;
-      } else {
-        maxStock = batches.fold(
-          0.0,
-          (sum, b) =>
-              sum + ((b['available_quantity'] as num?)?.toDouble() ?? 0.0),
-        );
-      }
-
       setState(() {
         if (existingIdx >= 0) {
-          final nuevaCant = _items[existingIdx].quantity + newItem.quantity;
-          _items[existingIdx].quantity =
-              nuevaCant > maxStock ? maxStock : nuevaCant;
+          _items[existingIdx].quantity += newItem.quantity;
         } else {
           _items.add(newItem);
         }
       });
     }
-  }
-
-  Future<void> _mostrarDialogoCantidadItem(
-    int index,
-    double cantidadActual,
-    double maxStock,
-  ) async {
-    final qtyCtrl = TextEditingController(
-      text: cantidadActual.toStringAsFixed(0),
-    );
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Cantidad exacta',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                helperText: 'Stock máximo: $maxStock',
-                helperStyle: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                ),
-                onPressed: () {
-                  final newQty = double.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null && newQty > 0) {
-                    setState(() {
-                      _items[index].quantity =
-                          newQty > maxStock ? maxStock : newQty;
-                    });
-                  }
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text(
-                  'Guardar',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-    );
-    qtyCtrl.dispose();
   }
 
   Future<void> _saveExit() async {
@@ -301,7 +182,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (_items.isEmpty) {
       AppSnackbar.show(
         context,
-        message: 'Agregue al menos un producto a la salida',
+        message: 'Agregue al menos un producto a retirar',
         type: SnackbarType.warning,
       );
       return;
@@ -310,10 +191,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     setState(() => _saving = true);
 
     try {
-      final String reason = _reasonCtrl.text.trim();
+      final notes = _notesCtrl.text.trim();
       String? createdByProfileId;
       final currentUser = _supabase.auth.currentUser;
-
       if (currentUser != null) {
         final profile =
             await _supabase
@@ -324,14 +204,14 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         createdByProfileId = profile?['id'] as String?;
       }
 
-      // 1. Guardar la cabecera
+      // 1. ── Cabecera de la Salida ──
       final exitHeader =
           await _supabase
               .from('inventory_exits')
               .insert({
                 'warehouse_id': _selectedWarehouseId,
-                'reason': reason.isEmpty ? 'Salida manual' : reason,
-                'notes': reason.isEmpty ? null : reason,
+                'reason': _selectedReason,
+                'notes': notes.isEmpty ? null : notes,
                 'created_by': createdByProfileId,
               })
               .select('id')
@@ -339,136 +219,72 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
       final exitId = exitHeader['id'] as String;
 
-      // 2. Procesar cada ítem: descontar stock FEFO o específico, y registrar historial (kardex)
       for (final item in _items) {
-        final String? variantId =
-            item.variant.id.isEmpty ? null : item.variant.id;
+        final batchData = item.selectedBatch;
+        final String batchNumber = batchData?['batch_number'] ?? 'DEFAULT';
+        final String batchId = batchData!['id'] as String;
 
-        final exitItemModel = InventoryExitItemModel(
-          id: '',
-          exitId: exitId,
-          productId: item.product.id,
-          // SOLUCIÓN ERROR 2: Agregamos "?? ''" para asegurar que no sea nulo si el modelo exige String puro.
-          variantId: variantId ?? '',
-          quantity: item.quantity,
-        );
-
-        await _supabase.from('inventory_exit_items').insert({
-          ...exitItemModel.toJson()..remove('id'),
-        });
-
-        if (item.selectedBatch != null) {
-          // Descuento desde LOTE ESPECÍFICO
-          final batchId = item.selectedBatch!['id'];
-
-          final batchDb =
-              await _supabase
-                  .from('warehouse_stock_batches')
-                  .select('available_quantity')
-                  .eq('id', batchId)
-                  .single();
-
-          final available = (batchDb['available_quantity'] as num).toDouble();
-          final newStock = available - item.quantity;
-
-          await _supabase
-              .from('warehouse_stock_batches')
-              .update({
-                'available_quantity': newStock,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', batchId);
-
-          await _supabase.from('inventory_movements').insert({
-            'variant_id': variantId,
-            'warehouse_id': _selectedWarehouseId,
-            'stock_batch_id': batchId,
-            'inventory_exit_id': exitId,
-            'quantity': -item.quantity,
-            'previous_stock': available,
-            'new_stock': newStock,
-            'unit_cost': item.unitCost,
-            'total_cost': item.quantity * item.unitCost,
-            'reason': 'EXIT',
-            'notes': reason.isEmpty ? 'Salida manual' : reason,
-            'created_by': createdByProfileId,
-          });
-        } else {
-          // Descuento automático FEFO (First Expired First Out)
-
-          // SOLUCIÓN ERROR 1: Construimos la consulta base SIN el .order() todavía
-          var query = _supabase
-              .from('warehouse_stock_batches')
-              .select('id, available_quantity')
-              .eq('warehouse_id', _selectedWarehouseId!)
-              .eq('product_id', item.product.id)
-              .gt('available_quantity', 0);
-
-          if (variantId != null) {
-            query = query.eq('variant_id', variantId);
-          }
-
-          // Aplicamos el .order() al final, justo antes de ejecutar la consulta
-          final batchesList = await query.order(
-            'expiry_date',
-            ascending: true,
-            nullsFirst: false,
-          );
-
-          double remaining = item.quantity;
-
-          for (final batch in (batchesList as List)) {
-            if (remaining <= 0) break;
-            final double available =
-                (batch['available_quantity'] as num).toDouble();
-            final double take = (remaining > available) ? available : remaining;
-            final double newStock = available - take;
-
+        // RE-VALIDACIÓN DE STOCK EN TIEMPO REAL
+        final currentBatch =
             await _supabase
                 .from('warehouse_stock_batches')
-                .update({
-                  'available_quantity': newStock,
-                  'updated_at': DateTime.now().toIso8601String(),
-                })
-                .eq('id', batch['id']);
+                .select('available_quantity')
+                .eq('id', batchId)
+                .single();
+        final double previousStock =
+            (currentBatch['available_quantity'] as num).toDouble();
+        final double newStock = previousStock - item.quantity;
 
-            await _supabase.from('inventory_movements').insert({
-              'variant_id': variantId,
-              'warehouse_id': _selectedWarehouseId,
-              'stock_batch_id': batch['id'],
-              'inventory_exit_id': exitId,
-              'quantity': -take,
-              'previous_stock': available,
-              'new_stock': newStock,
-              'unit_cost': item.unitCost,
-              'total_cost': take * item.unitCost,
-              'reason': 'EXIT',
-              'notes': reason.isEmpty ? 'Salida manual' : reason,
-              'created_by': createdByProfileId,
-            });
-
-            remaining -= take;
-          }
-
-          if (remaining > 0) {
-            throw Exception(
-              'Stock insuficiente durante el procesamiento para ${item.product.name}',
-            );
-          }
+        if (newStock < 0) {
+          throw Exception(
+            'Stock insuficiente para ${item.product.name} (Lote: $batchNumber). Disponible actual: $previousStock',
+          );
         }
+
+        // 2. ── Detalle de salida (inventory_exit_items) ──
+        await _supabase.from('inventory_exit_items').insert({
+          'exit_id': exitId,
+          'product_id': item.product.id,
+          'variant_id': item.variant.id,
+          'quantity': item.quantity,
+          'batch_number': batchNumber,
+          'unit_cost': item.unitCost, // <-- COSTO UNITARIO INYECTADO A LA BD
+        });
+
+        // 3. ── Actualización de Stock (Kardex Físico) ──
+        await _supabase
+            .from('warehouse_stock_batches')
+            .update({
+              'available_quantity': newStock,
+              'updated_at': DateTime.now().toIso8601String(),
+              'updated_by': createdByProfileId,
+            })
+            .eq('id', batchId);
+
+        // 4. ── Movimiento Histórico (Kardex Valorizado) ──
+        await _supabase.from('inventory_movements').insert({
+          'variant_id': item.variant.id,
+          'warehouse_id': _selectedWarehouseId,
+          'stock_batch_id': batchId,
+          'inventory_exit_id': exitId,
+          'quantity': -item.quantity, // Negativo porque SALE inventario
+          'previous_stock': previousStock,
+          'new_stock': newStock,
+          'unit_cost': item.unitCost,
+          'total_cost': item.totalCost, // PÉRDIDA VALORIZADA
+          'reason': 'EXIT',
+          'notes': 'Salida por: $_selectedReason',
+          'created_by': createdByProfileId,
+        });
       }
 
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Salida registrada correctamente en el Kardex',
+          message: 'Salida de inventario registrada con éxito.',
           type: SnackbarType.success,
         );
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const KardexScreen()),
-        );
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -485,33 +301,30 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingWarehouses || _loadingProducts) {
+    if (_loadingData) {
       return const AdminLayout(
-        title: 'Salida de Inventario',
+        title: 'Nueva Salida',
         showBackButton: true,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+        body: Center(child: CircularProgressIndicator(color: AppColors.danger)),
       );
     }
 
-    final double totalCost = _items.fold(
-      0.0,
+    final double totalLossCost = _items.fold(
+      0,
       (sum, item) => sum + item.totalCost,
     );
     final int totalUnits = _items.fold(
       0,
       (sum, item) => sum + item.quantity.toInt(),
     );
-    final int totalVariants = _items.length;
 
     return AdminLayout(
-      title: 'Salida de Inventario',
+      title: 'Registrar Salida',
       showBackButton: true,
       body:
           _saving
               ? const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
+                child: CircularProgressIndicator(color: AppColors.danger),
               )
               : Column(
                 children: [
@@ -521,58 +334,50 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // ── Datos de la salida ──
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: AppColors.border),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Datos Generales',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
+                                const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.output_rounded,
+                                      size: 16,
+                                      color: AppColors.danger,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Información General',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
+
                                 DropdownButtonFormField<String>(
                                   initialValue: _selectedWarehouseId,
-                                  icon: const Icon(Icons.expand_more_rounded),
-                                  decoration: InputDecoration(
-                                    labelText: 'Almacén de Origen',
-                                    labelStyle: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    filled: true,
-                                    fillColor: AppColors.background,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
+                                  decoration: _dropdownDeco(
+                                    'Almacén de Origen',
+                                    Icons.warehouse_rounded,
                                   ),
                                   items:
                                       _warehouses
                                           .map(
-                                            (s) => DropdownMenuItem<String>(
-                                              value: s['id'],
+                                            (w) => DropdownMenuItem(
+                                              value: w.id,
                                               child: Text(
-                                                s['name'],
+                                                w.name,
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -581,46 +386,62 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                           )
                                           .toList(),
                                   onChanged: (v) {
-                                    if (v != _selectedWarehouseId) {
+                                    if (v != null &&
+                                        v != _selectedWarehouseId) {
                                       setState(() {
                                         _selectedWarehouseId = v;
-                                        _items.clear();
+                                        _items
+                                            .clear(); // Limpiar la lista si cambian de almacén porque los lotes cambian
                                       });
-                                      AppSnackbar.show(
-                                        context,
-                                        message:
-                                            'Lista limpiada por cambio de almacén',
-                                        type: SnackbarType.info,
-                                      );
                                     }
                                   },
                                 ),
                                 const SizedBox(height: 12),
+
+                                DropdownButtonFormField<String>(
+                                  initialValue: _selectedReason,
+                                  decoration: _dropdownDeco(
+                                    'Motivo de Salida',
+                                    Icons.assignment_late_rounded,
+                                  ),
+                                  items:
+                                      _reasons
+                                          .map(
+                                            (r) => DropdownMenuItem(
+                                              value: r,
+                                              child: Text(
+                                                r,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _selectedReason = v);
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+
                                 TextField(
-                                  controller: _reasonCtrl,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        'Motivo / Observación (Vencimiento, Pérdida...)',
-                                    labelStyle: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    filled: true,
-                                    fillColor: AppColors.background,
-                                    prefixIcon: const Icon(
-                                      Icons.notes_rounded,
-                                      color: AppColors.textHint,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide.none,
-                                    ),
+                                  controller: _notesCtrl,
+                                  decoration: _dropdownDeco(
+                                    'Notas / Justificación (Opcional)',
+                                    Icons.notes_rounded,
+                                  ).copyWith(
+                                    hintText:
+                                        'Ej: Botellas rotas durante traslado',
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
 
+                          // ── Lista de ítems ──
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -629,20 +450,20 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(
+                                      color: AppColors.danger.withValues(
                                         alpha: 0.1,
                                       ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: const Icon(
-                                      Icons.outbox_rounded,
+                                      Icons.inventory_2_rounded,
                                       size: 18,
-                                      color: AppColors.primary,
+                                      color: AppColors.danger,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    'Items ($totalVariants)',
+                                    'Items (${_items.length})',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16,
@@ -658,12 +479,12 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                   size: 18,
                                 ),
                                 label: const Text(
-                                  'Añadir',
+                                  'Retirar Producto',
                                   style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  backgroundColor: AppColors.primary.withValues(
+                                  foregroundColor: AppColors.danger,
+                                  backgroundColor: AppColors.danger.withValues(
                                     alpha: 0.1,
                                   ),
                                   shape: RoundedRectangleBorder(
@@ -674,6 +495,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
+
                           if (_items.isEmpty)
                             Container(
                               width: double.infinity,
@@ -681,40 +503,22 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  style: BorderStyle.solid,
-                                ),
+                                border: Border.all(color: AppColors.border),
                               ),
-                              child: Column(
+                              child: const Column(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.background,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 32,
-                                      color: AppColors.textHint,
-                                    ),
+                                  Icon(
+                                    Icons.outbox_rounded,
+                                    size: 32,
+                                    color: AppColors.textHint,
                                   ),
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    'Lista vacía',
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Sin productos a retirar',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16,
                                       color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    'Añade productos para registrar su salida.',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 13,
                                     ),
                                   ),
                                 ],
@@ -726,26 +530,24 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: _items.length,
                               separatorBuilder:
+                                  (_, _) => const SizedBox(height: 10),
+                              itemBuilder:
                                   (context, index) =>
-                                      const SizedBox(height: 10),
-                              itemBuilder: (context, index) {
-                                final item = _items[index];
-                                return _buildExitItemCard(item, index);
-                              },
+                                      _buildItemCard(_items[index], index),
                             ),
                         ],
                       ),
                     ),
                   ),
 
-                  // ─── FOOTER CON TOTALES (Valorización de pérdida) ───
+                  // ── Panel Inferior Fijo ──
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.08),
+                          color: AppColors.danger.withValues(alpha: 0.08),
                           blurRadius: 24,
                           offset: const Offset(0, -6),
                         ),
@@ -762,7 +564,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Pérdida valorizada estimada',
+                                    'Pérdida Valorizada',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -771,7 +573,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '$totalVariants items · $totalUnits unds.',
+                                    '${_items.length} items · $totalUnits unidades retiradas',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
@@ -781,9 +583,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                 ],
                               ),
                               Text(
-                                'S/ ${totalCost.toStringAsFixed(2)}',
+                                'S/ ${totalLossCost.toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   color: AppColors.danger,
                                   letterSpacing: -0.5,
@@ -796,23 +598,22 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                             width: double.infinity,
                             height: 52,
                             child: ElevatedButton.icon(
-                              onPressed: _items.isEmpty ? null : _saveExit,
+                              onPressed: _items.isNotEmpty ? _saveExit : null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
+                                backgroundColor: AppColors.danger,
                                 disabledBackgroundColor: AppColors.background,
-                                disabledForegroundColor: AppColors.textHint,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
                               icon: const Icon(
-                                Icons.save_rounded,
+                                Icons.remove_circle_outline_rounded,
                                 size: 20,
                                 color: Colors.white,
                               ),
                               label: const Text(
-                                'Registrar Salida de Inventario',
+                                'Confirmar Salida',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
@@ -830,36 +631,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  Widget _buildExitItemCard(ExitItemUI item, int index) {
-    String? imageUrl;
-    if (item.variant.images.isNotEmpty) {
-      imageUrl = item.variant.images.first.imageUrl;
-    } else if (item.product.images.isNotEmpty) {
-      imageUrl =
-          item.product.images
-              .firstWhere(
-                (img) => img.isMain,
-                orElse: () => item.product.images.first,
-              )
-              .imageUrl;
-    }
-
-    // Calcula stock máximo dinámicamente si es lote o genérico
-    final batches = _stockData[_selectedWarehouseId]?[item.variant.id] ?? [];
-    double maxStock = 0;
-    if (item.selectedBatch != null) {
-      final b = batches.firstWhere(
-        (b) => b['id'] == item.selectedBatch!['id'],
-        orElse: () => {},
-      );
-      maxStock = (b['available_quantity'] as num?)?.toDouble() ?? 0.0;
-    } else {
-      maxStock = batches.fold(
-        0.0,
-        (sum, b) =>
-            sum + ((b['available_quantity'] as num?)?.toDouble() ?? 0.0),
-      );
-    }
+  Widget _buildItemCard(ExitItemUI item, int index) {
+    String? imageUrl =
+        item.variant.images.isNotEmpty
+            ? item.variant.images.first.imageUrl
+            : item.product.primaryImageUrl;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -886,21 +662,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       ? CachedNetworkImage(
                         imageUrl: imageUrl,
                         fit: BoxFit.cover,
-                        placeholder:
-                            (_, __) => const Center(
-                              child: SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                        errorWidget:
-                            (_, __, ___) => const Icon(
-                              Icons.image_not_supported_rounded,
-                              color: AppColors.textHint,
-                            ),
                       )
                       : const Icon(
                         Icons.inventory_2_rounded,
@@ -918,12 +679,12 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
-                    color: AppColors.textPrimary,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.variant.id.isNotEmpty) ...[
+                if (item.variant.label.isNotEmpty &&
+                    item.variant.label != 'Única') ...[
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -945,157 +706,76 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ),
                   ),
                 ],
-                // Info Lote Seleccionado
-                if (item.selectedBatch != null) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.tag_rounded,
+                      size: 11,
+                      color: AppColors.textHint,
                     ),
-                    decoration: BoxDecoration(
-                      color: AppColors.blueLight.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.blueLight),
-                    ),
-                    child: Text(
-                      'Lote: ${item.selectedBatch!['batch_number'] ?? 'DEFAULT'}',
+                    const SizedBox(width: 2),
+                    Text(
+                      item.selectedBatch?['batch_number'] ?? 'DEFAULT',
                       style: const TextStyle(
                         fontSize: 11,
-                        color: AppColors.blue,
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.textHint,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pérdida: S/ ${item.totalCost.toStringAsFixed(2)} (Costo S/ ${item.unitCost.toStringAsFixed(2)} c/u)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-
-          // Total Cost y Precio Un.
+          const SizedBox(width: 10),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'S/ ${item.totalCost.toStringAsFixed(2)}',
+                '${item.quantity.toInt()} uds',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
                 ),
               ),
-              Text(
-                'C. Unit: S/ ${item.unitCost.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 10,
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
                   color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
+                  size: 20,
                 ),
-              ),
-              const SizedBox(height: 4),
-              // Stepper Horizontal Pequeño
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _stepperButton(
-                    icon: Icons.remove_rounded,
-                    isRemove: true,
-                    isDisabled: item.quantity <= 1,
-                    onTap: () {
-                      if (item.quantity > 1) {
-                        setState(() => _items[index].quantity--);
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 6),
-                  Material(
-                    color: AppColors.primary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(6),
-                    child: InkWell(
-                      onTap:
-                          () => _mostrarDialogoCantidadItem(
-                            index,
-                            item.quantity,
-                            maxStock,
-                          ),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        width: 32,
-                        height: 28,
-                        alignment: Alignment.center,
-                        child: Text(
-                          item.quantity.toStringAsFixed(0),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _stepperButton(
-                    icon: Icons.add_rounded,
-                    isDisabled: item.quantity >= maxStock,
-                    onTap: () => setState(() => _items[index].quantity++),
-                  ),
-                ],
+                onPressed: () => setState(() => _items.removeAt(index)),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
-          ),
-
-          const SizedBox(width: 10),
-
-          IconButton(
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: AppColors.error,
-              size: 24,
-            ),
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(),
-            onPressed: () => setState(() => _items.removeAt(index)),
           ),
         ],
       ),
     );
   }
 
-  Widget _stepperButton({
-    required IconData icon,
-    required VoidCallback? onTap,
-    bool isRemove = false,
-    bool isDisabled = false,
-  }) {
-    return Material(
-      color:
-          isDisabled
-              ? const Color(0xFFF1F5F9)
-              : isRemove
-              ? AppColors.error.withValues(alpha: 0.08)
-              : AppColors.primary.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        onTap: isDisabled ? null : onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          child: Icon(
-            icon,
-            size: 16,
-            color:
-                isDisabled
-                    ? AppColors.textMuted
-                    : isRemove
-                    ? AppColors.error
-                    : AppColors.primary,
-          ),
-        ),
+  InputDecoration _dropdownDeco(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      prefixIcon: Icon(icon, color: AppColors.textHint),
+      filled: true,
+      fillColor: AppColors.background,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }
