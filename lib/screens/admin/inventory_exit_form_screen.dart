@@ -172,6 +172,73 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     }
   }
 
+  // ── Modal para modificar cantidad manualmente ──
+  Future<void> _mostrarDialogoCantidadItem(
+    int index,
+    double cantidadActual,
+    double maxAvailable,
+  ) async {
+    final qtyCtrl = TextEditingController(
+      text: cantidadActual.toStringAsFixed(0),
+    );
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text(
+              'Cantidad a retirar',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: TextField(
+              controller: qtyCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ),
+                onPressed: () {
+                  final newQty = double.tryParse(qtyCtrl.text.trim());
+                  if (newQty != null && newQty > 0) {
+                    setState(() {
+                      // Asegurar que no se sobrepase el stock disponible
+                      _items[index].quantity =
+                          newQty > maxAvailable ? maxAvailable : newQty;
+                    });
+                  }
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text(
+                  'Guardar',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+    qtyCtrl.dispose();
+  }
+
   Future<void> _saveExit() async {
     if (_selectedWarehouseId == null) {
       AppSnackbar.show(
@@ -639,6 +706,10 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             ? item.variant.images.first.imageUrl
             : item.product.primaryImageUrl;
 
+    // Obtener cantidad máxima permitida por el lote (para el Stepper)
+    final double maxAvailable =
+        (item.selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -681,6 +752,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
+                    color: AppColors.textPrimary,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -728,38 +800,60 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Pérdida: S/ ${item.totalCost.toStringAsFixed(2)} (Costo S/ ${item.unitCost.toStringAsFixed(2)} c/u)',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Costo: S/ ${item.unitCost.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'S/ ${item.totalCost.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          Column(
-            children: [
-              Text(
-                '${item.quantity.toInt()} uds',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
+          const SizedBox(width: 8),
+
+          // ── Stepper idéntico al de Entrada ──
+          _VerticalStepper(
+            value: item.quantity.toInt(),
+            onAdd:
+                item.quantity < maxAvailable
+                    ? () => setState(() => _items[index].quantity++)
+                    : null, // Se bloquea si llega al límite
+            onRemove:
+                item.quantity > 1
+                    ? () => setState(() => _items[index].quantity--)
+                    : null,
+            onTapValue:
+                () => _mostrarDialogoCantidadItem(
+                  index,
+                  item.quantity,
+                  maxAvailable,
                 ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: AppColors.textMuted,
-                  size: 20,
-                ),
-                onPressed: () => setState(() => _items.removeAt(index)),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.danger,
+              size: 22,
+            ),
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(),
+            onPressed: () => setState(() => _items.removeAt(index)),
           ),
         ],
       ),
@@ -780,4 +874,77 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
+}
+
+// ─── Componentes Auxiliares ───────────────────────────────────────────────────
+
+class _VerticalStepper extends StatelessWidget {
+  final int value;
+  final VoidCallback? onAdd;
+  final VoidCallback? onRemove;
+  final VoidCallback onTapValue;
+
+  const _VerticalStepper({
+    required this.value,
+    this.onAdd,
+    this.onRemove,
+    required this.onTapValue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _stepperBtn(Icons.add_rounded, onAdd == null, onAdd ?? () {}),
+        const SizedBox(height: 4),
+        Material(
+          color: AppColors.primary.withValues(
+            alpha: 0.06,
+          ), // Mantengo Primary igual a la foto
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: onTapValue,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              child: Text(
+                value.toString(),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        _stepperBtn(Icons.remove_rounded, onRemove == null, onRemove ?? () {}),
+      ],
+    );
+  }
+}
+
+Widget _stepperBtn(IconData icon, bool disabled, VoidCallback onTap) {
+  return Material(
+    color: disabled ? const Color(0xFFF1F5F9) : AppColors.primary,
+    borderRadius: BorderRadius.circular(10),
+    child: InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 18,
+          color: disabled ? AppColors.textMuted : Colors.white,
+        ),
+      ),
+    ),
+  );
 }
