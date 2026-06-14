@@ -140,9 +140,17 @@ class CartProvider with ChangeNotifier {
               product_images (*)
             ),
             product_variants (
-              id, product_id, sku, attributes, sale_price, wholesale_price,
+              id, product_id, sku, barcode,
+              unit_cost, sale_price, wholesale_price,
               wholesale_min_quantity, is_active, reorder_point,
-              product_images (*)
+              product_images (*),
+              variant_attribute_values (
+                attribute_value_id,
+                attribute_values (
+                  id, value,
+                  attributes ( id, name )
+                )
+              )
             )
           ''')
           .eq('cart_id', cartId);
@@ -192,6 +200,12 @@ class CartProvider with ChangeNotifier {
         final finalVariantId = variant?.id ?? rawVariantId;
         final cartKey = CartItemModel.buildKey(product.id, finalVariantId);
 
+        // Costo unitario: variante primero (si > 0), sino del producto
+        final effectiveUnitCost =
+            ((variant?.unitCost ?? 0) > 0)
+                ? variant!.unitCost!
+                : product.unitCost;
+
         cloudItems[cartKey] = CartItemModel(
           product: product,
           quantity: qty,
@@ -200,6 +214,7 @@ class CartProvider with ChangeNotifier {
               variant?.label ??
               (finalVariantId != null ? 'Variante seleccionada' : null),
           unitPrice: variant?.salePrice ?? product.salePrice,
+          unitCost: effectiveUnitCost,
           wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
           imageUrl: variant?.primaryImageUrl ?? product.primaryImageUrl,
           sku: variant?.sku,
@@ -361,7 +376,8 @@ class CartProvider with ChangeNotifier {
           unitPrice: unitPrice ?? product.salePrice,
 
           // Si el unitCost es 0 o null, lo tomamos del producto para evitar problemas en el checkout
-          unitCost: unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
+          unitCost:
+              unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
           wholesalePrice: wholesalePrice,
           imageUrl: imageUrl,
           sku: sku,

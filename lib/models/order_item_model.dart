@@ -87,6 +87,28 @@ class OrderItemModel {
       }
     }
 
+    // ── PARSEO DE LA NUEVA ESTRUCTURA RELACIONAL DE ATRIBUTOS ──
+    Map<String, dynamic> parsedAttributes = {};
+    if (variant != null && variant['variant_attribute_values'] != null) {
+      final vavList =
+          variant['variant_attribute_values'] as List<dynamic>? ?? [];
+      for (final vav in vavList) {
+        final attrValueMap = vav['attribute_values'] as Map<String, dynamic>?;
+        if (attrValueMap != null) {
+          final val = attrValueMap['value']?.toString() ?? '';
+          final attrHeader =
+              attrValueMap['attributes'] as Map<String, dynamic>?;
+          final key = attrHeader?['name']?.toString() ?? 'Atributo';
+          parsedAttributes[key] = val;
+        }
+      }
+    } else if (variant != null && variant['attributes'] != null) {
+      // Fallback temporal por si aún consultas la columna vieja antes de borrarla
+      parsedAttributes = Map<String, dynamic>.from(
+        variant['attributes'] as Map? ?? {},
+      );
+    }
+
     return OrderItemModel(
       id: json['id'] as String?,
       orderId: json['order_id'] as String? ?? '',
@@ -99,9 +121,7 @@ class OrderItemModel {
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
       productName: product?['name'] as String?,
       sku: variant?['sku'] as String?,
-      attributes: Map<String, dynamic>.from(
-        variant?['attributes'] as Map? ?? {},
-      ),
+      attributes: parsedAttributes,
       variantImageUrl: variantImageUrl,
       productImageUrl: productImageUrl,
     );
