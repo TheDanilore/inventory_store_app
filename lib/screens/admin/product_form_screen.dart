@@ -9,7 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/models/variant_draft.dart';
+import 'package:inventory_store_app/models/variant_draft_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/variant_draft_card.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';

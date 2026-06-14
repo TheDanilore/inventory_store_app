@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/models/variant_draft.dart';
+import 'package:inventory_store_app/models/variant_draft_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class VariantDraftCard extends StatefulWidget {
   final int index;
-  final VariantDraft draft;
+  final VariantDraftModel draft;
   final VoidCallback onRemove;
   final VoidCallback onPickImage;
   final ValueChanged<bool> onActiveChanged;

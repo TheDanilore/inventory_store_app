@@ -1,5 +1,5 @@
 import 'package:inventory_store_app/models/product_image_model.dart';
-import 'package:inventory_store_app/models/variant_attribute_value.dart';
+import 'package:inventory_store_app/models/variant_attribute_value_model.dart';
 
 class ProductVariantModel {
   final String id;
@@ -9,7 +9,7 @@ class ProductVariantModel {
 
   /// Lista estructurada desde las nuevas tablas
   /// `attributes` + `attribute_values` + `variant_attribute_values`.
-  final List<VariantAttributeValue> attributeValues;
+  final List<VariantAttributeValueModel> attributeValues;
 
   final double? unitCost;
   final double? salePrice;
@@ -59,13 +59,13 @@ class ProductVariantModel {
 
   // ── fromJson ────────────────────────────────────────────────────────────────
   factory ProductVariantModel.fromJson(Map<String, dynamic> json) {
-    List<VariantAttributeValue> parsedAttributeValues = [];
+    List<VariantAttributeValueModel> parsedAttributeValues = [];
     final rawVav = json['variant_attribute_values'] as List<dynamic>?;
     if (rawVav != null && rawVav.isNotEmpty) {
       parsedAttributeValues =
           rawVav
               .map(
-                (e) => VariantAttributeValue.fromJson(
+                (e) => VariantAttributeValueModel.fromJson(
                   Map<String, dynamic>.from(e as Map),
                 ),
               )
@@ -130,7 +130,7 @@ class ProductVariantModel {
     String? productId,
     String? sku,
     String? barcode,
-    List<VariantAttributeValue>? attributeValues,
+    List<VariantAttributeValueModel>? attributeValues,
     double? unitCost,
     double? salePrice,
     bool? isActive,
