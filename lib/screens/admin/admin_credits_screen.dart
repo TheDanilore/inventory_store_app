@@ -1422,7 +1422,7 @@ class _FinancialAccountOption {
     }
   }
 
-  // El payment_method que se guarda en credit_movements y orders
+  // El payment_method que se guarda en customer_credit_movements y orders
   // es el nombre de la cuenta (ej: "Yape", "BCP", "Caja Principal")
   String get paymentMethodLabel => name;
 }
@@ -1670,8 +1670,8 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
         if (resp != null) adminProfileId = resp['id'] as String;
       }
 
-      // 1. Registrar en credit_movements
-      await _supabase.from('credit_movements').insert({
+      // 1. Registrar en customer_credit_movements
+      await _supabase.from('customer_credit_movements').insert({
         'credit_id': widget.account.creditId,
         if (_selectedOrderId != null) 'order_id': _selectedOrderId,
         'movement_type': 'PAYMENT',

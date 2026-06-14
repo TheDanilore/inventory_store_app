@@ -6,7 +6,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -627,7 +627,7 @@ class _KardexScreenState extends State<KardexScreen> {
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const InventoryEntryScreen()),
+                MaterialPageRoute(builder: (_) => const InventoryEntryFormScreen()),
               );
               _fetchMovements();
             },

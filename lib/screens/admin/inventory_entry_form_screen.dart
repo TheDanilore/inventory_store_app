@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/warehouse_model.dart';
 import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
-import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +12,7 @@ import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:collection/collection.dart';
+import 'package:intl/intl.dart';
 
 // ─── Modelo de UI local ───────────────────────────────────────────────────────
 class EntryItemUI {
@@ -36,15 +36,26 @@ class EntryItemUI {
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
+class InventoryEntryFormScreen extends StatefulWidget {
+  /// Si viene desde una purchase_order, se pasa el id y los items pre-llenados.
+  final String? purchaseOrderId;
+  final List<EntryItemUI>? prefillItems;
+  final String? prefillSupplierId;
+  final String? prefillSupplierName;
 
-class InventoryEntryScreen extends StatefulWidget {
-  const InventoryEntryScreen({super.key});
+  const InventoryEntryFormScreen({
+    super.key,
+    this.purchaseOrderId,
+    this.prefillItems,
+    this.prefillSupplierId,
+    this.prefillSupplierName,
+  });
 
   @override
-  State<InventoryEntryScreen> createState() => _InventoryEntryScreenState();
+  State<InventoryEntryFormScreen> createState() => _InventoryEntryFormScreenState();
 }
 
-class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
+class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   final _supabase = Supabase.instance.client;
 
   // ── Datos generales ───────────────────────────────────────────────────────
@@ -59,20 +70,30 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
   bool _loadingProducts = true;
   final Map<String, List<ProductVariantModel>> _variantsByProduct = {};
 
+  // ── Comprobante ───────────────────────────────────────────────────────────
+  String _documentType = 'NINGUNO';
+  final _documentNumberCtrl = TextEditingController();
+  DateTime? _documentDate;
+
   // ── Cuentas financieras ───────────────────────────────────────────────────
   List<FinancialAccountModel> _financialAccounts = [];
-  String?
-  _selectedAccountId; // La cuenta con la que vas a pagar (Caja, Yape, etc.)
-  String? _activeShiftId; // Aquí guardaremos el ID del turno si está abierto
-  // Método de pago que se registrará en account_movements
-  // 'CONTADO' = pagado al momento. 'CREDITO' = no genera movimiento financiero aún.
+  String? _selectedAccountId;
+  String? _activeShiftId;
   String _paymentMode = 'CONTADO';
   bool _loadingAccounts = true;
 
-  // ── Items e ítems de UI ───────────────────────────────────────────────────
+  // ── Items ─────────────────────────────────────────────────────────────────
   final List<EntryItemUI> _items = [];
   bool _saving = false;
   final _notesCtrl = TextEditingController();
+
+  static const List<String> _docTypes = [
+    'NINGUNO',
+    'FACTURA',
+    'BOLETA',
+    'GUIA_REMISION',
+    'TICKET',
+  ];
 
   @override
   void initState() {
@@ -83,10 +104,9 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
   @override
   void dispose() {
     _notesCtrl.dispose();
+    _documentNumberCtrl.dispose();
     super.dispose();
   }
-
-  // ── Carga inicial de datos ────────────────────────────────────────────────
 
   Future<void> _fetchData() async {
     try {
@@ -111,7 +131,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
             )
             .eq('is_active', true)
             .order('created_at', ascending: true),
-        // Cuentas financieras activas para registrar el egreso de pago
         _supabase
             .from('financial_accounts')
             .select('id, name, type, balance')
@@ -142,15 +161,19 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                   (w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w)),
                 )
                 .toList();
-        if (_warehouses.isNotEmpty) {
-          _selectedWarehouseId = _warehouses.first.id;
-        }
+        if (_warehouses.isNotEmpty) _selectedWarehouseId = _warehouses.first.id;
+
         _suppliers =
             suppliersResp
                 .map(
                   (s) => SupplierModel.fromJson(Map<String, dynamic>.from(s)),
                 )
                 .toList();
+
+        // Pre-llenar proveedor si viene de purchase_order
+        if (widget.prefillSupplierId != null) {
+          _selectedSupplierId = widget.prefillSupplierId;
+        }
 
         _allProducts =
             productsResp.map((p) => ProductModel.fromJson(p)).toList();
@@ -171,17 +194,14 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                 )
                 .toList();
 
-        // 1. ORDENAR: Cuentas tipo CAJA primero, y luego alfabéticamente
         _financialAccounts.sort((a, b) {
           final isCajaA = a.type.toUpperCase() == 'CAJA';
           final isCajaB = b.type.toUpperCase() == 'CAJA';
-
-          if (isCajaA && !isCajaB) return -1; // 'a' va antes
-          if (!isCajaA && isCajaB) return 1; // 'b' va antes
-          return a.name.compareTo(b.name); // Empate: orden alfabético
+          if (isCajaA && !isCajaB) return -1;
+          if (!isCajaA && isCajaB) return 1;
+          return a.name.compareTo(b.name);
         });
 
-        // 2. PRESELECCIONAR: Como ordenamos arriba, la primera será CAJA (si existe)
         if (_financialAccounts.isNotEmpty) {
           _selectedAccountId = _financialAccounts.first.id;
           _checkActiveShift(_selectedAccountId!);
@@ -190,6 +210,11 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         _loadingWarehouses = false;
         _loadingProducts = false;
         _loadingAccounts = false;
+
+        // Pre-llenar items si viene de purchase_order
+        if (widget.prefillItems != null) {
+          _items.addAll(widget.prefillItems!);
+        }
       });
     } catch (e) {
       if (mounted) {
@@ -216,18 +241,11 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
               .eq('account_id', accountId)
               .eq('status', 'OPEN')
               .maybeSingle();
-
-      if (mounted) {
-        setState(() {
-          _activeShiftId = shiftRes?['id'] as String?;
-        });
-      }
+      if (mounted) setState(() => _activeShiftId = shiftRes?['id'] as String?);
     } catch (e) {
       debugPrint('Error verificando turno de caja: $e');
     }
   }
-
-  // ── Añadir producto desde bottom sheet ───────────────────────────────────
 
   Future<void> _showAddProductSheet() async {
     final newItem = await showModalBottomSheet<EntryItemUI>(
@@ -248,7 +266,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
             item.product.id == newItem.product.id &&
             item.variant.id == newItem.variant.id,
       );
-
       setState(() {
         if (existingIdx >= 0) {
           _items[existingIdx].quantity += newItem.quantity;
@@ -259,8 +276,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
       });
     }
   }
-
-  // ── Diálogo de cantidad ───────────────────────────────────────────────────
 
   Future<void> _mostrarDialogoCantidadItem(
     int index,
@@ -323,10 +338,29 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
     qtyCtrl.dispose();
   }
 
-  // ── Guardar entrada ───────────────────────────────────────────────────────
+  Future<void> _pickDocumentDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _documentDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      helpText: 'Fecha del comprobante',
+      builder:
+          (context, child) => Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(primary: AppColors.primary),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              ),
+            ),
+            child: child!,
+          ),
+    );
+    if (picked != null && mounted) setState(() => _documentDate = picked);
+  }
 
+  // ── Guardar entrada ───────────────────────────────────────────────────────
   Future<void> _saveEntry() async {
-    // ── Validaciones ────────────────────────────────────────────────────────
     if (_selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
@@ -343,18 +377,14 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
       );
       return;
     }
-
-    // Si el modo de pago es CONTADO, debe haber una cuenta financiera seleccionada.
     if (_paymentMode == 'CONTADO' && _selectedAccountId == null) {
       AppSnackbar.show(
         context,
-        message: 'Seleccione la cuenta financiera que se utilizará para pagar',
+        message: 'Seleccione la cuenta financiera para pagar',
         type: SnackbarType.warning,
       );
       return;
     }
-
-    // Si el modo de pago es CONTADO y la cuenta es de tipo CAJA, debe tener un turno abierto.
     if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
       final accountData = _financialAccounts.firstWhereOrNull(
         (a) => a.id == _selectedAccountId,
@@ -367,35 +397,31 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         );
         return;
       }
-    }
-
-    // Validar que al pagar al contado la cuenta tenga saldo suficiente.
-    if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
-      final accountData = _financialAccounts
-          .cast<FinancialAccountModel?>()
-          .firstWhere((a) => a?.id == _selectedAccountId, orElse: () => null);
-      if (accountData != null) {
-        final accountBalance = accountData.balance;
-        final totalCost = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-        if (accountBalance < totalCost) {
-          AppSnackbar.show(
-            context,
-            message:
-                'Saldo insuficiente en la cuenta seleccionada '
-                '(S/ ${accountBalance.toStringAsFixed(2)} disponible)',
-            type: SnackbarType.error,
-          );
-          return;
-        }
+      final totalCost = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+      if (accountData != null && accountData.balance < totalCost) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)',
+          type: SnackbarType.error,
+        );
+        return;
       }
+    }
+    // Validar proveedor requerido para crédito
+    if (_paymentMode == 'CREDITO' && _selectedSupplierId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Seleccione un proveedor para compra a crédito',
+        type: SnackbarType.warning,
+      );
+      return;
     }
 
     setState(() => _saving = true);
 
     try {
       final notes = _notesCtrl.text.trim();
-
-      // ── Obtener profile_id del usuario actual ───────────────────────────
       String? createdByProfileId;
       final currentUser = _supabase.auth.currentUser;
       if (currentUser != null) {
@@ -408,6 +434,11 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         createdByProfileId = profile?['id'] as String?;
       }
 
+      final double totalCost = _items.fold(
+        0,
+        (sum, item) => sum + item.subtotal,
+      );
+
       // 1. ── Cabecera del ingreso ─────────────────────────────────────────
       final entryHeader =
           await _supabase
@@ -415,20 +446,25 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
               .insert({
                 'warehouse_id': _selectedWarehouseId,
                 'supplier_id': _selectedSupplierId,
+                'purchase_order_id': widget.purchaseOrderId,
                 'notes': notes.isEmpty ? null : notes,
                 'created_by': createdByProfileId,
+                'total_amount': totalCost,
+                'document_type': _documentType,
+                'document_number':
+                    _documentNumberCtrl.text.trim().isEmpty
+                        ? null
+                        : _documentNumberCtrl.text.trim(),
+                'document_date':
+                    _documentDate?.toIso8601String().split('T').first,
               })
               .select('id')
               .single();
 
       final entryId = entryHeader['id'] as String;
 
-      double totalCost = 0;
-
       for (final item in _items) {
-        totalCost += item.subtotal;
-
-        // 2. ── Insertar en inventory_entry_items ─────────────────────────
+        // 2. ── inventory_entry_items ─────────────────────────────────────
         final entryItem = InventoryEntryItemModel(
           id: '',
           entryId: entryId,
@@ -443,7 +479,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
           ...entryItem.toJson()..remove('id'),
         });
 
-        // 3. ── Upsert en warehouse_stock_batches ─────────────────────────
+        // 3. ── warehouse_stock_batches ────────────────────────────────────
         final existingBatch =
             await _supabase
                 .from('warehouse_stock_batches')
@@ -470,15 +506,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                 'updated_by': createdByProfileId,
               })
               .eq('id', stockBatchId);
-
-          // Actualizar unit_cost de la variante al último costo de compra
-          await _supabase
-              .from('product_variants')
-              .update({
-                'unit_cost': item.unitCost,
-                'updated_by': createdByProfileId,
-              })
-              .eq('id', item.variant.id);
         } else {
           newStock = item.quantity;
           final newBatch =
@@ -499,18 +526,18 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                   .select('id')
                   .single();
           stockBatchId = newBatch['id'] as String;
-
-          // Actualizar unit_cost de la variante al último costo de compra
-          await _supabase
-              .from('product_variants')
-              .update({
-                'unit_cost': item.unitCost,
-                'updated_by': createdByProfileId,
-              })
-              .eq('id', item.variant.id);
         }
 
-        // 4. ── Registrar en inventory_movements (kardex) ─────────────────
+        // Actualizar unit_cost de la variante al último costo de compra
+        await _supabase
+            .from('product_variants')
+            .update({
+              'unit_cost': item.unitCost,
+              'updated_by': createdByProfileId,
+            })
+            .eq('id', item.variant.id);
+
+        // 4. ── inventory_movements (kardex) ──────────────────────────────
         await _supabase.from('inventory_movements').insert({
           'variant_id': item.variant.id,
           'warehouse_id': _selectedWarehouseId,
@@ -527,34 +554,123 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         });
       }
 
-      // 5. ── Movimiento financiero (solo si es pago al contado) ───────────
-      //    Registra un EGRESO en la cuenta seleccionada por el total de la compra.
+      // 5. ── Movimiento financiero o crédito ────────────────────────────
       if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
         final accountData = _financialAccounts.firstWhere(
           (a) => a.id == _selectedAccountId,
         );
-        final currentBalance = accountData.balance;
-        final newBalance = currentBalance - totalCost;
+        final supplierName =
+            _selectedSupplierId != null
+                ? _suppliers
+                        .firstWhereOrNull((s) => s.id == _selectedSupplierId)
+                        ?.name ??
+                    ''
+                : '';
 
-        // 5a. Insertar en account_movements
         await _supabase.from('account_movements').insert({
           'account_id': _selectedAccountId,
           'movement_type': 'EXPENSE',
           'amount': totalCost,
           'description':
-              'Compra de inventario — Entrada #$entryId'
-              '${_selectedSupplierId != null ? ' · ${_suppliers.firstWhere((s) => s.id == _selectedSupplierId).name}' : ''}',
+              'Compra de inventario${supplierName.isNotEmpty ? ' · $supplierName' : ''}',
           'reference_type': 'inventory_entry',
           'reference_id': entryId,
           'created_by': createdByProfileId,
           'shift_id': _activeShiftId,
         });
 
-        // 5b. Actualizar saldo de la cuenta financiera
         await _supabase
             .from('financial_accounts')
-            .update({'balance': newBalance})
+            .update({'balance': accountData.balance - totalCost})
             .eq('id', _selectedAccountId!);
+      } else if (_paymentMode == 'CREDITO' && _selectedSupplierId != null) {
+        // 5b. ── supplier_credits + supplier_credit_movements ─────────────
+        // Buscar o crear cuenta de crédito del proveedor
+        var creditResp =
+            await _supabase
+                .from('supplier_credits')
+                .select('id, current_debt')
+                .eq('supplier_id', _selectedSupplierId!)
+                .maybeSingle();
+
+        String supplierCreditId;
+        if (creditResp == null) {
+          final newCredit =
+              await _supabase
+                  .from('supplier_credits')
+                  .insert({
+                    'supplier_id': _selectedSupplierId,
+                    'current_debt': totalCost,
+                    'created_by': createdByProfileId,
+                  })
+                  .select('id')
+                  .single();
+          supplierCreditId = newCredit['id'] as String;
+        } else {
+          supplierCreditId = creditResp['id'] as String;
+          final currentDebt = (creditResp['current_debt'] as num).toDouble();
+          await _supabase
+              .from('supplier_credits')
+              .update({
+                'current_debt': currentDebt + totalCost,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', supplierCreditId);
+        }
+
+        await _supabase.from('supplier_credit_movements').insert({
+          'supplier_credit_id': supplierCreditId,
+          'purchase_order_id': widget.purchaseOrderId,
+          'movement_type': 'CHARGE',
+          'amount': totalCost,
+          'notes': 'Compra a crédito — Entrada #$entryId',
+          'created_by': createdByProfileId,
+        });
+      }
+
+      // 6. ── Actualizar purchase_order si viene de una ─────────────────
+      if (widget.purchaseOrderId != null) {
+        // Calcular si todos los items fueron recibidos completamente
+        final poItems = await _supabase
+            .from('purchase_order_items')
+            .select('quantity_ordered, quantity_received')
+            .eq('purchase_order_id', widget.purchaseOrderId!);
+
+        bool allReceived = true;
+        for (final poi in poItems as List) {
+          final ordered = (poi['quantity_ordered'] as num).toDouble();
+          final received = (poi['quantity_received'] as num).toDouble();
+          if (received < ordered) {
+            allReceived = false;
+            break;
+          }
+        }
+
+        await _supabase
+            .from('purchase_orders')
+            .update({
+              'status': allReceived ? 'RECEIVED' : 'PARTIAL',
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', widget.purchaseOrderId!);
+
+        // Actualizar quantity_received en purchase_order_items
+        for (final item in _items) {
+          await _supabase
+              .from('purchase_order_items')
+              .update({
+                'quantity_received': _supabase.rpc(
+                  'coalesce_add',
+                  params: {
+                    'purchase_order_id': widget.purchaseOrderId,
+                    'variant_id': item.variant.id,
+                    'add_qty': item.quantity,
+                  },
+                ),
+              })
+              .eq('purchase_order_id', widget.purchaseOrderId!)
+              .eq('variant_id', item.variant.id);
+        }
       }
 
       if (mounted) {
@@ -563,14 +679,10 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
           message:
               _paymentMode == 'CONTADO'
                   ? 'Ingreso registrado y pago deducido correctamente'
-                  : 'Ingreso registrado. Pago pendiente al proveedor.',
+                  : 'Ingreso registrado. Deuda con proveedor actualizada.',
           type: SnackbarType.success,
         );
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const KardexScreen()),
-        );
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -586,7 +698,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
   }
 
   // ── BUILD ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     if (_loadingWarehouses || _loadingProducts || _loadingAccounts) {
@@ -607,7 +718,10 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
     final int totalVariants = _items.length;
 
     return AdminLayout(
-      title: 'Recepción de Inventario',
+      title:
+          widget.purchaseOrderId != null
+              ? 'Recepción de Pedido'
+              : 'Recepción de Inventario',
       showBackButton: true,
       body:
           _saving
@@ -622,7 +736,49 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ── Sección: Datos del ingreso ────────────────────
+                          // Banner si viene de purchase_order
+                          if (widget.purchaseOrderId != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.08,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.link_rounded,
+                                    size: 16,
+                                    color: AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Recepción vinculada a Orden de Compra'
+                                      '${widget.prefillSupplierName != null ? ' · ${widget.prefillSupplierName}' : ''}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // ── Datos del ingreso ──────────────────────────────
                           _SectionCard(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,14 +813,13 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                           .toList(),
                                   onChanged: (v) {
                                     if (v != null) {
-                                      // CORRECCIÓN: Aquí se actualiza el Almacén, no la cuenta
                                       setState(() => _selectedWarehouseId = v);
                                     }
                                   },
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Proveedor (opcional)
+                                // Proveedor
                                 DropdownButtonFormField<String>(
                                   initialValue: _selectedSupplierId,
                                   icon: const Icon(Icons.expand_more_rounded),
@@ -726,7 +881,136 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // ── Sección: Pago ─────────────────────────────────
+                          // ── Comprobante ────────────────────────────────────
+                          _SectionCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const _SectionTitle(
+                                  icon: Icons.receipt_long_rounded,
+                                  title: 'Comprobante del Proveedor',
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Tipo de documento
+                                DropdownButtonFormField<String>(
+                                  initialValue: _documentType,
+                                  icon: const Icon(Icons.expand_more_rounded),
+                                  decoration: _dropdownDecoration(
+                                    'Tipo de documento',
+                                    icon: Icons.description_rounded,
+                                  ),
+                                  items:
+                                      _docTypes
+                                          .map(
+                                            (t) => DropdownMenuItem(
+                                              value: t,
+                                              child: Text(
+                                                _docTypeLabel(t),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _documentType = v);
+                                    }
+                                  },
+                                ),
+
+                                if (_documentType != 'NINGUNO') ...[
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: TextField(
+                                          controller: _documentNumberCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: 'Nº de comprobante',
+                                            labelStyle: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                            ),
+                                            hintText: 'Ej: 001-00123456',
+                                            filled: true,
+                                            fillColor: AppColors.background,
+                                            prefixIcon: const Icon(
+                                              Icons.tag_rounded,
+                                              color: AppColors.textHint,
+                                            ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              borderSide: BorderSide.none,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        flex: 2,
+                                        child: InkWell(
+                                          onTap: _pickDocumentDate,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 14,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.background,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Fecha',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  _documentDate != null
+                                                      ? DateFormat(
+                                                        'dd/MM/yyyy',
+                                                      ).format(_documentDate!)
+                                                      : 'Seleccionar',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w700,
+                                                    color:
+                                                        _documentDate != null
+                                                            ? AppColors
+                                                                .textPrimary
+                                                            : AppColors
+                                                                .textMuted,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ── Forma de pago ──────────────────────────────────
                           _SectionCard(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -737,7 +1021,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Toggle CONTADO / CRÉDITO
                                 Row(
                                   children: [
                                     Expanded(
@@ -766,7 +1049,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                   ],
                                 ),
 
-                                // Selector de cuenta financiera (solo al contado)
                                 if (_paymentMode == 'CONTADO') ...[
                                   const SizedBox(height: 12),
                                   DropdownButtonFormField<String>(
@@ -839,13 +1121,11 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                     onChanged: (v) {
                                       if (v != null) {
                                         setState(() => _selectedAccountId = v);
-                                        // AQUÍ ES DONDE DEBE IR LA VERIFICACIÓN DE LA CAJA
                                         _checkActiveShift(v);
                                       }
                                     },
                                   ),
 
-                                  // --- INICIO UI DE TURNO ABIERTO/CERRADO ---
                                   if (_selectedAccountId != null &&
                                       _financialAccounts
                                               .firstWhereOrNull(
@@ -856,10 +1136,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                               .toUpperCase() ==
                                           'CAJA')
                                     Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 8,
-                                        bottom: 8,
-                                      ),
+                                      padding: const EdgeInsets.only(top: 8),
                                       child: Row(
                                         children: [
                                           Icon(
@@ -889,9 +1166,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                         ],
                                       ),
                                     ),
-                                  // --- FIN UI DE TURNO ABIERTO/CERRADO ---
 
-                                  // Advertencia si el saldo es insuficiente
                                   if (_selectedAccountId != null &&
                                       _items.isNotEmpty)
                                     Builder(
@@ -900,12 +1175,8 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                             .firstWhereOrNull(
                                               (a) => a.id == _selectedAccountId,
                                             );
-
                                         final balance =
-                                            (accountData?.balance as num?)
-                                                ?.toDouble() ??
-                                            0.0;
-
+                                            (accountData?.balance ?? 0.0);
                                         final total = _items.fold(
                                           0.0,
                                           (s, i) => s + i.subtotal,
@@ -941,8 +1212,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                               const SizedBox(width: 6),
                                               Expanded(
                                                 child: Text(
-                                                  'Saldo insuficiente. '
-                                                  'Faltan S/ ${(total - balance).toStringAsFixed(2)}',
+                                                  'Saldo insuficiente. Faltan S/ ${(total - balance).toStringAsFixed(2)}',
                                                   style: const TextStyle(
                                                     fontSize: 12,
                                                     color: AppColors.danger,
@@ -957,7 +1227,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                     ),
                                 ],
 
-                                // Info crédito
                                 if (_paymentMode == 'CREDITO') ...[
                                   const SizedBox(height: 10),
                                   Container(
@@ -986,8 +1255,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                                         const SizedBox(width: 8),
                                         const Expanded(
                                           child: Text(
-                                            'No se descontará saldo de ninguna cuenta. '
-                                            'El pago al proveedor queda pendiente.',
+                                            'La deuda se registrará en la cuenta del proveedor. Debes tener un proveedor seleccionado.',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: AppColors.warning,
@@ -1004,7 +1272,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // ── Lista de ítems ───────────────────────────────
+                          // ── Lista de ítems ─────────────────────────────────
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1071,7 +1339,7 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: _items.length,
                               separatorBuilder:
-                                  (_, __) => const SizedBox(height: 10),
+                                  (_, _) => const SizedBox(height: 10),
                               itemBuilder:
                                   (context, index) =>
                                       _buildEntryItemCard(_items[index], index),
@@ -1081,7 +1349,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
                     ),
                   ),
 
-                  // ── Footer ───────────────────────────────────────────────
                   _BottomBar(
                     leftLabel: 'Costo Total',
                     leftSub: '$totalVariants items · $totalUnits unidades',
@@ -1101,8 +1368,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
               ),
     );
   }
-
-  // ── Card de ítem ──────────────────────────────────────────────────────────
 
   Widget _buildEntryItemCard(EntryItemUI item, int index) {
     String? imageUrl;
@@ -1130,7 +1395,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
         children: [
           _ProductThumbnail(imageUrl: imageUrl),
           const SizedBox(width: 14),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1182,8 +1446,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
             ),
           ),
           const SizedBox(width: 8),
-
-          // Stepper vertical
           _VerticalStepper(
             value: item.quantity.toInt(),
             onAdd: () => setState(() => _items[index].quantity++),
@@ -1194,8 +1456,6 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
             onTapValue: () => _mostrarDialogoCantidadItem(index, item.quantity),
           ),
           const SizedBox(width: 6),
-
-          // Eliminar
           IconButton(
             icon: const Icon(
               Icons.delete_outline_rounded,
@@ -1210,16 +1470,30 @@ class _InventoryEntryScreenState extends State<InventoryEntryScreen> {
       ),
     );
   }
+
+  String _docTypeLabel(String type) {
+    switch (type) {
+      case 'FACTURA':
+        return 'Factura';
+      case 'BOLETA':
+        return 'Boleta';
+      case 'GUIA_REMISION':
+        return 'Guía de Remisión';
+      case 'TICKET':
+        return 'Ticket';
+      default:
+        return 'Sin comprobante';
+    }
+  }
 }
 
-// ─── Botón de modo de pago ────────────────────────────────────────────────────
+// ─── Widgets auxiliares (mismos que el original) ──────────────────────────────
 
 class _PaymentModeButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-
   const _PaymentModeButton({
     required this.label,
     required this.icon,
@@ -1266,8 +1540,6 @@ class _PaymentModeButton extends StatelessWidget {
   }
 }
 
-// ─── Helpers de decoración ────────────────────────────────────────────────────
-
 InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
     labelText: label,
@@ -1283,12 +1555,9 @@ InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   );
 }
 
-// ─── Widgets reutilizables ────────────────────────────────────────────────────
-
 class _SectionCard extends StatelessWidget {
   final Widget child;
   const _SectionCard({required this.child});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1314,7 +1583,6 @@ class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
   const _SectionTitle({required this.icon, required this.title});
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -1338,7 +1606,6 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
   const _EmptyState({required this.icon, required this.message});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1388,7 +1655,6 @@ class _ProductThumbnail extends StatelessWidget {
   final double size;
   // ignore: unused_element_parameter
   const _ProductThumbnail({this.imageUrl, this.size = 56});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1407,7 +1673,7 @@ class _ProductThumbnail extends StatelessWidget {
                   imageUrl: imageUrl!,
                   fit: BoxFit.cover,
                   placeholder:
-                      (context, url) => const Center(
+                      (_, _) => const Center(
                         child: SizedBox(
                           width: 14,
                           height: 14,
@@ -1418,7 +1684,7 @@ class _ProductThumbnail extends StatelessWidget {
                         ),
                       ),
                   errorWidget:
-                      (context, url, error) => const Icon(
+                      (_, _, _) => const Icon(
                         Icons.image_not_supported_rounded,
                         color: AppColors.textHint,
                       ),
@@ -1435,7 +1701,6 @@ class _ProductThumbnail extends StatelessWidget {
 class _VariantChip extends StatelessWidget {
   final String label;
   const _VariantChip({required this.label});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1461,7 +1726,6 @@ class _BatchInfo extends StatelessWidget {
   final String batchNumber;
   final DateTime? expiryDate;
   const _BatchInfo({required this.batchNumber, this.expiryDate});
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -1485,9 +1749,7 @@ class _BatchInfo extends StatelessWidget {
           ),
           const SizedBox(width: 2),
           Text(
-            '${expiryDate!.day.toString().padLeft(2, '0')}/'
-            '${expiryDate!.month.toString().padLeft(2, '0')}/'
-            '${expiryDate!.year}',
+            '${expiryDate!.day.toString().padLeft(2, '0')}/${expiryDate!.month.toString().padLeft(2, '0')}/${expiryDate!.year}',
             style: const TextStyle(
               fontSize: 11,
               color: AppColors.textHint,
@@ -1511,7 +1773,6 @@ class _VerticalStepper extends StatelessWidget {
     this.onRemove,
     required this.onTapValue,
   });
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1569,14 +1830,10 @@ Widget _stepperBtn(IconData icon, bool disabled, VoidCallback onTap) {
 }
 
 class _BottomBar extends StatelessWidget {
-  final String leftLabel;
-  final String leftSub;
-  final String rightValue;
-  final String buttonLabel;
+  final String leftLabel, leftSub, rightValue, buttonLabel;
   final IconData buttonIcon;
   final bool enabled;
   final VoidCallback onPressed;
-
   const _BottomBar({
     required this.leftLabel,
     required this.leftSub,

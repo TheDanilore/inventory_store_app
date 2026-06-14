@@ -4,9 +4,11 @@ import 'package:inventory_store_app/screens/admin/admin_suppliers_screen.dart';
 import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
 import 'package:inventory_store_app/screens/admin/financial_accounts_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_entries_screen.dart';
+import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_screen.dart';
+import 'package:inventory_store_app/screens/admin/purchase_orders_screen.dart';
 import 'package:inventory_store_app/screens/admin/warehouses_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
 import 'package:inventory_store_app/screens/admin/users_management_screen.dart';
@@ -137,7 +139,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
                     screenType:
-                        widget.isAdmin ? AdminCatalogScreen : CustomerCatalogScreen,
+                        widget.isAdmin
+                            ? AdminCatalogScreen
+                            : CustomerCatalogScreen,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushReplacement(
@@ -181,7 +185,9 @@ class _AppDrawerState extends State<AppDrawer> {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const CustomerCartScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const CustomerCartScreen(),
+                          ),
                         );
                       },
                     ),
@@ -218,7 +224,47 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
 
-                  // // ── Crédito (con sub-ítems) ─────────────────────────
+                  // // ── Compras (con sub-ítems) ─────────────────────────
+                  _buildExpandableItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.shopping_bag_outlined,
+                      title: 'Compras',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Órdenes de compra',
+                          screenType: PurchaseOrdersScreen,
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PurchaseOrdersScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.add_rounded,
+                          title: 'Entradas de inventario',
+                          screenType: InventoryEntriesListScreen,
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => const InventoryEntriesListScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // // ── Inventario (con sub-ítems) ─────────────────────────
                   _buildExpandableItem(
                     context,
                     _DrawerItem(
@@ -253,20 +299,7 @@ class _AppDrawerState extends State<AppDrawer> {
                             );
                           },
                         ),
-                        _DrawerSubItem(
-                          icon: Icons.add_rounded,
-                          title: 'Registro Entrada',
-                          screenType: InventoryEntryScreen,
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const InventoryEntryScreen(),
-                              ),
-                            );
-                          },
-                        ),
+
                         _DrawerSubItem(
                           icon: Icons.remove_rounded,
                           title: 'Registro Salida',

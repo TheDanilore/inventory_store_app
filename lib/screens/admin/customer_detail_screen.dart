@@ -252,7 +252,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
   Future<void> _loadCreditMovements(String creditId) async {
     final resp = await _supabase
-        .from('credit_movements')
+        .from('customer_credit_movements')
         .select('movement_type, amount, payment_method, notes, created_at')
         .eq('credit_id', creditId)
         .order('created_at', ascending: false)

@@ -888,7 +888,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               .from('customer_credits')
               .update({'current_debt': newDebt})
               .eq('id', creditId);
-          await _supabase.from('credit_movements').insert({
+          await _supabase.from('customer_credit_movements').insert({
             'credit_id': creditId,
             'order_id': widget.order.id,
             'movement_type': 'CHARGE',
@@ -1043,7 +1043,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                   'updated_at': DateTime.now().toIso8601String(),
                 })
                 .eq('id', creditId);
-            await _supabase.from('credit_movements').insert({
+            await _supabase.from('customer_credit_movements').insert({
               'credit_id': creditId,
               'order_id': widget.order.id,
               'movement_type': 'PAYMENT',
@@ -1625,7 +1625,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                 'updated_at': DateTime.now().toIso8601String(),
               })
               .eq('id', creditId);
-          await _supabase.from('credit_movements').insert({
+          await _supabase.from('customer_credit_movements').insert({
             'credit_id': creditId,
             'order_id': widget.order.id,
             'movement_type': 'PAYMENT',
@@ -2487,7 +2487,7 @@ class OrderDetailCustomerSection extends StatelessWidget {
                     : ListView.separated(
                       shrinkWrap: true,
                       itemCount: filteredProfiles.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final profile = filteredProfiles[index];
                         final customerId = profile['id'] as String;
@@ -2687,7 +2687,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 itemCount: allOptions.length + (valueInList ? 0 : 1),
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   // Opción legacy (método guardado que ya no existe en cuentas)
                   if (!valueInList && index == allOptions.length) {
@@ -3094,7 +3094,7 @@ class OrderDetailItemCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                        errorWidget: (_, __, ___) => _placeholderIcon(),
+                        errorWidget: (_, _, _) => _placeholderIcon(),
                       )
                       : _placeholderIcon(),
             ),

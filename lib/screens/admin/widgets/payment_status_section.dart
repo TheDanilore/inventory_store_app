@@ -186,8 +186,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           })
           .eq('id', creditId);
 
-      // 2. Registrar en credit_movements con el nombre de la cuenta como payment_method
-      await widget.supabase.from('credit_movements').insert({
+      // 2. Registrar en customer_credit_movements con el nombre de la cuenta como payment_method
+      await widget.supabase.from('customer_credit_movements').insert({
         'credit_id': creditId,
         'order_id': widget.orderId,
         'movement_type': 'PAYMENT',

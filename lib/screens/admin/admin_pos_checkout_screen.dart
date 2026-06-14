@@ -727,7 +727,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
             })
             .eq('id', creditId);
 
-        await _supabase.from('credit_movements').insert({
+        await _supabase.from('customer_credit_movements').insert({
           'credit_id': creditId,
           'order_id': orderId,
           'movement_type': 'CHARGE',
