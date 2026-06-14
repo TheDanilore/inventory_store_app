@@ -43,16 +43,25 @@ class InventoryEntryFormScreen extends StatefulWidget {
   final String? prefillSupplierId;
   final String? prefillSupplierName;
 
+  // NUEVOS CAMPOS DE PRE-LLENADO
+  final String? prefillDocumentType;
+  final String? prefillDocumentNumber;
+  final DateTime? prefillDocumentDate;
+
   const InventoryEntryFormScreen({
     super.key,
     this.purchaseOrderId,
     this.prefillItems,
     this.prefillSupplierId,
     this.prefillSupplierName,
+    this.prefillDocumentType,
+    this.prefillDocumentNumber,
+    this.prefillDocumentDate,
   });
 
   @override
-  State<InventoryEntryFormScreen> createState() => _InventoryEntryFormScreenState();
+  State<InventoryEntryFormScreen> createState() =>
+      _InventoryEntryFormScreenState();
 }
 
 class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
@@ -98,6 +107,17 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   @override
   void initState() {
     super.initState();
+    // Pre-llenar datos de comprobante si vienen de la orden
+    if (widget.prefillDocumentType != null) {
+      _documentType = widget.prefillDocumentType!;
+    }
+    if (widget.prefillDocumentNumber != null) {
+      _documentNumberCtrl.text = widget.prefillDocumentNumber!;
+    }
+    if (widget.prefillDocumentDate != null) {
+      _documentDate = widget.prefillDocumentDate;
+    }
+
     _fetchData();
   }
 
@@ -264,7 +284,8 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       final existingIdx = _items.indexWhere(
         (item) =>
             item.product.id == newItem.product.id &&
-            item.variant.id == newItem.variant.id,
+            item.variant.id == newItem.variant.id &&
+            item.batchNumber == newItem.batchNumber,
       );
       setState(() {
         if (existingIdx >= 0) {
@@ -377,45 +398,63 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       );
       return;
     }
-    if (_paymentMode == 'CONTADO' && _selectedAccountId == null) {
-      AppSnackbar.show(
-        context,
-        message: 'Seleccione la cuenta financiera para pagar',
-        type: SnackbarType.warning,
-      );
-      return;
-    }
-    if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
-      final accountData = _financialAccounts.firstWhereOrNull(
-        (a) => a.id == _selectedAccountId,
-      );
-      if (accountData?.type.toUpperCase() == 'CAJA' && _activeShiftId == null) {
+
+    // ── VALIDACIÓN 1: Finanzas (Solo si NO viene de una Orden de Compra) ──
+    if (widget.purchaseOrderId == null) {
+      if (_paymentMode == 'CONTADO' && _selectedAccountId == null) {
         AppSnackbar.show(
           context,
-          message: 'La caja seleccionada no tiene un turno abierto.',
-          type: SnackbarType.error,
+          message: 'Seleccione la cuenta financiera para pagar',
+          type: SnackbarType.warning,
         );
         return;
       }
-      final totalCost = _items.fold(0.0, (sum, item) => sum + item.subtotal);
-      if (accountData != null && accountData.balance < totalCost) {
+      if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
+        final accountData = _financialAccounts.firstWhereOrNull(
+          (a) => a.id == _selectedAccountId,
+        );
+        if (accountData?.type.toUpperCase() == 'CAJA' &&
+            _activeShiftId == null) {
+          AppSnackbar.show(
+            context,
+            message: 'La caja seleccionada no tiene un turno abierto.',
+            type: SnackbarType.error,
+          );
+          return;
+        }
+        final totalCost = _items.fold(0.0, (sum, item) => sum + item.subtotal);
+        if (accountData != null && accountData.balance < totalCost) {
+          AppSnackbar.show(
+            context,
+            message:
+                'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)',
+            type: SnackbarType.error,
+          );
+          return;
+        }
+      }
+      if (_paymentMode == 'CREDITO' && _selectedSupplierId == null) {
+        AppSnackbar.show(
+          context,
+          message: 'Seleccione un proveedor para compra a crédito',
+          type: SnackbarType.warning,
+        );
+        return;
+      }
+    }
+
+    // ── VALIDACIÓN 2: Lotes (CRÍTICO para recepciones de O.C.) ──
+    for (final item in _items) {
+      if (item.product.usesBatches &&
+          (item.batchNumber == 'DEFAULT' || item.batchNumber.trim().isEmpty)) {
         AppSnackbar.show(
           context,
           message:
-              'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)',
-          type: SnackbarType.error,
+              'El producto "${item.product.name}" requiere un número de lote. Elimínelo de la lista y vuelva a agregarlo indicando el lote recibido.',
+          type: SnackbarType.warning,
         );
         return;
       }
-    }
-    // Validar proveedor requerido para crédito
-    if (_paymentMode == 'CREDITO' && _selectedSupplierId == null) {
-      AppSnackbar.show(
-        context,
-        message: 'Seleccione un proveedor para compra a crédito',
-        type: SnackbarType.warning,
-      );
-      return;
     }
 
     setState(() => _saving = true);
@@ -554,95 +593,110 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         });
       }
 
-      // 5. ── Movimiento financiero o crédito ────────────────────────────
-      if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
-        final accountData = _financialAccounts.firstWhere(
-          (a) => a.id == _selectedAccountId,
-        );
-        final supplierName =
-            _selectedSupplierId != null
-                ? _suppliers
-                        .firstWhereOrNull((s) => s.id == _selectedSupplierId)
-                        ?.name ??
-                    ''
-                : '';
+      // 5. ── Movimiento financiero o crédito (SOLO SI ES INGRESO MANUAL) ────
+      if (widget.purchaseOrderId == null) {
+        if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
+          final accountData = _financialAccounts.firstWhere(
+            (a) => a.id == _selectedAccountId,
+          );
+          final supplierName =
+              _selectedSupplierId != null
+                  ? _suppliers
+                          .firstWhereOrNull((s) => s.id == _selectedSupplierId)
+                          ?.name ??
+                      ''
+                  : '';
 
-        await _supabase.from('account_movements').insert({
-          'account_id': _selectedAccountId,
-          'movement_type': 'EXPENSE',
-          'amount': totalCost,
-          'description':
-              'Compra de inventario${supplierName.isNotEmpty ? ' · $supplierName' : ''}',
-          'reference_type': 'inventory_entry',
-          'reference_id': entryId,
-          'created_by': createdByProfileId,
-          'shift_id': _activeShiftId,
-        });
+          await _supabase.from('account_movements').insert({
+            'account_id': _selectedAccountId,
+            'movement_type': 'EXPENSE',
+            'amount': totalCost,
+            'description':
+                'Compra de inventario${supplierName.isNotEmpty ? ' · $supplierName' : ''}',
+            'reference_type': 'inventory_entry',
+            'reference_id': entryId,
+            'created_by': createdByProfileId,
+            'shift_id': _activeShiftId,
+          });
 
-        await _supabase
-            .from('financial_accounts')
-            .update({'balance': accountData.balance - totalCost})
-            .eq('id', _selectedAccountId!);
-      } else if (_paymentMode == 'CREDITO' && _selectedSupplierId != null) {
-        // 5b. ── supplier_credits + supplier_credit_movements ─────────────
-        // Buscar o crear cuenta de crédito del proveedor
-        var creditResp =
-            await _supabase
-                .from('supplier_credits')
-                .select('id, current_debt')
-                .eq('supplier_id', _selectedSupplierId!)
-                .maybeSingle();
-
-        String supplierCreditId;
-        if (creditResp == null) {
-          final newCredit =
+          await _supabase
+              .from('financial_accounts')
+              .update({'balance': accountData.balance - totalCost})
+              .eq('id', _selectedAccountId!);
+        } else if (_paymentMode == 'CREDITO' && _selectedSupplierId != null) {
+          var creditResp =
               await _supabase
                   .from('supplier_credits')
-                  .insert({
-                    'supplier_id': _selectedSupplierId,
-                    'current_debt': totalCost,
-                    'created_by': createdByProfileId,
-                  })
-                  .select('id')
-                  .single();
-          supplierCreditId = newCredit['id'] as String;
-        } else {
-          supplierCreditId = creditResp['id'] as String;
-          final currentDebt = (creditResp['current_debt'] as num).toDouble();
-          await _supabase
-              .from('supplier_credits')
-              .update({
-                'current_debt': currentDebt + totalCost,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', supplierCreditId);
-        }
+                  .select('id, current_debt')
+                  .eq('supplier_id', _selectedSupplierId!)
+                  .maybeSingle();
 
-        await _supabase.from('supplier_credit_movements').insert({
-          'supplier_credit_id': supplierCreditId,
-          'purchase_order_id': widget.purchaseOrderId,
-          'movement_type': 'CHARGE',
-          'amount': totalCost,
-          'notes': 'Compra a crédito — Entrada #$entryId',
-          'created_by': createdByProfileId,
-        });
+          String supplierCreditId;
+          if (creditResp == null) {
+            final newCredit =
+                await _supabase
+                    .from('supplier_credits')
+                    .insert({
+                      'supplier_id': _selectedSupplierId,
+                      'current_debt': totalCost,
+                      'created_by': createdByProfileId,
+                    })
+                    .select('id')
+                    .single();
+            supplierCreditId = newCredit['id'] as String;
+          } else {
+            supplierCreditId = creditResp['id'] as String;
+            final currentDebt = (creditResp['current_debt'] as num).toDouble();
+            await _supabase
+                .from('supplier_credits')
+                .update({
+                  'current_debt': currentDebt + totalCost,
+                  'updated_at': DateTime.now().toIso8601String(),
+                })
+                .eq('id', supplierCreditId);
+          }
+
+          await _supabase.from('supplier_credit_movements').insert({
+            'supplier_credit_id': supplierCreditId,
+            'purchase_order_id': widget.purchaseOrderId,
+            'movement_type': 'CHARGE',
+            'amount': totalCost,
+            'notes': 'Compra a crédito — Entrada #$entryId',
+            'created_by': createdByProfileId,
+          });
+        }
       }
 
       // 6. ── Actualizar purchase_order si viene de una ─────────────────
       if (widget.purchaseOrderId != null) {
-        // Calcular si todos los items fueron recibidos completamente
         final poItems = await _supabase
             .from('purchase_order_items')
-            .select('quantity_ordered, quantity_received')
+            .select('id, variant_id, quantity_ordered, quantity_received')
             .eq('purchase_order_id', widget.purchaseOrderId!);
 
         bool allReceived = true;
+
         for (final poi in poItems as List) {
+          final poiId = poi['id'] as String;
+          final variantId = poi['variant_id'] as String;
           final ordered = (poi['quantity_ordered'] as num).toDouble();
-          final received = (poi['quantity_received'] as num).toDouble();
+          double received = (poi['quantity_received'] as num).toDouble();
+
+          // Sumar lo que estamos recibiendo ahora para esta variante
+          final sumReceivedNow = _items
+              .where((i) => i.variant.id == variantId)
+              .fold(0.0, (s, i) => s + i.quantity);
+
+          if (sumReceivedNow > 0) {
+            received += sumReceivedNow;
+            await _supabase
+                .from('purchase_order_items')
+                .update({'quantity_received': received})
+                .eq('id', poiId);
+          }
+
           if (received < ordered) {
             allReceived = false;
-            break;
           }
         }
 
@@ -653,33 +707,15 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               'updated_at': DateTime.now().toIso8601String(),
             })
             .eq('id', widget.purchaseOrderId!);
-
-        // Actualizar quantity_received en purchase_order_items
-        for (final item in _items) {
-          await _supabase
-              .from('purchase_order_items')
-              .update({
-                'quantity_received': _supabase.rpc(
-                  'coalesce_add',
-                  params: {
-                    'purchase_order_id': widget.purchaseOrderId,
-                    'variant_id': item.variant.id,
-                    'add_qty': item.quantity,
-                  },
-                ),
-              })
-              .eq('purchase_order_id', widget.purchaseOrderId!)
-              .eq('variant_id', item.variant.id);
-        }
       }
 
       if (mounted) {
         AppSnackbar.show(
           context,
           message:
-              _paymentMode == 'CONTADO'
-                  ? 'Ingreso registrado y pago deducido correctamente'
-                  : 'Ingreso registrado. Deuda con proveedor actualizada.',
+              widget.purchaseOrderId != null
+                  ? 'Recepción registrada. Kardex y Orden actualizados.'
+                  : 'Ingreso manual registrado correctamente.',
           type: SnackbarType.success,
         );
         Navigator.pop(context, true);
@@ -1010,266 +1046,304 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // ── Forma de pago ──────────────────────────────────
-                          _SectionCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const _SectionTitle(
-                                  icon: Icons.payments_rounded,
-                                  title: 'Forma de Pago',
-                                ),
-                                const SizedBox(height: 12),
-
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _PaymentModeButton(
-                                        label: 'Contado',
-                                        icon: Icons.attach_money_rounded,
-                                        selected: _paymentMode == 'CONTADO',
-                                        onTap:
-                                            () => setState(
-                                              () => _paymentMode = 'CONTADO',
-                                            ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: _PaymentModeButton(
-                                        label: 'Crédito',
-                                        icon: Icons.schedule_rounded,
-                                        selected: _paymentMode == 'CREDITO',
-                                        onTap:
-                                            () => setState(
-                                              () => _paymentMode = 'CREDITO',
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                if (_paymentMode == 'CONTADO') ...[
+                          // ── Forma de pago (SOLO SI NO ES ORDEN DE COMPRA) ──
+                          if (widget.purchaseOrderId == null) ...[
+                            _SectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const _SectionTitle(
+                                    icon: Icons.payments_rounded,
+                                    title: 'Forma de Pago',
+                                  ),
                                   const SizedBox(height: 12),
-                                  DropdownButtonFormField<String>(
-                                    initialValue: _selectedAccountId,
-                                    icon: const Icon(Icons.expand_more_rounded),
-                                    decoration: _dropdownDecoration(
-                                      'Cuenta que realizará el pago',
-                                      icon: Icons.account_balance_rounded,
-                                    ),
-                                    items:
-                                        _financialAccounts.map((a) {
-                                          return DropdownMenuItem<String>(
-                                            value: a.id,
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    a.name,
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 14,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  'S/ ${a.balance.toStringAsFixed(2)}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color:
-                                                        a.balance > 0
-                                                            ? AppColors.success
-                                                            : AppColors.danger,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 4,
-                                                        vertical: 1,
+
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _PaymentModeButton(
+                                          label: 'Contado',
+                                          icon: Icons.attach_money_rounded,
+                                          selected: _paymentMode == 'CONTADO',
+                                          onTap:
+                                              () => setState(
+                                                () => _paymentMode = 'CONTADO',
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _PaymentModeButton(
+                                          label: 'Crédito',
+                                          icon: Icons.schedule_rounded,
+                                          selected: _paymentMode == 'CREDITO',
+                                          onTap:
+                                              () => setState(
+                                                () => _paymentMode = 'CREDITO',
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  if (_paymentMode == 'CONTADO') ...[
+                                    const SizedBox(height: 12),
+                                    DropdownButtonFormField<String>(
+                                      initialValue: _selectedAccountId,
+                                      icon: const Icon(
+                                        Icons.expand_more_rounded,
+                                      ),
+                                      decoration: _dropdownDecoration(
+                                        'Cuenta que realizará el pago',
+                                        icon: Icons.account_balance_rounded,
+                                      ),
+                                      items:
+                                          _financialAccounts.map((a) {
+                                            return DropdownMenuItem<String>(
+                                              value: a.id,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      a.name,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
                                                       ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppColors.primary
-                                                        .withValues(alpha: 0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
                                                   ),
-                                                  child: Text(
-                                                    a.type,
-                                                    style: const TextStyle(
-                                                      fontSize: 10,
-                                                      color: AppColors.primary,
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    'S/ ${a.balance.toStringAsFixed(2)}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w700,
+                                                      color:
+                                                          a.balance > 0
+                                                              ? AppColors
+                                                                  .success
+                                                              : AppColors
+                                                                  .danger,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 4,
+                                                          vertical: 1,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary
+                                                          .withValues(
+                                                            alpha: 0.1,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      a.type,
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color:
+                                                            AppColors.primary,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                      onChanged: (v) {
+                                        if (v != null) {
+                                          setState(
+                                            () => _selectedAccountId = v,
+                                          );
+                                          _checkActiveShift(v);
+                                        }
+                                      },
+                                    ),
+
+                                    if (_selectedAccountId != null &&
+                                        _financialAccounts
+                                                .firstWhereOrNull(
+                                                  (a) =>
+                                                      a.id ==
+                                                      _selectedAccountId,
+                                                )
+                                                ?.type
+                                                .toUpperCase() ==
+                                            'CAJA')
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _activeShiftId != null
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons.warning_rounded,
+                                              size: 14,
+                                              color:
+                                                  _activeShiftId != null
+                                                      ? AppColors.success
+                                                      : AppColors.danger,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _activeShiftId != null
+                                                  ? 'Turno de caja abierto'
+                                                  : 'Caja cerrada (Se requiere turno abierto)',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color:
+                                                    _activeShiftId != null
+                                                        ? AppColors.success
+                                                        : AppColors.danger,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    if (_selectedAccountId != null &&
+                                        _items.isNotEmpty)
+                                      Builder(
+                                        builder: (context) {
+                                          final accountData = _financialAccounts
+                                              .firstWhereOrNull(
+                                                (a) =>
+                                                    a.id == _selectedAccountId,
+                                              );
+                                          final balance =
+                                              (accountData?.balance ?? 0.0);
+                                          final total = _items.fold(
+                                            0.0,
+                                            (s, i) => s + i.subtotal,
+                                          );
+                                          if (balance >= total) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Container(
+                                            margin: const EdgeInsets.only(
+                                              top: 8,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.danger
+                                                  .withValues(alpha: 0.08),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: AppColors.danger
+                                                    .withValues(alpha: 0.25),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.warning_amber_rounded,
+                                                  color: AppColors.danger,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Saldo insuficiente. Faltan S/ ${(total - balance).toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppColors.danger,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           );
-                                        }).toList(),
-                                    onChanged: (v) {
-                                      if (v != null) {
-                                        setState(() => _selectedAccountId = v);
-                                        _checkActiveShift(v);
-                                      }
-                                    },
-                                  ),
+                                        },
+                                      ),
+                                  ],
 
-                                  if (_selectedAccountId != null &&
-                                      _financialAccounts
-                                              .firstWhereOrNull(
-                                                (a) =>
-                                                    a.id == _selectedAccountId,
-                                              )
-                                              ?.type
-                                              .toUpperCase() ==
-                                          'CAJA')
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 8),
+                                  if (_paymentMode == 'CREDITO') ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: AppColors.warning.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
                                       child: Row(
                                         children: [
-                                          Icon(
-                                            _activeShiftId != null
-                                                ? Icons.check_circle_rounded
-                                                : Icons.warning_rounded,
-                                            size: 14,
-                                            color:
-                                                _activeShiftId != null
-                                                    ? AppColors.success
-                                                    : AppColors.danger,
+                                          const Icon(
+                                            Icons.info_outline_rounded,
+                                            color: AppColors.warning,
+                                            size: 16,
                                           ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            _activeShiftId != null
-                                                ? 'Turno de caja abierto'
-                                                : 'Caja cerrada (Se requiere turno abierto)',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color:
-                                                  _activeShiftId != null
-                                                      ? AppColors.success
-                                                      : AppColors.danger,
+                                          const SizedBox(width: 8),
+                                          const Expanded(
+                                            child: Text(
+                                              'La deuda se registrará en la cuenta del proveedor. Debes tener un proveedor seleccionado.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.warning,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-
-                                  if (_selectedAccountId != null &&
-                                      _items.isNotEmpty)
-                                    Builder(
-                                      builder: (context) {
-                                        final accountData = _financialAccounts
-                                            .firstWhereOrNull(
-                                              (a) => a.id == _selectedAccountId,
-                                            );
-                                        final balance =
-                                            (accountData?.balance ?? 0.0);
-                                        final total = _items.fold(
-                                          0.0,
-                                          (s, i) => s + i.subtotal,
-                                        );
-                                        if (balance >= total) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return Container(
-                                          margin: const EdgeInsets.only(top: 8),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.danger.withValues(
-                                              alpha: 0.08,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                            border: Border.all(
-                                              color: AppColors.danger
-                                                  .withValues(alpha: 0.25),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.warning_amber_rounded,
-                                                color: AppColors.danger,
-                                                size: 16,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Text(
-                                                  'Saldo insuficiente. Faltan S/ ${(total - balance).toStringAsFixed(2)}',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: AppColors.danger,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
+                                  ],
                                 ],
-
-                                if (_paymentMode == 'CREDITO') ...[
-                                  const SizedBox(height: 10),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.warning.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: AppColors.warning.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.info_outline_rounded,
-                                          color: AppColors.warning,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Expanded(
-                                          child: Text(
-                                            'La deuda se registrará en la cuenta del proveedor. Debes tener un proveedor seleccionado.',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.warning,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                              ),
+                            ),
+                          ] else ...[
+                            _SectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const _SectionTitle(
+                                    icon: Icons.info_outline_rounded,
+                                    title: 'Información Financiera',
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Esta recepción está vinculada a una Orden de Compra.\n'
+                                    'El registro financiero (pago adelantado o deuda a crédito) ya fue generado en la orden original. '
+                                    'Aquí solo se registrará el ingreso físico al Kardex.',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
+                                      height: 1.4,
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                           const SizedBox(height: 16),
 
                           // ── Lista de ítems ─────────────────────────────────
@@ -1354,13 +1428,17 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     leftSub: '$totalVariants items · $totalUnits unidades',
                     rightValue: 'S/ ${totalCost.toStringAsFixed(2)}',
                     buttonLabel:
-                        _paymentMode == 'CONTADO'
-                            ? 'Registrar y Pagar'
-                            : 'Registrar (Crédito)',
+                        widget.purchaseOrderId != null
+                            ? 'Registrar Recepción'
+                            : (_paymentMode == 'CONTADO'
+                                ? 'Registrar y Pagar'
+                                : 'Registrar (Crédito)'),
                     buttonIcon:
-                        _paymentMode == 'CONTADO'
-                            ? Icons.payments_rounded
-                            : Icons.save_rounded,
+                        widget.purchaseOrderId != null
+                            ? Icons.inventory_rounded
+                            : (_paymentMode == 'CONTADO'
+                                ? Icons.payments_rounded
+                                : Icons.save_rounded),
                     enabled: _items.isNotEmpty,
                     onPressed: _saveEntry,
                   ),
@@ -1388,7 +1466,14 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color:
+              (item.product.usesBatches &&
+                      (item.batchNumber == 'DEFAULT' ||
+                          item.batchNumber.trim().isEmpty))
+                  ? AppColors.danger
+                  : AppColors.border,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1418,6 +1503,30 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                   _BatchInfo(
                     batchNumber: item.batchNumber,
                     expiryDate: item.expiryDate,
+                  ),
+                ],
+                // Mensaje de advertencia si falta lote
+                if (item.product.usesBatches &&
+                    (item.batchNumber == 'DEFAULT' ||
+                        item.batchNumber.trim().isEmpty)) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_rounded,
+                        size: 12,
+                        color: AppColors.danger,
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Requiere asignar lote',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 const SizedBox(height: 6),

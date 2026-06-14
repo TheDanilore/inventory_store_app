@@ -379,6 +379,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         prefillSupplierId: po.supplierId,
                         prefillSupplierName: po.supplierName,
                         prefillItems: entryItems,
+                        // PASANDO LOS DATOS DEL COMPROBANTE
+                        prefillDocumentType: po.documentType,
+                        prefillDocumentNumber: po.documentNumber,
+                        prefillDocumentDate:
+                            po.createdAt, // Usamos la fecha de la orden como referencia
                       ),
                 ),
               );
