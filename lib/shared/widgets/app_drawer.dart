@@ -275,6 +275,20 @@ class _AppDrawerState extends State<AppDrawer> {
                             );
                           },
                         ),
+                        _DrawerSubItem(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'Proveedores',
+                          screenType: SuppliersScreen,
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SuppliersScreen(),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -383,24 +397,6 @@ class _AppDrawerState extends State<AppDrawer> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const FinancialAccountsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.local_shipping_outlined,
-                      title: 'Proveedores',
-                      screenType: SuppliersScreen,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SuppliersScreen(),
                           ),
                         );
                       },
