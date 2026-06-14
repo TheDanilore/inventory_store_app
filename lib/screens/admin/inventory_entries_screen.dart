@@ -88,12 +88,10 @@ class InventoryEntriesScreen extends StatefulWidget {
   const InventoryEntriesScreen({super.key});
 
   @override
-  State<InventoryEntriesScreen> createState() =>
-      _InventoryEntriesScreenState();
+  State<InventoryEntriesScreen> createState() => _InventoryEntriesScreenState();
 }
 
-class _InventoryEntriesScreenState
-    extends State<InventoryEntriesScreen> {
+class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   final _supabase = Supabase.instance.client;
 
   List<_EntryModel> _allEntries = [];
