@@ -17,7 +17,7 @@ class DateFilterCalendar extends StatelessWidget {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(), // 🔒 Bloqueado estrictamente hasta el día de hoy
+      lastDate: DateTime.now(), // Bloqueado estrictamente hasta el día de hoy
       initialDateRange: dateRange,
       builder:
           (context, child) => Theme(
