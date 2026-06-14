@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/admin_credits_screen.dart';
-import 'package:inventory_store_app/screens/admin/admin_suppliers_screen.dart';
+import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
+import 'package:inventory_store_app/screens/admin/suppliers_screen.dart';
 import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
 import 'package:inventory_store_app/screens/admin/financial_accounts_screen.dart';
@@ -341,13 +341,13 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.credit_score_rounded,
                           title: 'Créditos',
-                          screenType: AdminCreditsScreen,
+                          screenType: CustomerCreditsScreen,
                           onTap: () {
                             Navigator.pop(context);
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const AdminCreditsScreen(),
+                                builder: (_) => const CustomerCreditsScreen(),
                               ),
                             );
                           },

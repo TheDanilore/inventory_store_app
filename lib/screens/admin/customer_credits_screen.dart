@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/screens/admin/admin_credit_movements_screen.dart';
+import 'package:inventory_store_app/screens/admin/customer_credit_movements_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -72,14 +72,14 @@ class CreditAccountModel {
 
 // ─── PANTALLA PRINCIPAL ───────────────────────────────────────────────────────
 
-class AdminCreditsScreen extends StatefulWidget {
-  const AdminCreditsScreen({super.key});
+class CustomerCreditsScreen extends StatefulWidget {
+  const CustomerCreditsScreen({super.key});
 
   @override
-  State<AdminCreditsScreen> createState() => _AdminCreditsScreenState();
+  State<CustomerCreditsScreen> createState() => _CustomerCreditsScreenState();
 }
 
-class _AdminCreditsScreenState extends State<AdminCreditsScreen>
+class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
     with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   final _searchCtrl = TextEditingController();
@@ -271,7 +271,7 @@ class _AdminCreditsScreenState extends State<AdminCreditsScreen>
                         context,
                         MaterialPageRoute(
                           builder:
-                              (_) => AdminCreditMovementsScreen(
+                              (_) => CreditMovementsScreen(
                                 creditId: account.creditId,
                                 customerName: account.partnerName,
                                 currentDebt: account.currentDebt,

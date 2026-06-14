@@ -187,6 +187,16 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 
   Future<void> _showAddProductSheet() async {
+    // ── CORRECCIÓN AQUÍ: Validar almacén y pasar el ID ──
+    if (_selectedWarehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Por favor, selecciona un almacén de destino primero.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
     final newItem = await showModalBottomSheet<EntryItemUI>(
       context: context,
       isScrollControlled: true,
@@ -195,6 +205,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           (context) => AddEntryProductSheet(
             allProducts: _allProducts,
             variantsByProduct: _variantsByProduct,
+            warehouseId:
+                _selectedWarehouseId, // <-- CORRECCIÓN: Agregado para buscar lotes
           ),
     );
 
@@ -202,7 +214,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       final existingIdx = _items.indexWhere(
         (item) =>
             item.product.id == newItem.product.id &&
-            item.variant.id == newItem.variant.id,
+            item.variant.id == newItem.variant.id &&
+            item.batchNumber ==
+                newItem.batchNumber, // <-- Agregado por si pide lotes distintos
       );
       setState(() {
         if (existingIdx >= 0) {
@@ -982,6 +996,14 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   const SizedBox(height: 4),
                   _VariantChip(label: item.variant.label),
                 ],
+                // ── CORRECCIÓN AQUÍ: Mostrar la información del lote ──
+                if (item.batchNumber != 'DEFAULT') ...[
+                  const SizedBox(height: 4),
+                  _BatchInfo(
+                    batchNumber: item.batchNumber,
+                    expiryDate: item.expiryDate,
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -1217,6 +1239,47 @@ class _VariantChip extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+// ── CORRECCIÓN AQUÍ: Se añadió el widget visual de lotes ──
+class _BatchInfo extends StatelessWidget {
+  final String batchNumber;
+  final DateTime? expiryDate;
+  const _BatchInfo({required this.batchNumber, this.expiryDate});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.tag_rounded, size: 11, color: AppColors.textHint),
+        const SizedBox(width: 2),
+        Text(
+          batchNumber,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textHint,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if (expiryDate != null) ...[
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.calendar_today_rounded,
+            size: 11,
+            color: AppColors.textHint,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            '${expiryDate!.day.toString().padLeft(2, '0')}/${expiryDate!.month.toString().padLeft(2, '0')}/${expiryDate!.year}',
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textHint,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

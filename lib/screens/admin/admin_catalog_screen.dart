@@ -6,7 +6,7 @@ import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/screens/admin/admin_pos_checkout_screen.dart';
+import 'package:inventory_store_app/screens/admin/pos_checkout_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/services/admin/catalog_pdf_generator.dart';
