@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:inventory_store_app/models/product_image_model.dart';
 import 'package:inventory_store_app/models/variant_attribute_value.dart';
 
@@ -8,14 +7,8 @@ class ProductVariantModel {
   final String? sku;
   final String? barcode;
 
-  /// [attributes] — columna JSONB legacy (se eliminará de la BD).
-  /// Mantenida temporalmente para retrocompatibilidad mientras se migra.
-  /// @deprecated — usar [attributeValues] en su lugar.
-  final Map<String, dynamic> attributes;
-
-  /// [attributeValues] — lista estructurada desde las nuevas tablas
+  /// Lista estructurada desde las nuevas tablas
   /// `attributes` + `attribute_values` + `variant_attribute_values`.
-  /// Vacía si el join no fue incluido en la query.
   final List<VariantAttributeValue> attributeValues;
 
   final double? unitCost;
@@ -34,7 +27,6 @@ class ProductVariantModel {
     required this.productId,
     this.sku,
     this.barcode,
-    this.attributes = const {},
     this.attributeValues = const [],
     this.unitCost,
     this.salePrice,
@@ -49,18 +41,10 @@ class ProductVariantModel {
   });
 
   // ── Label legible ───────────────────────────────────────────────────────────
-  /// Prioridad: attributeValues (nuevas tablas) → attributes (legacy JSONB) →
-  /// SKU → fallback genérico.
   String get label {
-    // 1. Nuevas tablas estructuradas
     if (attributeValues.isNotEmpty) {
       return attributeValues.map((av) => av.value).join(' / ');
     }
-    // 2. JSONB legacy (mientras no se migre)
-    if (attributes.isNotEmpty) {
-      return attributes.values.map((v) => v.toString()).join(' / ');
-    }
-    // 3. SKU como fallback
     if (sku != null && sku!.trim().isNotEmpty) return sku!;
     return 'Variante estándar';
   }
@@ -70,12 +54,11 @@ class ProductVariantModel {
     if (attributeValues.isNotEmpty) {
       return {for (final av in attributeValues) av.attributeName: av.value};
     }
-    return attributes.map((k, v) => MapEntry(k, v.toString()));
+    return {};
   }
 
   // ── fromJson ────────────────────────────────────────────────────────────────
   factory ProductVariantModel.fromJson(Map<String, dynamic> json) {
-    // Parsear attributeValues desde el join (si viene)
     List<VariantAttributeValue> parsedAttributeValues = [];
     final rawVav = json['variant_attribute_values'] as List<dynamic>?;
     if (rawVav != null && rawVav.isNotEmpty) {
@@ -94,8 +77,6 @@ class ProductVariantModel {
       productId: json['product_id'] as String? ?? '',
       sku: json['sku'] as String?,
       barcode: json['barcode'] as String?,
-      // Legacy JSONB — seguirá funcionando hasta que se elimine la columna
-      attributes: _parseAttributes(json['attributes']),
       attributeValues: parsedAttributeValues,
       unitCost: (json['unit_cost'] as num?)?.toDouble(),
       salePrice: (json['sale_price'] as num?)?.toDouble(),
@@ -111,20 +92,6 @@ class ProductVariantModel {
       updatedBy: json['updated_by'] as String?,
       images: _parseImages(json['product_images']),
     );
-  }
-
-  static Map<String, dynamic> _parseAttributes(dynamic raw) {
-    if (raw == null) return {};
-    if (raw is String) {
-      try {
-        final decoded = jsonDecode(raw);
-        return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
-      } catch (_) {
-        return {};
-      }
-    }
-    if (raw is Map) return Map<String, dynamic>.from(raw);
-    return {};
   }
 
   static List<ProductImageModel> _parseImages(dynamic raw) {
@@ -145,7 +112,6 @@ class ProductVariantModel {
     'product_id': productId,
     'sku': sku,
     'barcode': barcode,
-    'attributes': attributes, // legacy, se eliminará cuando se migre la BD
     'unit_cost': unitCost,
     'sale_price': salePrice,
     'is_active': isActive,
@@ -164,7 +130,6 @@ class ProductVariantModel {
     String? productId,
     String? sku,
     String? barcode,
-    Map<String, dynamic>? attributes,
     List<VariantAttributeValue>? attributeValues,
     double? unitCost,
     double? salePrice,
@@ -181,7 +146,6 @@ class ProductVariantModel {
     productId: productId ?? this.productId,
     sku: sku ?? this.sku,
     barcode: barcode ?? this.barcode,
-    attributes: attributes ?? this.attributes,
     attributeValues: attributeValues ?? this.attributeValues,
     unitCost: unitCost ?? this.unitCost,
     salePrice: salePrice ?? this.salePrice,

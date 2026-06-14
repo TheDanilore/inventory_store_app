@@ -15,13 +15,11 @@ class ProductsRepository {
   /// - [unit_cost], [barcode] (nuevos campos en la BD)
   /// - [variant_attribute_values] con join a [attribute_values] y [attributes]
   ///   para soporte de la nueva estructura de atributos
-  /// - [attributes] JSONB legacy (se eliminará al migrar la BD)
   static const String _variantSelect = '''
     id,
     product_id,
     sku,
     barcode,
-    attributes,
     unit_cost,
     sale_price,
     wholesale_price,
