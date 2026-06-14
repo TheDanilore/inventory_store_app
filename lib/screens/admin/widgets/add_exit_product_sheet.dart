@@ -122,7 +122,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
       variant: _selectedVariant!,
       selectedBatch: _selectedBatch,
       quantity: finalQty,
-      unitCost: finalUnitCost, // PASAMOS EL COSTO CORRECTO
+      unitCost: finalUnitCost,
     );
 
     Navigator.pop(context, item);
@@ -306,10 +306,8 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                         widget.variantsByProduct[_selectedProduct!.id]?.map((
                           v,
                         ) {
-                          // ── LÓGICA CORREGIDA PARA MOSTRAR COSTO EN EL DROPDOWN ──
                           final double varCost = v.unitCost ?? 0.0;
-                          final double prodCost =
-                              _selectedProduct!.unitCost;
+                          final double prodCost = _selectedProduct!.unitCost;
                           final double displayCost =
                               varCost > 0 ? varCost : prodCost;
 
@@ -329,24 +327,15 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             ],
 
             if (_selectedVariant != null) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'Lote disponible en el Almacén',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
               if (_loadingBatches)
                 const Center(
                   child: Padding(
-                    padding: EdgeInsets.all(8.0),
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
                     child: CircularProgressIndicator(),
                   ),
                 )
-              else if (_availableBatches.isEmpty)
+              else if (_availableBatches.isEmpty) ...[
+                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -361,8 +350,19 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                )
-              else
+                ),
+                // ── AQUÍ SE OCULTA EL SELECTOR DE LOTE SI NO USA LOTES ──
+              ] else if (_selectedProduct?.usesBatches == true) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Lote disponible en el Almacén',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.bg,
@@ -399,6 +399,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                     ),
                   ),
                 ),
+              ],
             ],
 
             if (_selectedBatch != null && _maxAvailable > 0) ...[
