@@ -403,7 +403,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w800),
                       decoration: InputDecoration(
-                        labelText: 'Costo de Referencia (S/)',
+                        labelText: 'Costo Unitario (S/)',
                         labelStyle: const TextStyle(
                           color: AppColors.textSecondary,
                         ),
