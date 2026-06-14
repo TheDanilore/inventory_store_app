@@ -3,8 +3,29 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 enum SnackbarType { success, error, warning, info }
 
+class _SnackbarModel {
+  final String id;
+  final String message;
+  final SnackbarType type;
+  final Color backgroundColor;
+  final IconData iconData;
+  final Duration duration;
+
+  _SnackbarModel({
+    required this.id,
+    required this.message,
+    required this.type,
+    required this.backgroundColor,
+    required this.iconData,
+    required this.duration,
+  });
+}
+
 class AppSnackbar {
-  static OverlayEntry? _currentOverlay;
+  static OverlayEntry? _overlayEntry;
+  static final List<_SnackbarModel> _queue = [];
+  static final GlobalKey<_SnackbarStackWidgetState> _stackKey =
+      GlobalKey<_SnackbarStackWidgetState>();
 
   static void show(
     BuildContext context, {
@@ -13,8 +34,7 @@ class AppSnackbar {
     Color? backgroundColor,
     Duration duration = const Duration(milliseconds: 2500),
   }) {
-    dismiss();
-
+    // Mantenemos tus colores e iconos originales intactos
     final resolvedBackgroundColor =
         backgroundColor ??
         switch (type) {
@@ -30,43 +50,113 @@ class AppSnackbar {
       SnackbarType.info => Icons.info_outline_rounded,
     };
 
-    final overlayState = Overlay.of(context);
-
-    _currentOverlay = OverlayEntry(
-      builder: (context) {
-        return _AnimatedSnackbarWidget(
-          message: message,
-          backgroundColor: resolvedBackgroundColor,
-          iconData: iconData,
-          duration: duration,
-          onDismissed: () => dismiss(),
-        );
-      },
+    final newSnackbar = _SnackbarModel(
+      id: UniqueKey().toString(),
+      message: message,
+      type: type,
+      backgroundColor: resolvedBackgroundColor,
+      iconData: iconData,
+      duration: duration,
     );
 
-    overlayState.insert(_currentOverlay!);
+    // Insertamos al inicio para que la más nueva tome la posición frontal
+    _queue.insert(0, newSnackbar);
+
+    final overlayState = Overlay.of(context);
+
+    if (_overlayEntry == null) {
+      _overlayEntry = OverlayEntry(
+        builder: (context) {
+          return _SnackbarStackWidget(
+            key: _stackKey,
+            items: _queue,
+            onRemove: (id) => _removeItem(id),
+          );
+        },
+      );
+      overlayState.insert(_overlayEntry!);
+    } else {
+      _stackKey.currentState?.refresh();
+    }
+  }
+
+  static void _removeItem(String id) {
+    _queue.removeWhere((element) => element.id == id);
+    if (_queue.isEmpty) {
+      dismiss();
+    } else {
+      _stackKey.currentState?.refresh();
+    }
   }
 
   static void dismiss() {
-    if (_currentOverlay != null && _currentOverlay!.mounted) {
-      _currentOverlay!.remove();
-      _currentOverlay = null;
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove();
+      _overlayEntry = null;
+      _queue.clear();
     }
   }
 }
 
+// Contenedor que usa Positioned tradicional (Garantiza que SIEMPRE aparezca en pantalla)
+class _SnackbarStackWidget extends StatefulWidget {
+  final List<_SnackbarModel> items;
+  final Function(String) onRemove;
+
+  const _SnackbarStackWidget({
+    super.key,
+    required this.items,
+    required this.onRemove,
+  });
+
+  @override
+  State<_SnackbarStackWidget> createState() => _SnackbarStackWidgetState();
+}
+
+class _SnackbarStackWidgetState extends State<_SnackbarStackWidget> {
+  void refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Tomamos máximo 3 para el efecto visual de capas
+    final visibleItems = widget.items.take(3).toList();
+
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 16,
+      left: 16,
+      right: 16,
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          // Renderizamos al revés para que la tarjeta activa (index 0) dibuje encima de las viejas
+          children:
+              visibleItems.reversed.map((item) {
+                final index = visibleItems.indexOf(item);
+                return _AnimatedSnackbarWidget(
+                  key: ValueKey(item.id),
+                  item: item,
+                  index: index,
+                  onDismissed: () => widget.onRemove(item.id),
+                );
+              }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
 class _AnimatedSnackbarWidget extends StatefulWidget {
-  final String message;
-  final Color backgroundColor;
-  final IconData iconData;
-  final Duration duration;
+  final _SnackbarModel item;
+  final int index; // 0 = Frente, 1 = Capa intermedia, 2 = Capa del fondo
   final VoidCallback onDismissed;
 
   const _AnimatedSnackbarWidget({
-    required this.message,
-    required this.backgroundColor,
-    required this.iconData,
-    required this.duration,
+    super.key,
+    required this.item,
+    required this.index,
     required this.onDismissed,
   });
 
@@ -82,7 +172,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   late Animation<Offset> _slideAnimation;
 
   bool _isDismissedBySwipe = false;
-  bool _isBeingPressed = false; // Rastrea si el usuario está tocando la alerta
+  bool _isBeingPressed = false;
 
   @override
   void initState() {
@@ -97,43 +187,46 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
       parent: _controller,
       curve: Curves.easeOut,
     );
-
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
-    _startAutoDismissTimer(widget.duration);
+    _startAutoDismissTimer(widget.item.duration);
   }
 
-  // Configura el temporizador de cierre automático
   void _startAutoDismissTimer(Duration duration) {
-    Future.delayed(duration, () async {
-      // Solo procede si sigue montado, nadie lo arrastró y no está siendo retenido por el dedo
-      if (mounted && !_isDismissedBySwipe && !_isBeingPressed) {
-        await _controller.reverse();
-        widget.onDismissed();
-      }
-    });
+    // Solo la tarjeta del frente descuenta su tiempo de vida de forma automática
+    if (widget.index == 0) {
+      Future.delayed(duration, () async {
+        if (mounted &&
+            !_isDismissedBySwipe &&
+            !_isBeingPressed &&
+            widget.index == 0) {
+          await _controller.reverse();
+          widget.onDismissed();
+        }
+      });
+    }
   }
 
-  // Al presionar el widget, bloqueamos la destrucción automática
+  @override
+  void didUpdateWidget(_AnimatedSnackbarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si la tarjeta superior expira y esta pasa al frente, activa su temporizador automáticamente
+    if (widget.index == 0 && oldWidget.index != 0) {
+      _startAutoDismissTimer(widget.item.duration);
+    }
+  }
+
   void _handleTapDown() {
-    setState(() {
-      _isBeingPressed = true;
-    });
+    if (widget.index == 0) setState(() => _isBeingPressed = true);
   }
 
-  // Al soltar el widget, recalculamos un tiempo extra de cortesía para que se vaya
   void _handleTapUpOrCancel() {
     if (!_isBeingPressed) return;
-
-    setState(() {
-      _isBeingPressed = false;
-    });
-
-    // Le otorgamos 1.5 segundos extras de vida tras soltarlo para que el usuario termine de leer
+    setState(() => _isBeingPressed = false);
     _startAutoDismissTimer(const Duration(milliseconds: 1500));
   }
 
@@ -145,58 +238,79 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: MediaQuery.paddingOf(context).top + 16,
-      left: 16,
-      right: 16,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Material(
-            color: Colors.transparent,
-            child: GestureDetector(
-              onTapDown: (_) => _handleTapDown(),
-              onTapUp: (_) => _handleTapUpOrCancel(),
-              onTapCancel: () => _handleTapUpOrCancel(),
-              child: Dismissible(
-                key: UniqueKey(),
-                direction: DismissDirection.horizontal,
-                onDismissed: (direction) {
-                  _isDismissedBySwipe = true;
-                  widget.onDismissed();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.backgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(widget.iconData, color: Colors.white, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          widget.message,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+    // Ecuaciones de diseño UX/UI en capas (Fondo completo + Efecto 3D de profundidad)
+    final double scale =
+        1.0 - (widget.index * 0.05); // Reduce el tamaño de las capas traseras
+    final double translationY =
+        widget.index * 12.0; // Desplaza verticalmente simulando la pila
+    final double opacity =
+        1.0 - (widget.index * 0.25); // Atenúa las alertas del fondo
+
+    return AnimatedOpacity(
+      opacity: opacity.clamp(0.0, 1.0),
+      duration: const Duration(milliseconds: 250),
+      child: Transform.translate(
+        offset: Offset(0, translationY),
+        child: Transform.scale(
+          scale: scale,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: GestureDetector(
+                onTapDown: (_) => _handleTapDown(),
+                onTapUp: (_) => _handleTapUpOrCancel(),
+                onTapCancel: () => _handleTapUpOrCancel(),
+                child: Dismissible(
+                  key: ValueKey(widget.item.id),
+                  // Solo la tarjeta frontal se puede barrer horizontalmente con el dedo
+                  direction:
+                      widget.index == 0
+                          ? DismissDirection.horizontal
+                          : DismissDirection.none,
+                  onDismissed: (direction) {
+                    _isDismissedBySwipe = true;
+                    widget.onDismissed();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          widget
+                              .item
+                              .backgroundColor, // Tus colores originales intactos
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 12 - (widget.index * 2),
+                          offset: Offset(0, (4 + widget.index) as double),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          widget.item.iconData,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            widget.item.message,
+                            style: const TextStyle(
+                              color: Colors.white, // Tu texto blanco original
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
