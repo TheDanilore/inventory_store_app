@@ -271,7 +271,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                         context,
                         MaterialPageRoute(
                           builder:
-                              (_) => CreditMovementsScreen(
+                              (_) => CustomerCreditMovementsScreen(
                                 creditId: account.creditId,
                                 customerName: account.partnerName,
                                 currentDebt: account.currentDebt,

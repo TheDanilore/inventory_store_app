@@ -6,13 +6,13 @@ import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CreditMovementsScreen extends StatefulWidget {
+class CustomerCreditMovementsScreen extends StatefulWidget {
   final String creditId;
   final String customerName;
   final double currentDebt;
   final double creditLimit;
 
-  const CreditMovementsScreen({
+  const CustomerCreditMovementsScreen({
     super.key,
     required this.creditId,
     required this.customerName,
@@ -21,10 +21,10 @@ class CreditMovementsScreen extends StatefulWidget {
   });
 
   @override
-  State<CreditMovementsScreen> createState() => _CreditMovementsScreenState();
+  State<CustomerCreditMovementsScreen> createState() => _CustomerCreditMovementsScreenState();
 }
 
-class _CreditMovementsScreenState extends State<CreditMovementsScreen> {
+class _CustomerCreditMovementsScreenState extends State<CustomerCreditMovementsScreen> {
   final _supabase = Supabase.instance.client;
 
   bool _isLoading = true;
