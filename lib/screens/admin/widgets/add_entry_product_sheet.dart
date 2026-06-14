@@ -82,8 +82,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _batchCtrl.clear();
       _expiryDate = null;
       _existingBatches = [];
-      // Mostramos el costo del producto como valor por defecto;
-      // se sobreescribirá cuando se seleccione la variante.
       if (val != null) {
         _costCtrl.text = val.unitCost.toStringAsFixed(2);
       } else {
@@ -95,8 +93,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   void _onVariantChanged(ProductVariantModel? val) {
     setState(() {
       _selectedVariant = val;
-      // Siempre actualizamos el costo al seleccionar variante:
-      // usa el unit_cost de la variante si es > 0, si no cae al del producto.
       final cost = _effectiveCost(variant: val, product: _selectedProduct);
       _costCtrl.text = cost.toStringAsFixed(2);
 
@@ -295,28 +291,123 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
             ),
             const SizedBox(height: 24),
 
-            // Selector de producto
-            DropdownButtonFormField<ProductModel>(
-              initialValue: _selectedProduct,
-              isExpanded: true,
-              icon: const Icon(Icons.expand_more_rounded),
-              decoration: _dropdownDecoration('Selecciona el Producto'),
-              items:
-                  widget.allProducts
-                      .map(
-                        (p) => DropdownMenuItem(
-                          value: p,
-                          child: Text(
-                            p.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
+            // ── BUSCADOR DE PRODUCTO (AUTOCOMPLETE) ──
+            const _FieldLabel('Producto'),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Autocomplete<ProductModel>(
+                displayStringForOption: (p) => p.name,
+                optionsBuilder: (textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<ProductModel>.empty();
+                  }
+                  return widget.allProducts.where(
+                    (p) => p.name.toLowerCase().contains(
+                      textEditingValue.text.toLowerCase(),
+                    ),
+                  );
+                },
+                onSelected: _onProductChanged,
+                fieldViewBuilder: (
+                  context,
+                  textEditingController,
+                  focusNode,
+                  onFieldSubmitted,
+                ) {
+                  if (_selectedProduct != null &&
+                      textEditingController.text != _selectedProduct!.name) {
+                    textEditingController.text = _selectedProduct!.name;
+                  }
+                  return TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar producto...',
+                      hintStyle: const TextStyle(
+                        color: AppColors.textHint,
+                        fontSize: 14,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.textHint,
+                      ),
+                      suffixIcon:
+                          _selectedProduct != null
+                              ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear_rounded,
+                                  size: 18,
+                                  color: AppColors.textHint,
+                                ),
+                                onPressed: () {
+                                  textEditingController.clear();
+                                  _onProductChanged(null);
+                                },
+                              )
+                              : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxHeight: 200,
+                          maxWidth: 300,
                         ),
-                      )
-                      .toList(),
-              onChanged: _onProductChanged,
+                        child: ListView.separated(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final p = options.elementAt(index);
+                            String? imgUrl;
+                            if (p.images.isNotEmpty) {
+                              imgUrl =
+                                  p.images
+                                      .firstWhere(
+                                        (img) => img.isMain,
+                                        orElse: () => p.images.first,
+                                      )
+                                      .imageUrl;
+                            }
+                            return ListTile(
+                              leading: _ProductThumbnail(
+                                imageUrl: imgUrl,
+                                size: 36,
+                              ),
+                              title: Text(
+                                p.name,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              onTap: () => onSelected(p),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -430,12 +521,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                   return TextField(
                     controller: textEditingController,
                     focusNode: focusNode,
-                    onChanged: (value) {
-                      _batchCtrl.text = value;
-                    },
+                    onChanged: (value) => _batchCtrl.text = value,
                     decoration: InputDecoration(
                       labelText: 'Nº de Lote (Obligatorio)',
-                      hintText: 'Ej: LOTE-2024-001 o busca uno existente...',
+                      hintText: 'Ej: LOTE-2024-001 o busca uno...',
                       filled: true,
                       fillColor: AppColors.background,
                       prefixIcon: const Icon(
@@ -556,18 +645,15 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 class _FieldLabel extends StatelessWidget {
   final String text;
   const _FieldLabel(this.text);
-
   @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textSecondary,
+    ),
+  );
 }
 
 class _HorizontalStepper extends StatelessWidget {
@@ -671,9 +757,7 @@ class _DatePickerField extends StatelessWidget {
               child: Text(
                 value == null
                     ? label
-                    : 'Vence: ${value!.day.toString().padLeft(2, '0')}/'
-                        '${value!.month.toString().padLeft(2, '0')}/'
-                        '${value!.year}',
+                    : 'Vence: ${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
                 style: TextStyle(
                   color:
                       value == null
@@ -735,8 +819,6 @@ class _QtyButton extends StatelessWidget {
     );
   }
 }
-
-// ─── Helpers de decoración ────────────────────────────────────────────────────
 
 InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
