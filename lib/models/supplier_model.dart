@@ -7,8 +7,6 @@ class SupplierModel {
   final String? email;
   final String? address;
   final bool isActive;
-  final int paymentTermsDays;
-  final double creditLimit;
   final DateTime? createdAt;
 
   SupplierModel({
@@ -20,8 +18,6 @@ class SupplierModel {
     this.email,
     this.address,
     this.isActive = true,
-    this.paymentTermsDays = 30,
-    this.creditLimit = 0.0,
     this.createdAt,
   });
 
@@ -35,8 +31,6 @@ class SupplierModel {
       email: json['email'] as String?,
       address: json['address'] as String?,
       isActive: json['is_active'] as bool? ?? true,
-      paymentTermsDays: json['payment_terms_days'] as int? ?? 30,
-      creditLimit: (json['credit_limit'] as num?)?.toDouble() ?? 0.0,
       createdAt:
           json['created_at'] != null
               ? DateTime.parse(json['created_at'] as String)
@@ -54,9 +48,6 @@ class SupplierModel {
       'email': email,
       'address': address,
       'is_active': isActive,
-      'payment_terms_days': paymentTermsDays,
-      'credit_limit': creditLimit,
-      'created_at': createdAt?.toIso8601String(),
     };
   }
 
@@ -69,8 +60,6 @@ class SupplierModel {
     String? email,
     String? address,
     bool? isActive,
-    int? paymentTermsDays,
-    double? creditLimit,
     DateTime? createdAt,
   }) {
     return SupplierModel(
@@ -82,8 +71,6 @@ class SupplierModel {
       email: email ?? this.email,
       address: address ?? this.address,
       isActive: isActive ?? this.isActive,
-      paymentTermsDays: paymentTermsDays ?? this.paymentTermsDays,
-      creditLimit: creditLimit ?? this.creditLimit,
       createdAt: createdAt ?? this.createdAt,
     );
   }

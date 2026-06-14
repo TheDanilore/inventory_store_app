@@ -78,10 +78,12 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Future<void> _fetchData() async {
     try {
       final results = await Future.wait([
-        // AQUÍ extraemos directamente el plazo y límite del proveedor
+        // ── MAGIA AQUÍ: Traemos el proveedor junto con su estado de crédito ──
         _supabase
             .from('suppliers')
-            .select('id, name, payment_terms_days, credit_limit')
+            .select(
+              'id, name, supplier_credits(credit_limit, current_debt, payment_terms_days, is_active)',
+            )
             .eq('is_active', true)
             .order('name'),
         _supabase.from('warehouses').select('id, name').eq('is_active', true),
@@ -122,7 +124,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   (w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w)),
                 )
                 .toList();
-
         _financialAccounts =
             (results[2] as List)
                 .map(
@@ -132,7 +133,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 )
                 .toList();
 
-        // Ordenar cajas primero
+        // Ordenar cajas primero, luego por nombre
         _financialAccounts.sort((a, b) {
           final isCajaA = a.type.toUpperCase() == 'CAJA';
           final isCajaB = b.type.toUpperCase() == 'CAJA';
@@ -165,6 +166,14 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  // Extrae de forma segura los datos de crédito del JOIN
+  Map<String, dynamic>? _getCreditData(Map<String, dynamic> supplier) {
+    final cred = supplier['supplier_credits'];
+    if (cred is List && cred.isNotEmpty) return cred.first;
+    if (cred is Map<String, dynamic>) return cred;
+    return null;
   }
 
   Future<void> _checkActiveShift(String accountId) async {
@@ -317,7 +326,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
     final totalAmount = _items.fold(0.0, (sum, item) => sum + item.subtotal);
 
-    // Validación Financiera Contado
+    // ── VALIDACIÓN CONTADO ──
     if (_paymentStatus == 'PAID' && _selectedAccountId != null) {
       final accountData = _financialAccounts.firstWhereOrNull(
         (a) => a.id == _selectedAccountId,
@@ -340,38 +349,36 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       }
     }
 
-    // ── VALIDACIÓN DEL LÍMITE DE CRÉDITO DEL PROVEEDOR ──
+    // ── VALIDACIÓN DE CRÉDITO DEL PROVEEDOR ──
     if (_paymentMode == 'CREDITO') {
       final sup = _suppliersList.firstWhere(
         (s) => s['id'] == _selectedSupplierId,
       );
-      final creditLimit = (sup['credit_limit'] as num?)?.toDouble() ?? 0.0;
+      final creditData = _getCreditData(sup);
 
-      if (creditLimit > 0) {
-        final creditResp =
-            await _supabase
-                .from('supplier_credits')
-                .select('current_debt')
-                .eq('supplier_id', _selectedSupplierId!)
-                .maybeSingle();
+      if (creditData == null || creditData['is_active'] == false) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Este proveedor no tiene una línea de crédito activa configurada.',
+          type: SnackbarType.error,
+        );
+        return;
+      }
 
-        final currentDebt =
-            creditResp != null
-                ? (creditResp['current_debt'] as num).toDouble()
-                : 0.0;
+      final creditLimit =
+          (creditData['credit_limit'] as num?)?.toDouble() ?? 0.0;
+      final currentDebt =
+          (creditData['current_debt'] as num?)?.toDouble() ?? 0.0;
 
-        if ((currentDebt + totalAmount) > creditLimit) {
-          if (mounted) {
-            AppSnackbar.show(
-              context,
-              message:
-                  'Esta orden excede el límite de crédito configurado.\nDeuda actual: S/ ${currentDebt.toStringAsFixed(2)}\nLímite: S/ ${creditLimit.toStringAsFixed(2)}',
-              type: SnackbarType.error,
-            );
-          }
-
-          return;
-        }
+      if ((currentDebt + totalAmount) > creditLimit) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Esta orden excede el límite de crédito.\nDeuda actual: S/ ${currentDebt.toStringAsFixed(2)}\nLímite: S/ ${creditLimit.toStringAsFixed(2)}',
+          type: SnackbarType.error,
+        );
+        return;
       }
     }
 
@@ -447,7 +454,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
         final accountData = _financialAccounts.firstWhere(
           (a) => a.id == _selectedAccountId,
         );
-
         await _supabase.from('account_movements').insert({
           'account_id': _selectedAccountId,
           'movement_type': 'EXPENSE',
@@ -458,7 +464,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           'created_by': profileId,
           'shift_id': _activeShiftId,
         });
-
         await _supabase
             .from('financial_accounts')
             .update({'balance': accountData.balance - totalAmount})
@@ -466,38 +471,22 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       }
       // 4. Finanzas: Compra a Crédito
       else if (_paymentMode == 'CREDITO') {
-        var creditResp =
+        final creditResp =
             await _supabase
                 .from('supplier_credits')
                 .select('id, current_debt')
                 .eq('supplier_id', _selectedSupplierId!)
-                .maybeSingle();
-        String supplierCreditId;
+                .single();
+        final supplierCreditId = creditResp['id'] as String;
 
-        if (creditResp == null) {
-          final newCredit =
-              await _supabase
-                  .from('supplier_credits')
-                  .insert({
-                    'supplier_id': _selectedSupplierId,
-                    'current_debt': totalAmount,
-                    'created_by': profileId,
-                  })
-                  .select('id')
-                  .single();
-          supplierCreditId = newCredit['id'] as String;
-        } else {
-          supplierCreditId = creditResp['id'] as String;
-          await _supabase
-              .from('supplier_credits')
-              .update({
-                'current_debt':
-                    (creditResp['current_debt'] as num).toDouble() +
-                    totalAmount,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', supplierCreditId);
-        }
+        await _supabase
+            .from('supplier_credits')
+            .update({
+              'current_debt':
+                  (creditResp['current_debt'] as num).toDouble() + totalAmount,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', supplierCreditId);
 
         await _supabase.from('supplier_credit_movements').insert({
           'supplier_credit_id': supplierCreditId,
@@ -605,17 +594,21 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     if (v != null) {
                                       setState(() {
                                         _selectedSupplierId = v;
-                                        // ── CÁLCULO DE FECHA DE VENCIMIENTO SEGÚN PROVEEDOR ──
                                         final sup = _suppliersList.firstWhere(
                                           (s) => s['id'] == v,
                                         );
+                                        final creditData = _getCreditData(sup);
                                         final terms =
-                                            sup['payment_terms_days'] as int? ??
+                                            creditData?['payment_terms_days']
+                                                as int? ??
                                             0;
                                         if (terms > 0) {
                                           _dueDate = DateTime.now().add(
                                             Duration(days: terms),
                                           );
+                                        } else {
+                                          _dueDate =
+                                              null; // Reiniciar si no tiene crédito/plazo
                                         }
                                       });
                                     }
@@ -652,7 +645,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Fecha de Entrega / Vencimiento
                                 InkWell(
                                   onTap: _pickDueDate,
                                   borderRadius: BorderRadius.circular(12),

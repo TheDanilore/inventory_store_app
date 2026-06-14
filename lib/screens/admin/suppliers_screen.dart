@@ -1,12 +1,32 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+
+// ─── MODELO LOCAL ─────────────────────────────────────────────────────────────
+class SupplierEntity {
+  final String id;
+  final String name;
+  final String? taxId;
+  final String? contactName;
+  final String? phone;
+  final String? email;
+  final String? address;
+  final bool isActive;
+
+  SupplierEntity.fromJson(Map<String, dynamic> json)
+    : id = json['id'] as String,
+      name = json['name'] as String,
+      taxId = json['tax_id'] as String?,
+      contactName = json['contact_name'] as String?,
+      phone = json['phone'] as String?,
+      email = json['email'] as String?,
+      address = json['address'] as String?,
+      isActive = json['is_active'] as bool? ?? true;
+}
 
 // ─── PANTALLA PRINCIPAL ───────────────────────────────────────────────────────
 class SuppliersScreen extends StatefulWidget {
@@ -21,8 +41,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
-  List<SupplierModel> _allSuppliers = [];
-  List<SupplierModel> _filteredSuppliers = [];
+  List<SupplierEntity> _allSuppliers = [];
+  List<SupplierEntity> _filteredSuppliers = [];
   bool _isLoading = true;
 
   static const int _pageSize = 8;
@@ -51,7 +71,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
       final list =
           (response as List)
-              .map((item) => SupplierModel.fromJson(item))
+              .map((item) => SupplierEntity.fromJson(item))
               .toList();
 
       if (mounted) {
@@ -97,7 +117,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     });
   }
 
-  Future<void> _toggleStatus(SupplierModel supplier) async {
+  Future<void> _toggleStatus(SupplierEntity supplier) async {
     try {
       await _supabase
           .from('suppliers')
@@ -126,7 +146,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     }
   }
 
-  void _openSupplierModal([SupplierModel? supplier]) {
+  void _openSupplierModal([SupplierEntity? supplier]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -142,7 +162,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminLayout(
-      title: 'Proveedores',
+      title: 'Directorio de Proveedores',
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openSupplierModal(),
@@ -293,7 +313,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 // ─── WIDGET: Tarjeta de Proveedor ─────────────────────────────────────────────
 
 class _SupplierCard extends StatelessWidget {
-  final SupplierModel supplier;
+  final SupplierEntity supplier;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
 
@@ -389,95 +409,6 @@ class _SupplierCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-
-            // Tarjeta interior con los datos financieros (Crédito)
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color:
-                    supplier.creditLimit > 0
-                        ? Colors.blue.shade50
-                        : AppColors.bg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color:
-                      supplier.creditLimit > 0
-                          ? Colors.blue.shade100
-                          : Colors.transparent,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Límite de Crédito',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        supplier.creditLimit > 0
-                            ? 'S/ ${supplier.creditLimit.toStringAsFixed(2)}'
-                            : 'Al contado',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color:
-                              supplier.creditLimit > 0
-                                  ? Colors.blue.shade800
-                                  : AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        'Plazo Pactado',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 14,
-                            color:
-                                supplier.creditLimit > 0
-                                    ? Colors.blue.shade700
-                                    : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${supplier.paymentTermsDays} días',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  supplier.creditLimit > 0
-                                      ? Colors.blue.shade800
-                                      : AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
 
             // Detalles de contacto si existen
@@ -602,7 +533,7 @@ class _InfoRow extends StatelessWidget {
 // ─── MODAL: Crear / Editar Proveedor ──────────────────────────────────────────
 
 class _SupplierFormModal extends StatefulWidget {
-  final SupplierModel? supplierToEdit;
+  final SupplierEntity? supplierToEdit;
   final VoidCallback onSaved;
 
   const _SupplierFormModal({this.supplierToEdit, required this.onSaved});
@@ -621,8 +552,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _creditLimitCtrl = TextEditingController();
-  final _paymentTermsCtrl = TextEditingController();
 
   bool _isSaving = false;
 
@@ -639,11 +568,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
       _phoneCtrl.text = s.phone ?? '';
       _emailCtrl.text = s.email ?? '';
       _addressCtrl.text = s.address ?? '';
-      _creditLimitCtrl.text = s.creditLimit.toStringAsFixed(2);
-      _paymentTermsCtrl.text = s.paymentTermsDays.toString();
-    } else {
-      _creditLimitCtrl.text = '0.00';
-      _paymentTermsCtrl.text = '30';
     }
   }
 
@@ -655,8 +579,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _addressCtrl.dispose();
-    _creditLimitCtrl.dispose();
-    _paymentTermsCtrl.dispose();
     super.dispose();
   }
 
@@ -665,9 +587,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
 
     setState(() => _isSaving = true);
     try {
-      final limitVal = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
-      final termsVal = int.tryParse(_paymentTermsCtrl.text.trim()) ?? 30;
-
       final data = {
         'name': _nameCtrl.text.trim(),
         'tax_id':
@@ -678,8 +597,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
         'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
         'address':
             _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
-        'credit_limit': limitVal,
-        'payment_terms_days': termsVal,
       };
 
       if (_isEditing) {
@@ -767,15 +684,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
               ),
               const SizedBox(height: 20),
 
-              // ── Datos Generales ──
-              const Text(
-                'Datos Generales',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.teal,
-                ),
-              ),
-              const SizedBox(height: 12),
               _buildTextField(
                 controller: _nameCtrl,
                 label: 'Nombre o Razón Social *',
@@ -821,54 +729,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
                 icon: Icons.location_on_rounded,
               ),
 
-              const Divider(height: 32),
-
-              // ── Condiciones de Crédito ──
-              const Text(
-                'Condiciones Comerciales',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _creditLimitCtrl,
-                      label: 'Límite de Crédito (S/)',
-                      icon: Icons.account_balance_wallet_rounded,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d+\.?\d{0,2}'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _paymentTermsCtrl,
-                      label: 'Plazo (Días)',
-                      icon: Icons.calendar_today_rounded,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                  ),
-                ],
-              ),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Text(
-                  'Si no te ofrecen crédito, deja el límite en 0.00.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-              ),
-
               const SizedBox(height: 12),
 
               ElevatedButton(
@@ -912,7 +772,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
     required IconData icon,
     String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -920,7 +779,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
         controller: controller,
         validator: validator,
         keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(
