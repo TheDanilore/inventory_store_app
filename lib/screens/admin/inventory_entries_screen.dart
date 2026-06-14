@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -201,26 +202,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     });
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: _dateRange,
-      builder:
-          (context, child) => Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(primary: AppColors.primary),
-            ),
-            child: child!,
-          ),
-    );
-    if (picked != null) {
-      setState(() => _dateRange = picked);
-      _applyFilters();
-    }
-  }
-
   Future<List<_EntryItemDetail>> _loadItems(String entryId) async {
     final resp = await _supabase
         .from('inventory_entry_items')
@@ -332,9 +313,12 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _DateRangeButton(
+                        DateFilterCalendar(
                           dateRange: _dateRange,
-                          onTap: _pickDateRange,
+                          onDateRangeSelected: (picked) {
+                            setState(() => _dateRange = picked);
+                            _applyFilters();
+                          },
                           onClear: () {
                             setState(() => _dateRange = null);
                             _applyFilters();
@@ -388,7 +372,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
                   child: Text(
                     'Mostrando ${start + 1}–$end de ${_filtered.length}',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
                       color: AppColors.textSecondary,
                     ),
@@ -528,7 +512,7 @@ class _EntryCard extends StatelessWidget {
                         ),
                         Text(
                           fmt.format(entry.createdAt.toLocal()),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,
                           ),
@@ -549,7 +533,7 @@ class _EntryCard extends StatelessWidget {
                       ),
                       Text(
                         '${entry.itemCount} producto${entry.itemCount != 1 ? 's' : ''}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textSecondary,
                         ),
@@ -665,7 +649,7 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                             ),
                             Text(
                               fmt.format(entry.createdAt.toLocal()),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
@@ -686,7 +670,7 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                           ),
                           Text(
                             entry.warehouseName ?? 'Sin almacén',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.textSecondary,
                             ),
@@ -736,7 +720,7 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                                           ),
                                           Text(
                                             '${item.variantAttrs} · Lote: ${item.batchNumber}',
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontSize: 11,
                                               color: AppColors.textSecondary,
                                             ),
@@ -744,7 +728,7 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                                           if (item.expiryDate != null)
                                             Text(
                                               'Vence: ${DateFormat('dd/MM/yyyy').format(item.expiryDate!)}',
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                 fontSize: 10,
                                                 color: AppColors.warning,
                                               ),
@@ -765,7 +749,7 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                                         ),
                                         Text(
                                           'S/ ${item.unitCost.toStringAsFixed(2)} c/u',
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 11,
                                             color: AppColors.textSecondary,
                                           ),
@@ -868,7 +852,7 @@ class _SearchField extends StatelessWidget {
     onChanged: onChanged,
     decoration: InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       prefixIcon: const Icon(Icons.search_rounded, size: 20),
       suffixIcon:
           controller.text.isNotEmpty
@@ -887,60 +871,6 @@ class _SearchField extends StatelessWidget {
       fillColor: AppColors.surface,
     ),
   );
-}
-
-class _DateRangeButton extends StatelessWidget {
-  final DateTimeRange? dateRange;
-  final VoidCallback onTap;
-  final VoidCallback onClear;
-  const _DateRangeButton({
-    required this.dateRange,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasDate = dateRange != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-        decoration: BoxDecoration(
-          color:
-              hasDate
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border:
-              hasDate
-                  ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
-                  : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.date_range_rounded,
-              size: 18,
-              color: hasDate ? AppColors.primary : AppColors.textSecondary,
-            ),
-            if (hasDate) ...[
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: onClear,
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _Pill extends StatelessWidget {
@@ -1036,7 +966,7 @@ class _EmptyState extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           message,
-          style: TextStyle(
+          style: const TextStyle(
             color: AppColors.textSecondary,
             fontSize: 14,
             fontWeight: FontWeight.w500,

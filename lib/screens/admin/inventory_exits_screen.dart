@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
+import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -180,26 +181,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     });
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: _dateRange,
-      builder:
-          (context, child) => Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(primary: AppColors.danger),
-            ),
-            child: child!,
-          ),
-    );
-    if (picked != null) {
-      setState(() => _dateRange = picked);
-      _applyFilters();
-    }
-  }
-
   Future<List<_ExitItemModel>> _loadItems(String exitId) async {
     final resp = await _supabase
         .from('inventory_exit_items')
@@ -308,9 +289,12 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _DateRangeButton(
+                    DateFilterCalendar(
                       dateRange: _dateRange,
-                      onTap: _pickDateRange,
+                      onDateRangeSelected: (picked) {
+                        setState(() => _dateRange = picked);
+                        _applyFilters();
+                      },
                       onClear: () {
                         setState(() => _dateRange = null);
                         _applyFilters();
@@ -904,60 +888,6 @@ class _SearchField extends StatelessWidget {
       fillColor: AppColors.surface,
     ),
   );
-}
-
-class _DateRangeButton extends StatelessWidget {
-  final DateTimeRange? dateRange;
-  final VoidCallback onTap;
-  final VoidCallback onClear;
-  const _DateRangeButton({
-    required this.dateRange,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasDate = dateRange != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-        decoration: BoxDecoration(
-          color:
-              hasDate
-                  ? AppColors.danger.withValues(alpha: 0.1)
-                  : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border:
-              hasDate
-                  ? Border.all(color: AppColors.danger.withValues(alpha: 0.3))
-                  : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.date_range_rounded,
-              size: 18,
-              color: hasDate ? AppColors.danger : AppColors.textSecondary,
-            ),
-            if (hasDate) ...[
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: onClear,
-                child: const Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: AppColors.danger,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _Pill extends StatelessWidget {
