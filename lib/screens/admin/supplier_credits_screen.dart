@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/screens/admin/supplier_credit_movements_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -228,6 +229,31 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                   ),
                   const Divider(height: 20),
 
+                  // ── INICIO LÍNEAS NUEVAS ──
+                  ListTile(
+                    leading: const Icon(
+                      Icons.history_rounded,
+                      color: Colors.blue,
+                    ),
+                    title: const Text('Ver historial de movimientos'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => SupplierCreditMovementsScreen(
+                                creditId: account.creditId,
+                                supplierName: account.supplierName,
+                                currentDebt: account.currentDebt,
+                                creditLimit: account.creditLimit,
+                              ),
+                        ),
+                      ).then((_) => _fetchAccounts());
+                    },
+                  ),
+
+                  // ── FIN LÍNEAS NUEVAS ──
                   if (account.isActive && account.currentDebt > 0)
                     ListTile(
                       leading: const Icon(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
+import 'package:inventory_store_app/screens/admin/supplier_credits_screen.dart';
 import 'package:inventory_store_app/screens/admin/suppliers_screen.dart';
 import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
@@ -256,6 +257,20 @@ class _AppDrawerState extends State<AppDrawer> {
                               MaterialPageRoute(
                                 builder:
                                     (_) => const InventoryEntriesListScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos de proveedores',
+                          screenType: SupplierCreditsScreen,
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SupplierCreditsScreen(),
                               ),
                             );
                           },
