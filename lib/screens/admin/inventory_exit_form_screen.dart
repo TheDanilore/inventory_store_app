@@ -83,13 +83,15 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             .select('*, product_images(*)')
             .eq('is_active', true)
             .eq('stock_control', true)
-            .neq('product_type', 'service'),
+            .neq('product_type', 'service')
+            .order('name'),
         _supabase
             .from('product_variants')
             .select(
-              'id, product_id, sku, attributes, product_images(*), unit_cost, is_active',
+              'id, product_id, sku, attributes, product_images(*), sale_price, unit_cost, is_active',
             )
-            .eq('is_active', true),
+            .eq('is_active', true)
+            .order('created_at', ascending: true),
       ]);
 
       if (!mounted) return;
