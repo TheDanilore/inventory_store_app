@@ -733,7 +733,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           'movement_type': 'CHARGE',
           'amount': totalFinal,
           'payment_method': 'CRÉDITO',
-          'notes': 'Cargo por venta POS',
+          'notes': 'Cargo por venta POS Pedido #$orderId',
           'created_by': currentProfileId,
         });
       }
