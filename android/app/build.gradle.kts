@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // BORRA O COMENTA la línea antigua de kotlin-android
@@ -5,11 +8,27 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// LECTURA AUTOMÁTICA DE TU ARCHIVO KEY.PROPERTIES
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 
 android {
     namespace = "com.example.inventory_store_app"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
+
+    // CONFIGURACIÓN DE TU FIRMA OFICIAL DE PRODUCCIÓN (THEDANILORE)
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -34,9 +53,8 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // SE REEMPLAZÓ LA CLAVE DE DEBUG POR TU NUEVA FIRMA OFICIAL DE RELEASE
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
