@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart'; // Importa la clase ExitItemUI
+import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -75,7 +75,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
           .select()
           .eq('variant_id', variantId)
           .eq('warehouse_id', widget.warehouseId)
-          .gt('available_quantity', 0) // ¡SOLO TRAE LOS QUE TIENEN STOCK!
+          .gt('available_quantity', 0)
           .order('expiry_date', ascending: true, nullsFirst: false)
           .order('created_at', ascending: true);
 
@@ -98,6 +98,67 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
     return (_selectedBatch!['available_quantity'] as num).toDouble();
   }
 
+  Future<void> _mostrarDialogoCantidadModal() async {
+    if (_maxAvailable <= 0) return;
+
+    final qtyCtrl = TextEditingController(text: _quantity.toStringAsFixed(0));
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text(
+              'Cantidad a retirar',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: TextField(
+              controller: qtyCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ), 
+                onPressed: () {
+                  final newQty = double.tryParse(qtyCtrl.text.trim());
+                  if (newQty != null && newQty > 0) {
+                    setState(() {
+                      _quantity =
+                          newQty > _maxAvailable ? _maxAvailable : newQty;
+                    });
+                  }
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text(
+                  'Guardar',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+    qtyCtrl.dispose();
+  }
+
   void _onSave() {
     if (_selectedProduct == null || _selectedVariant == null) return;
     if (_selectedBatch == null || _maxAvailable <= 0) {
@@ -109,10 +170,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
       return;
     }
 
-    // Aseguramos que la cantidad no supere el stock real del lote seleccionado
     final finalQty = _quantity > _maxAvailable ? _maxAvailable : _quantity;
-
-    // ── LÓGICA CORREGIDA DE COSTO UNITARIO (Evita nulos y ceros) ──
     final double vCost = _selectedVariant!.unitCost ?? 0.0;
     final double pCost = _selectedProduct!.unitCost;
     final double finalUnitCost = vCost > 0 ? vCost : pCost;
@@ -131,11 +189,39 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final availableVariants =
+        _selectedProduct == null
+            ? const <ProductVariantModel>[]
+            : (widget.variantsByProduct[_selectedProduct!.id] ?? []);
+
+    // Obtener imagen actual
+    String? currentImageUrl;
+    if (_selectedVariant?.images.isNotEmpty == true) {
+      currentImageUrl = _selectedVariant!.images.first.imageUrl;
+    } else if (_selectedProduct?.images.isNotEmpty == true) {
+      currentImageUrl =
+          _selectedProduct!.images
+              .firstWhere(
+                (img) => img.isMain,
+                orElse: () => _selectedProduct!.images.first,
+              )
+              .imageUrl;
+    } else if (_selectedProduct?.primaryImageUrl != null) {
+      currentImageUrl = _selectedProduct!.primaryImageUrl;
+    }
+
+    // Calcular costo a mostrar
+    double displayCost = 0.0;
+    if (_selectedProduct != null) {
+      final double varCost = _selectedVariant?.unitCost ?? 0.0;
+      displayCost = varCost > 0 ? varCost : _selectedProduct!.unitCost;
+    }
+
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, bottomInset + 24),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -144,11 +230,11 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
           children: [
             Center(
               child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 14),
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -157,25 +243,20 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
               'Agregar a la Salida',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
                 color: AppColors.textPrimary,
+                letterSpacing: -0.3,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // ── PRODUCTO ──
-            const Text(
-              'Producto',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
+            // ── BUSCADOR DE PRODUCTO ──
+            const _FieldLabel('Producto'),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
@@ -208,12 +289,12 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                     decoration: InputDecoration(
                       hintText: 'Buscar producto...',
                       hintStyle: const TextStyle(
-                        color: AppColors.textMuted,
+                        color: AppColors.textHint,
                         fontSize: 14,
                       ),
                       prefixIcon: const Icon(
                         Icons.search_rounded,
-                        color: AppColors.textMuted,
+                        color: AppColors.textHint,
                       ),
                       suffixIcon:
                           _selectedProduct != null
@@ -278,54 +359,78 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                 },
               ),
             ),
+            const SizedBox(height: 16),
 
-            if (_selectedProduct != null) ...[
+            // ── VARIANTE ──
+            if (availableVariants.isNotEmpty) ...[
+              DropdownButtonFormField<ProductVariantModel>(
+                initialValue: _selectedVariant,
+                isExpanded: true,
+                icon: const Icon(Icons.expand_more_rounded),
+                decoration: _dropdownDecoration(
+                  'Selecciona la Variante (Obligatorio)',
+                ),
+                items:
+                    availableVariants.map((v) {
+                      return DropdownMenuItem(
+                        value: v,
+                        child: Text(
+                          v.label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                onChanged: _onVariantSelected,
+              ),
               const SizedBox(height: 16),
-              const Text(
-                'Variante',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.bg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<ProductVariantModel>(
-                    value: _selectedVariant,
-                    isExpanded: true,
-                    hint: const Text('Seleccione una variante'),
-                    items:
-                        widget.variantsByProduct[_selectedProduct!.id]?.map((
-                          v,
-                        ) {
-                          final double varCost = v.unitCost ?? 0.0;
-                          final double prodCost = _selectedProduct!.unitCost;
-                          final double displayCost =
-                              varCost > 0 ? varCost : prodCost;
-
-                          return DropdownMenuItem(
-                            value: v,
-                            child: Text(
-                              '${v.label} (Costo: S/ ${displayCost.toStringAsFixed(2)})',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          );
-                        }).toList() ??
-                        [],
-                    onChanged: _onVariantSelected,
-                  ),
-                ),
-              ),
             ],
 
+            // ── IMAGEN Y COSTO (SOLO LECTURA) ──
+            if (_selectedProduct != null) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _ProductThumbnail(imageUrl: currentImageUrl, size: 64),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      readOnly: true,
+                      controller: TextEditingController(
+                        text: displayCost.toStringAsFixed(2),
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      decoration: InputDecoration(
+                        labelText: 'Costo de Referencia (S/)',
+                        labelStyle: const TextStyle(
+                          color: AppColors.textSecondary,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.background,
+                        prefixText: 'S/ ',
+                        prefixStyle: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // ── LOTE Y STOCK ──
             if (_selectedVariant != null) ...[
               if (_loadingBatches)
                 const Center(
@@ -335,7 +440,6 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                   ),
                 )
               else if (_availableBatches.isEmpty) ...[
-                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -351,133 +455,96 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                     ),
                   ),
                 ),
-                // ── AQUÍ SE OCULTA EL SELECTOR DE LOTE SI NO USA LOTES ──
+                const SizedBox(height: 20),
               ] else if (_selectedProduct?.usesBatches == true) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Lote disponible en el Almacén',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                DropdownButtonFormField<Map<String, dynamic>>(
+                  initialValue: _selectedBatch,
+                  isExpanded: true,
+                  icon: const Icon(Icons.expand_more_rounded),
+                  decoration: _dropdownDecoration(
+                    'Lote disponible en el Almacén',
                   ),
+                  items:
+                      _availableBatches.map((b) {
+                        final qty = (b['available_quantity'] as num)
+                            .toStringAsFixed(0);
+                        return DropdownMenuItem(
+                          value: b,
+                          child: Text(
+                            '${b['batch_number']} (Stock: $qty)',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedBatch = val;
+                      _quantity = 1;
+                    });
+                  },
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.bg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<Map<String, dynamic>>(
-                      value: _selectedBatch,
-                      isExpanded: true,
-                      items:
-                          _availableBatches.map((b) {
-                            final qty = (b['available_quantity'] as num)
-                                .toStringAsFixed(0);
-                            return DropdownMenuItem(
-                              value: b,
-                              child: Text(
-                                '${b['batch_number']} (Stock: $qty)',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedBatch = val;
-                          _quantity = 1;
-                        });
-                      },
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 20),
               ],
             ],
 
+            // ── CANTIDAD ──
             if (_selectedBatch != null && _maxAvailable > 0) ...[
-              const SizedBox(height: 20),
-              const Text(
-                'Cantidad a retirar',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
+              const _FieldLabel('Cantidad a retirar'),
+              const SizedBox(height: 8),
+              _HorizontalStepper(
+                value: _quantity.toInt(),
+                onAdd:
+                    _quantity < _maxAvailable
+                        ? () => setState(() => _quantity++)
+                        : null,
+                onRemove:
+                    _quantity > 1 ? () => setState(() => _quantity--) : null,
+                onTapValue: _mostrarDialogoCantidadModal,
               ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.bg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    _QtyButton(
-                      icon: Icons.remove_rounded,
-                      enabled: _quantity > 1,
-                      onTap: () => setState(() => _quantity--),
-                    ),
-                    Expanded(
-                      child: Text(
-                        '${_quantity.toInt()}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    _QtyButton(
-                      icon: Icons.add_rounded,
-                      enabled: _quantity < _maxAvailable,
-                      onTap: () => setState(() => _quantity++),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Center(
                 child: Text(
                   'Máximo disponible: ${_maxAvailable.toInt()}',
                   style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
 
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed:
-                  (_selectedProduct != null &&
-                          _selectedVariant != null &&
-                          _selectedBatch != null &&
-                          _maxAvailable > 0)
-                      ? _onSave
-                      : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.danger,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            // ── BOTÓN GUARDAR ──
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed:
+                    (_selectedProduct != null &&
+                            _selectedVariant != null &&
+                            _selectedBatch != null &&
+                            _maxAvailable > 0)
+                        ? _onSave
+                        : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Agregar a la lista',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                child: const Text(
+                  'Agregar a la lista',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ],
@@ -487,37 +554,75 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   }
 }
 
-class _ProductThumbnail extends StatelessWidget {
-  final String? imageUrl;
-  final double size;
-  const _ProductThumbnail({this.imageUrl, this.size = 56});
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textSecondary,
+    ),
+  );
+}
+
+class _HorizontalStepper extends StatelessWidget {
+  final int value;
+  final VoidCallback? onAdd;
+  final VoidCallback? onRemove;
+  final VoidCallback onTapValue;
+  const _HorizontalStepper({
+    required this.value,
+    this.onAdd,
+    this.onRemove,
+    required this.onTapValue,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(7),
-        child:
-            imageUrl != null
-                ? CachedNetworkImage(
-                  imageUrl: imageUrl!,
-                  fit: BoxFit.cover,
-                  errorWidget:
-                      (c, u, e) =>
-                          const Icon(Icons.image_not_supported, size: 20),
-                )
-                : const Icon(
-                  Icons.inventory_2_rounded,
-                  color: AppColors.textHint,
-                  size: 20,
+      child: Row(
+        children: [
+          _QtyButton(
+            icon: Icons.remove_rounded,
+            enabled: onRemove != null,
+            onTap: onRemove ?? () {},
+          ),
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: onTapValue,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    value.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
+              ),
+            ),
+          ),
+          _QtyButton(
+            icon: Icons.add_rounded,
+            enabled: onAdd != null,
+            onTap: onAdd ?? () {},
+          ),
+        ],
       ),
     );
   }
@@ -542,14 +647,81 @@ class _QtyButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: enabled ? AppColors.dangerLight : const Color(0xFFF1F5F9),
+          color:
+              enabled
+                  ? AppColors.danger.withValues(alpha: 0.1)
+                  : const Color(0xFFF1F5F9),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           icon,
-          color: enabled ? AppColors.danger : AppColors.textMuted,
+          color: enabled ? AppColors.danger : AppColors.danger.withValues(alpha: 0.5),
           size: 22,
         ),
+      ),
+    );
+  }
+}
+
+InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
+  return InputDecoration(
+    labelText: label,
+    labelStyle: const TextStyle(color: AppColors.textSecondary),
+    prefixIcon: icon != null ? Icon(icon, color: AppColors.textHint) : null,
+    filled: true,
+    fillColor: AppColors.background,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  );
+}
+
+class _ProductThumbnail extends StatelessWidget {
+  final String? imageUrl;
+  final double size;
+  const _ProductThumbnail({this.imageUrl, this.size = 56});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child:
+            imageUrl != null
+                ? CachedNetworkImage(
+                  imageUrl: imageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder:
+                      (context, url) => const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                  errorWidget:
+                      (context, url, error) => const Icon(
+                        Icons.image_not_supported_rounded,
+                        color: AppColors.textHint,
+                      ),
+                )
+                : const Icon(
+                  Icons.inventory_2_rounded,
+                  color: AppColors.textHint,
+                  size: 28,
+                ),
       ),
     );
   }

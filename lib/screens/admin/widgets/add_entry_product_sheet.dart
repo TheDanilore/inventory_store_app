@@ -44,7 +44,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
           .select('*')
           .eq('variant_id', variantId)
           .eq('warehouse_id', widget.warehouseId!)
-          .gt('available_quantity', 0);
+          .gt('available_quantity', 0)
+          .order('expiry_date', ascending: true, nullsFirst: false)
+          .order('created_at', ascending: true);
 
       if (mounted) {
         setState(() {
