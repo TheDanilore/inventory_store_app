@@ -394,13 +394,13 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.local_shipping_outlined,
                       title: 'Proveedores',
-                      screenType: AdminSuppliersScreen,
+                      screenType: SuppliersScreen,
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const AdminSuppliersScreen(),
+                            builder: (_) => const SuppliersScreen(),
                           ),
                         );
                       },

@@ -1,20 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
-class AdminSuppliersScreen extends StatefulWidget {
-  const AdminSuppliersScreen({super.key});
+// ─── PANTALLA PRINCIPAL ───────────────────────────────────────────────────────
+class SuppliersScreen extends StatefulWidget {
+  const SuppliersScreen({super.key});
 
   @override
-  State<AdminSuppliersScreen> createState() => _AdminSuppliersScreenState();
+  State<SuppliersScreen> createState() => _SuppliersScreenState();
 }
 
-class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
+class _SuppliersScreenState extends State<SuppliersScreen> {
   final _supabase = Supabase.instance.client;
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
@@ -205,7 +207,6 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                     )
                     : Builder(
                       builder: (context) {
-                        // Lógica de paginación
                         final totalPages =
                             (_filteredSuppliers.length / _pageSize).ceil();
                         final safePage =
@@ -222,14 +223,13 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
 
                         return Column(
                           children: [
-                            // Info "Mostrando X de Y"
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                               child: Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   'Mostrando ${pageStart + 1}–$pageEnd de ${_filteredSuppliers.length} proveedores',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 11,
                                     color: AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
@@ -237,7 +237,6 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                                 ),
                               ),
                             ),
-                            // Lista scrolleable
                             Expanded(
                               child: RefreshIndicator(
                                 onRefresh: _fetchSuppliers,
@@ -248,14 +247,11 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                                     16,
                                     16,
                                   ),
-                                  itemCount:
-                                      pageItems
-                                          .length, // Usamos la página actual
+                                  itemCount: pageItems.length,
                                   separatorBuilder:
                                       (_, __) => const SizedBox(height: 12),
                                   itemBuilder: (context, index) {
-                                    final supplier =
-                                        pageItems[index]; // Usamos la página actual
+                                    final supplier = pageItems[index];
                                     return _SupplierCard(
                                       supplier: supplier,
                                       onEdit:
@@ -267,23 +263,22 @@ class _AdminSuppliersScreenState extends State<AdminSuppliersScreen> {
                                 ),
                               ),
                             ),
-                            // Paginación FIJA
                             if (totalPages > 1)
                               Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    8,
-                                    16,
-                                    10,
-                                  ),
-                                  child: AdminPageBlocks(
-                                    currentPage: _currentPage,
-                                    totalPages: totalPages,
-                                    onPageChanged:
-                                        (page) =>
-                                            setState(() => _currentPage = page),
-                                  ),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  10,
                                 ),
+                                child: AdminPageBlocks(
+                                  currentPage: _currentPage,
+                                  totalPages: totalPages,
+                                  onPageChanged:
+                                      (page) =>
+                                          setState(() => _currentPage = page),
+                                ),
+                              ),
                           ],
                         );
                       },
@@ -324,7 +319,6 @@ class _SupplierCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar
                 CircleAvatar(
                   backgroundColor:
                       supplier.isActive
@@ -361,7 +355,7 @@ class _SupplierCard extends StatelessWidget {
                       ),
                       if (supplier.taxId != null && supplier.taxId!.isNotEmpty)
                         Text(
-                          'ID / RUC: ${supplier.taxId}',
+                          'RUC / ID: ${supplier.taxId}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -370,7 +364,6 @@ class _SupplierCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Badge de estado
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -396,6 +389,95 @@ class _SupplierCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+
+            // Tarjeta interior con los datos financieros (Crédito)
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color:
+                    supplier.creditLimit > 0
+                        ? Colors.blue.shade50
+                        : AppColors.bg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color:
+                      supplier.creditLimit > 0
+                          ? Colors.blue.shade100
+                          : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Límite de Crédito',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        supplier.creditLimit > 0
+                            ? 'S/ ${supplier.creditLimit.toStringAsFixed(2)}'
+                            : 'Al contado',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              supplier.creditLimit > 0
+                                  ? Colors.blue.shade800
+                                  : AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'Plazo Pactado',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color:
+                                supplier.creditLimit > 0
+                                    ? Colors.blue.shade700
+                                    : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${supplier.paymentTermsDays} días',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  supplier.creditLimit > 0
+                                      ? Colors.blue.shade800
+                                      : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
 
             // Detalles de contacto si existen
@@ -442,7 +524,6 @@ class _SupplierCard extends StatelessWidget {
             const Divider(height: 1),
             const SizedBox(height: 8),
 
-            // Botones de acción
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -540,6 +621,8 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _creditLimitCtrl = TextEditingController();
+  final _paymentTermsCtrl = TextEditingController();
 
   bool _isSaving = false;
 
@@ -556,6 +639,11 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
       _phoneCtrl.text = s.phone ?? '';
       _emailCtrl.text = s.email ?? '';
       _addressCtrl.text = s.address ?? '';
+      _creditLimitCtrl.text = s.creditLimit.toStringAsFixed(2);
+      _paymentTermsCtrl.text = s.paymentTermsDays.toString();
+    } else {
+      _creditLimitCtrl.text = '0.00';
+      _paymentTermsCtrl.text = '30';
     }
   }
 
@@ -567,6 +655,8 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _addressCtrl.dispose();
+    _creditLimitCtrl.dispose();
+    _paymentTermsCtrl.dispose();
     super.dispose();
   }
 
@@ -575,6 +665,9 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
 
     setState(() => _isSaving = true);
     try {
+      final limitVal = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
+      final termsVal = int.tryParse(_paymentTermsCtrl.text.trim()) ?? 30;
+
       final data = {
         'name': _nameCtrl.text.trim(),
         'tax_id':
@@ -585,6 +678,8 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
         'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
         'address':
             _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+        'credit_limit': limitVal,
+        'payment_terms_days': termsVal,
       };
 
       if (_isEditing) {
@@ -607,7 +702,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
       }
     } on PostgrestException catch (e) {
       if (mounted) {
-        // Manejar el error de UNIQUE constraint (RUC duplicado)
         if (e.code == '23505') {
           AppSnackbar.show(
             context,
@@ -652,7 +746,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Handle arrastrable
               Center(
                 child: Container(
                   width: 36,
@@ -664,7 +757,6 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
                   ),
                 ),
               ),
-
               Text(
                 _isEditing ? 'Editar Proveedor' : 'Nuevo Proveedor',
                 style: const TextStyle(
@@ -675,7 +767,15 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
               ),
               const SizedBox(height: 20),
 
-              // Nombre Comercial
+              // ── Datos Generales ──
+              const Text(
+                'Datos Generales',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.teal,
+                ),
+              ),
+              const SizedBox(height: 12),
               _buildTextField(
                 controller: _nameCtrl,
                 label: 'Nombre o Razón Social *',
@@ -683,45 +783,93 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
                 validator:
                     (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
               ),
-
-              // RUC / Tax ID
               _buildTextField(
                 controller: _taxIdCtrl,
                 label: 'RUC / ID Fiscal (Opcional)',
                 icon: Icons.assignment_ind_rounded,
               ),
-
-              // Contacto
               _buildTextField(
                 controller: _contactCtrl,
                 label: 'Nombre del contacto (Opcional)',
                 icon: Icons.person_rounded,
               ),
 
-              // Teléfono
-              _buildTextField(
-                controller: _phoneCtrl,
-                label: 'Teléfono (Opcional)',
-                icon: Icons.phone_rounded,
-                keyboardType: TextInputType.phone,
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _phoneCtrl,
+                      label: 'Teléfono',
+                      icon: Icons.phone_rounded,
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _emailCtrl,
+                      label: 'Correo electrónico',
+                      icon: Icons.email_rounded,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                  ),
+                ],
               ),
-
-              // Correo
-              _buildTextField(
-                controller: _emailCtrl,
-                label: 'Correo electrónico (Opcional)',
-                icon: Icons.email_rounded,
-                keyboardType: TextInputType.emailAddress,
-              ),
-
-              // Dirección
               _buildTextField(
                 controller: _addressCtrl,
                 label: 'Dirección (Opcional)',
                 icon: Icons.location_on_rounded,
               ),
 
-              const SizedBox(height: 24),
+              const Divider(height: 32),
+
+              // ── Condiciones de Crédito ──
+              const Text(
+                'Condiciones Comerciales',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _creditLimitCtrl,
+                      label: 'Límite de Crédito (S/)',
+                      icon: Icons.account_balance_wallet_rounded,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d+\.?\d{0,2}'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _paymentTermsCtrl,
+                      label: 'Plazo (Días)',
+                      icon: Icons.calendar_today_rounded,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Si no te ofrecen crédito, deja el límite en 0.00.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+              ),
+
+              const SizedBox(height: 12),
 
               ElevatedButton(
                 onPressed: _isSaving ? null : _saveSupplier,
@@ -764,6 +912,7 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
     required IconData icon,
     String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -771,6 +920,7 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
         controller: controller,
         validator: validator,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(
@@ -782,11 +932,11 @@ class _SupplierFormModalState extends State<_SupplierFormModal> {
           fillColor: AppColors.bg,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.border),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.border),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),

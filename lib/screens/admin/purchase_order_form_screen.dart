@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/warehouse_model.dart';
-import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart'; // Para reutilizar EntryItemUI
@@ -45,7 +44,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   String? _activeShiftId;
 
   // ── Catálogos ───────────────────────────────────────────────────────────
-  List<SupplierModel> _suppliers = [];
+  // Usamos una lista de Maps para capturar los nuevos campos financieros de proveedores
+  List<Map<String, dynamic>> _suppliersList = [];
   List<WarehouseModel> _warehouses = [];
   List<FinancialAccountModel> _financialAccounts = [];
   List<ProductModel> _allProducts = [];
@@ -78,9 +78,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Future<void> _fetchData() async {
     try {
       final results = await Future.wait([
+        // AQUÍ extraemos directamente el plazo y límite del proveedor
         _supabase
             .from('suppliers')
-            .select('id, name')
+            .select('id, name, payment_terms_days, credit_limit')
             .eq('is_active', true)
             .order('name'),
         _supabase.from('warehouses').select('id, name').eq('is_active', true),
@@ -114,12 +115,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               .toList();
 
       setState(() {
-        _suppliers =
-            (results[0] as List)
-                .map(
-                  (s) => SupplierModel.fromJson(Map<String, dynamic>.from(s)),
-                )
-                .toList();
+        _suppliersList = List<Map<String, dynamic>>.from(results[0] as List);
         _warehouses =
             (results[1] as List)
                 .map(
@@ -187,7 +183,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 
   Future<void> _showAddProductSheet() async {
-    // ── CORRECCIÓN AQUÍ: Validar almacén y pasar el ID ──
     if (_selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
@@ -205,8 +200,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           (context) => AddEntryProductSheet(
             allProducts: _allProducts,
             variantsByProduct: _variantsByProduct,
-            warehouseId:
-                _selectedWarehouseId, // <-- CORRECCIÓN: Agregado para buscar lotes
+            warehouseId: _selectedWarehouseId,
           ),
     );
 
@@ -215,8 +209,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
         (item) =>
             item.product.id == newItem.product.id &&
             item.variant.id == newItem.variant.id &&
-            item.batchNumber ==
-                newItem.batchNumber, // <-- Agregado por si pide lotes distintos
+            item.batchNumber == newItem.batchNumber,
       );
       setState(() {
         if (existingIdx >= 0) {
@@ -234,8 +227,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       context: context,
       initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 7)),
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      helpText: 'Fecha estimada de entrega',
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      helpText: 'Fecha de Entrega o Vencimiento',
     );
     if (picked != null && mounted) setState(() => _dueDate = picked);
   }
@@ -324,6 +317,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
     final totalAmount = _items.fold(0.0, (sum, item) => sum + item.subtotal);
 
+    // Validación Financiera Contado
     if (_paymentStatus == 'PAID' && _selectedAccountId != null) {
       final accountData = _financialAccounts.firstWhereOrNull(
         (a) => a.id == _selectedAccountId,
@@ -346,6 +340,41 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       }
     }
 
+    // ── VALIDACIÓN DEL LÍMITE DE CRÉDITO DEL PROVEEDOR ──
+    if (_paymentMode == 'CREDITO') {
+      final sup = _suppliersList.firstWhere(
+        (s) => s['id'] == _selectedSupplierId,
+      );
+      final creditLimit = (sup['credit_limit'] as num?)?.toDouble() ?? 0.0;
+
+      if (creditLimit > 0) {
+        final creditResp =
+            await _supabase
+                .from('supplier_credits')
+                .select('current_debt')
+                .eq('supplier_id', _selectedSupplierId!)
+                .maybeSingle();
+
+        final currentDebt =
+            creditResp != null
+                ? (creditResp['current_debt'] as num).toDouble()
+                : 0.0;
+
+        if ((currentDebt + totalAmount) > creditLimit) {
+          if (mounted) {
+            AppSnackbar.show(
+              context,
+              message:
+                  'Esta orden excede el límite de crédito configurado.\nDeuda actual: S/ ${currentDebt.toStringAsFixed(2)}\nLímite: S/ ${creditLimit.toStringAsFixed(2)}',
+              type: SnackbarType.error,
+            );
+          }
+
+          return;
+        }
+      }
+    }
+
     setState(() => _saving = true);
 
     try {
@@ -362,7 +391,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       }
 
       final supplierName =
-          _suppliers.firstWhere((s) => s.id == _selectedSupplierId).name;
+          _suppliersList.firstWhere(
+                (s) => s['id'] == _selectedSupplierId,
+              )['name']
+              as String;
 
       // 1. Insertar purchase_orders
       final poResp =
@@ -556,12 +588,12 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     icon: Icons.local_shipping_rounded,
                                   ),
                                   items:
-                                      _suppliers
+                                      _suppliersList
                                           .map(
                                             (s) => DropdownMenuItem(
-                                              value: s.id,
+                                              value: s['id'] as String,
                                               child: Text(
-                                                s.name,
+                                                s['name'] as String,
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -569,10 +601,25 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                             ),
                                           )
                                           .toList(),
-                                  onChanged:
-                                      (v) => setState(
-                                        () => _selectedSupplierId = v,
-                                      ),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() {
+                                        _selectedSupplierId = v;
+                                        // ── CÁLCULO DE FECHA DE VENCIMIENTO SEGÚN PROVEEDOR ──
+                                        final sup = _suppliersList.firstWhere(
+                                          (s) => s['id'] == v,
+                                        );
+                                        final terms =
+                                            sup['payment_terms_days'] as int? ??
+                                            0;
+                                        if (terms > 0) {
+                                          _dueDate = DateTime.now().add(
+                                            Duration(days: terms),
+                                          );
+                                        }
+                                      });
+                                    }
+                                  },
                                 ),
                                 const SizedBox(height: 12),
 
@@ -605,7 +652,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Fecha de Entrega
+                                // Fecha de Entrega / Vencimiento
                                 InkWell(
                                   onTap: _pickDueDate,
                                   borderRadius: BorderRadius.circular(12),
@@ -628,8 +675,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                         Expanded(
                                           child: Text(
                                             _dueDate != null
-                                                ? 'Entrega estimada: ${DateFormat('dd/MM/yyyy').format(_dueDate!)}'
-                                                : 'Fecha estimada de entrega (Opcional)',
+                                                ? 'Vence / Entrega: ${DateFormat('dd/MM/yyyy').format(_dueDate!)}'
+                                                : 'Fecha de Vencimiento / Entrega (Opcional)',
                                             style: TextStyle(
                                               color:
                                                   _dueDate != null
@@ -996,7 +1043,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   const SizedBox(height: 4),
                   _VariantChip(label: item.variant.label),
                 ],
-                // ── CORRECCIÓN AQUÍ: Mostrar la información del lote ──
                 if (item.batchNumber != 'DEFAULT') ...[
                   const SizedBox(height: 4),
                   _BatchInfo(
@@ -1243,7 +1289,6 @@ class _VariantChip extends StatelessWidget {
   }
 }
 
-// ── CORRECCIÓN AQUÍ: Se añadió el widget visual de lotes ──
 class _BatchInfo extends StatelessWidget {
   final String batchNumber;
   final DateTime? expiryDate;
