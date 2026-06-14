@@ -23,6 +23,7 @@ class AppColors {
   static const danger = Color(0xFFEF4444);
   static const dangerLight = Color(0xFFFFE4E6);
   static const success = Color(0xFF10B981);
+  static const successDark = Color(0xFF047857);
   static const successLight = Color(0xFFD1FAE5);
 
   static const orange = Color(0xFFFF6B35);

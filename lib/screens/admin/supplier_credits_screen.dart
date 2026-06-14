@@ -1442,9 +1442,9 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
             ),
             const SizedBox(height: 16),
 
-            // ── NUEVO: Dropdown para seleccionar orden o dejar automático ──
+            // ── NUEVO: Chips para seleccionar orden a pagar ──
             const Text(
-              'Aplicar pago a',
+              'Aplicar pago a:',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -1467,53 +1467,42 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
                 ),
               )
             else
-              DropdownButtonFormField<String?>(
-                initialValue: _selectedOrderId,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.bg,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(
-                      'Automático (Distribuir en deuda antigua)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _OrderChip(
+                      label: 'Automático (Deuda más antigua)',
+                      isSelected: _selectedOrderId == null,
+                      isTotalChip: true,
+                      onTap: () {
+                        setState(() {
+                          _selectedOrderId = null;
+                          _validarEntrada(_amountCtrl.text);
+                        });
+                      },
                     ),
-                  ),
-                  ..._pendingOrders.map((o) {
-                    final pending = _pendingOf(o);
-                    final date = DateFormat(
-                      'dd/MM/yy',
-                    ).format(DateTime.parse(o['created_at']).toLocal());
-                    return DropdownMenuItem<String?>(
-                      value: o['id'],
-                      child: Text(
-                        'Orden #${o['id'].toString().substring(0, 6)} - $date (Deuda: S/ ${pending.toStringAsFixed(2)})',
-                      ),
-                    );
-                  }),
-                ],
-                onChanged: (v) {
-                  setState(() {
-                    _selectedOrderId = v;
-                    _validarEntrada(
-                      _amountCtrl.text,
-                    ); // Re-valida el max amount
-                  });
-                },
+                    const SizedBox(width: 8),
+                    ..._pendingOrders.map((o) {
+                      final pending = _pendingOf(o);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _OrderChip(
+                          label:
+                              'Orden #${o['id'].toString().substring(0, 6)} (Deuda: S/ ${pending.toStringAsFixed(2)})',
+                          isSelected: _selectedOrderId == o['id'],
+                          isTotalChip: false,
+                          onTap: () {
+                            setState(() {
+                              _selectedOrderId = o['id'] as String;
+                              _validarEntrada(_amountCtrl.text);
+                            });
+                          },
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
             const SizedBox(height: 16),
 
@@ -1632,6 +1621,82 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
                         'Registrar Pago',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── WIDGET: CHIP PARA ORDEN ──────────────────────────────────────────────────
+class _OrderChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final bool isTotalChip;
+  final VoidCallback onTap;
+
+  const _OrderChip({
+    required this.label,
+    required this.isSelected,
+    required this.isTotalChip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor;
+    Color borderColor;
+    Color textColor;
+
+    if (isSelected) {
+      bgColor =
+          isTotalChip
+              ? AppColors.success.withValues(alpha: 0.1)
+              : Colors.blue.withValues(alpha: 0.1);
+      borderColor = isTotalChip ? AppColors.success : Colors.blue;
+      textColor = isTotalChip ? AppColors.successDark : Colors.blue.shade800;
+    } else {
+      bgColor = AppColors.bg;
+      borderColor = AppColors.border;
+      textColor = AppColors.textSecondary;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: (isTotalChip ? AppColors.success : Colors.blue)
+                          .withValues(alpha: 0.22),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              Icon(Icons.check_rounded, size: 11, color: textColor),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
             ),
           ],
         ),
