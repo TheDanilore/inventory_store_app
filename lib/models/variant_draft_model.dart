@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
+import 'package:inventory_store_app/models/variant_attribute_value_model.dart';
 
 class VariantDraftModel {
   final String? id;
@@ -73,6 +74,14 @@ class VariantDraftModel {
       isActive: variant.isActive,
     );
   }
+
+  get selectedAttributeValueIds => pendingAttributes.entries
+      .map((e) => VariantAttributeValueModel(
+            attributeValueId: '', // No tenemos el ID aquí, se asignará en backend
+            attributeName: e.key,
+            value: e.value,
+          ))
+      .toList();
 
   // ── Payload para Supabase ───────────────────────────────────────────────────
   Map<String, dynamic> toPayload() {

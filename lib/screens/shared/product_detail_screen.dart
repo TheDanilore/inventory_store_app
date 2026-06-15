@@ -43,8 +43,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _showVariantImage = false;
 
   List<dynamic> _warehouseStocks = [];
-  List<Map<String, dynamic>> _batchesList =
-      []; // <-- NUEVO: Lista de lotes detallados
+  List<Map<String, dynamic>> _batchesList = [];
   List<ProductImageModel> _images = [];
   List<ProductVariantModel> _variants = [];
   List<Map<String, dynamic>> _reviewsList = [];
@@ -53,8 +52,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // Para Decisiones Rápidas
   int _totalSold = 0;
   double _reinvestmentNeeded = 0.0;
-  double _inventoryValue = 0.0; // Valor total del inventario actual
-  double _totalRevenue = 0.0; // Ingresos totales por ventas
+  double _inventoryValue = 0.0;
+  double _totalRevenue = 0.0;
   List<VariantFinancialSummary> _variantSummaries = [];
 
   double _averageRating = 0.0;
@@ -166,14 +165,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _supabase
             .from('warehouse_stock_batches')
             .select(
-              // <-- NUEVO: Agregamos batch_number y expiry_date a la consulta
               'id, available_quantity, variant_id, warehouse_id, batch_number, expiry_date, warehouses(name)',
             )
             .eq('product_id', widget.product.id)
-            .gt(
-              'available_quantity',
-              0,
-            ) // <-- Solo traemos lotes con stock para la UI
+            .gt('available_quantity', 0)
             .order('expiry_date', ascending: true, nullsFirst: false),
         _supabase
             .from('product_images')
@@ -182,10 +177,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             )
             .eq('product_id', widget.product.id)
             .order('display_order', ascending: true),
+        // ACTUALIZACIÓN DE QUERY (Relacional: attributes -> attribute_values -> variant_attribute_values)
         _supabase
             .from('product_variants')
             .select(
-              'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost',
+              'id, product_id, sku, variant_attribute_values(attribute_values(id, value, attributes(name))), product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost',
             )
             .eq('product_id', widget.product.id)
             .eq('is_active', true)
@@ -203,7 +199,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             .eq('product_id', widget.product.id),
       ];
 
-      // Se agrega el inner join para filtrar solo órdenes completadas
       if (widget.isAdmin) {
         queries.add(
           _supabase
@@ -222,7 +217,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       final rawStocks = results[0] as List<dynamic>;
 
-      // AGREGAR LOS LOTES POR ALMACÉN Y VARIANTE PARA LA VISTA RESUMIDA
       final aggregatedStocks = <String, Map<String, dynamic>>{};
       final validBatches = <Map<String, dynamic>>[];
 
@@ -274,15 +268,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       for (final r in fetchedReviews) {
         totalRating += (r['rating'] as num).toDouble();
       }
-      // Parseo de Decisiones Rápidas (Histórico)
+
       int soldUnits = 0;
       double reinvestment = 0.0;
-      double revenue =
-          0.0; // <-- Declarada aquí para que tenga un alcance global en esta función
+      double revenue = 0.0;
 
       if (widget.isAdmin && results.length > 5) {
         final orderItemsData = results[5] as List<dynamic>;
-        // Se elimina la declaración local anterior
         for (final row in orderItemsData) {
           final q = (row['quantity'] as num?)?.toInt() ?? 0;
           final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
@@ -296,7 +288,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       setState(() {
         _warehouseStocks = fetchedStocks;
-        _batchesList = validBatches; // <-- Guardamos los lotes detallados
+        _batchesList = validBatches;
         _images = fetchedImages;
         _variants = fetchedVariants;
         _reviewsList = fetchedReviews;
@@ -308,8 +300,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _reinvestmentNeeded = reinvestment;
         _totalRevenue = revenue;
 
-        // ── Por variante: stock, costo, ingresos, unidades vendidas ─────────
-        // Mapa variant_id → {soldQty, soldCost, soldRevenue}
         final Map<String, Map<String, double>> variantSales = {};
         if (widget.isAdmin && results.length > 5) {
           for (final row in results[5] as List<dynamic>) {
@@ -360,7 +350,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
         _isLoadingExtra = false;
 
-        // AUTO-SELECCIONAR LA PRIMERA VARIANTE CON STOCK
         if (_variants.isNotEmpty && _selectedVariantId == null) {
           ProductVariantModel? firstWithStock;
           for (final v in _variants) {
@@ -379,8 +368,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           _selectedVariantId = firstWithStock.id;
           _selectedAttributes.clear();
-          firstWithStock.attributes.forEach((k, val) {
-            _selectedAttributes[k] = val.toString();
+          firstWithStock.attributeMap.forEach((k, val) {
+            _selectedAttributes[k] = val;
           });
         }
       });
@@ -451,7 +440,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         .toList();
   }
 
-  // <-- NUEVO: Filtra los lotes específicos de la variante seleccionada
+  // Filtra los lotes específicos de la variante seleccionada
   List<Map<String, dynamic>> get _selectedVariantBatchesRows {
     final vid = _selectedVariantIdSafe;
     if (vid == null) return _batchesList;
@@ -461,7 +450,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<String> get _attributeKeys {
     final keys = <String>[];
     for (final v in _variants) {
-      for (final k in v.attributes.keys) {
+      for (final k in v.attributeMap.keys) {
         if (!keys.contains(k)) keys.add(k);
       }
     }
@@ -471,10 +460,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Map<String, List<String>> get _attributeOptions {
     final opts = <String, List<String>>{};
     for (final v in _variants) {
-      v.attributes.forEach((k, val) {
-        final s = val.toString();
+      v.attributeMap.forEach((k, val) {
         opts.putIfAbsent(k, () => []);
-        if (!opts[k]!.contains(s)) opts[k]!.add(s);
+        if (!opts[k]!.contains(val)) opts[k]!.add(val);
       });
     }
     return opts;
@@ -538,13 +526,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   bool _isOptionEnabled(String key, String value) =>
-      _variants.any((v) => v.attributes[key]?.toString() == value);
+      _variants.any((v) => v.attributeMap[key] == value);
 
   ProductVariantModel? _findMatchingVariant(Map<String, String> sel) {
     for (final v in _variants) {
       bool ok = true;
       for (final e in sel.entries) {
-        if (v.attributes[e.key]?.toString() != e.value) {
+        if (v.attributeMap[e.key] != e.value) {
           ok = false;
           break;
         }
@@ -565,7 +553,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       _selectedVariantId = variant.id;
       _selectedAttributes
         ..clear()
-        ..addAll(variant.attributes.map((k, v) => MapEntry(k, v.toString())));
+        ..addAll(variant.attributeMap);
       if (animateGallery) {
         _selectedImageIndex = 0;
         if (_pageController.hasClients) {
@@ -585,9 +573,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     var match = _findMatchingVariant(next);
     if (match == null) {
       try {
-        match = _variants.firstWhere(
-          (v) => v.attributes[key]?.toString() == value,
-        );
+        match = _variants.firstWhere((v) => v.attributeMap[key] == value);
       } catch (_) {
         return;
       }
@@ -962,7 +948,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                                               .trim(),
                                                 });
                                             if (!mounted) return;
-                                            // ignore: use_build_context_synchronously
                                             Navigator.pop(dialogCtx);
                                             _showSnack(
                                               '¡Reseña publicada!',
@@ -1052,9 +1037,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final gallery = _galleryImages;
 
-    // Agrupamos la info de detalles junto con los flags de base de datos
     final Map<String, dynamic> mergedDetails = Map.from(widget.product.details);
-    // Info técnica extraída de los booleanos de BD
     mergedDetails['Control de Stock'] =
         widget.product.stockControl ? 'Sí' : 'No';
     mergedDetails['Usa Lotes'] = widget.product.usesBatches ? 'Sí' : 'No';
@@ -1082,7 +1065,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       : null,
               variantLabelOverride:
                   (_showVariantImage && _selectedVariant != null)
-                      ? _selectedVariant!.attributes.values.join(' - ')
+                      ? _selectedVariant!.attributeMap.values.join(' - ')
                       : null,
               fallbackImageUrl: widget.product.primaryImageUrl,
             ),
@@ -1148,7 +1131,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // COMPONENTE: DECISIONES RÁPIDAS
                 ProductQuickDecisionsCard(
                   totalSold: _totalSold,
                   reinvestmentNeeded: _reinvestmentNeeded,
@@ -1162,7 +1144,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ProductDetailsCard(details: mergedDetails),
               if (mergedDetails.isNotEmpty) const SizedBox(height: 16),
 
-              // ── INGREDIENTES ACTIVOS / COMPONENTES QUÍMICOS ──
               if (_activeIngredients.isNotEmpty) ...[
                 _ActiveIngredientsCard(ingredients: _activeIngredients),
                 const SizedBox(height: 16),
@@ -1174,7 +1155,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               if ((widget.product.description ?? '').trim().isNotEmpty)
                 const SizedBox(height: 16),
 
-              // RESUMEN DE STOCK
               if (widget.isAdmin)
                 ProductAvailabilityCard(
                   isActive: _isActive,
@@ -1190,7 +1170,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               if (widget.isAdmin) const SizedBox(height: 16),
 
-              // <-- NUEVO: TARJETA DETALLADA DE LOTES (Solo visible para Admin si el producto usa lotes) -->
               if (widget.isAdmin && widget.product.usesBatches) ...[
                 ProductBatchesCard(
                   isLoading: _isLoadingExtra,
@@ -1261,7 +1240,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildThumbnailRow(List<ProductVariantModel> thumbs) {
-    // Imagen principal a mostrar en el primer cuadradito
     final firstImg =
         _galleryImages.isNotEmpty
             ? _galleryImages.first.imageUrl
@@ -1271,9 +1249,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       height: 64,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero, // Usa el padding del SliverList padre
+        padding: EdgeInsets.zero,
         children: [
-          // 1. CUADRADITO FIJO (GALERÍA DEL PRODUCTO)
           GestureDetector(
             onTap: () => setState(() => _showVariantImage = false),
             child: Container(
@@ -1296,7 +1273,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         )
                         : null,
               ),
-              // Iconito superpuesto para indicar que es la galería general
               child: Align(
                 alignment: Alignment.bottomRight,
                 child: Container(
@@ -1318,23 +1294,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
 
-          // 2. CUADRADITOS DE VARIANTES
           ...thumbs.map((v) {
-            // Si no tiene imagen, cae por defecto a la principal
             final imgUrl =
                 _variantImageUrl(v) ?? widget.product.primaryImageUrl;
-
-            // Verificamos si es la seleccionada
             final isSelected =
                 _showVariantImage &&
                 (_attributeKeys.length == 1
-                    ? _selectedVariantId ==
-                        v
-                            .id // Coincidencia exacta si es 1 atributo
-                    : _selectedVariantImageUrl ==
-                        _variantImageUrl(
-                          v,
-                        )); // Coincidencia por foto si son múltiples
+                    ? _selectedVariantId == v.id
+                    : _selectedVariantImageUrl == _variantImageUrl(v));
 
             return GestureDetector(
               onTap: () => _selectVariant(v),
@@ -1357,10 +1324,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           )
                           : null,
                 ),
-                // Solo si es de 1 atributo, le ponemos un pequeño texto translúcido
-                // para que sepan qué variante es (ej. "Pikachu")
                 child:
-                    _attributeKeys.length == 1 && v.attributes.isNotEmpty
+                    _attributeKeys.length == 1 && v.attributeMap.isNotEmpty
                         ? Align(
                           alignment: Alignment.bottomCenter,
                           child: Container(
@@ -1377,9 +1342,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                             child: Builder(
                               builder: (context) {
-                                // Tomamos el texto y lo cortamos estrictamente si es muy largo
-                                final fullText =
-                                    v.attributes.values.first.toString();
+                                final fullText = v.attributeMap.values.first;
                                 final displayText =
                                     fullText.length > 8
                                         ? '${fullText.substring(0, 7)}...'
@@ -1474,15 +1437,9 @@ class _GallerySection extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onPageChanged;
   final Widget? wishlistWidget;
-
-  /// If set, this URL is shown on index 0 (variant image override).
   final String? variantImageOverrideUrl;
-
-  /// Texto de la variante a mostrar sobre la imagen principal
   final String? variantLabelOverride;
-
-  /// Imagen de respaldo mientras carga la galería de BD
-  final String? fallbackImageUrl; // <-- NUEVO
+  final String? fallbackImageUrl;
 
   const _GallerySection({
     required this.images,
@@ -1492,18 +1449,16 @@ class _GallerySection extends StatelessWidget {
     this.wishlistWidget,
     this.variantImageOverrideUrl,
     this.variantLabelOverride,
-    this.fallbackImageUrl, // <-- NUEVO
+    this.fallbackImageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Definimos qué URLs se van a mostrar realmente
     final effectiveUrls = <String>[];
     if (variantImageOverrideUrl != null) {
       effectiveUrls.add(variantImageOverrideUrl!);
     } else {
       effectiveUrls.addAll(images.map((img) => img.imageUrl));
-      // Si la galería de BD aún está vacía, usamos la foto de respaldo para que no se vea el ícono
       if (effectiveUrls.isEmpty && fallbackImageUrl != null) {
         effectiveUrls.add(fallbackImageUrl!);
       }
@@ -1534,8 +1489,7 @@ class _GallerySection extends StatelessWidget {
                     MaterialPageRoute(
                       builder:
                           (_) => FullScreenGallery(
-                            imageUrls:
-                                effectiveUrls, // <-- CORRECCIÓN: Pasamos solo las URLs que estamos viendo
+                            imageUrls: effectiveUrls,
                             initialIndex: index,
                           ),
                     ),
@@ -1565,11 +1519,9 @@ class _GallerySection extends StatelessWidget {
           },
         ),
 
-        // Wishlist
         if (wishlistWidget != null)
           Positioned(top: 14, right: 14, child: wishlistWidget!),
 
-        // Etiqueta con el nombre de la variante centrado abajo
         if (variantLabelOverride != null)
           Positioned(
             bottom: 28,
@@ -1600,7 +1552,6 @@ class _GallerySection extends StatelessWidget {
             ),
           ),
 
-        // Expand icon
         if (effectiveUrls.isNotEmpty)
           Positioned(
             bottom: 12,
@@ -1619,7 +1570,6 @@ class _GallerySection extends StatelessWidget {
             ),
           ),
 
-        // Dot indicators
         if (effectiveUrls.length > 1 &&
             effectiveUrls.length <= 8 &&
             variantLabelOverride == null)
@@ -1683,7 +1633,6 @@ class _ProductTopSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Status pill + SKU
         Row(
           children: [
             Container(
@@ -1714,7 +1663,6 @@ class _ProductTopSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        // Name
         Text(
           name,
           style: const TextStyle(
@@ -1726,7 +1674,6 @@ class _ProductTopSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // Rating inline
         if (totalReviews > 0)
           Row(
             children: [
@@ -1790,7 +1737,6 @@ class _PriceSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Main price row
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -1879,8 +1825,6 @@ class _PriceSection extends StatelessWidget {
               ),
           ],
         ),
-
-        // Savings badge
         if (isWholesale) ...[
           const SizedBox(height: 6),
           Container(
@@ -1899,8 +1843,6 @@ class _PriceSection extends StatelessWidget {
             ),
           ),
         ],
-
-        // Wholesale hint
         if (hasWholesale && !isWholesale) ...[
           const SizedBox(height: 8),
           Container(
@@ -1945,7 +1887,6 @@ class _VariantSelector extends StatelessWidget {
   final String Function(String) formatLabel;
   final bool Function(String, String) isOptionEnabled;
   final void Function(String, String) onSelect;
-  // For image-aware chips: map of option value → image url
   final Map<String, String?> variantImageUrls;
   final String? fallbackImageUrl;
 
@@ -1968,7 +1909,6 @@ class _VariantSelector extends StatelessWidget {
           attributeKeys.map((key) {
             final options = attributeOptions[key] ?? [];
             final selected = selectedAttributes[key];
-            // Check if any option in this key has an image
             final hasImages = options.any(
               (opt) => variantImageUrls[opt] != null,
             );
@@ -1978,7 +1918,6 @@ class _VariantSelector extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Label + selected value inline
                   Row(
                     children: [
                       Text(
@@ -2014,7 +1953,6 @@ class _VariantSelector extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   if (hasImages)
-                    // Visual chips with image + label (horizontal scroll)
                     SizedBox(
                       height: 90,
                       child: ListView.separated(
@@ -2064,7 +2002,6 @@ class _VariantSelector extends StatelessWidget {
                                 ),
                                 child: Stack(
                                   children: [
-                                    // Image
                                     Positioned.fill(
                                       child:
                                           imgUrl != null
@@ -2115,7 +2052,6 @@ class _VariantSelector extends StatelessWidget {
                                                 ),
                                               ),
                                     ),
-                                    // Bottom label strip
                                     Positioned(
                                       left: 0,
                                       right: 0,
@@ -2156,7 +2092,6 @@ class _VariantSelector extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    // Selected checkmark
                                     if (isSelected)
                                       Positioned(
                                         top: 5,
@@ -2184,7 +2119,6 @@ class _VariantSelector extends StatelessWidget {
                       ),
                     )
                   else
-                    // Text-only chips (no images)
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -2318,7 +2252,6 @@ class _BottomBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Row(
             children: [
-              // Compact quantity selector
               if (canBuy) ...[
                 Container(
                   decoration: BoxDecoration(
@@ -2357,8 +2290,6 @@ class _BottomBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
               ],
-
-              // Add to cart button — takes remaining width
               Expanded(
                 child: GestureDetector(
                   onTap: canBuy ? onAddToCart : null,
@@ -2690,7 +2621,6 @@ class _ActiveIngredientsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
@@ -2739,11 +2669,8 @@ class _ActiveIngredientsCard extends StatelessWidget {
               ],
             ),
           ),
-
           const Divider(height: 1, indent: 16, endIndent: 16),
           const SizedBox(height: 8),
-
-          // ── Lista de ingredientes ────────────────────────────────────────
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -2775,7 +2702,6 @@ class _ActiveIngredientsCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Bullet ícono
                     Container(
                       width: 28,
                       height: 28,
@@ -2791,8 +2717,6 @@ class _ActiveIngredientsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-
-                    // Nombre + descripción
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2820,8 +2744,6 @@ class _ActiveIngredientsCard extends StatelessWidget {
                         ],
                       ),
                     ),
-
-                    // Concentración (si tiene)
                     if (concText != null) ...[
                       const SizedBox(width: 8),
                       Container(
