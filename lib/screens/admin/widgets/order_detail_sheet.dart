@@ -213,8 +213,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             .select('''
               id, order_id, product_id, variant_id, quantity, unit_cost,
               applied_price, net_profit, created_at,
-              products ( name, uses_batches, unit_cost, product_images(*) ),
-              product_variants ( attributes, sku, unit_cost, product_images(*) )
+              products ( name, uses_batches, unit_cost, product_images(id, image_url, is_main, display_order, variant_id) ),
+              product_variants ( sku, unit_cost, product_images(id, image_url, is_main, display_order), variant_attribute_values(attribute_values(id, value, attributes(id, name))) )
             ''')
             .eq('order_id', widget.order.id),
         _supabase
@@ -2142,7 +2142,7 @@ class OrderDetailStatusSection extends StatelessWidget {
     return OrderDetailSectionCard(
       title: 'Estado del Pedido',
       child: DropdownButtonFormField<String>(
-        value:
+        initialValue:
             options.contains(currentStatus.toUpperCase())
                 ? currentStatus.toUpperCase()
                 : options.first,
