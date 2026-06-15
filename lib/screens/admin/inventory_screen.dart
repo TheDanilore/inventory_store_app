@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element_parameter
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // <-- NUEVO
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -21,11 +22,11 @@ class _BatchModel {
   final String? supplierName;
   final String variantId;
   final String productId;
-  // Enriquecidos desde joins
   final String? productName;
   final String? variantAttrs;
   final String? sku;
-  // Calculados en cliente
+  final bool usesBatches; // <-- NUEVO
+  final String? imageUrl; // <-- NUEVO
   String status;
   int? daysRemaining;
 
@@ -43,35 +44,11 @@ class _BatchModel {
     this.productName,
     this.variantAttrs,
     this.sku,
+    required this.usesBatches,
+    this.imageUrl,
     this.status = 'sin_vencimiento',
     this.daysRemaining,
   });
-
-  factory _BatchModel.fromMap(Map<String, dynamic> m) {
-    final wh = m['warehouses'] as Map<String, dynamic>?;
-    final sup = m['suppliers'] as Map<String, dynamic>?;
-    final prod = m['products'] as Map<String, dynamic>?;
-    final variant = m['product_variants'] as Map<String, dynamic>?;
-    final attrs = Map<String, dynamic>.from(
-      (variant?['attributes'] as Map?) ?? {},
-    );
-    final attrsText = attrs.values.map((e) => '$e').join(' · ');
-    return _BatchModel(
-      id: m['id'] as String,
-      batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
-      expiryDate: m['expiry_date'] as String?,
-      availableQuantity: (m['available_quantity'] as num?)?.toInt() ?? 0,
-      warehouseId: m['warehouse_id'] as String,
-      warehouseName: wh?['name'] as String?,
-      supplierId: m['supplier_id'] as String?,
-      supplierName: sup?['name'] as String?,
-      variantId: m['variant_id'] as String,
-      productId: m['product_id'] as String,
-      productName: prod?['name'] as String?,
-      variantAttrs: attrsText.isNotEmpty ? attrsText : null,
-      sku: variant?['sku'] as String?,
-    );
-  }
 
   void computeExpiryStatus() {
     if (expiryDate == null) {
@@ -111,7 +88,8 @@ class _VariantStockItem {
   final int wholesaleMinQty;
   final String variantId;
   final String? sku;
-  final Map<String, dynamic> attributes;
+  final String attrsText; // <-- NUEVO
+  final String? imageUrl; // <-- NUEVO
   final int reorderPoint;
   final int stock;
   final List<_BatchModel> batches;
@@ -130,7 +108,8 @@ class _VariantStockItem {
     required this.wholesaleMinQty,
     required this.variantId,
     this.sku,
-    required this.attributes,
+    required this.attrsText,
+    this.imageUrl,
     required this.reorderPoint,
     required this.stock,
     required this.batches,
@@ -139,7 +118,6 @@ class _VariantStockItem {
 
   double get profit => salePrice - unitCost;
   double get margin => unitCost > 0 ? (profit / salePrice) * 100 : 0;
-  String get attrsText => attributes.values.map((e) => '$e').join(' · ');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -289,9 +267,11 @@ class _StockTabState extends State<_StockTab>
           id, name, sale_price, unit_cost, wholesale_price, wholesale_min_quantity,
           uses_batches, stock_control, product_type,
           categories(name),
+          product_images(image_url, is_main, variant_id),
           product_variants!inner(
-            id, sku, attributes, sale_price, unit_cost, wholesale_price,
+            id, sku, sale_price, unit_cost, wholesale_price,
             wholesale_min_quantity, reorder_point, is_active,
+            variant_attribute_values(attribute_values(value)),
             warehouse_stock_batches(
               id, variant_id, product_id, available_quantity, expiry_date,
               batch_number, warehouse_id, supplier_id,
@@ -322,16 +302,74 @@ class _StockTabState extends State<_StockTab>
       final int prodWholesaleMinQty =
           (prod['wholesale_min_quantity'] as int?) ?? 1;
 
+      final imagesList = prod['product_images'] as List<dynamic>? ?? [];
+
       for (final rawVariant in (prod['product_variants'] as List? ?? [])) {
         final variant = rawVariant as Map<String, dynamic>;
+        final variantId = variant['id'] as String;
+
+        // Extraer atributos relacionales
+        final vavList =
+            variant['variant_attribute_values'] as List<dynamic>? ?? [];
+        final List<String> attrValues = [];
+        for (var vav in vavList) {
+          final av = vav['attribute_values'] as Map<String, dynamic>?;
+          if (av != null && av['value'] != null) {
+            attrValues.add(av['value'].toString());
+          }
+        }
+        final attrsText = attrValues.join(' · ');
+
+        // Determinar imagen
+        String? finalImageUrl;
+        if (imagesList.isNotEmpty) {
+          final variantImage = imagesList
+              .cast<Map<String, dynamic>>()
+              .firstWhere(
+                (img) => img['variant_id'] == variantId,
+                orElse: () => <String, dynamic>{},
+              );
+          if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+            finalImageUrl = variantImage['image_url'] as String;
+          } else {
+            final mainImage = imagesList
+                .cast<Map<String, dynamic>>()
+                .firstWhere(
+                  (img) => img['is_main'] == true,
+                  orElse:
+                      () =>
+                          imagesList.isNotEmpty
+                              ? imagesList.first as Map<String, dynamic>
+                              : <String, dynamic>{},
+                );
+            finalImageUrl = mainImage['image_url'] as String?;
+          }
+        }
 
         final batches =
-            ((variant['warehouse_stock_batches'] as List?) ?? [])
-                .map(
-                  (b) =>
-                      _BatchModel.fromMap(Map<String, dynamic>.from(b as Map)),
-                )
-                .toList();
+            ((variant['warehouse_stock_batches'] as List?) ?? []).map((b) {
+              final m = Map<String, dynamic>.from(b as Map);
+              final wh = m['warehouses'] as Map<String, dynamic>?;
+              final sup = m['suppliers'] as Map<String, dynamic>?;
+              return _BatchModel(
+                id: m['id'] as String,
+                batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
+                expiryDate: m['expiry_date'] as String?,
+                availableQuantity:
+                    (m['available_quantity'] as num?)?.toInt() ?? 0,
+                warehouseId: m['warehouse_id'] as String,
+                warehouseName: wh?['name'] as String?,
+                supplierId: m['supplier_id'] as String?,
+                supplierName: sup?['name'] as String?,
+                variantId: variantId,
+                productId: prod['id'] as String,
+                productName: prod['name'] as String,
+                variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+                sku: variant['sku'] as String?,
+                usesBatches: usesBatches,
+                imageUrl: finalImageUrl,
+              );
+            }).toList();
 
         int stock = 0;
         if (stockControl) {
@@ -364,11 +402,10 @@ class _StockTabState extends State<_StockTab>
             salePrice: variantSalePrice,
             wholesalePrice: variantWholesalePrice,
             wholesaleMinQty: variantWholesaleMinQty,
-            variantId: variant['id'] as String,
+            variantId: variantId,
             sku: variant['sku'] as String?,
-            attributes: Map<String, dynamic>.from(
-              (variant['attributes'] as Map?) ?? {},
-            ),
+            attrsText: attrsText.isNotEmpty ? attrsText : 'Única',
+            imageUrl: finalImageUrl,
             reorderPoint: reorderPoint,
             stock: stock,
             batches: batches,
@@ -423,7 +460,6 @@ class _StockTabState extends State<_StockTab>
         final lowStockCount = allItems.where((i) => i.isLowStock).length;
         final totalVariants = allItems.length;
 
-        // Paginación en cliente (ya tenemos todo cargado para las métricas)
         final totalPages =
             filteredItems.isEmpty
                 ? 1
@@ -496,7 +532,6 @@ class _StockTabState extends State<_StockTab>
               ),
             ),
 
-            // ── Info de paginación ─────────────────────────────────────
             if (!isLoading && filteredItems.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
@@ -513,7 +548,6 @@ class _StockTabState extends State<_StockTab>
                 ),
               ),
 
-            // ── Lista (scrolleable) ────────────────────────────────────
             Expanded(
               child:
                   isLoading
@@ -535,13 +569,12 @@ class _StockTabState extends State<_StockTab>
                           physics: const AlwaysScrollableScrollPhysics(),
                           itemCount: items.length,
                           separatorBuilder:
-                              (_, __) => const SizedBox(height: 10),
+                              (_, _) => const SizedBox(height: 10),
                           itemBuilder: (_, i) => _StockItemCard(item: items[i]),
                         ),
                       ),
             ),
 
-            // ── Paginación FIJA ────────────────────────────────────────
             if (!isLoading && totalPages > 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
@@ -575,7 +608,6 @@ class _StockItemCard extends StatelessWidget {
       stockColor = AppColors.success;
     }
 
-    // Porcentaje de stock respecto al reorder * 3 como "saludable"
     final double stockRatio =
         item.stockControl && item.reorderPoint > 0
             ? (item.stock / (item.reorderPoint * 4)).clamp(0.0, 1.0)
@@ -607,6 +639,57 @@ class _StockItemCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── CACHED IMAGE ─────────────────────────────────────
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child:
+                        item.imageUrl != null && item.imageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl: item.imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey.shade50,
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey.shade50,
+                                    child: Icon(
+                                      Icons.broken_image_outlined,
+                                      size: 20,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                            )
+                            : Container(
+                              color: Colors.grey.shade50,
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                size: 22,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
                 // ── Stock badge ──────────────────────────────────────
                 _StockBadge(
                   stock: item.stock,
@@ -647,7 +730,9 @@ class _StockItemCard extends StatelessWidget {
                       Text(
                         [
                           item.category,
-                          if (item.attrsText.isNotEmpty) item.attrsText,
+                          if (item.attrsText.isNotEmpty &&
+                              item.attrsText != 'Única')
+                            item.attrsText,
                           if (item.sku != null && item.sku!.isNotEmpty)
                             'SKU: ${item.sku}',
                         ].join(' · '),
@@ -721,7 +806,6 @@ class _StockItemCard extends StatelessWidget {
             ),
           ),
 
-          // ── Barra de stock ────────────────────────────────────────────
           if (item.stockControl)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
@@ -741,11 +825,9 @@ class _StockItemCard extends StatelessWidget {
               ),
             ),
 
-          // ── Lotes (si aplica) ─────────────────────────────────────────
           if (item.usesBatches && item.batches.isNotEmpty)
             _BatchMiniList(batches: item.batches),
 
-          // ── Footer ────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
             child: Row(
@@ -892,7 +974,9 @@ class _BatchMiniList extends StatelessWidget {
                     ),
                     const SizedBox(width: 7),
                     Text(
-                      'Lote ${b.batchNumber}',
+                      b.batchNumber == 'DEFAULT'
+                          ? 'Sin lote'
+                          : 'Lote ${b.batchNumber}',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -988,26 +1072,22 @@ class _BatchesTabState extends State<_BatchesTab>
   }
 
   Future<List<_BatchModel>> _loadBatches() async {
-    // 1. Definimos la consulta base SOLO con los select y los filtros (.gt)
-    // NO agregamos el .order() todavía.
     var baseQuery = _supabase
         .from('warehouse_stock_batches')
         .select('''
           id, batch_number, expiry_date, available_quantity,
           variant_id, warehouse_id, product_id, supplier_id,
-          products!inner(id, name, uses_batches),
-          product_variants(id, sku, attributes),
+          products!inner(id, name, uses_batches, product_images(image_url, is_main, variant_id)),
+          product_variants(id, sku, variant_attribute_values(attribute_values(value))),
           warehouses(name),
           suppliers(name)
         ''')
         .gt('available_quantity', 0);
 
-    // 2. Aplicamos el filtro de búsqueda dinámico si es necesario
     if (_searchText.isNotEmpty) {
       baseQuery = baseQuery.ilike('batch_number', '%$_searchText%');
     }
 
-    // 3. AHORA aplicamos el modificador .order() y ejecutamos el await
     final response = await baseQuery.order(
       'expiry_date',
       ascending: true,
@@ -1020,22 +1100,85 @@ class _BatchesTabState extends State<_BatchesTab>
               (raw) =>
                   ((raw['products'] as Map?)?['uses_batches'] as bool?) == true,
             )
-            .map(
-              (b) => _BatchModel.fromMap(Map<String, dynamic>.from(b as Map)),
-            )
+            .map((b) {
+              final m = Map<String, dynamic>.from(b as Map);
+              final prod = m['products'] as Map<String, dynamic>?;
+              final variant = m['product_variants'] as Map<String, dynamic>?;
+              final variantId = m['variant_id'] as String;
+              final usesBatches = prod?['uses_batches'] == true;
+
+              String? finalImageUrl;
+              final imagesList =
+                  prod?['product_images'] as List<dynamic>? ?? [];
+              if (imagesList.isNotEmpty) {
+                final variantImage = imagesList
+                    .cast<Map<String, dynamic>>()
+                    .firstWhere(
+                      (img) => img['variant_id'] == variantId,
+                      orElse: () => <String, dynamic>{},
+                    );
+                if (variantImage.isNotEmpty &&
+                    variantImage['image_url'] != null) {
+                  finalImageUrl = variantImage['image_url'] as String;
+                } else {
+                  final mainImage = imagesList
+                      .cast<Map<String, dynamic>>()
+                      .firstWhere(
+                        (img) => img['is_main'] == true,
+                        orElse:
+                            () =>
+                                imagesList.isNotEmpty
+                                    ? imagesList.first as Map<String, dynamic>
+                                    : <String, dynamic>{},
+                      );
+                  finalImageUrl = mainImage['image_url'] as String?;
+                }
+              }
+
+              final vavList =
+                  variant?['variant_attribute_values'] as List<dynamic>? ?? [];
+              final List<String> attrValues = [];
+              for (var vav in vavList) {
+                final av = vav['attribute_values'] as Map<String, dynamic>?;
+                if (av != null && av['value'] != null) {
+                  attrValues.add(av['value'].toString());
+                }
+              }
+              final attrsText = attrValues.join(' · ');
+
+              final wh = m['warehouses'] as Map<String, dynamic>?;
+              final sup = m['suppliers'] as Map<String, dynamic>?;
+
+              return _BatchModel(
+                id: m['id'] as String,
+                batchNumber: m['batch_number'] as String? ?? 'DEFAULT',
+                expiryDate: m['expiry_date'] as String?,
+                availableQuantity:
+                    (m['available_quantity'] as num?)?.toInt() ?? 0,
+                warehouseId: m['warehouse_id'] as String,
+                warehouseName: wh?['name'] as String?,
+                supplierId: m['supplier_id'] as String?,
+                supplierName: sup?['name'] as String?,
+                variantId: variantId,
+                productId: m['product_id'] as String,
+                productName: prod?['name'] as String?,
+                variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+                sku: variant?['sku'] as String?,
+                usesBatches: usesBatches,
+                imageUrl: finalImageUrl,
+              );
+            })
             .toList();
 
     for (final b in allRaw) {
       b.computeExpiryStatus();
     }
 
-    // Actualizar conteos globales
     _countVencido = allRaw.where((b) => b.status == 'vencido').length;
     _countCritico = allRaw.where((b) => b.status == 'critico').length;
     _countProximo = allRaw.where((b) => b.status == 'proximo').length;
     _countNormal = allRaw.where((b) => b.status == 'normal').length;
 
-    // Filtrar por estado en cliente
     final filtered =
         _filterStatus == 'Todos'
             ? allRaw
@@ -1069,7 +1212,6 @@ class _BatchesTabState extends State<_BatchesTab>
         final allFiltered = snapshot.data ?? [];
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-        // Paginación en cliente sobre la lista ya filtrada por estado
         final totalPages =
             allFiltered.isEmpty ? 1 : (allFiltered.length / _pageSize).ceil();
         final safePage = _currentPage >= totalPages ? 0 : _currentPage;
@@ -1161,7 +1303,6 @@ class _BatchesTabState extends State<_BatchesTab>
               ),
             ),
 
-            // ── Info paginación ──────────────────────────────────────────
             if (!isLoading && allFiltered.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
@@ -1178,7 +1319,6 @@ class _BatchesTabState extends State<_BatchesTab>
                 ),
               ),
 
-            // ── Lista (scrolleable) ──────────────────────────────────────
             Expanded(
               child:
                   isLoading
@@ -1200,14 +1340,13 @@ class _BatchesTabState extends State<_BatchesTab>
                           physics: const AlwaysScrollableScrollPhysics(),
                           itemCount: pageBatches.length,
                           separatorBuilder:
-                              (_, __) => const SizedBox(height: 10),
+                              (_, _) => const SizedBox(height: 10),
                           itemBuilder:
                               (_, i) => _BatchCard(batch: pageBatches[i]),
                         ),
                       ),
             ),
 
-            // ── Paginación FIJA ──────────────────────────────────────────
             if (!isLoading && totalPages > 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
@@ -1298,6 +1437,55 @@ class _BatchCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child:
+                        batch.imageUrl != null && batch.imageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl: batch.imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey.shade50,
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey.shade50,
+                                    child: Icon(
+                                      Icons.broken_image_outlined,
+                                      size: 20,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                            )
+                            : Container(
+                              color: Colors.grey.shade50,
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                size: 22,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1317,7 +1505,8 @@ class _BatchCard extends StatelessWidget {
                       Text(
                         [
                           if (batch.variantAttrs != null &&
-                              batch.variantAttrs!.isNotEmpty)
+                              batch.variantAttrs!.isNotEmpty &&
+                              batch.variantAttrs != 'Única')
                             batch.variantAttrs!,
                           if (batch.sku != null && batch.sku!.isNotEmpty)
                             'SKU: ${batch.sku}',
@@ -1373,7 +1562,10 @@ class _BatchCard extends StatelessWidget {
               children: [
                 _DetailPill(
                   icon: Icons.numbers_rounded,
-                  label: 'Lote: ${batch.batchNumber}',
+                  label:
+                      batch.batchNumber == 'DEFAULT'
+                          ? 'Sin lote'
+                          : 'Lote: ${batch.batchNumber}',
                 ),
                 _DetailPill(
                   icon: Icons.inventory_2_rounded,
@@ -1404,7 +1596,6 @@ class _BatchCard extends StatelessWidget {
 // WIDGETS AUXILIARES
 // ══════════════════════════════════════════════════════════════════════════════
 
-/// Tarjeta de métrica con icono y valor destacado
 class _MetricCard extends StatelessWidget {
   final String label;
   final String value;
@@ -1476,7 +1667,6 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-/// Campo de búsqueda reutilizable
 class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -1519,7 +1709,6 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// Chip de estado para filtrar lotes
 class _StatusChip extends StatelessWidget {
   final String label;
   final int count;
@@ -1581,7 +1770,6 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-/// Dropdown de categorías
 class _CategoryDropdown extends StatelessWidget {
   final List<String> categories;
   final String selected;
@@ -1628,7 +1816,6 @@ class _CategoryDropdown extends StatelessWidget {
   }
 }
 
-/// Etiqueta de precio
 class _PriceTag extends StatelessWidget {
   final String label;
   final String value;
@@ -1673,7 +1860,6 @@ class _PriceTag extends StatelessWidget {
   }
 }
 
-/// Pill de detalle con icono
 class _DetailPill extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1711,7 +1897,6 @@ class _DetailPill extends StatelessWidget {
   }
 }
 
-/// Badge pequeño inline
 class _Badge extends StatelessWidget {
   final String label;
   final Color color;
@@ -1748,7 +1933,6 @@ class _Badge extends StatelessWidget {
   }
 }
 
-/// Estado vacío
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
