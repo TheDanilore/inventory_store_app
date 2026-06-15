@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/variant_draft_model.dart';
+import 'package:inventory_store_app/screens/admin/widgets/attribute_search_dialog.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class VariantDraftCard extends StatefulWidget {
@@ -24,7 +25,8 @@ class VariantDraftCard extends StatefulWidget {
 }
 
 class _VariantDraftCardState extends State<VariantDraftCard> {
-  final List<_AttributeControllers> _attributeRows = [];
+  // Ahora usamos una lista de objetos en lugar de controladores de texto libres
+  final List<_AttributeSelection> _selectedAttributes = [];
 
   @override
   void initState() {
@@ -34,61 +36,78 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
   void _parseInitialAttributes() {
     widget.draft.pendingAttributes.forEach((key, value) {
-      final keyCtrl = TextEditingController(text: key);
-      final valueCtrl = TextEditingController(text: value);
-      keyCtrl.addListener(_synchronizeToDraft);
-      valueCtrl.addListener(_synchronizeToDraft);
-
-      _attributeRows.add(
-        _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),
-      );
+      _selectedAttributes.add(_AttributeSelection(key: key, value: value));
     });
   }
 
-  void _addAttributeRow({
-    String key = '',
-    String value = '',
-    bool sync = true,
-  }) {
-    final keyCtrl = TextEditingController(text: key);
-    final valueCtrl = TextEditingController(text: value);
-    keyCtrl.addListener(_synchronizeToDraft);
-    valueCtrl.addListener(_synchronizeToDraft);
-
+  void _addAttributeRow() {
     setState(() {
-      _attributeRows.add(
-        _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),
-      );
+      _selectedAttributes.add(_AttributeSelection(key: '', value: ''));
     });
-    if (sync) _synchronizeToDraft();
+    _synchronizeToDraft();
   }
 
   void _removeAttributeRow(int index) {
     setState(() {
-      _attributeRows[index].dispose();
-      _attributeRows.removeAt(index);
+      _selectedAttributes.removeAt(index);
     });
     _synchronizeToDraft();
   }
 
   void _synchronizeToDraft() {
     final Map<String, String> finalMap = {};
-    for (final row in _attributeRows) {
-      final key = row.keyCtrl.text.trim();
-      final value = row.valueCtrl.text.trim();
-      if (key.isNotEmpty) {
-        finalMap[key] = value;
+    for (final row in _selectedAttributes) {
+      if (row.key.isNotEmpty && row.value.isNotEmpty) {
+        finalMap[row.key] = row.value;
       }
     }
     widget.draft.pendingAttributes = finalMap;
   }
 
-  @override
-  void dispose() {
-    for (final row in _attributeRows) {
-      row.dispose();
+  // Abre el buscador de Atributos (Ej: "Color", "Talla")
+  Future<void> _pickAttributeKey(int index) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder:
+          (_) =>
+              const AttributeSearchDialog(mode: AttributeSearchMode.attribute),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedAttributes[index].key = result['name'] as String;
+        // Si cambia el atributo, borramos el valor seleccionado anterior
+        _selectedAttributes[index].value = '';
+      });
+      _synchronizeToDraft();
     }
-    super.dispose();
+  }
+
+  // Abre el buscador de Valores (Ej: "Rojo", "L") filtrando por el atributo seleccionado
+  Future<void> _pickAttributeValue(int index) async {
+    final attributeName = _selectedAttributes[index].key;
+    if (attributeName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Primero selecciona una Propiedad.')),
+      );
+      return;
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder:
+          (_) => AttributeSearchDialog(
+            mode: AttributeSearchMode.value,
+            parentAttributeName: attributeName,
+          ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedAttributes[index].value = result['value'] as String;
+      });
+      _synchronizeToDraft();
+    }
   }
 
   // ─── INPUT HELPER ─────────────────────────────────────────────────────────
@@ -204,7 +223,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   child: Switch(
                     value: isActive,
                     onChanged: widget.onActiveChanged,
-                    activeThumbColor: AppColors.success,
+                    activeColor: AppColors.success,
                   ),
                 ),
                 const SizedBox(width: 2),
@@ -298,7 +317,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Fila 1: Costo unitario + Precio de venta
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -341,7 +359,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Fila 2: Precio mayorista + Cantidad mínima mayoreo
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -481,7 +498,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
           ],
         ),
         const SizedBox(height: 6),
-        if (_attributeRows.isEmpty)
+        if (_selectedAttributes.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
@@ -503,35 +520,63 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _attributeRows.length,
+            itemCount: _selectedAttributes.length,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, idx) {
-              final row = _attributeRows[idx];
+              final row = _selectedAttributes[idx];
+              final hasKey = row.key.isNotEmpty;
+              final hasValue = row.value.isNotEmpty;
+
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Botón para seleccionar Atributo
                   Expanded(
                     flex: 4,
-                    child: TextField(
-                      controller: row.keyCtrl,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Propiedad',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
+                    child: GestureDetector(
+                      onTap: () => _pickAttributeKey(idx),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 11,
                         ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(
+                        decoration: BoxDecoration(
+                          color: hasKey ? Colors.white : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(9),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
+                          border: Border.all(
+                            color:
+                                hasKey
+                                    ? AppColors.primary.withValues(alpha: 0.5)
+                                    : Colors.grey.shade300,
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(9),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                hasKey ? row.key : 'Propiedad...',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color:
+                                      hasKey
+                                          ? AppColors.textPrimary
+                                          : Colors.grey.shade400,
+                                  fontWeight:
+                                      hasKey
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: 18,
+                              color: Colors.grey.shade400,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -546,28 +591,53 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                     ),
                   ),
+                  // Botón para seleccionar Valor
                   Expanded(
                     flex: 5,
-                    child: TextField(
-                      controller: row.valueCtrl,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Valor',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
+                    child: GestureDetector(
+                      onTap: () => _pickAttributeValue(idx),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 11,
                         ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(
+                        decoration: BoxDecoration(
+                          color: hasValue ? Colors.white : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(9),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
+                          border: Border.all(
+                            color:
+                                hasValue
+                                    ? AppColors.primary.withValues(alpha: 0.5)
+                                    : Colors.grey.shade300,
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(9),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                hasValue ? row.value : 'Valor...',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color:
+                                      hasValue
+                                          ? AppColors.textPrimary
+                                          : Colors.grey.shade400,
+                                  fontWeight:
+                                      hasValue
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: 18,
+                              color: Colors.grey.shade400,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -677,14 +747,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 }
 
-class _AttributeControllers {
-  final TextEditingController keyCtrl;
-  final TextEditingController valueCtrl;
+class _AttributeSelection {
+  String key;
+  String value;
 
-  _AttributeControllers({required this.keyCtrl, required this.valueCtrl});
-
-  void dispose() {
-    keyCtrl.dispose();
-    valueCtrl.dispose();
-  }
+  _AttributeSelection({required this.key, required this.value});
 }
