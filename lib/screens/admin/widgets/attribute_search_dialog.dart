@@ -8,13 +8,14 @@ enum AttributeSearchMode { attribute, value }
 
 class AttributeSearchDialog extends StatefulWidget {
   final AttributeSearchMode mode;
-
-  /// Requerido si el modo es [AttributeSearchMode.value]
-  final String? parentAttributeName;
+  // CAMBIO: Ahora pedimos el ID directamente, no el nombre
+  final String? parentAttributeId; 
+  final String? parentAttributeName; // Solo para mostrar en el título
 
   const AttributeSearchDialog({
     super.key,
     required this.mode,
+    this.parentAttributeId,
     this.parentAttributeName,
   });
 
@@ -28,34 +29,11 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
   bool _isLoading = true;
   bool _hasSearched = false;
   Timer? _debounce;
-  String? _parentAttributeId;
 
   @override
   void initState() {
     super.initState();
-    _initialLoad();
-  }
-
-  Future<void> _initialLoad() async {
-    // Si buscamos valores, necesitamos primero el ID del atributo padre
-    if (widget.mode == AttributeSearchMode.value &&
-        widget.parentAttributeName != null) {
-      try {
-        final attr =
-            await Supabase.instance.client
-                .from('attributes')
-                .select('id')
-                .eq('name', widget.parentAttributeName!)
-                .maybeSingle();
-
-        if (attr != null) {
-          _parentAttributeId = attr['id'] as String;
-        }
-      } catch (_) {}
-    }
-
-    // Carga inicial (mostrar los primeros resultados sin escribir nada)
-    _search('');
+    _search(''); // Ya no necesitamos hacer await _initialLoad()
   }
 
   void _search(String term) {
@@ -64,33 +42,24 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       setState(() => _isLoading = true);
       try {
-        final query = Supabase.instance.client
-            .from(
-              widget.mode == AttributeSearchMode.attribute
-                  ? 'attributes'
-                  : 'attribute_values',
-            )
-            .select(
-              'id, ${widget.mode == AttributeSearchMode.attribute ? 'name' : 'value'}',
-            );
+        final isAttrMode = widget.mode == AttributeSearchMode.attribute;
+        final tableName = isAttrMode ? 'attributes' : 'attribute_values';
+        final fieldName = isAttrMode ? 'name' : 'value';
+
+        dynamic query = Supabase.instance.client
+            .from(tableName)
+            .select('id, $fieldName');
 
         if (term.trim().isNotEmpty) {
-          query.ilike(
-            widget.mode == AttributeSearchMode.attribute ? 'name' : 'value',
-            '%${term.trim()}%',
-          );
+          query = query.ilike(fieldName, '%${term.trim()}%');
         }
 
-        if (widget.mode == AttributeSearchMode.value &&
-            _parentAttributeId != null) {
-          query.eq('attribute_id', _parentAttributeId!);
+        // CAMBIO: Usamos directamente el ID que nos pasan
+        if (!isAttrMode && widget.parentAttributeId != null) {
+          query = query.eq('attribute_id', widget.parentAttributeId!);
         }
 
-        final res = await query
-            .order(
-              widget.mode == AttributeSearchMode.attribute ? 'name' : 'value',
-            )
-            .limit(15);
+        final res = await query.order(fieldName).limit(15);
 
         if (mounted) {
           setState(() {
@@ -136,7 +105,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
         if (mounted) Navigator.pop(context, res);
       } else {
         // Modo Valor
-        if (_parentAttributeId == null) {
+        if (widget.parentAttributeId == null) {
           throw Exception("No se puede crear un valor sin un atributo padre.");
         }
 
@@ -144,7 +113,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
             await Supabase.instance.client
                 .from('attribute_values')
                 .select('id, value')
-                .eq('attribute_id', _parentAttributeId!)
+                .eq('attribute_id', widget.parentAttributeId!)
                 .ilike('value', term)
                 .maybeSingle();
 
@@ -156,7 +125,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
         final res =
             await Supabase.instance.client
                 .from('attribute_values')
-                .insert({'attribute_id': _parentAttributeId, 'value': term})
+                .insert({'attribute_id': widget.parentAttributeId!, 'value': term})
                 .select('id, value')
                 .single();
 

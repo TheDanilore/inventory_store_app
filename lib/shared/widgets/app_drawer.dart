@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/screens/admin/active_ingredients_screen.dart';
+import 'package:inventory_store_app/screens/admin/attributes_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exits_screen.dart';
 import 'package:inventory_store_app/screens/admin/supplier_credits_screen.dart';
@@ -254,8 +256,7 @@ class _AppDrawerState extends State<AppDrawer> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder:
-                                    (_) => const InventoryEntriesScreen(),
+                                builder: (_) => const InventoryEntriesScreen(),
                               ),
                             );
                           },
@@ -437,6 +438,43 @@ class _AppDrawerState extends State<AppDrawer> {
                       },
                     ),
                   ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.tune_rounded,
+                      title: 'Atributos y Valores',
+                      screenType: AttributesManagementScreen,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AttributesManagementScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.science_rounded,
+                      title: 'Ingredientes Activos/Componentes Químicos',
+                      screenType: ActiveIngredientsScreen,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ActiveIngredientsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
                   _buildItem(
                     context,
                     _DrawerItem(

@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/models/variant_attribute_value_model.dart';
 
 class VariantDraftModel {
   final String? id;
@@ -15,9 +14,10 @@ class VariantDraftModel {
   final TextEditingController reorderPointCtrl;
   final TextEditingController unitCostCtrl;
 
-  // ── Atributos (Adaptado a nueva BD relacional) ──────────────────────────────
-  /// Mapa que mantiene los atributos en memoria durante la edición (Ej: {"Color": "Rojo"})
-  Map<String, String> pendingAttributes;
+  // ── Atributos (Adaptado a nueva BD relacional con UUIDs) ───────────────────
+  /// Lista que mantiene los atributos en memoria durante la edición
+  /// Formato esperado: [{'attribute_id': 'uuid...', 'attribute_name': 'Color', 'value_id': 'uuid...', 'value_name': 'Rojo'}]
+  List<Map<String, dynamic>> selectedAttributes;
 
   bool isActive;
 
@@ -29,7 +29,7 @@ class VariantDraftModel {
     this.id,
     String? sku,
     String? barcode,
-    Map<String, String>? pendingAttributes,
+    List<Map<String, dynamic>>? selectedAttributes,
     String? price,
     String? wholesalePrice,
     String? wholesaleMinQuantity,
@@ -47,23 +47,30 @@ class VariantDraftModel {
        ),
        reorderPointCtrl = TextEditingController(text: reorderPoint ?? '3'),
        unitCostCtrl = TextEditingController(text: unitCost ?? ''),
-       pendingAttributes = pendingAttributes ?? {},
+       selectedAttributes = selectedAttributes ?? [],
        urlsExistentes = urlsExistentes ?? [],
        nuevasImagenes = nuevasImagenes ?? [];
 
   // ── Desde modelo existente ──────────────────────────────────────────────────
   factory VariantDraftModel.fromVariant(ProductVariantModel variant) {
-    // Convertir los VariantAttributeValueModel estructurados a un mapa para el borrador
-    final Map<String, String> currentAttributes = {};
+    // Convertir los VariantAttributeValueModel a nuestra lista de mapas con IDs
+    final List<Map<String, dynamic>> currentAttributes = [];
+
     for (final av in variant.attributeValues) {
-      currentAttributes[av.attributeName] = av.value;
+      currentAttributes.add({
+        'attribute_id': av.attributeId, // Ahora sí existe
+        'attribute_name': av.attributeName,
+        'value_id':
+            av.attributeValueId, // Usamos el nombre que tienes en el modelo
+        'value_name': av.value,
+      });
     }
 
     return VariantDraftModel(
       id: variant.id,
       sku: variant.sku,
       barcode: variant.barcode,
-      pendingAttributes: currentAttributes,
+      selectedAttributes: currentAttributes,
       price: variant.salePrice?.toString() ?? '',
       wholesalePrice: variant.wholesalePrice?.toString() ?? '',
       wholesaleMinQuantity: variant.wholesaleMinQuantity?.toString() ?? '',
@@ -74,15 +81,6 @@ class VariantDraftModel {
       isActive: variant.isActive,
     );
   }
-
-  get selectedAttributeValueIds => pendingAttributes.entries
-      .map((e) => VariantAttributeValueModel(
-            attributeValueId: '', // No tenemos el ID aquí, se asignará en backend
-            attributeName: e.key,
-            value: e.value,
-          ))
-      .toList();
-
   // ── Payload para Supabase ───────────────────────────────────────────────────
   Map<String, dynamic> toPayload() {
     return {

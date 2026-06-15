@@ -535,82 +535,26 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     return null;
   }
 
-  // ── Helper Lógico para Insertar Atributos en las tablas relacionales ──────
   Future<void> _saveVariantAttributes(
     String variantId,
-    Map<String, String> attributes,
+    List<String> attributeValueIds,
   ) async {
     final supabase = Supabase.instance.client;
 
-    // Borrar relaciones previas
+    // 1. Limpiar relaciones previas de esta variante
     await supabase
         .from('variant_attribute_values')
         .delete()
         .eq('variant_id', variantId);
 
-    final validEntries =
-        attributes.entries
-            .where((e) => e.key.trim().isNotEmpty && e.value.trim().isNotEmpty)
-            .toList();
-    if (validEntries.isEmpty) return;
+    // 2. Si no hay atributos seleccionados, terminamos.
+    if (attributeValueIds.isEmpty) return;
 
-    final attrNames = validEntries.map((e) => e.key.trim()).toSet().toList();
-
-    // ── 1 round-trip: upsert todos los atributos de una vez ──────────────────
-    await supabase
-        .from('attributes')
-        .upsert(
-          attrNames.map((name) => {'name': name}).toList(),
-          onConflict: 'name',
-          ignoreDuplicates: true,
-        );
-
-    // ── 1 round-trip: leer todos los IDs de atributos ────────────────────────
-    final attrRows = await supabase
-        .from('attributes')
-        .select('id, name')
-        .inFilter('name', attrNames);
-
-    final attrIdByName = <String, String>{
-      for (final row in attrRows as List)
-        row['name'] as String: row['id'] as String,
-    };
-
-    // ── 1 round-trip: upsert todos los valores de una vez ────────────────────
-    await supabase
-        .from('attribute_values')
-        .upsert(
-          validEntries
-              .map(
-                (e) => {
-                  'attribute_id': attrIdByName[e.key.trim()]!,
-                  'value': e.value.trim(),
-                },
-              )
-              .toList(),
-          onConflict: 'attribute_id,value',
-          ignoreDuplicates: true,
-        );
-
-    // ── 1 round-trip: leer todos los IDs de valores ───────────────────────────
-    // Hacemos las N selects en paralelo (una por atributo) en lugar de en serie
-    final valIdFutures = validEntries.map((e) async {
-      final row =
-          await supabase
-              .from('attribute_values')
-              .select('id')
-              .eq('attribute_id', attrIdByName[e.key.trim()]!)
-              .eq('value', e.value.trim())
-              .single();
-      return row['id'] as String;
-    });
-    final valIds = await Future.wait(valIdFutures);
-
-    // ── 1 round-trip: insertar todos los links de una vez ─────────────────────
+    // 3. Insertar directo con los UUIDs validados
     await supabase
         .from('variant_attribute_values')
         .insert(
-          valIds
+          attributeValueIds
               .map(
                 (valId) => {
                   'variant_id': variantId,
@@ -767,9 +711,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   .maybeSingle();
           if (vResp != null) {
             primaryVariantId = vResp['id'] as String;
-            await _saveVariantAttributes(primaryVariantId, {
-              'Variante': 'Única',
-            });
+            await _saveVariantAttributes(primaryVariantId, []);
           }
         } else {
           final payload = {
@@ -790,24 +732,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   .select('id')
                   .single();
           primaryVariantId = res['id'] as String;
-          await _saveVariantAttributes(primaryVariantId, {'Variante': 'Única'});
+          await _saveVariantAttributes(primaryVariantId, []);
         }
       } else {
         for (var i = 0; i < _variantDrafts.length; i++) {
           final draft = _variantDrafts[i];
 
-          final attrsMap =
-              draft.selectedAttributeValueIds.isNotEmpty
-                  ? throw UnimplementedError(
-                    "Map needs conversion here based on your draft logic",
-                  )
-                  : <
-                    String,
-                    String
-                  >{}; // Aquí asumimos que la conversión a Map ocurre en la Card, si estás usando tu variable draft.pendingAttributes reemplazala.
-
-          // Nota de adaptación: en tu VariantDraftModel nuevo reemplazaste pendingAttributes por selectedAttributeValueIds.
-          // Dejé que tu componente VariantDraftCard se encargue de esto para no romper tu lógica UI anterior.
+          final valueIds = draft.selectedAttributes
+    .map((attr) => attr['value_id'] as String)
+    .toList();
 
           final skuValue = draft.skuCtrl.text.trim();
           final payload = {
@@ -832,7 +765,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             if (i == 0) primaryVariantId = draft.id!;
 
             // Guardamos los atributos relacionales si usamos draft.pendingAttributes (Dependerá de cómo tengas el DraftCard final).
-            await _saveVariantAttributes(draft.id!, attrsMap);
+            await _saveVariantAttributes(draft.id!, valueIds);
 
             if (draft.urlsExistentes.isEmpty ||
                 draft.nuevasImagenes.isNotEmpty) {
@@ -880,7 +813,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
             if (i == 0) primaryVariantId = newVariantId;
 
-            await _saveVariantAttributes(newVariantId, attrsMap);
+            await _saveVariantAttributes(newVariantId, valueIds);
 
             if (draft.nuevasImagenes.isNotEmpty) {
               final bytes = draft.nuevasImagenes.first;

@@ -35,16 +35,41 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   void _parseInitialAttributes() {
-    widget.draft.pendingAttributes.forEach((key, value) {
-      _selectedAttributes.add(_AttributeSelection(key: key, value: value));
-    });
+    // Leemos los atributos que vienen del modo edición
+    for (final attr in widget.draft.selectedAttributes) {
+      _selectedAttributes.add(
+        _AttributeSelection(
+          attributeId: attr['attribute_id'],
+          attributeName: attr['attribute_name'] ?? '',
+          valueId: attr['value_id'],
+          valueName: attr['value_name'] ?? '',
+        ),
+      );
+    }
   }
 
   void _addAttributeRow() {
     setState(() {
-      _selectedAttributes.add(_AttributeSelection(key: '', value: ''));
+      _selectedAttributes.add(
+        _AttributeSelection(attributeName: '', valueName: ''),
+      );
     });
     _synchronizeToDraft();
+  }
+
+  void _synchronizeToDraft() {
+    final List<Map<String, dynamic>> finalAttributes = [];
+    for (final row in _selectedAttributes) {
+      if (row.attributeId != null && row.valueId != null) {
+        finalAttributes.add({
+          'attribute_id': row.attributeId,
+          'attribute_name': row.attributeName,
+          'value_id': row.valueId,
+          'value_name': row.valueName,
+        });
+      }
+    }
+    widget.draft.selectedAttributes = finalAttributes;
   }
 
   void _removeAttributeRow(int index) {
@@ -52,16 +77,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       _selectedAttributes.removeAt(index);
     });
     _synchronizeToDraft();
-  }
-
-  void _synchronizeToDraft() {
-    final Map<String, String> finalMap = {};
-    for (final row in _selectedAttributes) {
-      if (row.key.isNotEmpty && row.value.isNotEmpty) {
-        finalMap[row.key] = row.value;
-      }
-    }
-    widget.draft.pendingAttributes = finalMap;
   }
 
   // Abre el buscador de Atributos (Ej: "Color", "Talla")
@@ -75,9 +90,11 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
     if (result != null) {
       setState(() {
-        _selectedAttributes[index].key = result['name'] as String;
-        // Si cambia el atributo, borramos el valor seleccionado anterior
-        _selectedAttributes[index].value = '';
+        _selectedAttributes[index].attributeId = result['id'];
+        _selectedAttributes[index].attributeName = result['name'];
+        // Reseteamos el valor si cambia la propiedad
+        _selectedAttributes[index].valueId = null;
+        _selectedAttributes[index].valueName = '';
       });
       _synchronizeToDraft();
     }
@@ -85,8 +102,10 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
   // Abre el buscador de Valores (Ej: "Rojo", "L") filtrando por el atributo seleccionado
   Future<void> _pickAttributeValue(int index) async {
-    final attributeName = _selectedAttributes[index].key;
-    if (attributeName.isEmpty) {
+    final attributeId = _selectedAttributes[index].attributeId;
+    final attributeName = _selectedAttributes[index].attributeName;
+
+    if (attributeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Primero selecciona una Propiedad.')),
       );
@@ -98,13 +117,15 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       builder:
           (_) => AttributeSearchDialog(
             mode: AttributeSearchMode.value,
+            parentAttributeId: attributeId, // Pasamos el ID!
             parentAttributeName: attributeName,
           ),
     );
 
     if (result != null) {
       setState(() {
-        _selectedAttributes[index].value = result['value'] as String;
+        _selectedAttributes[index].valueId = result['id'];
+        _selectedAttributes[index].valueName = result['value'];
       });
       _synchronizeToDraft();
     }
@@ -223,7 +244,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   child: Switch(
                     value: isActive,
                     onChanged: widget.onActiveChanged,
-                    activeColor: AppColors.success,
+                    activeThumbColor: AppColors.success,
                   ),
                 ),
                 const SizedBox(width: 2),
@@ -524,8 +545,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, idx) {
               final row = _selectedAttributes[idx];
-              final hasKey = row.key.isNotEmpty;
-              final hasValue = row.value.isNotEmpty;
+              final hasKey = row.attributeName.isNotEmpty;
+              final hasValue = row.valueName.isNotEmpty;
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -555,7 +576,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                           children: [
                             Expanded(
                               child: Text(
-                                hasKey ? row.key : 'Propiedad...',
+                                hasKey ? row.attributeName : 'Propiedad...',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color:
@@ -616,7 +637,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                           children: [
                             Expanded(
                               child: Text(
-                                hasValue ? row.value : 'Valor...',
+                                hasValue ? row.valueName : 'Valor...',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color:
@@ -748,8 +769,15 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 }
 
 class _AttributeSelection {
-  String key;
-  String value;
+  String? attributeId;
+  String attributeName;
+  String? valueId;
+  String valueName;
 
-  _AttributeSelection({required this.key, required this.value});
+  _AttributeSelection({
+    this.attributeId,
+    required this.attributeName,
+    this.valueId,
+    required this.valueName,
+  });
 }
