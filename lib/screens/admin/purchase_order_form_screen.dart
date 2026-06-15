@@ -78,7 +78,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Future<void> _fetchData() async {
     try {
       final results = await Future.wait([
-        // ── MAGIA AQUÍ: Traemos el proveedor junto con su estado de crédito ──
         _supabase
             .from('suppliers')
             .select(
@@ -98,23 +97,40 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             .eq('is_active', true)
             .eq('stock_control', true)
             .neq('product_type', 'service'),
+
+        // ── CORRECCIÓN 1: Traemos asterisco (*) y las relaciones de atributos e imágenes ──
         _supabase
             .from('product_variants')
             .select(
-              'id, product_id, sku, attributes, product_images(*), sale_price, unit_cost, is_active',
+              '*, product_images(*), variant_attribute_values(attribute_values(value, attributes(name)))',
             )
             .eq('is_active', true),
       ]);
 
       if (!mounted) return;
 
+      // ── CORRECCIÓN 2: Reconstrucción idéntica del mapa de atributos como en Inventario ──
       final variants =
-          (results[4] as List)
-              .map(
-                (p) =>
-                    ProductVariantModel.fromJson(Map<String, dynamic>.from(p)),
-              )
-              .toList();
+          (results[4] as List).map((p) {
+            final data = Map<String, dynamic>.from(p);
+            if (data['variant_attribute_values'] is List) {
+              final Map<String, dynamic> flatAttributes = {};
+              for (final vav in data['variant_attribute_values'] as List) {
+                if (vav is Map && vav['attribute_values'] is Map) {
+                  final av = vav['attribute_values'] as Map;
+                  if (av['attributes'] is Map) {
+                    final attr = av['attributes'] as Map;
+                    if (attr['name'] != null) {
+                      flatAttributes[attr['name'].toString()] =
+                          av['value']?.toString() ?? '';
+                    }
+                  }
+                }
+              }
+              data['attributes'] = flatAttributes;
+            }
+            return ProductVariantModel.fromJson(data);
+          }).toList();
 
       setState(() {
         _suppliersList = List<Map<String, dynamic>>.from(results[0] as List);

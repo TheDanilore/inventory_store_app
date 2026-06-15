@@ -140,20 +140,43 @@ class _OrdersScreenState extends State<OrdersScreen> {
           .select('''
             id, order_id, product_id, variant_id, quantity, unit_cost,
             applied_price, net_profit, created_at,
-            products ( name, uses_batches, product_images(*) ),
-            product_variants ( attributes, sku, product_images(*) )
+            products ( name, uses_batches, product_images(image_url, is_main, variant_id) ),
+            product_variants ( 
+              sku, 
+              product_images(image_url, is_main, variant_id),
+              variant_attribute_values(attribute_values(value))
+            )
           ''')
           .eq('order_id', order.id);
 
       final items =
-          (resp as List)
-              .map(
-                (row) =>
-                    OrderItemModel.fromJson(Map<String, dynamic>.from(row)),
-              )
-              .toList();
+          (resp as List).map((row) {
+            final variantJson =
+                row['product_variants'] as Map<String, dynamic>?;
 
-      await OrderPdfGenerator.printTicket(order, items: items);
+            // Extraer atributos relacionales
+            final vavList =
+                variantJson?['variant_attribute_values'] as List<dynamic>? ??
+                [];
+            final List<String> attrValues = [];
+            for (var vav in vavList) {
+              final av = vav['attribute_values'] as Map<String, dynamic>?;
+              if (av != null && av['value'] != null) {
+                attrValues.add(av['value'].toString());
+              }
+            }
+
+            // El OrderItemModel original necesita los atributos de alguna forma.
+            // Simulamos un mapa para mantener compatibilidad con el FromJson actual de OrderItemModel
+            if (variantJson != null) {
+              // Inyectamos un string simplificado para que el PDF lo lea fácil
+              variantJson['attributes'] = {'Variante': attrValues.join(' · ')};
+            }
+
+            return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
+          }).toList();
+
+      await OrderPdfGenerator.shareTicket(order, items: items);
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(
@@ -311,9 +334,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
         final itemsResp = await _supabase
             .from('order_items')
-            .select(
-              'product_id, variant_id, quantity, products(name), product_variants(attributes, sku)',
-            )
+            .select('''
+              product_id, variant_id, quantity, 
+              products(name), 
+              product_variants(sku, variant_attribute_values(attribute_values(value)))
+            ''')
             .eq('order_id', order.id);
 
         final items = List<Map<String, dynamic>>.from(itemsResp);
