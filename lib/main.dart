@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:inventory_store_app/providers/admin/purchase_orders_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
+        ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
       ],
       child: MaterialApp(
         title: 'Inventario Store',
