@@ -24,7 +24,7 @@ class PosCheckoutService {
     if (_cachedWarehouses == null) {
       final whRes = await _supabase
           .from('warehouses')
-          .select()
+          .select('id, name')
           .eq('is_active', true)
           .order('name');
       _cachedWarehouses =

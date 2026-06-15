@@ -9,7 +9,9 @@ import 'package:inventory_store_app/screens/admin/widgets/pos_cart_items_section
 import 'package:inventory_store_app/screens/admin/widgets/pos_total_summary_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/pos_batch_edit_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/pos_processing_overlay.dart';
+import 'package:inventory_store_app/screens/admin/widgets/pos_dialogs.dart';
 import 'package:inventory_store_app/services/admin/pos_checkout_service.dart';
+import 'package:inventory_store_app/utils/pos_calculator_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
@@ -55,7 +57,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
 
   // Venta
   bool _isProcessingSale = false;
-  final bool _isLoadingInitialData = true;
+  bool _isLoadingInitialData = true;
 
   @override
   void initState() {
@@ -108,6 +110,15 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
     } catch (e) {
       debugPrint('Error cargando datos iniciales: $e');
+      if (mounted) {
+        AppSnackbar.show(context, message: 'Error cargando datos: $e', type: SnackbarType.error);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInitialData = false;
+        });
+      }
     }
   }
 
@@ -198,72 +209,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
     }
   }
 
-  // ─── CÁLCULOS ────────────────────────────────────────────────────────────
-
-  int _clampPointsValue(int desired, PosProvider pos, double ratio) {
-    if (pos.selectedClientId == null) return 0;
-    if (pos.saldoActualCliente <= 0) return 0;
-    int maxPts = pos.saldoActualCliente;
-    final total = pos.totalAmount;
-    final maxPtsForTotal = (total / ratio).floor();
-    if (maxPts > maxPtsForTotal) maxPts = maxPtsForTotal;
-    if (desired > maxPts) return maxPts;
-    if (desired < 0) return 0;
-    return desired;
-  }
-
-  int _maxPuntosAplicables(PosProvider pos, double ratio) {
-    if (pos.selectedClientId == null) return 0;
-    if (pos.saldoActualCliente <= 0) return 0;
-    final total = pos.totalAmount;
-    final maxPtsForTotal = (total / ratio).floor();
-    return pos.saldoActualCliente > maxPtsForTotal
-        ? maxPtsForTotal
-        : pos.saldoActualCliente;
-  }
-
-  double _getCustomDiscountAmount(PosProvider pos) {
-    final raw = double.tryParse(_descuentoCtrl.text) ?? 0.0;
-    if (raw <= 0) return 0.0;
-    if (_isDiscountPercentage) {
-      final config = context.read<AppConfigProvider>();
-      final ratio = config.getDouble('points_to_soles_ratio', 0.01);
-      final safePts = _clampPointsValue(pos.puntosAUsar, pos, ratio);
-      final partial = pos.totalAmount - (safePts * ratio);
-      return partial * (raw / 100).clamp(0.0, 1.0);
-    }
-    return raw;
-  }
-
-  double _calcularTotalFinal(PosProvider pos, double ratio) {
-    final safePts = _clampPointsValue(pos.puntosAUsar, pos, ratio);
-    final discExtra = _getCustomDiscountAmount(pos);
-    final partial = pos.totalAmount - (safePts * ratio) - discExtra;
-    return partial < 0 ? 0 : partial;
-  }
-
-  double _calcularGananciaTotal(PosProvider pos) {
-    double totalNetProfit = 0;
-    for (final item in pos.items.values) {
-      totalNetProfit += (item.unitPrice - item.unitCost) * item.quantity;
-    }
-    final config = context.read<AppConfigProvider>();
-    final ratio = config.getDouble('points_to_soles_ratio', 0.01);
-    final safePts = _clampPointsValue(pos.puntosAUsar, pos, ratio);
-    final totalDesc = (safePts * ratio) + _getCustomDiscountAmount(pos);
-    return totalNetProfit - totalDesc;
-  }
-
-  bool get _creditActivo =>
-      _creditInfo != null && _creditInfo!['is_active'] == true;
-
-  double get _creditDisponible {
-    if (_creditInfo == null || _creditInfo!['is_active'] != true) return 0.0;
-    final limit = (_creditInfo!['credit_limit'] as num).toDouble();
-    final debt = (_creditInfo!['current_debt'] as num).toDouble();
-    final disp = limit - debt;
-    return disp > 0 ? disp : 0;
-  }
+  // ─── CÁLCULOS (Movidos a PosCalculatorUtils) ────────────────────────────
 
   Future<void> _processSale(PosProvider pos, {bool isDraft = false}) async {
     if (pos.selectedWarehouseId == null) {
@@ -308,6 +254,17 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       }
     }
 
+    final config = context.read<AppConfigProvider>();
+    final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
+    final earningRate = config.getDouble('points_earning_rate', 0.03);
+
+    final totalFinal = PosCalculatorUtils.calcularTotalFinal(
+      discountText: _descuentoCtrl.text,
+      isDiscountPercentage: _isDiscountPercentage,
+      pos: pos,
+      ratio: pointsToSolesRatio,
+    );
+
     if (isCredito && !isDraft) {
       if (pos.selectedClientId == null) {
         AppSnackbar.show(
@@ -317,7 +274,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         );
         return;
       }
-      if (!_creditActivo) {
+      if (!PosCalculatorUtils.isCreditActivo(_creditInfo)) {
         AppSnackbar.show(
           context,
           message: 'El cliente no tiene línea de crédito activa.',
@@ -325,38 +282,53 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         );
         return;
       }
-      final config = context.read<AppConfigProvider>();
-      final ratio = config.getDouble('points_to_soles_ratio', 0.01);
-      final totalNecesario = _calcularTotalFinal(pos, ratio);
-      if (_creditDisponible < totalNecesario) {
+      
+      final disp = PosCalculatorUtils.getCreditDisponible(_creditInfo);
+      if (disp < totalFinal) {
         AppSnackbar.show(
           context,
           message:
-              'Crédito insuficiente. Disponible: S/ ${_creditDisponible.toStringAsFixed(2)}',
+              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
           type: SnackbarType.error,
         );
         return;
       }
     }
 
+    if (!isDraft) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => PosConfirmationDialog(
+          totalFinal: totalFinal,
+          clienteName: pos.selectedClientId != null ? pos.selectedClientName : _clienteCtrl.text.trim().isNotEmpty ? _clienteCtrl.text.trim() : null,
+          paymentMethod: pos.paymentMethod,
+          onConfirm: () {},
+        ),
+      );
+
+      if (confirmed != true) return;
+    }
+
     setState(() => _isProcessingSale = true);
 
     try {
-      final config = context.read<AppConfigProvider>();
-      final pointsToSolesRatio = config.getDouble(
-        'points_to_soles_ratio',
-        0.01,
-      );
-      final earningRate = config.getDouble('points_earning_rate', 0.03);
-
-      final puntosUsados = _clampPointsValue(
+      final puntosUsados = PosCalculatorUtils.clampPointsValue(
         pos.puntosAUsar,
         pos,
         pointsToSolesRatio,
       );
-      final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
-      final totalProfit = _calcularGananciaTotal(pos);
-      final descuentoExtra = _getCustomDiscountAmount(pos);
+      final totalProfit = PosCalculatorUtils.calcularGananciaTotal(
+        discountText: _descuentoCtrl.text,
+        isDiscountPercentage: _isDiscountPercentage,
+        pos: pos,
+        ratio: pointsToSolesRatio,
+      );
+      final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
+        discountText: _descuentoCtrl.text,
+        isDiscountPercentage: _isDiscountPercentage,
+        pos: pos,
+        ratio: pointsToSolesRatio,
+      );
 
       await _checkoutService.processSale(
         pos: pos,
@@ -382,16 +354,24 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
       widget.onSaleCompleted?.call();
 
       if (mounted) {
-        AppSnackbar.show(
-          context,
-          message:
-              isDraft ? 'Borrador guardado.' : 'Venta procesada exitosamente.',
-          type: SnackbarType.success,
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => PosSuccessDialog(
+            isDraft: isDraft,
+            onPrint: () {
+              AppSnackbar.show(dialogContext, message: 'Impresión no configurada aún.', type: SnackbarType.warning);
+            },
+          ),
         );
-        Navigator.pop(context, true);
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
-      AppSnackbar.show(context, message: 'Error: $e', type: SnackbarType.error);
+      if (mounted) {
+        AppSnackbar.show(context, message: 'Error: $e', type: SnackbarType.error);
+      }
     } finally {
       if (mounted) setState(() => _isProcessingSale = false);
     }
@@ -525,14 +505,14 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                         pos.saldoActualCliente > 0 &&
                         !isCredito,
                     saldoActualCliente: pos.saldoActualCliente,
-                    maxPuntosAplicables: _maxPuntosAplicables(
+                    maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
                       pos,
                       pointsToSolesRatio,
                     ),
                     pointsToSolesRatio: pointsToSolesRatio,
                     pointsController: _puntosCtrl,
                     onPointsChanged: (p) {
-                      final next = _clampPointsValue(p, pos, pointsToSolesRatio);
+                      final next = PosCalculatorUtils.clampPointsValue(p, pos, pointsToSolesRatio);
                       pos.setPuntosAUsar(next);
                       _puntosCtrl.value = TextEditingValue(
                         text: next.toString(),
@@ -599,13 +579,18 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                 builder: (context, pos, _) {
                   final isCredito = pos.paymentMethod == 'CRÉDITO';
                   if (!isCredito) return const SizedBox.shrink();
-                  final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
+                  final totalFinal = PosCalculatorUtils.calcularTotalFinal(
+                    discountText: _descuentoCtrl.text,
+                    isDiscountPercentage: _isDiscountPercentage,
+                    pos: pos, 
+                    ratio: pointsToSolesRatio
+                  );
                   return Column(
                     children: [
                       _CreditWarningCard(
                         clienteSeleccionado: pos.selectedClientId != null,
-                        creditActivo: _creditActivo,
-                        creditDisponible: _creditDisponible,
+                        creditActivo: PosCalculatorUtils.isCreditActivo(_creditInfo),
+                        creditDisponible: PosCalculatorUtils.getCreditDisponible(_creditInfo),
                         totalFinal: totalFinal,
                         creditInfo: _creditInfo,
                       ),
@@ -620,8 +605,13 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
                   final isCredito = pos.paymentMethod == 'CRÉDITO';
                   if (isCredito) return const SizedBox.shrink();
 
-                  final puntosSeguros = _clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
-                  final descuentoExtra = _getCustomDiscountAmount(pos);
+                  final puntosSeguros = PosCalculatorUtils.clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
+                  final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
+                    discountText: _descuentoCtrl.text,
+                    isDiscountPercentage: _isDiscountPercentage,
+                    pos: pos, 
+                    ratio: pointsToSolesRatio
+                  );
                   final descuentoExcedido = descuentoExtra > (pos.totalAmount - (puntosSeguros * pointsToSolesRatio));
 
                   return Container(
@@ -753,14 +743,24 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               Consumer<PosProvider>(
                 builder: (context, pos, _) {
                   final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  final puntosSeguros = _clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
-                  final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
+                  final puntosSeguros = PosCalculatorUtils.clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
+                  final totalFinal = PosCalculatorUtils.calcularTotalFinal(
+                    discountText: _descuentoCtrl.text,
+                    isDiscountPercentage: _isDiscountPercentage,
+                    pos: pos, 
+                    ratio: pointsToSolesRatio
+                  );
 
                   return PosTotalSummarySection(
                     subtotalAntesDePuntos: pos.totalAmount,
                     puntosAplicables: isCredito ? 0 : puntosSeguros,
                     descuentoPuntos: isCredito ? 0 : puntosSeguros * pointsToSolesRatio,
-                    descuentoExtra: isCredito ? 0 : _getCustomDiscountAmount(pos),
+                    descuentoExtra: isCredito ? 0 : PosCalculatorUtils.getCustomDiscountAmount(
+                      discountText: _descuentoCtrl.text,
+                      isDiscountPercentage: _isDiscountPercentage,
+                      pos: pos, 
+                      ratio: pointsToSolesRatio
+                    ),
                     totalFinal: totalFinal,
                     pointsToSolesRatio: pointsToSolesRatio,
                     earningRate: earningRate,
@@ -773,12 +773,23 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
               Consumer<PosProvider>(
                 builder: (context, pos, _) {
                   final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  final puntosSeguros = _clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
-                  final descuentoExtra = _getCustomDiscountAmount(pos);
+                  final puntosSeguros = PosCalculatorUtils.clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
+                  final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
+                    discountText: _descuentoCtrl.text,
+                    isDiscountPercentage: _isDiscountPercentage,
+                    pos: pos, 
+                    ratio: pointsToSolesRatio
+                  );
                   final descuentoExcedido = descuentoExtra > (pos.totalAmount - (puntosSeguros * pointsToSolesRatio));
-                  final totalFinal = _calcularTotalFinal(pos, pointsToSolesRatio);
+                  final totalFinal = PosCalculatorUtils.calcularTotalFinal(
+                    discountText: _descuentoCtrl.text,
+                    isDiscountPercentage: _isDiscountPercentage,
+                    pos: pos, 
+                    ratio: pointsToSolesRatio
+                  );
 
-                  final creditoInsuficiente = isCredito && pos.selectedClientId != null && _creditInfo != null && _creditDisponible < totalFinal;
+                  final disp = PosCalculatorUtils.getCreditDisponible(_creditInfo);
+                  final creditoInsuficiente = isCredito && pos.selectedClientId != null && PosCalculatorUtils.isCreditActivo(_creditInfo) && disp < totalFinal;
                   final creditoSinCliente = isCredito && pos.selectedClientId == null;
                   final isCajaAccount = _accountsList.any((a) => a['id'] == _selectedAccountId && a['type'] == 'CAJA');
                   final noCajaAbierta = !isCredito && _selectedAccountId != null && isCajaAccount && _activeShift == null;
