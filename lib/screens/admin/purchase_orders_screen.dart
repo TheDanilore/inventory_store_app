@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
@@ -101,6 +102,9 @@ class _POItemModel {
   final DateTime? expiryDate;
   final bool usesBatches;
 
+  /// URL de imagen: primero busca la de la variante, si no la del producto
+  final String? imageUrl;
+
   const _POItemModel({
     required this.productId,
     required this.variantId,
@@ -113,6 +117,7 @@ class _POItemModel {
     required this.batchNumber,
     this.expiryDate,
     required this.usesBatches,
+    this.imageUrl,
   });
 
   double get subtotal => quantityOrdered * unitCost;
@@ -276,17 +281,26 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           product_id, variant_id,
           quantity_ordered, quantity_received, unit_cost,
           batch_number, expiry_date,
-          products(name, uses_batches),
-          product_variants(sku, variant_attribute_values(attribute_values(id, value, attributes(id, name))))
+          products(
+            name, uses_batches,
+            product_images(image_url, is_main, display_order, variant_id)
+          ),
+          product_variants(
+            sku,
+            variant_attribute_values(attribute_values(id, value, attributes(id, name))),
+            product_images(image_url, is_main, display_order)
+          )
         ''')
         .eq('purchase_order_id', poId);
 
     return (resp as List).map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
       final variant = r['product_variants'] as Map<String, dynamic>?;
+      final variantId = r['variant_id'] as String;
 
-      // Parseamos los atributos reutilizando VariantAttributeValueModel.fromJson,
-      // que ya sabe leer la estructura: variant_attribute_values → attribute_values → attributes
+      // ── Atributos ─────────────────────────────────────────────────────────
+      // Reutilizamos VariantAttributeValueModel.fromJson que ya conoce la
+      // estructura: variant_attribute_values → attribute_values → attributes
       final List<VariantAttributeValueModel> parsedAttrs = [];
       if (variant != null && variant['variant_attribute_values'] is List) {
         for (final vav in variant['variant_attribute_values'] as List) {
@@ -301,20 +315,67 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           }
         }
       }
+      final attrsText =
+          parsedAttrs.isNotEmpty
+              ? parsedAttrs
+                  .map(
+                    (a) =>
+                        a.attributeName.isNotEmpty
+                            ? '${a.attributeName}: ${a.value}'
+                            : a.value,
+                  )
+                  .join(' · ')
+              : 'Única';
 
-      // Construimos el texto legible de atributos: "Talla: M · Color: Rojo"
-      final attrsText = parsedAttrs.isNotEmpty
-          ? parsedAttrs
-              .map((a) =>
-                  a.attributeName.isNotEmpty
-                      ? '${a.attributeName}: ${a.value}'
-                      : a.value)
-              .join(' · ')
-          : 'Única';
+      // ── Imagen: variante primero, fallback a imagen principal del producto ─
+      String? imageUrl;
+
+      // 1) Imágenes propias de la variante (traídas desde product_variants)
+      final variantImages = variant?['product_images'] as List?;
+      if (variantImages != null && variantImages.isNotEmpty) {
+        // Preferir is_main=true, si no la primera
+        final main = variantImages.firstWhere(
+          (img) => img['is_main'] == true,
+          orElse: () => variantImages.first,
+        );
+        imageUrl = main['image_url'] as String?;
+      }
+
+      // 2) Si no hay imagen de variante, buscar en product_images del producto
+      //    filtrando las que son de esta variante o las genéricas del producto
+      if (imageUrl == null) {
+        final productImages = prod?['product_images'] as List?;
+        if (productImages != null && productImages.isNotEmpty) {
+          // Intentar imagen de esta variante específica
+          final forVariant =
+              productImages
+                  .where((img) => img['variant_id'] == variantId)
+                  .toList();
+          if (forVariant.isNotEmpty) {
+            final main = forVariant.firstWhere(
+              (img) => img['is_main'] == true,
+              orElse: () => forVariant.first,
+            );
+            imageUrl = main['image_url'] as String?;
+          } else {
+            // Imagen genérica del producto (sin variante asignada o is_main)
+            final generic =
+                productImages
+                    .where((img) => img['variant_id'] == null)
+                    .toList();
+            final pool = generic.isNotEmpty ? generic : productImages;
+            final main = pool.firstWhere(
+              (img) => img['is_main'] == true,
+              orElse: () => pool.first,
+            );
+            imageUrl = main['image_url'] as String?;
+          }
+        }
+      }
 
       return _POItemModel(
         productId: r['product_id'] as String,
-        variantId: r['variant_id'] as String,
+        variantId: variantId,
         productName: prod?['name'] as String?,
         variantAttrs: attrsText,
         sku: variant?['sku'] as String?,
@@ -327,6 +388,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 ? DateTime.tryParse(r['expiry_date'] as String)
                 : null,
         usesBatches: prod?['uses_batches'] as bool? ?? false,
+        imageUrl: imageUrl,
       );
     }).toList();
   }
@@ -1052,6 +1114,42 @@ class _PODetailSheetState extends State<_PODetailSheet> {
                         ),
                         child: Row(
                           children: [
+                            // ── Miniatura del producto/variante ──────────────
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child:
+                                  item.imageUrl != null
+                                      ? CachedNetworkImage(
+                                        imageUrl: item.imageUrl!,
+                                        width: 52,
+                                        height: 52,
+                                        fit: BoxFit.cover,
+                                        memCacheWidth: 104, // 2x para HiDPI
+                                        placeholder:
+                                            (_, __) => Container(
+                                              width: 52,
+                                              height: 52,
+                                              color: AppColors.surface,
+                                              child: const Center(
+                                                child: SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color:
+                                                            AppColors.primary,
+                                                      ),
+                                                ),
+                                              ),
+                                            ),
+                                        errorWidget:
+                                            (_, __, ___) => _ImagePlaceholder(),
+                                      )
+                                      : _ImagePlaceholder(),
+                            ),
+                            const SizedBox(width: 12),
+                            // ── Info del producto ─────────────────────────────
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1062,6 +1160,8 @@ class _PODetailSheetState extends State<_PODetailSheet> {
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
                                     ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   if (item.variantAttrs != 'Única')
                                     Padding(
@@ -1072,6 +1172,8 @@ class _PODetailSheetState extends State<_PODetailSheet> {
                                           color: AppColors.textSecondary,
                                           fontSize: 11,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   const SizedBox(height: 4),
@@ -1089,6 +1191,7 @@ class _PODetailSheetState extends State<_PODetailSheet> {
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               'S/ ${item.subtotal.toStringAsFixed(2)}',
                               style: const TextStyle(
@@ -1416,6 +1519,25 @@ class _EmptyState extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    ),
+  );
+}
+
+/// Placeholder cuando no hay imagen o falla la carga
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 52,
+    height: 52,
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: const Icon(
+      Icons.image_not_supported_outlined,
+      size: 22,
+      color: AppColors.textHint,
     ),
   );
 }
