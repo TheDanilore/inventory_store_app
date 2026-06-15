@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
+import 'package:inventory_store_app/models/batch_assignment_model.dart';
 
 class PosProvider with ChangeNotifier {
   final Map<String, CartItemModel> _items = {};
@@ -17,9 +18,7 @@ class PosProvider with ChangeNotifier {
   // Guardamos los overrides aquí para que el checkout los lea y también los
   // pueda limpiar cuando cambia el almacén o se elimina un producto.
   // Clave: cartKey  →  lista de segmentos de lote asignados manualmente.
-  // El tipo es `dynamic` para no crear dependencia circular con _BatchAssignment
-  // del checkout. El checkout gestiona el tipo concreto; el provider solo lo almacena.
-  final Map<String, List<dynamic>> _batchOverrides = {};
+  final Map<String, List<BatchAssignmentModel>> _batchOverrides = {};
 
   // --- GETTERS ---
 
@@ -37,9 +36,9 @@ class PosProvider with ChangeNotifier {
   String get paymentMethod => _paymentMethod;
   String? get selectedWarehouseId => _selectedWarehouseId;
 
-  /// Overrides de lotes asignados manualmente (cartKey → lista dinámica).
+  /// Overrides de lotes asignados manualmente (cartKey → lista de BatchAssignmentModel).
   /// El checkout los lee y escribe a través de [setBatchOverride] / [clearBatchOverride].
-  Map<String, List<dynamic>> get batchOverrides =>
+  Map<String, List<BatchAssignmentModel>> get batchOverrides =>
       Map.unmodifiable(_batchOverrides);
 
   double get totalAmount {
@@ -82,7 +81,7 @@ class PosProvider with ChangeNotifier {
 
   /// Guarda el override de lotes para un ítem. Llamado desde el checkout
   /// cuando el usuario confirma la asignación en el _BatchEditSheet.
-  void setBatchOverride(String cartKey, List<dynamic> assignments) {
+  void setBatchOverride(String cartKey, List<BatchAssignmentModel> assignments) {
     _batchOverrides[cartKey] = assignments;
     notifyListeners();
   }

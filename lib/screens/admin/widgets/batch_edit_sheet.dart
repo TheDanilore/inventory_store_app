@@ -1,7 +1,7 @@
 // ─── BOTTOM SHEET: EDITAR LOTES ──────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/widgets/order_detail_sheet.dart';
+import 'package:inventory_store_app/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
@@ -9,7 +9,7 @@ class BatchEditSheet extends StatefulWidget {
   final String productName;
   final String? variantLabel;
   final int totalRequired;
-  final List<BatchAssignment> batches; // ordenados FEFO con assigned
+  final List<BatchAssignmentModel> batches; // ordenados FEFO con assigned
 
   const BatchEditSheet({
     super.key,
@@ -24,7 +24,7 @@ class BatchEditSheet extends StatefulWidget {
 }
 
 class _BatchEditSheetState extends State<BatchEditSheet> {
-  late final List<BatchAssignment> _batches;
+  late final List<BatchAssignmentModel> _batches;
 
   @override
   void initState() {
@@ -62,7 +62,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
   Future<void> _mostrarDialogoCantidad(
     BuildContext context,
     int index,
-    BatchAssignment b,
+    BatchAssignmentModel b,
   ) async {
     final qtyCtrl = TextEditingController(text: b.assigned.toString());
     final maximoPermitido = b.assigned + _remaining;

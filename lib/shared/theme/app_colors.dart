@@ -63,12 +63,10 @@ class AppColors {
 
   // --- Semantic & Status ---
   static const Color warning = Color(0xFFF57C00);
+  static const Color warningDark = Color(0xFFD17D10);
+  static const Color warningLight = Color(0xFFFFF3CD);
   static const Color error = Color(0xFFE53935);
   static const Color info = Color(0xFF1E88E5);
-
-  // Acentos
-
-  static const warningLight = Color(0xFFFEF3C7);
 
   // Radio y espaciado
 

@@ -12,41 +12,7 @@ import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ─── MODELO INTERNO: Segmento de lote asignado a un ítem ────────────────────
-class BatchAssignment {
-  final String batchId;
-  final String batchNumber;
-  final DateTime? expiryDate;
-  final int available;
-  int assigned;
-
-  BatchAssignment({
-    required this.batchId,
-    required this.batchNumber,
-    this.expiryDate,
-    required this.available,
-    required this.assigned,
-  });
-
-  BatchAssignment copyWith({int? assigned}) => BatchAssignment(
-    batchId: batchId,
-    batchNumber: batchNumber,
-    expiryDate: expiryDate,
-    available: available,
-    assigned: assigned ?? this.assigned,
-  );
-
-  String get expiryLabel {
-    if (expiryDate == null) return 'Sin vto.';
-    final d = expiryDate!;
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-  }
-
-  bool get isExpiringSoon {
-    if (expiryDate == null) return false;
-    return expiryDate!.isBefore(DateTime.now().add(const Duration(days: 30)));
-  }
-}
+import 'package:inventory_store_app/models/batch_assignment_model.dart';
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderModel order;
@@ -69,7 +35,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   Map<String, List<Map<String, dynamic>>> _batchesByVariant = {};
   final Map<String, bool> _usesBatchesMap = {};
-  final Map<String, List<BatchAssignment>> _batchOverrides = {};
+  final Map<String, List<BatchAssignmentModel>> _batchOverrides = {};
 
   bool _isLoading = true;
   bool _isEditing = false;
@@ -367,7 +333,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     final warehouseId = widget.order.warehouseId;
     if (warehouseId == null) return;
 
-    List<BatchAssignment> batches;
+    List<BatchAssignmentModel> batches;
     try {
       final resp = await _supabase
           .from('warehouse_stock_batches')
@@ -381,7 +347,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       batches =
           (resp as List)
               .map(
-                (b) => BatchAssignment(
+                (b) => BatchAssignmentModel(
                   batchId: b['id'] as String,
                   batchNumber: b['batch_number'] as String,
                   expiryDate:
@@ -426,7 +392,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
 
     if (!mounted) return;
-    final result = await showModalBottomSheet<List<BatchAssignment>>(
+    final result = await showModalBottomSheet<List<BatchAssignmentModel>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -3011,7 +2977,7 @@ class OrderDetailItemCard extends StatelessWidget {
   final bool isEditing;
   final bool usesBatches;
   final List<Map<String, dynamic>> batches; // Históricos (read-only)
-  final List<BatchAssignment>? batchAssignments; // Lotes a descontar (editable)
+  final List<BatchAssignmentModel>? batchAssignments; // Lotes a descontar (editable)
   final TextEditingController quantityController;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
@@ -3055,7 +3021,7 @@ class OrderDetailItemCard extends StatelessWidget {
     final activeBatches =
         hasBatchOverride
             ? batchAssignments!.where((b) => b.assigned > 0).toList()
-            : <BatchAssignment>[];
+            : <BatchAssignmentModel>[];
 
     return Card(
       elevation: 0,
@@ -3341,7 +3307,7 @@ class OrderDetailItemsSection extends StatelessWidget {
   final bool isLocked;
   final Map<String, List<Map<String, dynamic>>> batchesByVariant;
   final Map<String, bool> usesBatchesMap;
-  final Map<String, List<BatchAssignment>> batchOverrides;
+  final Map<String, List<BatchAssignmentModel>> batchOverrides;
   final List<TextEditingController> quantityControllers;
   final void Function(int index) onDecrease;
   final void Function(int index) onIncrease;
