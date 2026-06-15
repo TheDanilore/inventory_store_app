@@ -331,9 +331,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       0.0,
       double.infinity,
     );
-    final solesToPointsRatio = config.getDouble('soles_to_points_ratio', 1.0);
-    if (solesToPointsRatio <= 0) return 0;
-    return (totalFinal / solesToPointsRatio).floor();
+    final earningRate = config.getDouble('points_earning_rate', 0.03);
+    if (earningRate <= 0) return 0;
+    return (totalFinal * earningRate / pointsToSolesRatio).floor();
   }
 
   double _calculateOrderFinalAmount() {
@@ -963,6 +963,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 0.01,
                               ),
                               discountAmount: _currentOrder.discountAmount,
+                              isCompleted: _isCompleted,
                             ),
                           ],
                         ),

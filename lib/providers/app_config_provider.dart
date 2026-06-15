@@ -108,7 +108,7 @@ class AppConfigProvider extends ChangeNotifier {
       // CORRECCIÓN: Ordenamos de forma descendente por actualización por si existen registros duplicados huérfanos
       final rawResponse = await _supabase
           .from('business_info')
-          .select()
+          .select('id, business_name, tax_id, address, phone, logo_url')
           .order('updated_at', ascending: false)
           .limit(1);
 
