@@ -31,57 +31,6 @@ class _ShiftsTabState extends State<ShiftsTab>
   DateTime? _dateFrom;
   DateTime? _dateTo;
 
-  Future<void> _pickDateRange() async {
-    final now = DateTime.now();
-    final theme = Theme.of(context).copyWith(
-      colorScheme: ColorScheme.light(
-        primary: AppColors.primary,
-        onPrimary: Colors.white,
-        surface: Colors.white,
-        onSurface: Colors.black87,
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-
-    final from = await showDatePicker(
-      context: context,
-      initialDate: _dateFrom ?? now,
-      firstDate: DateTime(2020),
-      lastDate: now,
-      helpText: 'Fecha inicio',
-      builder: (context, child) => Theme(data: theme, child: child!),
-    );
-    if (from == null || !mounted) return;
-
-    final to = await showDatePicker(
-      context: context,
-      initialDate:
-          (_dateTo != null && _dateTo!.isAfter(from)) ? _dateTo! : from,
-      firstDate: from,
-      lastDate: now,
-      helpText: 'Fecha fin',
-      builder: (context, child) => Theme(data: theme, child: child!),
-    );
-    if (to == null) return;
-
-    setState(() {
-      _dateFrom = from;
-      _dateTo = DateTime(to.year, to.month, to.day, 23, 59, 59);
-      _currentPage = 0;
-    });
-  }
-
-  void _clearDates() => setState(() {
-    _dateFrom = null;
-    _dateTo = null;
-    _currentPage = 0;
-  });
-
   @override
   void initState() {
     super.initState();
@@ -405,7 +354,7 @@ class _ShiftsTabState extends State<ShiftsTab>
                                     itemCount:
                                         pageItems.length, // Usamos pageItems
                                     separatorBuilder:
-                                        (_, __) => const SizedBox(height: 8),
+                                        (_, _) => const SizedBox(height: 8),
                                     itemBuilder:
                                         (_, i) => _ShiftCard(
                                           shift:

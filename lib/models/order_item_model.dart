@@ -160,5 +160,5 @@ class OrderItemModel {
         .join(' | ');
   }
 
-  get variantDisplayName => variantLabel.isNotEmpty ? variantLabel : null;
+  String? get variantDisplayName => variantLabel.isNotEmpty ? variantLabel : null;
 }

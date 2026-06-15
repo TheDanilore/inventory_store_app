@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
+import 'package:inventory_store_app/models/variant_attribute_value_model.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/purchase_order_form_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -276,7 +277,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           quantity_ordered, quantity_received, unit_cost,
           batch_number, expiry_date,
           products(name, uses_batches),
-          product_variants(sku, variant_attribute_values(attribute_values(value, attributes(name))))
+          product_variants(sku, variant_attribute_values(attribute_values(id, value, attributes(id, name))))
         ''')
         .eq('purchase_order_id', poId);
 
@@ -284,21 +285,32 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       final prod = r['products'] as Map<String, dynamic>?;
       final variant = r['product_variants'] as Map<String, dynamic>?;
 
-      // ── CORRECCIÓN AQUÍ: Aplanamos los valores de los atributos ──
-      final List<String> attrValuesList = [];
+      // Parseamos los atributos reutilizando VariantAttributeValueModel.fromJson,
+      // que ya sabe leer la estructura: variant_attribute_values → attribute_values → attributes
+      final List<VariantAttributeValueModel> parsedAttrs = [];
       if (variant != null && variant['variant_attribute_values'] is List) {
-        for (final vav in variant['variant_attribute_values']) {
-          if (vav is Map && vav['attribute_values'] is Map) {
-            final av = vav['attribute_values'] as Map;
-            if (av['value'] != null) {
-              attrValuesList.add(av['value'].toString());
-            }
+        for (final vav in variant['variant_attribute_values'] as List) {
+          try {
+            parsedAttrs.add(
+              VariantAttributeValueModel.fromJson(
+                Map<String, dynamic>.from(vav as Map),
+              ),
+            );
+          } catch (_) {
+            // ignorar entradas malformadas
           }
         }
       }
 
-      final attrsText =
-          attrValuesList.isNotEmpty ? attrValuesList.join(' · ') : 'Única';
+      // Construimos el texto legible de atributos: "Talla: M · Color: Rojo"
+      final attrsText = parsedAttrs.isNotEmpty
+          ? parsedAttrs
+              .map((a) =>
+                  a.attributeName.isNotEmpty
+                      ? '${a.attributeName}: ${a.value}'
+                      : a.value)
+              .join(' · ')
+          : 'Única';
 
       return _POItemModel(
         productId: r['product_id'] as String,
