@@ -1,7 +1,7 @@
 // ─── Modelo para los atributos estructurados (nueva BD) ──────────────────────
 class VariantAttributeValueModel {
   final String attributeValueId; // ID del valor (Ej: ID de "Rojo")
-  final String attributeId; // ¡NUEVO! ID de la propiedad (Ej: ID de "Color")
+  final String attributeId; // ID de la propiedad (Ej: ID de "Color")
   final String attributeName;
   final String value;
 

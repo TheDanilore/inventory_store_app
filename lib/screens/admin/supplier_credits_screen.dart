@@ -1451,7 +1451,7 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
             ),
             const SizedBox(height: 16),
 
-            // ── NUEVO: Chips para seleccionar orden a pagar ──
+            // Chips para seleccionar orden a pagar ──
             const Text(
               'Aplicar pago a:',
               style: TextStyle(
@@ -1605,7 +1605,7 @@ class _SupplierPaymentModalState extends State<_SupplierPaymentModal> {
             ),
             const SizedBox(height: 24),
 
-            // ── NUEVO: Resumen Visual (Caja Verde) ──
+            // ── Resumen Visual (Caja Verde) ──
             if (showSummary) ...[
               Container(
                 padding: const EdgeInsets.all(16),

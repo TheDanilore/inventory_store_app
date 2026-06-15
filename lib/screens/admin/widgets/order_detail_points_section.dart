@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/widgets/order_detail_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailPointInfo extends StatelessWidget {
   final String title;
@@ -31,18 +31,20 @@ class OrderDetailPointInfo extends StatelessWidget {
 
 class OrderDetailPointsSection extends StatelessWidget {
   final int pointsUsed;
-  final int pointsEarned;
   final bool isEditing;
-  final TextEditingController pointsUsedController;
-  final ValueChanged<String> onPointsUsedChanged;
+  final TextEditingController pointsUsedCtrl;
+  final int maxPointsAvailable;
+  final double pointsToSolesRatio;
+  final ValueChanged<String> onPointsChanged;
 
   const OrderDetailPointsSection({
     super.key,
     required this.pointsUsed,
-    required this.pointsEarned,
     required this.isEditing,
-    required this.pointsUsedController,
-    required this.onPointsUsedChanged,
+    required this.pointsUsedCtrl,
+    required this.maxPointsAvailable,
+    required this.pointsToSolesRatio,
+    required this.onPointsChanged,
   });
 
   @override
@@ -63,8 +65,8 @@ class OrderDetailPointsSection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: OrderDetailPointInfo(
-                  title: 'Monedas ganadas',
-                  value: pointsEarned.toString(),
+                  title: 'Descuento',
+                  value: 'S/ ${(pointsUsed * pointsToSolesRatio).toStringAsFixed(2)}',
                   color: Colors.teal,
                 ),
               ),
@@ -73,15 +75,14 @@ class OrderDetailPointsSection extends StatelessWidget {
           if (isEditing) ...[
             const SizedBox(height: 12),
             TextField(
-              controller: pointsUsedController,
-              decoration: const InputDecoration(
-                labelText: 'Monedas a aplicar al completar',
-                helperText:
-                    'Solo se descuentan cuando la orden pase a COMPLETED.',
-                border: OutlineInputBorder(),
+              controller: pointsUsedCtrl,
+              decoration: InputDecoration(
+                labelText: 'Monedas a aplicar (Max: $maxPointsAvailable)',
+                helperText: 'Solo se descuentan cuando la orden pase a COMPLETED.',
+                border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
-              onChanged: onPointsUsedChanged,
+              onChanged: onPointsChanged,
             ),
           ],
         ],

@@ -247,7 +247,6 @@ class _MovementsTabState extends State<MovementsTab>
                             }),
                       ),
                       const SizedBox(width: 8),
-                      // NUEVO USO DEL BOTÓN
                       DateFilterCalendar(
                         dateRange:
                             _dateFrom != null && _dateTo != null
@@ -359,7 +358,7 @@ class _MovementsTabState extends State<MovementsTab>
               ],
             ),
 
-            // ── NUEVO FAB PARA MOVIMIENTO MANUAL ────────────────
+            // ── FAB PARA MOVIMIENTO MANUAL ────────────────
             Positioned(
               bottom: 24,
               right: 16,

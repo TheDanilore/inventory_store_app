@@ -467,7 +467,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
     } catch (e) {
       debugPrint('Error interno de compresión: $e');
-      // NUEVO: Mostrar alerta en pantalla para saber por qué falla
+      // Mostrar alerta en pantalla para saber por qué falla
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -587,7 +587,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     final supabase = Supabase.instance.client;
 
     try {
-      // NUEVO: Generar el JSON de detalles a partir de las filas dinámicas
+      // Generar el JSON de detalles a partir de las filas dinámicas
       final Map<String, String> detailsMap = {};
       for (final row in _detailRows) {
         final key = row.keyCtrl.text.trim();

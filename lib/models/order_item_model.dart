@@ -161,4 +161,38 @@ class OrderItemModel {
   }
 
   String? get variantDisplayName => variantLabel.isNotEmpty ? variantLabel : null;
+
+  OrderItemModel copyWith({
+    String? id,
+    String? orderId,
+    String? productId,
+    String? variantId,
+    int? quantity,
+    double? unitCost,
+    double? appliedPrice,
+    double? netProfit,
+    DateTime? createdAt,
+    String? productName,
+    String? sku,
+    Map<String, dynamic>? attributes,
+    String? variantImageUrl,
+    String? productImageUrl,
+  }) {
+    return OrderItemModel(
+      id: id ?? this.id,
+      orderId: orderId ?? this.orderId,
+      productId: productId ?? this.productId,
+      variantId: variantId ?? this.variantId,
+      quantity: quantity ?? this.quantity,
+      unitCost: unitCost ?? this.unitCost,
+      appliedPrice: appliedPrice ?? this.appliedPrice,
+      netProfit: netProfit ?? this.netProfit,
+      createdAt: createdAt ?? this.createdAt,
+      productName: productName ?? this.productName,
+      sku: sku ?? this.sku,
+      attributes: attributes ?? this.attributes,
+      variantImageUrl: variantImageUrl ?? this.variantImageUrl,
+      productImageUrl: productImageUrl ?? this.productImageUrl,
+    );
+  }
 }

@@ -69,8 +69,8 @@ class _EntryItemDetail {
   final double unitCost;
   final String batchNumber;
   final DateTime? expiryDate;
-  final bool usesBatches; // <-- NUEVO
-  final String? imageUrl; // <-- NUEVO
+  final bool usesBatches; 
+  final String? imageUrl; 
 
   const _EntryItemDetail({
     required this.productName,

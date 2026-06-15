@@ -1,0 +1,380 @@
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:inventory_store_app/models/order_item_model.dart';
+import 'package:inventory_store_app/models/batch_assignment_model.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_section_card.dart';
+
+class OrderDetailItemCard extends StatelessWidget {
+  final OrderItemModel item;
+  final bool isEditing;
+  final bool usesBatches;
+  final List<Map<String, dynamic>> batches;
+  final List<BatchAssignmentModel>? batchAssignments;
+  final TextEditingController quantityController;
+  final VoidCallback onDecrease;
+  final VoidCallback onIncrease;
+  final ValueChanged<String> onQuantityChanged;
+  final VoidCallback? onQuantityTap;
+  final VoidCallback? onEditBatches;
+
+  const OrderDetailItemCard({
+    super.key,
+    required this.item,
+    required this.isEditing,
+    required this.usesBatches,
+    this.batches = const [],
+    this.batchAssignments,
+    required this.quantityController,
+    required this.onDecrease,
+    required this.onIncrease,
+    required this.onQuantityChanged,
+    this.onQuantityTap,
+    this.onEditBatches,
+  });
+
+  String _formatExpiry(dynamic raw) {
+    if (raw == null) return '';
+    try {
+      final dt = DateTime.parse(raw.toString());
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final subtotal = item.subtotal;
+    final imageUrl = item.displayImageUrl;
+
+    final bool canEditBatches = onEditBatches != null && usesBatches;
+    final bool hasBatchOverride = canEditBatches && batchAssignments != null;
+    final activeBatches = hasBatchOverride
+        ? batchAssignments!.where((b) => b.assigned > 0).toList()
+        : <BatchAssignmentModel>[];
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        width: 52,
+                        height: 52,
+                        color: Colors.teal.withValues(alpha: 0.1),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (_, _, _) => _placeholderIcon(),
+                    )
+                  : _placeholderIcon(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.productName ?? 'Producto sin nombre',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.variantLabel,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'SKU: ${item.sku ?? 'N/A'}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+
+                  if (canEditBatches) ...[
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: onEditBatches,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: hasBatchOverride && activeBatches.isNotEmpty
+                              ? AppColors.teal.withValues(alpha: 0.08)
+                              : AppColors.amberLight.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: hasBatchOverride && activeBatches.isNotEmpty
+                                ? AppColors.teal.withValues(alpha: 0.3)
+                                : AppColors.amber.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              hasBatchOverride && activeBatches.isNotEmpty
+                                  ? Icons.inventory_2_rounded
+                                  : Icons.edit_note_rounded,
+                              size: 11,
+                              color: hasBatchOverride && activeBatches.isNotEmpty
+                                  ? AppColors.teal
+                                  : AppColors.amber,
+                            ),
+                            const SizedBox(width: 4),
+                            if (hasBatchOverride && activeBatches.isNotEmpty)
+                              Flexible(
+                                child: Text(
+                                  activeBatches
+                                      .map((b) =>
+                                          '${b.assigned}u · ${b.batchNumber}${b.expiryDate != null ? ' (vto ${b.expiryLabel})' : ''}')
+                                      .join(' + '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.tealDark,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            else
+                              const Text(
+                                'FEFO automático · Toca para editar',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.amber,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.edit_rounded,
+                              size: 10,
+                              color: hasBatchOverride && activeBatches.isNotEmpty
+                                  ? AppColors.teal
+                                  : AppColors.amber,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (batches.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: batches.map((b) {
+                        final batchNumber = b['batch_number'] as String? ?? '';
+                        final qty = b['quantity'] as int? ?? 0;
+                        final expiry = _formatExpiry(b['expiry_date']);
+                        final label = expiry.isNotEmpty
+                            ? '${qty}u · $batchNumber (vto $expiry)'
+                            : '${qty}u · $batchNumber';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.teal.withValues(alpha: 0.25)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.inventory_2_rounded, size: 10, color: Colors.teal.shade700),
+                              const SizedBox(width: 4),
+                              Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.teal.shade800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (isEditing)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: onDecrease,
+                      ),
+                      GestureDetector(
+                        onTap: onQuantityTap,
+                        child: Container(
+                          width: 48,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.white,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            quantityController.text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: onIncrease,
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    'x${item.quantity}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                const SizedBox(height: 6),
+                Text(
+                  'S/ ${subtotal.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholderIcon() {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: Colors.teal.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.inventory_2_outlined, color: Colors.teal),
+    );
+  }
+}
+
+class OrderDetailItemsSection extends StatelessWidget {
+  final List<OrderItemModel> items;
+  final bool isLoading;
+  final bool isEditing;
+  final bool isLocked;
+  final Map<String, List<Map<String, dynamic>>> batchesByVariant;
+  final Map<String, bool> usesBatchesMap;
+  final Map<String, List<BatchAssignmentModel>> batchOverrides;
+  final List<TextEditingController> quantityControllers;
+  final void Function(int index) onDecrease;
+  final void Function(int index) onIncrease;
+  final void Function(int index, String value) onQuantityChanged;
+  final void Function(int index)? onQuantityTap;
+  final void Function(OrderItemModel item)? onEditBatches;
+
+  const OrderDetailItemsSection({
+    super.key,
+    required this.items,
+    required this.isLoading,
+    required this.isEditing,
+    this.isLocked = false,
+    this.batchesByVariant = const {},
+    required this.usesBatchesMap,
+    this.batchOverrides = const {},
+    required this.quantityControllers,
+    required this.onDecrease,
+    required this.onIncrease,
+    required this.onQuantityChanged,
+    this.onQuantityTap,
+    this.onEditBatches,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OrderDetailSectionCard(
+      title: 'Items (${items.length})',
+      child: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : items.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Sin items registrados.',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final batches = batchesByVariant[item.variantId ?? ''] ?? [];
+                    final usesBatches = usesBatchesMap[item.variantId ?? ''] ?? false;
+
+                    return OrderDetailItemCard(
+                      item: item,
+                      isEditing: isEditing && !isLocked,
+                      usesBatches: usesBatches,
+                      batches: batches,
+                      batchAssignments: batchOverrides[item.id ?? ''],
+                      quantityController: quantityControllers[index],
+                      onDecrease: () => onDecrease(index),
+                      onIncrease: () => onIncrease(index),
+                      onQuantityChanged: (value) => onQuantityChanged(index, value),
+                      onQuantityTap: onQuantityTap != null ? () => onQuantityTap!(index) : null,
+                      onEditBatches: onEditBatches != null ? () => onEditBatches!(item) : null,
+                    );
+                  },
+                ),
+    );
+  }
+}

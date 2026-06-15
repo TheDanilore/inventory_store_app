@@ -910,8 +910,8 @@ class _SearchBar extends StatelessWidget {
   final TextEditingController ctrl;
   final FocusNode focusNode;
   final bool isSearching; // Define si estamos en "Modo Vista Búsqueda"
-  final VoidCallback onBack; // NUEVO
-  final VoidCallback onClear; // NUEVO
+  final VoidCallback onBack;
+  final VoidCallback onClear;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
 

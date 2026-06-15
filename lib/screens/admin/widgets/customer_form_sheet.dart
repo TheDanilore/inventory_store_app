@@ -140,7 +140,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Obtener el profile_id del Administrador (NUEVO)
+      // 1. Obtener el profile_id del Administrador
       String? adminProfileId;
       final authUserId = _supabase.auth.currentUser?.id;
       if (authUserId != null) {

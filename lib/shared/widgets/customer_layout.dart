@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
-import 'package:inventory_store_app/providers/wallet_provider.dart'; // ← NUEVO
+import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 import 'package:inventory_store_app/screens/auth/login_screen.dart';
 import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';

@@ -160,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           })
           .eq('auth_user_id', user.id);
 
-      // NUEVO: Si todo salió bien y había una imagen vieja, la borramos del bucket
+      // Si todo salió bien y había una imagen vieja, la borramos del bucket
       if (_imageBytes != null &&
           oldAvatarUrl != null &&
           oldAvatarUrl.contains('/public/avatars/')) {
@@ -289,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       debugPrint('Error interno de compresión: $e');
-      // NUEVO: Mostrar alerta en pantalla para saber por qué falla
+      // Mostrar alerta en pantalla para saber por qué falla
       if (mounted) {
         AppSnackbar.show(
           context,

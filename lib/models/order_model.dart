@@ -20,7 +20,7 @@ class OrderModel {
 
   final WarehouseModel? warehouse;
 
-  // NUEVO: Agregamos propiedades para guardar la información del JOIN de 'profiles'
+  // Agregamos propiedades para guardar la información del JOIN de 'profiles'
   final String? profileFullName;
   final String? profilePhone;
 
@@ -83,7 +83,7 @@ class OrderModel {
               : null,
       discountAmount: (json['discount_amount'] as num? ?? 0.00).toDouble(),
 
-      // NUEVO: Mapeamos los campos del perfil
+      // Mapeamos los campos del perfil
       profileFullName: profilesData?['full_name'] as String?,
       profilePhone: profilesData?['phone'] as String?,
     );

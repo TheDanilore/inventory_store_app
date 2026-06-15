@@ -1,7 +1,7 @@
 // ignore_for_file: unused_element_parameter
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // <-- NUEVO
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -25,8 +25,8 @@ class _BatchModel {
   final String? productName;
   final String? variantAttrs;
   final String? sku;
-  final bool usesBatches; // <-- NUEVO
-  final String? imageUrl; // <-- NUEVO
+  final bool usesBatches; 
+  final String? imageUrl; 
   String status;
   int? daysRemaining;
 
@@ -88,8 +88,8 @@ class _VariantStockItem {
   final int wholesaleMinQty;
   final String variantId;
   final String? sku;
-  final String attrsText; // <-- NUEVO
-  final String? imageUrl; // <-- NUEVO
+  final String attrsText; 
+  final String? imageUrl; 
   final int reorderPoint;
   final int stock;
   final List<_BatchModel> batches;

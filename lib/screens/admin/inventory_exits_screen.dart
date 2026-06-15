@@ -62,8 +62,8 @@ class _ExitItemModel {
   final double quantity;
   final double unitCost;
   final String batchNumber;
-  final bool usesBatches; // <-- NUEVO
-  final String? imageUrl; // <-- NUEVO
+  final bool usesBatches; 
+  final String? imageUrl; 
 
   const _ExitItemModel({
     this.productName,
