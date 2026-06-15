@@ -260,7 +260,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     final response = await _supabase
         .from('order_items')
         .select(
-          'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(*)), product_variants(sku, attributes, product_images(*))',
+          'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main, display_order, variant_id)), product_variants(sku, product_images(id, image_url, is_main, display_order), variant_attribute_values(attribute_values(id, value, attributes(id, name))))',
         )
         .eq('order_id', order.id)
         .order('created_at', ascending: true);

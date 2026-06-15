@@ -338,7 +338,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen>
     final response = await _supabase
         .from('product_variants')
         .select(
-          'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active',
+          'id, product_id, sku, product_images(id, image_url, is_main, display_order), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, variant_attribute_values(attribute_values(id, value, attributes(id, name)))',
         )
         .eq('product_id', productId)
         .eq('is_active', true)
