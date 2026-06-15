@@ -2,15 +2,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
+import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
-import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/models/order_model.dart';
+import 'package:inventory_store_app/services/admin/orders_service.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_sheet.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -22,12 +24,16 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   static const int _pageSize = 8;
   final _supabase = Supabase.instance.client;
+  final _ordersService = OrdersService();
+
   List<OrderModel> _orders = [];
   bool _isLoading = true;
+  bool _isBackgroundLoading = false; // Para recargas sin borrar la lista
+  final Set<String> _processingOrders = {}; // Bloqueo de dobles toques
 
-  // --- ESTADOS DE FILTROS ---
+  // ── FILTROS ──────────────────────────────────────────────────────────────
   String _statusFilter = 'ALL';
-  String _paymentStatusFilter = 'ALL'; // <-- Filtro de estado de pago
+  String _paymentStatusFilter = 'ALL';
   int _currentPage = 0;
   DateTimeRange? _dateRange;
   final _searchCtrl = TextEditingController();
@@ -46,10 +52,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
     super.dispose();
   }
 
-  // ─── LÓGICA DE DATOS ────────────────────────────────────────────────────────
+  // ─── CARGA DE DATOS ───────────────────────────────────────────────────────
 
-  Future<void> _fetchOrders() async {
-    setState(() => _isLoading = true);
+  Future<void> _fetchOrders({bool background = false}) async {
+    if (!mounted) return;
+    if (background) {
+      setState(() => _isBackgroundLoading = true);
+    } else {
+      setState(() => _isLoading = true);
+    }
+
     try {
       var query = _supabase.from('orders').select('''
         id,
@@ -72,17 +84,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
         warehouses ( id, name )
       ''');
 
-      // Filtro de Estado del Pedido
-      if (_statusFilter != 'ALL') {
-        query = query.eq('status', _statusFilter);
-      }
-
-      // Filtro de Estado de Pago
-      if (_paymentStatusFilter != 'ALL') {
+      if (_statusFilter != 'ALL') query = query.eq('status', _statusFilter);
+      if (_paymentStatusFilter != 'ALL')
         query = query.eq('payment_status', _paymentStatusFilter);
-      }
 
-      // Filtro de Fechas
       if (_dateRange != null) {
         final start = _dateRange!.start.toIso8601String();
         final end =
@@ -95,16 +100,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final response = await query.order('created_at', ascending: false);
       List<dynamic> rawData = response as List;
 
-      // Búsqueda en memoria por nombre (ya que cruza dos tablas)
+      // Búsqueda en memoria (cruza dos tablas)
       final queryText = _searchCtrl.text.trim().toLowerCase();
       if (queryText.isNotEmpty) {
         rawData =
             rawData.where((row) {
               final profile = row['profiles'] as Map<String, dynamic>?;
-              final profileName = profile?['full_name'] as String?;
-              final manualName = row['customer_name'] as String?;
               final clientName =
-                  (profileName ?? manualName ?? 'Cliente mostrador')
+                  ((profile?['full_name'] as String?) ??
+                          (row['customer_name'] as String?) ??
+                          'Cliente mostrador')
                       .toLowerCase();
               final orderId = (row['id'] as String? ?? '').toLowerCase();
               return clientName.contains(queryText) ||
@@ -116,11 +121,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
         setState(() {
           _orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
           _isLoading = false;
+          _isBackgroundLoading = false;
         });
       }
     } catch (e) {
       debugPrint('Error fetching orders: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isBackgroundLoading = false;
+        });
+        AppSnackbar.show(
+          context,
+          message: 'Error al cargar pedidos: $e',
+          type: SnackbarType.error,
+        );
+      }
     }
   }
 
@@ -128,11 +144,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() => _currentPage = 0);
-      _fetchOrders();
+      _fetchOrders(background: true);
     });
   }
 
-  // NUEVO METODO: Obtener los items y generar el PDF desde la lista
+  // ─── GENERACIÓN DE TICKET PDF ─────────────────────────────────────────────
+
   Future<void> _printOrderTicket(OrderModel order) async {
     try {
       final resp = await _supabase
@@ -141,8 +158,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
             id, order_id, product_id, variant_id, quantity, unit_cost,
             applied_price, net_profit, created_at,
             products ( name, uses_batches, product_images(image_url, is_main, variant_id) ),
-            product_variants ( 
-              sku, 
+            product_variants (
+              sku,
               product_images(image_url, is_main, variant_id),
               variant_attribute_values(attribute_values(value))
             )
@@ -153,26 +170,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
           (resp as List).map((row) {
             final variantJson =
                 row['product_variants'] as Map<String, dynamic>?;
-
-            // Extraer atributos relacionales
             final vavList =
                 variantJson?['variant_attribute_values'] as List<dynamic>? ??
                 [];
-            final List<String> attrValues = [];
+            final attrValues = <String>[];
             for (var vav in vavList) {
               final av = vav['attribute_values'] as Map<String, dynamic>?;
-              if (av != null && av['value'] != null) {
-                attrValues.add(av['value'].toString());
-              }
+              if (av?['value'] != null) attrValues.add(av!['value'].toString());
             }
-
-            // El OrderItemModel original necesita los atributos de alguna forma.
-            // Simulamos un mapa para mantener compatibilidad con el FromJson actual de OrderItemModel
             if (variantJson != null) {
-              // Inyectamos un string simplificado para que el PDF lo lea fácil
               variantJson['attributes'] = {'Variante': attrValues.join(' · ')};
             }
-
             return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
           }).toList();
 
@@ -188,59 +196,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  // ─── ACTUALIZAR ESTADO DE PEDIDO ─────────────────────────────────────────
+
   Future<void> _updateOrderStatus(OrderModel order, String newStatus) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text(
-              'Actualizar Pedido',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              '¿Estás seguro de marcar este pedido como ${_statusLabel(newStatus)}?',
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      newStatus == 'COMPLETED' ? Colors.green : Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Confirmar',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-    );
+    // Bloqueo de dobles toques
+    if (_processingOrders.contains(order.id)) return;
 
-    if (confirm != true) return;
-
-    // ─── Aviso si el método de pago es 'POR ACORDAR' al completar ───
+    // Aviso si el método de pago es "POR ACORDAR" al completar
     if (newStatus == 'COMPLETED' &&
         (order.paymentMethod == 'POR ACORDAR' ||
             order.paymentMethod.trim().isEmpty)) {
       await showDialog<void>(
-        // ignore: use_build_context_synchronously
         context: context,
         builder:
             (ctx) => AlertDialog(
@@ -278,24 +244,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return;
     }
 
+    // Diálogo de confirmación enriquecido
+    final confirm = await _showConfirmDialog(order, newStatus);
+    if (confirm != true) return;
+
+    setState(() => _processingOrders.add(order.id));
+
     try {
-      String? currentUserId;
-      final authUserId = _supabase.auth.currentUser?.id;
-
-      if (authUserId != null) {
-        final profileResp =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-
-        if (profileResp != null) {
-          currentUserId = profileResp['id'] as String;
-        }
-      }
-
-      // Logica de completar pedido (Borrado -> Completado)
       if (newStatus == 'COMPLETED' && order.status == 'PENDING') {
         final orderData =
             await _supabase
@@ -303,438 +258,233 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 .select('warehouse_id')
                 .eq('id', order.id)
                 .single();
-        final warehouseId = orderData['warehouse_id'];
 
-        if (order.paymentMethod == 'CRÉDITO') {
-          if (order.customerId == null) {
-            _showErrorSnackBar('No hay cliente asignado para crédito.');
-            return;
-          }
-          final creditInfo =
-              await _supabase
-                  .from('customer_credits')
-                  .select('id, credit_limit, current_debt, is_active')
-                  .eq('profile_id', order.customerId!)
-                  .maybeSingle();
-
-          if (creditInfo == null || creditInfo['is_active'] != true) {
-            _showErrorSnackBar('El cliente no tiene línea de crédito activa.');
-            return;
-          }
-
-          final availableCredit =
-              (creditInfo['credit_limit'] as num).toDouble() -
-              (creditInfo['current_debt'] as num).toDouble();
-
-          if (availableCredit < order.totalAmount) {
-            _showErrorSnackBar('Crédito insuficiente.');
-            return;
-          }
-        }
-
-        final itemsResp = await _supabase
-            .from('order_items')
-            .select('''
-              product_id, variant_id, quantity, 
-              products(name), 
-              product_variants(sku, variant_attribute_values(attribute_values(value)))
-            ''')
-            .eq('order_id', order.id);
-
-        final items = List<Map<String, dynamic>>.from(itemsResp);
-        List<String> outOfStockMessages = [];
-        List<Map<String, dynamic>> batchesToUpdate = [];
-        List<Map<String, dynamic>> movementsToInsert = [];
-
-        for (var item in items) {
-          final variantId = item['variant_id'];
-          final qtyNeeded = item['quantity'] as int;
-
-          final batchesResp = await _supabase
-              .from('warehouse_stock_batches')
-              .select('id, available_quantity')
-              .eq('warehouse_id', warehouseId)
-              .eq('variant_id', variantId)
-              .order('created_at', ascending: true);
-
-          final batches = List<Map<String, dynamic>>.from(batchesResp);
-          final currentStock = batches.fold<int>(
-            0,
-            (sum, b) => sum + ((b['available_quantity'] as num?)?.toInt() ?? 0),
-          );
-
-          if (currentStock < qtyNeeded) {
-            outOfStockMessages.add('Stock insuficiente para un producto.');
-          } else {
-            int remainingToDeduct = qtyNeeded;
-            for (var batch in batches) {
-              if (remainingToDeduct <= 0) break;
-              int batchStock =
-                  (batch['available_quantity'] as num?)?.toInt() ?? 0;
-              if (batchStock > 0) {
-                int deductFromThis =
-                    batchStock >= remainingToDeduct
-                        ? remainingToDeduct
-                        : batchStock;
-                int newBatchStock = batchStock - deductFromThis;
-
-                batchesToUpdate.add({
-                  'id': batch['id'],
-                  'available_quantity': newBatchStock,
-                });
-                movementsToInsert.add({
-                  'variant_id': variantId,
-                  'warehouse_id': warehouseId,
-                  'stock_batch_id': batch['id'],
-                  'order_id': order.id,
-                  'quantity': -deductFromThis,
-                  'previous_stock': batchStock,
-                  'new_stock': newBatchStock,
-                  'reason': 'SALE',
-                  'notes': 'Borrador completado',
-                  if (currentUserId != null) 'created_by': currentUserId,
-                });
-                remainingToDeduct -= deductFromThis;
-              }
-            }
-          }
-        }
-
-        if (outOfStockMessages.isNotEmpty) {
-          _showErrorSnackBar('Stock insuficiente para procesar orden.');
-          return;
-        }
-
-        for (var update in batchesToUpdate) {
-          await _supabase
-              .from('warehouse_stock_batches')
-              .update({'available_quantity': update['available_quantity']})
-              .eq('id', update['id']);
-        }
-        for (var mov in movementsToInsert) {
-          await _supabase.from('inventory_movements').insert(mov);
-        }
-
-        if (order.paymentMethod == 'CRÉDITO') {
-          final creditResp =
-              await _supabase
-                  .from('customer_credits')
-                  .select('id, current_debt')
-                  .eq('profile_id', order.customerId!)
-                  .single();
-
-          final creditId = creditResp['id'];
-          final newDebt =
-              (creditResp['current_debt'] as num).toDouble() +
-              order.totalAmount;
-
-          await _supabase
-              .from('customer_credits')
-              .update({
-                'current_debt': newDebt,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', creditId);
-
-          await _supabase.from('customer_credit_movements').insert({
-            'credit_id': creditId,
-            'order_id': order.id,
-            'movement_type': 'CHARGE',
-            'amount': order.totalAmount,
-            'payment_method': 'CRÉDITO',
-            'notes': 'Activación de pedido',
-            if (currentUserId != null) 'created_by': currentUserId,
-          });
-        } else {
-          // Pago directo: registrar ingreso en cuenta financiera
-          // Buscar la cuenta activa con ese nombre/método de pago
-          final accountsResp = await _supabase
-              .from('financial_accounts')
-              .select('id, name, type, balance')
-              .eq('is_active', true)
-              .order('name');
-
-          final accounts = List<Map<String, dynamic>>.from(accountsResp);
-
-          // Intentar encontrar una cuenta cuyo nombre coincida con el método de pago
-          // Si no hay coincidencia, usar la primera cuenta activa
-          Map<String, dynamic>? targetAccount;
-          if (accounts.isNotEmpty) {
-            try {
-              targetAccount = accounts.firstWhere(
-                (a) =>
-                    (a['name'] as String).toUpperCase().contains(
-                      order.paymentMethod.toUpperCase(),
-                    ) ||
-                    order.paymentMethod.toUpperCase().contains(
-                      (a['name'] as String).toUpperCase(),
-                    ),
-              );
-            } catch (_) {
-              targetAccount = accounts.first;
-            }
-          }
-
-          if (targetAccount != null) {
-            // Verificar turno activo si es CAJA
-            String? shiftId;
-            if (targetAccount['type'] == 'CAJA') {
-              final shiftResp =
-                  await _supabase
-                      .from('cash_shifts')
-                      .select('id')
-                      .eq('account_id', targetAccount['id'] as String)
-                      .eq('status', 'OPEN')
-                      .maybeSingle();
-              shiftId = shiftResp?['id'] as String?;
-            }
-
-            await _supabase.from('account_movements').insert({
-              'account_id': targetAccount['id'],
-              'movement_type': 'INCOME',
-              'amount': order.totalAmount,
-              'description': 'Cobro de venta — Pedido #${order.id}',
-              'reference_type': 'orders',
-              'reference_id': order.id,
-              if (shiftId != null) 'shift_id': shiftId,
-              if (currentUserId != null) 'created_by': currentUserId,
-            });
-
-            final currentBalance =
-                (targetAccount['balance'] as num?)?.toDouble() ?? 0.0;
-            await _supabase
-                .from('financial_accounts')
-                .update({'balance': currentBalance + order.totalAmount})
-                .eq('id', targetAccount['id'] as String);
-          }
-        }
-      }
-
-      final updates = <String, dynamic>{'status': newStatus};
-
-      if (newStatus == 'COMPLETED') {
-        if (order.paymentMethod == 'CRÉDITO') {
-          updates['payment_status'] = 'PENDING';
-          updates['amount_paid'] = 0;
-        } else {
-          updates['payment_status'] = 'PAID';
-          updates['amount_paid'] = order.totalAmount;
-        }
+        await _ordersService.completeOrder(
+          order: orderData,
+          orderId: order.id,
+          paymentMethod: order.paymentMethod,
+          totalAmount: order.totalAmount,
+          customerId: order.customerId,
+          pointsUsed: order.pointsUsed,
+          pointsEarned: order.pointsEarned,
+        );
       } else if (newStatus == 'CANCELLED') {
-        updates['payment_status'] = 'PAID';
-        updates['amount_paid'] = 0;
-      }
-
-      await _supabase.from('orders').update(updates).eq('id', order.id);
-
-      // ── WALLET: al completar una orden pendiente ─────────────────────────
-      final wasCompleted = order.status == 'COMPLETED';
-      final isNowCompleted = newStatus == 'COMPLETED';
-      final isCancelling = newStatus == 'CANCELLED';
-      final customerId = order.customerId;
-
-      if (!wasCompleted && isNowCompleted && customerId != null) {
-        // Leer tasas desde app_settings
-        final settingsResp = await _supabase
-            .from('app_settings')
-            .select('key, value')
-            .inFilter('key', ['points_earning_rate', 'points_to_soles_ratio']);
-        final settingsMap = {
-          for (final r in List<Map<String, dynamic>>.from(settingsResp))
-            r['key'] as String: (r['value'] as num).toDouble(),
-        };
-        final earningRate = settingsMap['points_earning_rate'] ?? 0.1;
-        final pointsToSoles = settingsMap['points_to_soles_ratio'] ?? 1.0;
-        final pointsEarned =
-            pointsToSoles > 0
-                ? (order.totalAmount * earningRate / pointsToSoles).toInt()
-                : 0;
-
-        // ── Canje (REDEEMED): registrar y descontar balance ───────────────
-        if (order.pointsUsed > 0) {
-          final redeemedExists =
-              await _supabase
-                  .from('wallet_movements')
-                  .select('id')
-                  .eq('order_id', order.id)
-                  .eq('movement_type', 'REDEEMED')
-                  .maybeSingle();
-          if (redeemedExists == null) {
-            await _supabase.from('wallet_movements').insert({
-              'profile_id': customerId,
-              'order_id': order.id,
-              'points': -order.pointsUsed,
-              'movement_type': 'REDEEMED',
-              'description': 'Canje aplicado al completar pedido #${order.id}',
-            });
-            final profileData =
-                await _supabase
-                    .from('profiles')
-                    .select('wallet_balance')
-                    .eq('id', customerId)
-                    .maybeSingle();
-            if (profileData != null) {
-              final curBal =
-                  (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-              await _supabase
-                  .from('profiles')
-                  .update({
-                    'wallet_balance': (curBal - order.pointsUsed).clamp(
-                      0,
-                      curBal,
-                    ),
-                  })
-                  .eq('id', customerId);
-            }
-          }
-        }
-
-        // ── Monedas ganadas (EARNED): registrar y acreditar balance ──────
-        if (pointsEarned > 0) {
-          final earnedExists =
-              await _supabase
-                  .from('wallet_movements')
-                  .select('id')
-                  .eq('order_id', order.id)
-                  .eq('movement_type', 'EARNED')
-                  .maybeSingle();
-          if (earnedExists == null) {
-            await _supabase.from('wallet_movements').insert({
-              'profile_id': customerId,
-              'order_id': order.id,
-              'points': pointsEarned,
-              'movement_type': 'EARNED',
-              'description':
-                  'Monedas obtenidas al completar pedido #${order.id}',
-            });
-            final profileData =
-                await _supabase
-                    .from('profiles')
-                    .select('wallet_balance')
-                    .eq('id', customerId)
-                    .maybeSingle();
-            if (profileData != null) {
-              final curBal =
-                  (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-              await _supabase
-                  .from('profiles')
-                  .update({'wallet_balance': curBal + pointsEarned})
-                  .eq('id', customerId);
-            }
-            // Guardar points_earned en la orden
-            await _supabase
-                .from('orders')
-                .update({'points_earned': pointsEarned})
-                .eq('id', order.id);
-          }
-        }
-      }
-
-      // ── WALLET: al cancelar — revertir EARNED y devolver REDEEMED ───────
-      if (isCancelling && customerId != null) {
-        // Revertir monedas EARNED
-        final earnedMov =
-            await _supabase
-                .from('wallet_movements')
-                .select('id, points')
-                .eq('order_id', order.id)
-                .eq('movement_type', 'EARNED')
-                .maybeSingle();
-        if (earnedMov != null) {
-          final pts = (earnedMov['points'] as num).toInt();
-          final profileData =
-              await _supabase
-                  .from('profiles')
-                  .select('wallet_balance')
-                  .eq('id', customerId)
-                  .maybeSingle();
-          if (profileData != null) {
-            final curBal =
-                (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-            await _supabase
-                .from('profiles')
-                .update({'wallet_balance': (curBal - pts).clamp(0, curBal)})
-                .eq('id', customerId);
-          }
-          await _supabase.from('wallet_movements').insert({
-            'profile_id': customerId,
-            'order_id': order.id,
-            'points': -pts,
-            'movement_type': 'ADJUSTMENT',
-            'description':
-                'Reversión de monedas por cancelación de pedido #${order.id}',
-          });
-        }
-
-        // Devolver monedas canjeadas REDEEMED
-        final redeemedMov =
-            await _supabase
-                .from('wallet_movements')
-                .select('id, points')
-                .eq('order_id', order.id)
-                .eq('movement_type', 'REDEEMED')
-                .maybeSingle();
-        if (redeemedMov != null) {
-          final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
-          final profileData =
-              await _supabase
-                  .from('profiles')
-                  .select('wallet_balance')
-                  .eq('id', customerId)
-                  .maybeSingle();
-          if (profileData != null) {
-            final curBal =
-                (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
-            await _supabase
-                .from('profiles')
-                .update({'wallet_balance': curBal + ptsCanjeados})
-                .eq('id', customerId);
-          }
-          await _supabase.from('wallet_movements').insert({
-            'profile_id': customerId,
-            'order_id': order.id,
-            'points': ptsCanjeados,
-            'movement_type': 'ADJUSTMENT',
-            'description':
-                'Devolución de monedas canjeadas por cancelación #${order.id}',
-          });
-        }
+        await _ordersService.cancelOrder(
+          orderId: order.id,
+          customerId: order.customerId,
+        );
+      } else {
+        // Cambio de estado simple (sin lógica adicional)
+        await _supabase
+            .from('orders')
+            .update({'status': newStatus})
+            .eq('id', order.id);
       }
 
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Estado actualizado correctamente',
+          message:
+              newStatus == 'COMPLETED'
+                  ? 'Pedido completado correctamente'
+                  : 'Estado actualizado correctamente',
           type: SnackbarType.success,
         );
-        _fetchOrders();
+        _fetchOrders(background: true);
       }
     } catch (e) {
-      if (mounted) _showErrorSnackBar('Error al actualizar: $e');
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al actualizar: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _processingOrders.remove(order.id));
     }
   }
 
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'COMPLETED':
-        return 'Completado';
-      case 'PENDING':
-        return 'Pendiente';
-      case 'CANCELLED':
-        return 'Cancelado';
-      default:
-        return status;
-    }
-  }
+  Future<bool?> _showConfirmDialog(OrderModel order, String newStatus) {
+    final isCompleting = newStatus == 'COMPLETED';
+    final isCancelling = newStatus == 'CANCELLED';
+    final isCredit = order.paymentMethod == 'CRÉDITO';
+    final pendingPoints = order.pointsEarned;
 
-  void _showErrorSnackBar(String msg) {
-    if (mounted) {
-      AppSnackbar.show(context, message: msg, type: SnackbarType.error);
-    }
+    return showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color:
+                        isCompleting
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isCompleting
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.cancel_outlined,
+                    color:
+                        isCompleting
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isCompleting ? 'Confirmar cobro' : 'Cancelar pedido',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cliente: ${order.displayCustomerName}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      isCompleting ? 'Monto a cobrar: ' : 'Total del pedido: ',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    Text(
+                      'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        color:
+                            isCompleting
+                                ? AppColors.primary
+                                : Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                if (isCompleting && !isCredit && pendingPoints > 0) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🪙', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'El cliente ganará $pendingPoints monedas',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (isCompleting && isCredit) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Se registrará como deuda de crédito.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (isCancelling) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Esta acción no se puede deshacer. El stock NO se reintegrará automáticamente si ya fue descontado.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isCompleting
+                          ? Colors.green.shade600
+                          : Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  isCompleting ? 'Confirmar cobro' : 'Sí, cancelar',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+    );
   }
 
   Future<void> _showOrderDetails(OrderModel order) async {
-    final result = await showModalBottomSheet(
+    final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -747,67 +497,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
             child: OrderDetailSheet(order: order),
           ),
     );
-    if (result == true) {
-      _fetchOrders();
-    }
+    if (result == true) _fetchOrders(background: true);
   }
 
-  // ─── FILTROS DISEÑO "CHIP" DESPLEGABLES ────────────────────────────────
-
-  Widget _buildDropdownFilter({
-    required String label,
-    required String value,
-    required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 16,
-            color: Colors.black87,
-          ),
-          isDense: true,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-            fontFamily: 'Nunito',
-          ),
-          items:
-              items.map((item) {
-                return DropdownMenuItem<String>(
-                  value: item.value,
-                  child: Row(
-                    children: [
-                      Text(
-                        '$label ',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                      item.child,
-                    ],
-                  ),
-                );
-              }).toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  // ─── BUILD PRINCIPAL ───────────────────────────────────────────────────
+  // ─── BUILD ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -828,7 +521,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- BUSCADOR ---
+          // ── Barra de progreso (recargas en background) ──────────────────
+          if (_isBackgroundLoading)
+            const LinearProgressIndicator(color: AppColors.teal, minHeight: 2),
+
+          // ── Buscador ────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: TextField(
@@ -850,7 +547,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           ),
                           onPressed: () {
                             setState(() => _searchCtrl.clear());
-                            _fetchOrders();
+                            _fetchOrders(background: true);
                           },
                         )
                         : null,
@@ -879,15 +576,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
           ),
 
-          // --- BARRA DE FILTROS ---
+          // ── Filtros ─────────────────────────────────────────────────────
           SizedBox(
             height: 40,
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               children: [
-                _buildDropdownFilter(
-                  label: '',
+                _FilterDropdown(
                   value: _statusFilter,
                   items: const [
                     DropdownMenuItem(
@@ -912,12 +608,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       _statusFilter = val!;
                       _currentPage = 0;
                     });
-                    _fetchOrders();
+                    _fetchOrders(background: true);
                   },
                 ),
                 const SizedBox(width: 8),
-                _buildDropdownFilter(
-                  label: '',
+                _FilterDropdown(
                   value: _paymentStatusFilter,
                   items: const [
                     DropdownMenuItem(
@@ -939,7 +634,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       _paymentStatusFilter = val!;
                       _currentPage = 0;
                     });
-                    _fetchOrders();
+                    _fetchOrders(background: true);
                   },
                 ),
                 const SizedBox(width: 8),
@@ -950,14 +645,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       _dateRange = picked;
                       _currentPage = 0;
                     });
-                    _fetchOrders();
+                    _fetchOrders(background: true);
                   },
                   onClear: () {
                     setState(() {
                       _dateRange = null;
                       _currentPage = 0;
                     });
-                    _fetchOrders();
+                    _fetchOrders(background: true);
                   },
                 ),
               ],
@@ -965,35 +660,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
           const SizedBox(height: 16),
 
-          // --- LISTA DE PEDIDOS ---
+          // ── Lista de pedidos ─────────────────────────────────────────────
           Expanded(
             child:
                 _isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? _buildShimmerList()
                     : _orders.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.receipt_long_rounded,
-                            size: 60,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No se encontraron pedidos.',
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
+                    ? _buildEmptyState()
                     : Column(
                       children: [
+                        // Contador
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                           child: Row(
@@ -1008,7 +684,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               ),
                               const Spacer(),
                               Text(
-                                'Página ${currentPage + 1} / $totalPages',
+                                'Pág. ${currentPage + 1} / $totalPages',
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontSize: 12,
@@ -1021,7 +697,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         Expanded(
                           child: RefreshIndicator(
                             color: AppColors.primary,
-                            onRefresh: () async => _fetchOrders(),
+                            onRefresh: () => _fetchOrders(),
                             child: ListView.builder(
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(
@@ -1030,15 +706,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               itemCount: pageItems.length,
                               itemBuilder: (context, index) {
                                 final order = pageItems[index];
+                                final isProcessing = _processingOrders.contains(
+                                  order.id,
+                                );
                                 return AdminOrderCard(
                                   order: order,
+                                  isProcessing: isProcessing,
                                   onTap: () => _showOrderDetails(order),
                                   onUpdateStatus:
-                                      (orderObj, newStatus) =>
-                                          _updateOrderStatus(
-                                            orderObj,
-                                            newStatus,
-                                          ),
+                                      (o, s) => _updateOrderStatus(o, s),
                                   onPrint: () => _printOrderTicket(order),
                                 );
                               },
@@ -1062,117 +738,109 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ),
     );
   }
+
+  Widget _buildShimmerList() {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: 6,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (_, _) => const AppShimmer(height: 140),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.receipt_long_rounded,
+            size: 64,
+            color: Colors.grey.shade300,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No se encontraron pedidos.',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Intenta cambiar los filtros o la búsqueda.',
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+// ─── Widget de filtro dropdown (privado) ──────────────────────────────────────
+
+class _FilterDropdown extends StatelessWidget {
+  final String value;
+  final List<DropdownMenuItem<String>> items;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterDropdown({
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 16,
+            color: Colors.black87,
+          ),
+          isDense: true,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+            fontFamily: 'Nunito',
+          ),
+          items: items,
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Tarjeta de pedido ────────────────────────────────────────────────────────
 
 class AdminOrderCard extends StatelessWidget {
   final OrderModel order;
+  final bool isProcessing;
   final VoidCallback onTap;
-  final Function(OrderModel order, String newStatus) onUpdateStatus;
+  final Function(OrderModel, String) onUpdateStatus;
   final VoidCallback onPrint;
 
   const AdminOrderCard({
     super.key,
     required this.order,
+    required this.isProcessing,
     required this.onTap,
     required this.onUpdateStatus,
     required this.onPrint,
   });
-
-  // Badge de estado de orden
-  Widget _buildStatusBadge(String status) {
-    Color bgColor;
-    Color textColor;
-    String label;
-
-    switch (status) {
-      case 'COMPLETED':
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade700;
-        label = 'Completado';
-        break;
-      case 'PENDING':
-        bgColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade800;
-        label = 'Pendiente';
-        break;
-      case 'CANCELLED':
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade700;
-        label = 'Cancelado';
-        break;
-      default:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade700;
-        label = status;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: textColor.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
-  // Badge de estado de pago
-  Widget _buildPaymentStatusBadge(
-    String paymentStatus,
-    double totalAmount,
-    double amountPaid,
-  ) {
-    Color bgColor;
-    Color textColor;
-    String label;
-
-    switch (paymentStatus) {
-      case 'PAID':
-        bgColor = Colors.teal.shade50;
-        textColor = Colors.teal.shade700;
-        label = 'Pagado';
-        break;
-      case 'PENDING':
-        bgColor = Colors.deepOrange.shade50;
-        textColor = Colors.deepOrange.shade700;
-        label = 'Por cobrar';
-        break;
-      case 'PARTIAL':
-        bgColor = Colors.amber.shade50;
-        textColor = Colors.amber.shade800;
-        label = 'Pago parcial';
-        break;
-      default:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade600;
-        label = paymentStatus;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: textColor.withValues(alpha: 0.25)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1180,15 +848,13 @@ class AdminOrderCard extends StatelessWidget {
     final date = (order.createdAt ?? DateTime.now()).toLocal();
     final dateString = DateFormat('dd MMM yyyy, hh:mm a').format(date);
     final customerName = order.displayCustomerName;
-
-    // Extraemos los primeros 8 caracteres del ID para la vista rápida
     final shortId = order.id.substring(0, 8).toUpperCase();
 
-    // Lógica dinámica de pago en la tarjeta
     final isCredit = order.paymentMethod == 'CRÉDITO';
+
+    // Calcular estado de pago dinámico
     String paymentStatus = order.paymentStatus;
     double amountPaid = order.amountPaid;
-
     if (status == 'COMPLETED' && !isCredit) {
       paymentStatus = 'PAID';
       amountPaid = order.totalAmount;
@@ -1197,6 +863,13 @@ class AdminOrderCard extends StatelessWidget {
     final totalAmount = order.totalAmount;
     final pendingAmount = totalAmount - amountPaid;
     final warehouseName = order.warehouseName;
+
+    // Chip de puntos pendientes (crédito completado con puntos a ganar)
+    final showPendingPointsChip =
+        status == 'COMPLETED' &&
+        isCredit &&
+        paymentStatus != 'PAID' &&
+        order.pointsEarned > 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1209,13 +882,23 @@ class AdminOrderCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
+          onTap: isProcessing ? null : onTap,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── FILA 1: Info Cliente e ID
+                // ── Indicador de procesamiento ────────────────────────────
+                if (isProcessing)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: LinearProgressIndicator(
+                      color: AppColors.teal,
+                      minHeight: 2,
+                    ),
+                  ),
+
+                // ── Fila 1: Info Cliente e ID ─────────────────────────────
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1223,7 +906,7 @@ class AdminOrderCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // NUEVO: Etiqueta con el ID del pedido
+                          // ID del pedido
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
@@ -1291,6 +974,8 @@ class AdminOrderCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 6),
+
+                          // Fecha
                           Row(
                             children: [
                               const Icon(
@@ -1310,6 +995,8 @@ class AdminOrderCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 4),
+
+                          // Método de pago
                           Row(
                             children: [
                               Icon(
@@ -1339,6 +1026,7 @@ class AdminOrderCard extends StatelessWidget {
                               ),
                             ],
                           ),
+
                           if (warehouseName.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Row(
@@ -1360,10 +1048,46 @@ class AdminOrderCard extends StatelessWidget {
                               ],
                             ),
                           ],
+
+                          // Chip: puntos pendientes de otorgar
+                          if (showPendingPointsChip) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.amber.shade300,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    '🪙',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${order.pointsEarned} monedas pendientes de otorgar',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.amber.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    _buildStatusBadge(status),
+                    _StatusBadge(status: status),
                   ],
                 ),
 
@@ -1371,12 +1095,11 @@ class AdminOrderCard extends StatelessWidget {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // ── FILA 2: Totales y Botones
+                // ── Fila 2: Totales y Botones ─────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Columna de montos
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1409,17 +1132,11 @@ class AdminOrderCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        // Estado de pago (solo en COMPLETED)
                         if (status == 'COMPLETED') ...[
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              _buildPaymentStatusBadge(
-                                paymentStatus,
-                                totalAmount,
-                                amountPaid,
-                              ),
-                              // Si hay deuda pendiente, mostrar monto
+                              _PaymentStatusBadge(paymentStatus: paymentStatus),
                               if (paymentStatus == 'PENDING' ||
                                   paymentStatus == 'PARTIAL') ...[
                                 const SizedBox(width: 6),
@@ -1459,7 +1176,17 @@ class AdminOrderCard extends StatelessWidget {
                           ),
                         if (status == 'PENDING') ...[
                           IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 22),
+                            icon:
+                                isProcessing
+                                    ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.red,
+                                      ),
+                                    )
+                                    : const Icon(Icons.close_rounded, size: 22),
                             color: Colors.red.shade400,
                             tooltip: 'Cancelar',
                             style: IconButton.styleFrom(
@@ -1468,7 +1195,10 @@ class AdminOrderCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                            onPressed: () => onUpdateStatus(order, 'CANCELLED'),
+                            onPressed:
+                                isProcessing
+                                    ? null
+                                    : () => onUpdateStatus(order, 'CANCELLED'),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton.icon(
@@ -1483,15 +1213,28 @@ class AdminOrderCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                            icon: const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 18,
-                            ),
+                            icon:
+                                isProcessing
+                                    ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                      size: 18,
+                                    ),
                             label: const Text(
                               'Cobrar',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
-                            onPressed: () => onUpdateStatus(order, 'COMPLETED'),
+                            onPressed:
+                                isProcessing
+                                    ? null
+                                    : () => onUpdateStatus(order, 'COMPLETED'),
                           ),
                         ],
                       ],
@@ -1501,6 +1244,110 @@ class AdminOrderCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Badges privados (const-friendly) ────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (status) {
+      case 'COMPLETED':
+        bgColor = Colors.green.shade50;
+        textColor = Colors.green.shade700;
+        label = 'Completado';
+        break;
+      case 'PENDING':
+        bgColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade800;
+        label = 'Pendiente';
+        break;
+      case 'CANCELLED':
+        bgColor = Colors.red.shade50;
+        textColor = Colors.red.shade700;
+        label = 'Cancelado';
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade700;
+        label = status;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentStatusBadge extends StatelessWidget {
+  final String paymentStatus;
+  const _PaymentStatusBadge({required this.paymentStatus});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bgColor;
+    Color textColor;
+    String label;
+
+    switch (paymentStatus) {
+      case 'PAID':
+        bgColor = Colors.teal.shade50;
+        textColor = Colors.teal.shade700;
+        label = 'Pagado';
+        break;
+      case 'PENDING':
+        bgColor = Colors.deepOrange.shade50;
+        textColor = Colors.deepOrange.shade700;
+        label = 'Por cobrar';
+        break;
+      case 'PARTIAL':
+        bgColor = Colors.amber.shade50;
+        textColor = Colors.amber.shade800;
+        label = 'Pago parcial';
+        break;
+      default:
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade600;
+        label = paymentStatus;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textColor.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

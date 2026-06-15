@@ -334,7 +334,10 @@ class PosCheckoutService {
         });
       }
 
-      if (puntosGanados > 0) {
+      // Las monedas EARNED solo se otorgan si la venta es contado.
+      // Para ventas a crédito, los puntos se otorgan al cobrar la deuda
+      // (gestionado en orders_screen._updateOrderStatus cuando se paga).
+      if (puntosGanados > 0 && !isCredito) {
         final profileData =
             await _supabase
                 .from('profiles')
