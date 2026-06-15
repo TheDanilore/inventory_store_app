@@ -103,7 +103,7 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.share_rounded, size: 18),
+                : const Icon(Icons.print_rounded, size: 18),
             label: Text(_isGenerating ? 'Generando...' : 'Generar Ticket'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.teal,

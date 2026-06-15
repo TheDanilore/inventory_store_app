@@ -375,7 +375,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
             onPrint: () async {
               try {
                 final orderResp = await Supabase.instance.client.from('orders').select('id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)').eq('id', orderId).single();
-                final itemsResp = await Supabase.instance.client.from('order_items').select('id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, sku, product_images(id, image_url, is_main)), product_variants(sku, attributes, product_images(id, image_url, is_main))').eq('order_id', orderId);
+                final itemsResp = await Supabase.instance.client.from('order_items').select('id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, attributes, product_images(id, image_url, is_main))').eq('order_id', orderId);
                 
                 final order = OrderModel.fromJson(orderResp);
                 final items = List<Map<String, dynamic>>.from(itemsResp).map((x) => OrderItemModel.fromJson(x)).toList();

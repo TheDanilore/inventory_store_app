@@ -331,6 +331,8 @@ class OrderPdfGenerator {
           !vLabelLower.contains('default') &&
           !vLabelLower.contains('única') &&
           !vLabelLower.contains('unica') &&
+          !vLabelLower.contains('estándar') &&
+          !vLabelLower.contains('estandar') &&
           vLabel != '()';
 
       if (hasRealVariant) {
