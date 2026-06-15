@@ -276,23 +276,35 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           quantity_ordered, quantity_received, unit_cost,
           batch_number, expiry_date,
           products(name, uses_batches),
-          product_variants(attributes, sku)
+          product_variants(sku, variant_attribute_values(attribute_values(value, attributes(name))))
         ''')
         .eq('purchase_order_id', poId);
 
     return (resp as List).map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
       final variant = r['product_variants'] as Map<String, dynamic>?;
-      final attrs = Map<String, dynamic>.from(
-        (variant?['attributes'] as Map?) ?? {},
-      );
-      final attrsText = attrs.values.map((e) => '$e').join(' · ');
+
+      // ── CORRECCIÓN AQUÍ: Aplanamos los valores de los atributos ──
+      final List<String> attrValuesList = [];
+      if (variant != null && variant['variant_attribute_values'] is List) {
+        for (final vav in variant['variant_attribute_values']) {
+          if (vav is Map && vav['attribute_values'] is Map) {
+            final av = vav['attribute_values'] as Map;
+            if (av['value'] != null) {
+              attrValuesList.add(av['value'].toString());
+            }
+          }
+        }
+      }
+
+      final attrsText =
+          attrValuesList.isNotEmpty ? attrValuesList.join(' · ') : 'Única';
 
       return _POItemModel(
         productId: r['product_id'] as String,
         variantId: r['variant_id'] as String,
         productName: prod?['name'] as String?,
-        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+        variantAttrs: attrsText,
         sku: variant?['sku'] as String?,
         quantityOrdered: (r['quantity_ordered'] as num).toDouble(),
         quantityReceived: (r['quantity_received'] as num?)?.toDouble() ?? 0,
