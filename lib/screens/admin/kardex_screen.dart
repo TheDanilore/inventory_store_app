@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // <-- NUEVO
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/inventory_movement_model.dart';
@@ -8,7 +9,6 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
-import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 
 class KardexMovement {
@@ -16,13 +16,21 @@ class KardexMovement {
 
   final String productName;
   final String warehouseName;
-  final ProductVariantModel? variant;
+  final String attrsText;
+  final String? sku;
+  final String batchNumber;
+  final bool usesBatches;
+  final String? imageUrl;
 
   KardexMovement({
     required this.movement,
     required this.productName,
     required this.warehouseName,
-    this.variant,
+    required this.attrsText,
+    this.sku,
+    required this.batchNumber,
+    required this.usesBatches,
+    this.imageUrl,
   });
 
   bool get isSale => movement.orderId != null;
@@ -78,19 +86,16 @@ class _KardexScreenState extends State<KardexScreen> {
   Future<void> _fetchMovements() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Construimos la consulta base
+      // 1. Construimos la consulta base con los nuevos Joins relacionales
       var query = _supabase.from('inventory_movements').select('''
       *,
       warehouses(name),
+      warehouse_stock_batches(batch_number),
       product_variants(
-        id,
-        product_id,
         sku,
-        attributes,
-        sale_price,
-        is_active,
-        product_images(*),
-        products(name)
+        variant_attribute_values(attribute_values(value)),
+        product_images(image_url, is_main, variant_id),
+        products(name, uses_batches, product_images(image_url, is_main, variant_id))
       )
     ''');
 
@@ -125,26 +130,62 @@ class _KardexScreenState extends State<KardexScreen> {
           (movementsResponse as List).map((row) {
             final movement = InventoryMovementModel.fromJson(row);
 
-            final variantJson = row['product_variants'];
+            final variantJson =
+                row['product_variants'] as Map<String, dynamic>?;
+            final warehouseJson = row['warehouses'] as Map<String, dynamic>?;
+            final batchJson =
+                row['warehouse_stock_batches'] as Map<String, dynamic>?;
+            final prodJson = variantJson?['products'] as Map<String, dynamic>?;
 
-            final warehouseJson = row['warehouses'];
+            final productName = prodJson?['name']?.toString() ?? 'Producto';
+            final usesBatches = prodJson?['uses_batches'] == true;
+            final batchNumber =
+                batchJson?['batch_number']?.toString() ?? 'DEFAULT';
+            final sku = variantJson?['sku']?.toString();
 
-            final variant =
-                variantJson != null
-                    ? ProductVariantModel.fromJson(
-                      Map<String, dynamic>.from(variantJson),
-                    )
-                    : null;
+            // Extracción de atributos relacionales
+            final vavList =
+                variantJson?['variant_attribute_values'] as List<dynamic>? ??
+                [];
+            final List<String> attrValues = [];
+            for (var vav in vavList) {
+              final av = vav['attribute_values'] as Map<String, dynamic>?;
+              if (av != null && av['value'] != null) {
+                attrValues.add(av['value'].toString());
+              }
+            }
+            final attrsText =
+                attrValues.isNotEmpty ? attrValues.join(' · ') : 'Única';
 
-            final productName =
-                variantJson?['products']?['name']?.toString() ?? 'Producto';
+            // Extracción de la imagen (Prioridad: Variante -> Producto)
+            String? finalImageUrl;
+            final variantImages =
+                variantJson?['product_images'] as List<dynamic>? ?? [];
+            final prodImages =
+                prodJson?['product_images'] as List<dynamic>? ?? [];
+
+            if (variantImages.isNotEmpty) {
+              finalImageUrl = variantImages.first['image_url'] as String?;
+            } else if (prodImages.isNotEmpty) {
+              final mainImage = prodImages
+                  .cast<Map<String, dynamic>>()
+                  .firstWhere(
+                    (img) => img['is_main'] == true,
+                    orElse: () => prodImages.first as Map<String, dynamic>,
+                  );
+              finalImageUrl = mainImage['image_url'] as String?;
+            }
 
             return KardexMovement(
               movement: movement,
               productName: productName,
               warehouseName:
                   warehouseJson?['name']?.toString() ?? 'Sin almacén',
-              variant: variant,
+              attrsText: attrsText,
+              sku: sku,
+              batchNumber: batchNumber,
+              usesBatches: usesBatches,
+              imageUrl: finalImageUrl,
             );
           }).toList();
 
@@ -365,7 +406,6 @@ class _KardexScreenState extends State<KardexScreen> {
                                 final item = pageItems[index];
                                 final move = item.movement;
                                 final movementType = item.movementType;
-                                final variant = item.variant;
 
                                 final iconColor =
                                     item.isEntry
@@ -409,12 +449,79 @@ class _KardexScreenState extends State<KardexScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            CircleAvatar(
-                                              backgroundColor: iconColor
-                                                  .withValues(alpha: 0.1),
-                                              child: Icon(
-                                                iconData,
-                                                color: iconColor,
+                                            // IMAGEN EN CACHÉ
+                                            Container(
+                                              width: 52,
+                                              height: 52,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: Colors.grey.shade200,
+                                                ),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(11),
+                                                child:
+                                                    item.imageUrl != null &&
+                                                            item
+                                                                .imageUrl!
+                                                                .isNotEmpty
+                                                        ? CachedNetworkImage(
+                                                          imageUrl:
+                                                              item.imageUrl!,
+                                                          fit: BoxFit.cover,
+                                                          placeholder:
+                                                              (
+                                                                context,
+                                                                url,
+                                                              ) => Container(
+                                                                color:
+                                                                    Colors
+                                                                        .grey
+                                                                        .shade50,
+                                                                child: const Center(
+                                                                  child: SizedBox(
+                                                                    width: 16,
+                                                                    height: 16,
+                                                                    child: CircularProgressIndicator(
+                                                                      strokeWidth:
+                                                                          2,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                          errorWidget:
+                                                              (
+                                                                context,
+                                                                url,
+                                                                error,
+                                                              ) => Container(
+                                                                color:
+                                                                    Colors
+                                                                        .grey
+                                                                        .shade50,
+                                                                child: Icon(
+                                                                  Icons
+                                                                      .broken_image_outlined,
+                                                                  size: 20,
+                                                                  color:
+                                                                      Colors
+                                                                          .grey
+                                                                          .shade400,
+                                                                ),
+                                                              ),
+                                                        )
+                                                        : Icon(
+                                                          Icons
+                                                              .inventory_2_outlined,
+                                                          color:
+                                                              Colors
+                                                                  .grey
+                                                                  .shade400,
+                                                        ),
                                               ),
                                             ),
                                             const SizedBox(width: 16),
@@ -431,7 +538,8 @@ class _KardexScreenState extends State<KardexScreen> {
                                                       fontSize: 16,
                                                     ),
                                                   ),
-                                                  if (variant != null) ...[
+                                                  if (item.attrsText !=
+                                                      'Única') ...[
                                                     const SizedBox(height: 4),
                                                     Container(
                                                       padding:
@@ -450,7 +558,7 @@ class _KardexScreenState extends State<KardexScreen> {
                                                             ),
                                                       ),
                                                       child: Text(
-                                                        'Var: ${variant.label}',
+                                                        item.attrsText,
                                                         style: TextStyle(
                                                           fontSize: 12,
                                                           color:
@@ -458,6 +566,52 @@ class _KardexScreenState extends State<KardexScreen> {
                                                                   .grey
                                                                   .shade700,
                                                         ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                  if (item.usesBatches &&
+                                                      item.batchNumber !=
+                                                          'DEFAULT') ...[
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.tag_rounded,
+                                                          size: 12,
+                                                          color:
+                                                              Colors
+                                                                  .grey
+                                                                  .shade500,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Text(
+                                                          'Lote: ${item.batchNumber}',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            color:
+                                                                Colors
+                                                                    .grey
+                                                                    .shade600,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                  if (item.sku != null &&
+                                                      item.sku!.isNotEmpty) ...[
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      'SKU: ${item.sku}',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color:
+                                                            Colors
+                                                                .grey
+                                                                .shade500,
                                                       ),
                                                     ),
                                                   ],
@@ -501,20 +655,37 @@ class _KardexScreenState extends State<KardexScreen> {
                                                     color: Colors.grey,
                                                   ),
                                                 ),
-                                                Text(
-                                                  '${item.isEntry ? '+' : ''}${move.quantity}',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 20,
-                                                    color: iconColor,
-                                                  ),
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      iconData,
+                                                      color: iconColor,
+                                                      size: 16,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '${item.isEntry ? '+' : ''}${move.quantity}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontSize: 20,
+                                                        color: iconColor,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                                 Text(
                                                   'Stock: ${move.previousStock} → ${move.newStock}',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                  ),
                                                 ),
                                                 if (move.unitCost != null)
                                                   Text(
                                                     'Costo: S/ ${move.unitCost}',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                    ),
                                                   ),
                                               ],
                                             ),
@@ -627,7 +798,9 @@ class _KardexScreenState extends State<KardexScreen> {
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const InventoryEntryFormScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const InventoryEntryFormScreen(),
+                ),
               );
               _fetchMovements();
             },
