@@ -90,6 +90,7 @@ class ProductFormProvider extends ChangeNotifier {
   // Flags de progreso
   bool _isInitializingData = false;
   bool _isSaving = false;
+  bool _isDirty = false;
 
   ProductFormProvider({ProductFormService? service})
       : _service = service ?? ProductFormService();
@@ -97,6 +98,7 @@ class ProductFormProvider extends ChangeNotifier {
   // Getters
   bool get isInitializingData => _isInitializingData;
   bool get isSaving => _isSaving;
+  bool get hasUnsavedChanges => _isDirty;
   bool get isLoadingCategories => _isLoadingCategories;
   List<CategoryModel> get categories => _categories;
   String? get selectedCategoryId => _selectedCategoryId;
@@ -115,27 +117,38 @@ class ProductFormProvider extends ChangeNotifier {
       _stockControl = false;
       _batchManagementEnabled = false;
     }
+    markAsDirty();
     notifyListeners();
   }
 
   void setStockControl(bool val) {
     _stockControl = val;
+    markAsDirty();
     notifyListeners();
   }
 
   void setBatchManagement(bool val) {
     _batchManagementEnabled = val;
+    markAsDirty();
     notifyListeners();
   }
 
   void setIngredientsEnabled(bool val) {
     _ingredientsEnabled = val;
+    markAsDirty();
     notifyListeners();
   }
 
   void setSelectedCategory(String? id) {
     _selectedCategoryId = id;
+    markAsDirty();
     notifyListeners();
+  }
+
+  void markAsDirty() {
+    if (!_isDirty) {
+      _isDirty = true;
+    }
   }
 
   // --- Inicialización ---
@@ -227,23 +240,27 @@ class ProductFormProvider extends ChangeNotifier {
   void addDetailRow() {
     detailRows.add(DetailControllers(
         keyCtrl: TextEditingController(), valueCtrl: TextEditingController()));
+    markAsDirty();
     notifyListeners();
   }
 
   void removeDetailRow(int index) {
     detailRows[index].dispose();
     detailRows.removeAt(index);
+    markAsDirty();
     notifyListeners();
   }
 
   void addIngredientRow() {
     ingredientRows.add(IngredientRow());
+    markAsDirty();
     notifyListeners();
   }
 
   void removeIngredientRow(int index) {
     ingredientRows[index].dispose();
     ingredientRows.removeAt(index);
+    markAsDirty();
     notifyListeners();
   }
 
@@ -273,6 +290,7 @@ class ProductFormProvider extends ChangeNotifier {
       }
 
       formImages.addAll(nuevosItems);
+      markAsDirty();
       notifyListeners();
 
       if (duplicadas > 0 && context.mounted) {
@@ -312,6 +330,7 @@ class ProductFormProvider extends ChangeNotifier {
     }
 
     formImages.removeAt(index);
+    markAsDirty();
     notifyListeners();
   }
 
@@ -319,6 +338,7 @@ class ProductFormProvider extends ChangeNotifier {
     if (newIndex > oldIndex) newIndex -= 1;
     final item = formImages.removeAt(oldIndex);
     formImages.insert(newIndex, item);
+    markAsDirty();
     notifyListeners();
   }
 
@@ -326,6 +346,7 @@ class ProductFormProvider extends ChangeNotifier {
 
   void addVariantDraft() {
     variantDrafts.add(VariantDraftModel());
+    markAsDirty();
     notifyListeners();
   }
 
@@ -349,6 +370,7 @@ class ProductFormProvider extends ChangeNotifier {
     copy.urlsExistentes.addAll(original.urlsExistentes);
     
     variantDrafts.insert(index + 1, copy);
+    markAsDirty();
     notifyListeners();
   }
 
@@ -358,6 +380,7 @@ class ProductFormProvider extends ChangeNotifier {
     if (draft.id == null) {
       draft.dispose();
       variantDrafts.removeAt(index);
+      markAsDirty();
       notifyListeners();
       return;
     }
@@ -379,6 +402,7 @@ class ProductFormProvider extends ChangeNotifier {
       await _service.deleteVariant(draft.id!);
       draft.dispose();
       variantDrafts.removeAt(index);
+      markAsDirty();
       notifyListeners();
 
       if (context.mounted) {
@@ -406,6 +430,7 @@ class ProductFormProvider extends ChangeNotifier {
       draft.urlsExistentes.clear();
       draft.nuevasImagenes.clear();
       draft.nuevasImagenes.add(bytesOptimizados);
+      markAsDirty();
       notifyListeners();
     }
   }

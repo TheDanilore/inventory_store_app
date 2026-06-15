@@ -221,7 +221,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         if (results.length > 4) {
           _creditInfo = results[4] as Map<String, dynamic>?;
         }
-        _pointsEarned = _calculatePointsEarned();
         _isLoading = false;
       });
 
@@ -315,7 +314,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   int _calculatePointsEarned() {
     if (_selectedCustomerId == null ||
-        _items.isEmpty) {
+        _items.isEmpty ||
+        _paymentMethod == 'CRÉDITO') {
       return 0;
     }
     final config = context.read<AppConfigProvider>();

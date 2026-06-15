@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// 1. AGREGA ESTA IMPORTACIÓN SÍ O SÍ
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';

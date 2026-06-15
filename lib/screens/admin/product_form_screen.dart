@@ -44,9 +44,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     final provider = context.read<ProductFormProvider>();
     if (provider.isSaving || provider.isInitializingData) return false;
 
-    // Si deseas hacer la comprobación de campos sucios (dirty check),
-    // podrías implementarlo en el provider. Por ahora, asumimos que siempre
-    // mostramos el diálogo si el usuario intenta salir.
+    if (!provider.hasUnsavedChanges) return true;
 
     final shouldPop = await showDialog<bool>(
       context: context,
@@ -113,6 +111,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   children: [
                     Form(
                       key: _formKey,
+                      onChanged: () {
+                        context.read<ProductFormProvider>().markAsDirty();
+                      },
                       child: CustomScrollView(
                         slivers: [
                           SliverPadding(
