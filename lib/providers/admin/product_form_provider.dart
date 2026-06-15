@@ -1,0 +1,662 @@
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:inventory_store_app/models/category_model.dart';
+import 'package:inventory_store_app/models/product_image_model.dart';
+import 'package:inventory_store_app/models/product_model.dart';
+import 'package:inventory_store_app/models/variant_draft_model.dart';
+import 'package:inventory_store_app/services/admin/product_form_service.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+
+// Clases de utilidad locales para el Provider
+class DetailControllers {
+  final TextEditingController keyCtrl;
+  final TextEditingController valueCtrl;
+
+  DetailControllers({required this.keyCtrl, required this.valueCtrl});
+
+  void dispose() {
+    keyCtrl.dispose();
+    valueCtrl.dispose();
+  }
+}
+
+class FormImageItem {
+  final String id;
+  final ProductImageModel? existing;
+  final Uint8List? newBytes;
+  final String? newName;
+
+  FormImageItem({this.existing, this.newBytes, this.newName})
+      : id = UniqueKey().toString();
+
+  bool get isExisting => existing != null;
+}
+
+class IngredientRow {
+  String? ingredientId;
+  final TextEditingController nameCtrl;
+  final TextEditingController concentrationCtrl;
+  final TextEditingController unitCtrl;
+
+  IngredientRow({
+    this.ingredientId,
+    String name = '',
+    String concentration = '',
+    String unit = '',
+  })  : nameCtrl = TextEditingController(text: name),
+        concentrationCtrl = TextEditingController(text: concentration),
+        unitCtrl = TextEditingController(text: unit);
+
+  void dispose() {
+    nameCtrl.dispose();
+    concentrationCtrl.dispose();
+    unitCtrl.dispose();
+  }
+}
+
+class ProductFormProvider extends ChangeNotifier {
+  final ProductFormService _service;
+  ProductModel? _productToEdit;
+
+  // Controladores Generales
+  final nombreCtrl = TextEditingController();
+  final costoCtrl = TextEditingController();
+  final precioCtrl = TextEditingController();
+  final precioMayorCtrl = TextEditingController();
+  final cantidadMayorCtrl = TextEditingController();
+  final descCtrl = TextEditingController();
+
+  // Estados de Configuración
+  String _productType = 'good';
+  bool _stockControl = true;
+  bool _batchManagementEnabled = false;
+  bool _ingredientsEnabled = false;
+
+  // Colecciones dinámicas
+  final List<DetailControllers> detailRows = [];
+  final List<IngredientRow> ingredientRows = [];
+  final List<FormImageItem> formImages = [];
+  final List<VariantDraftModel> variantDrafts = [];
+  final List<String> _removedVariantIds = [];
+
+  // Categorías
+  String? _selectedCategoryId;
+  List<CategoryModel> _categories = [];
+  bool _isLoadingCategories = true;
+
+  // Flags de progreso
+  bool _isInitializingData = false;
+  bool _isSaving = false;
+
+  ProductFormProvider({ProductFormService? service})
+      : _service = service ?? ProductFormService();
+
+  // Getters
+  bool get isInitializingData => _isInitializingData;
+  bool get isSaving => _isSaving;
+  bool get isLoadingCategories => _isLoadingCategories;
+  List<CategoryModel> get categories => _categories;
+  String? get selectedCategoryId => _selectedCategoryId;
+
+  String get productType => _productType;
+  bool get stockControl => _stockControl;
+  bool get batchManagementEnabled => _batchManagementEnabled;
+  bool get ingredientsEnabled => _ingredientsEnabled;
+
+  ProductModel? get productToEdit => _productToEdit;
+
+  // Setters
+  void setProductType(String type) {
+    _productType = type;
+    if (_productType == 'service') {
+      _stockControl = false;
+      _batchManagementEnabled = false;
+    }
+    notifyListeners();
+  }
+
+  void setStockControl(bool val) {
+    _stockControl = val;
+    notifyListeners();
+  }
+
+  void setBatchManagement(bool val) {
+    _batchManagementEnabled = val;
+    notifyListeners();
+  }
+
+  void setIngredientsEnabled(bool val) {
+    _ingredientsEnabled = val;
+    notifyListeners();
+  }
+
+  void setSelectedCategory(String? id) {
+    _selectedCategoryId = id;
+    notifyListeners();
+  }
+
+  // --- Inicialización ---
+
+  Future<void> initData(ProductModel? product) async {
+    _productToEdit = product;
+    _isInitializingData = true;
+    notifyListeners();
+
+    if (product != null) {
+      // Editar
+      nombreCtrl.text = product.name;
+      costoCtrl.text = product.unitCost.toString();
+      precioCtrl.text = product.salePrice.toString();
+      precioMayorCtrl.text = product.wholesalePrice?.toString() ?? '';
+      cantidadMayorCtrl.text = product.wholesaleMinQuantity.toString();
+      descCtrl.text = product.description ?? '';
+      _selectedCategoryId = product.categoryId;
+
+      _productType = product.productType;
+      _stockControl = product.stockControl;
+      _batchManagementEnabled = product.usesBatches;
+
+      if (product.details.isNotEmpty) {
+        product.details.forEach((key, value) {
+          detailRows.add(DetailControllers(
+              keyCtrl: TextEditingController(text: key),
+              valueCtrl: TextEditingController(text: value.toString())));
+        });
+      }
+
+      await Future.wait([
+        _fetchCategories(),
+        _fetchProductImages(product.id),
+        _fetchIngredients(product.id),
+        _fetchVariants(product.id),
+      ]);
+    } else {
+      // Nuevo
+      cantidadMayorCtrl.text = '3';
+      await _fetchCategories();
+    }
+
+    _isInitializingData = false;
+    notifyListeners();
+  }
+
+  Future<void> _fetchCategories() async {
+    _categories = await _service.fetchCategories();
+    _isLoadingCategories = false;
+    notifyListeners();
+  }
+
+  Future<void> _fetchProductImages(String productId) async {
+    final images = await _service.fetchProductImages(productId);
+    formImages.addAll(images.map((img) => FormImageItem(existing: img)));
+    notifyListeners();
+  }
+
+  Future<void> _fetchIngredients(String productId) async {
+    final list = await _service.fetchIngredients(productId);
+    for (final row in list) {
+      final activeIng = row['active_ingredients'] as Map<String, dynamic>?;
+      ingredientRows.add(
+        IngredientRow(
+          ingredientId: row['ingredient_id'] as String,
+          name: activeIng?['name'] as String? ?? '',
+          concentration: row['concentration']?.toString() ?? '',
+          unit: row['unit'] as String? ?? '',
+        ),
+      );
+    }
+    if (ingredientRows.isNotEmpty) _ingredientsEnabled = true;
+    notifyListeners();
+  }
+
+  Future<void> _fetchVariants(String productId) async {
+    try {
+      final drafts = await _service.fetchVariants(productId);
+      variantDrafts.addAll(drafts);
+    } catch (e) {
+      // El error se silencia o se maneja en el provider. Aquí lo notificaremos por Snackbar desde UI idealmente.
+    }
+    notifyListeners();
+  }
+
+  // --- Manejo de Detalles y Formato ---
+
+  void addDetailRow() {
+    detailRows.add(DetailControllers(
+        keyCtrl: TextEditingController(), valueCtrl: TextEditingController()));
+    notifyListeners();
+  }
+
+  void removeDetailRow(int index) {
+    detailRows[index].dispose();
+    detailRows.removeAt(index);
+    notifyListeners();
+  }
+
+  void addIngredientRow() {
+    ingredientRows.add(IngredientRow());
+    notifyListeners();
+  }
+
+  void removeIngredientRow(int index) {
+    ingredientRows[index].dispose();
+    ingredientRows.removeAt(index);
+    notifyListeners();
+  }
+
+  // --- Imágenes ---
+
+  Future<void> pickImages(BuildContext context) async {
+    final picker = ImagePicker();
+    final archivos = await picker.pickMultiImage();
+
+    if (archivos.isNotEmpty) {
+      var duplicadas = 0;
+      final nuevosItems = <FormImageItem>[];
+
+      for (final archivo in archivos) {
+        final nombre = _normalizarNombreArchivo(archivo);
+        if (formImages.any((img) => !img.isExisting && img.newName == nombre)) {
+          duplicadas++;
+          continue;
+        }
+
+        final bytesOriginales = await archivo.readAsBytes();
+        final bytesOptimizados = await _optimizarImagen(bytesOriginales);
+
+        nuevosItems.add(
+          FormImageItem(newBytes: bytesOptimizados, newName: nombre),
+        );
+      }
+
+      formImages.addAll(nuevosItems);
+      notifyListeners();
+
+      if (duplicadas > 0 && context.mounted) {
+        AppSnackbar.show(
+          context,
+          message: '$duplicadas imagen(es) repetida(s) omitidas.',
+          backgroundColor: Colors.orange,
+        );
+      }
+    }
+  }
+
+  Future<void> removeImage(BuildContext context, int index) async {
+    final item = formImages[index];
+
+    if (item.isExisting) {
+      try {
+        await _service.deleteProductImage(
+            item.existing!.id, item.existing!.imageUrl);
+        if (context.mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Imagen eliminada',
+            backgroundColor: AppColors.success,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al eliminar',
+            backgroundColor: AppColors.error,
+          );
+        }
+        return;
+      }
+    }
+
+    formImages.removeAt(index);
+    notifyListeners();
+  }
+
+  void reorderImages(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex -= 1;
+    final item = formImages.removeAt(oldIndex);
+    formImages.insert(newIndex, item);
+    notifyListeners();
+  }
+
+  // --- Variantes ---
+
+  void addVariantDraft() {
+    variantDrafts.add(VariantDraftModel());
+    notifyListeners();
+  }
+
+  Future<void> removeVariantDraft(BuildContext context, int index) async {
+    final draft = variantDrafts[index];
+
+    if (draft.id == null) {
+      draft.dispose();
+      variantDrafts.removeAt(index);
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final hasSales = await _service.hasVariantSales(draft.id!);
+      if (hasSales) {
+        if (context.mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                "No se puede eliminar: Esta variante tiene ventas asociadas.",
+            backgroundColor: Colors.red,
+          );
+        }
+        return;
+      }
+
+      await _service.deleteVariant(draft.id!);
+      draft.dispose();
+      variantDrafts.removeAt(index);
+      notifyListeners();
+
+      if (context.mounted) {
+        AppSnackbar.show(
+          context,
+          message: "Variante y su imagen eliminadas correctamente.",
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackbar.show(context, message: "Error al intentar eliminar: $e");
+      }
+    }
+  }
+
+  Future<void> pickVariantImage(BuildContext context, int index) async {
+    final draft = variantDrafts[index];
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery);
+
+    if (file != null) {
+      final bytesOriginales = await file.readAsBytes();
+      final bytesOptimizados = await _optimizarImagen(bytesOriginales);
+
+      draft.urlsExistentes.clear();
+      draft.nuevasImagenes.clear();
+      draft.nuevasImagenes.add(bytesOptimizados);
+      notifyListeners();
+    }
+  }
+
+  // --- Helper Compress/Upload ---
+
+  Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
+    if (bytesOriginales.lengthInBytes < 250 * 1024) {
+      return bytesOriginales;
+    }
+    try {
+      final bytesComprimidos = await FlutterImageCompress.compressWithList(
+        bytesOriginales,
+        minWidth: 1024,
+        minHeight: 1024,
+        quality: 75,
+        format: CompressFormat.jpeg,
+      );
+      if (bytesComprimidos.isNotEmpty &&
+          bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
+        return bytesComprimidos;
+      }
+    } catch (e) {
+      debugPrint('Error compresión: $e');
+    }
+    return bytesOriginales;
+  }
+
+  String _normalizarNombreArchivo(XFile archivo) {
+    final rawName = archivo.name.trim();
+    if (rawName.isNotEmpty) return rawName.toLowerCase();
+    final segments = archivo.path.split(RegExp(r'[\\/]'));
+    return segments.isEmpty
+        ? archivo.path.toLowerCase()
+        : segments.last.toLowerCase();
+  }
+
+  double? _parseDecimal(String value) {
+    final normalized = value.trim().replaceAll(',', '.');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
+
+  // --- Guardado General ---
+
+  Future<bool> saveProduct(BuildContext context, GlobalKey<FormState> formKey) async {
+    if (!formKey.currentState!.validate()) return false;
+
+    final skus = variantDrafts
+        .where((d) => d.skuCtrl.text.trim().isNotEmpty)
+        .map((d) => d.skuCtrl.text.trim().toLowerCase());
+
+    if (skus.toSet().length != skus.length) {
+      AppSnackbar.show(
+        context,
+        message: "Hay SKUs duplicados en las variantes.",
+        backgroundColor: Colors.red,
+      );
+      return false;
+    }
+
+    _isSaving = true;
+    notifyListeners();
+
+    try {
+      final Map<String, String> detailsMap = {};
+      for (final row in detailRows) {
+        final key = row.keyCtrl.text.trim();
+        final value = row.valueCtrl.text.trim();
+        if (key.isNotEmpty) detailsMap[key] = value;
+      }
+
+      final isUpdating = _productToEdit != null;
+      final unitCost = _parseDecimal(costoCtrl.text)!;
+      final salePrice = _parseDecimal(precioCtrl.text)!;
+      final wholesalePrice = precioMayorCtrl.text.trim().isEmpty
+          ? null
+          : _parseDecimal(precioMayorCtrl.text);
+
+      final mapData = {
+        'name': nombreCtrl.text.trim(),
+        'unit_cost': unitCost,
+        'sale_price': salePrice,
+        'wholesale_price': wholesalePrice,
+        'wholesale_min_quantity': cantidadMayorCtrl.text.trim().isEmpty
+            ? 3
+            : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
+        'description':
+            descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+        'category_id': _selectedCategoryId,
+        'details': detailsMap,
+        'product_type': _productType,
+        'stock_control': _stockControl,
+        'uses_batches': _batchManagementEnabled,
+      };
+
+      final String productId = await _service.saveProductMaster(
+        productId: isUpdating ? _productToEdit!.id : null,
+        productData: mapData,
+      );
+
+      // Imágenes del Producto
+      if (isUpdating && formImages.isNotEmpty) {
+        await _service.updateProductImagesIsMain(productId);
+      }
+
+      for (var i = 0; i < formImages.length; i++) {
+        final item = formImages[i];
+        final isMain = (i == 0);
+
+        if (item.isExisting) {
+          await _service.updateExistingProductImage(item.existing!.id, i, isMain);
+        } else {
+          final url = await _service.uploadImageToStorage(item.newBytes!, 'productos');
+          if (url != null) {
+             await _service.insertProductImage(
+              productId: productId,
+              url: url,
+              displayOrder: i,
+              isMain: isMain,
+            );
+          }
+        }
+      }
+
+      // Variantes Eliminadas
+      for (final variantId in _removedVariantIds) {
+        await _service.deactivateVariant(variantId);
+      }
+      _removedVariantIds.clear();
+
+      // Variantes
+      String primaryVariantId = '';
+
+      if (variantDrafts.isEmpty) {
+        if (isUpdating) {
+          final vid = await _service.getFirstVariantId(productId);
+          if (vid != null) {
+            primaryVariantId = vid;
+            await _service.saveVariantAttributes(primaryVariantId, []);
+          }
+        } else {
+          final payload = {
+            'sale_price': salePrice,
+            'wholesale_price': wholesalePrice,
+            'wholesale_min_quantity': cantidadMayorCtrl.text.trim().isEmpty
+                ? 3
+                : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
+            'is_active': true,
+          };
+          primaryVariantId = await _service.saveVariant(
+              productId: productId, variantData: payload);
+          await _service.saveVariantAttributes(primaryVariantId, []);
+        }
+      } else {
+        for (var i = 0; i < variantDrafts.length; i++) {
+          final draft = variantDrafts[i];
+          final valueIds = draft.selectedAttributes
+              .map((attr) => attr['value_id'] as String)
+              .toList();
+
+          final skuValue = draft.skuCtrl.text.trim();
+          final payload = {
+            'sku': skuValue.isEmpty ? null : skuValue,
+            'unit_cost': _parseDecimal(draft.unitCostCtrl.text) ?? 0.0,
+            'sale_price': _parseDecimal(draft.priceCtrl.text),
+            'wholesale_price': _parseDecimal(draft.wholesalePriceCtrl.text),
+            'wholesale_min_quantity':
+                int.tryParse(draft.wholesaleMinQuantityCtrl.text),
+            'reorder_point': int.tryParse(draft.reorderPointCtrl.text),
+            'is_active': draft.isActive,
+          };
+
+          final vId = await _service.saveVariant(
+              productId: productId,
+              variantData: payload,
+              variantId: draft.id);
+
+          if (i == 0) primaryVariantId = vId;
+          await _service.saveVariantAttributes(vId, valueIds);
+
+          if (draft.id != null) {
+            if (draft.urlsExistentes.isEmpty ||
+                draft.nuevasImagenes.isNotEmpty) {
+               await _service.clearVariantImages(vId);
+            }
+          }
+
+          if (draft.nuevasImagenes.isNotEmpty) {
+            final bytes = draft.nuevasImagenes.first;
+            final url =
+                await _service.uploadImageToStorage(bytes, 'variantes');
+            if (url != null) {
+              await _service.insertProductImage(
+                productId: productId,
+                variantId: vId,
+                url: url,
+                displayOrder: 0,
+                isMain: false,
+              );
+            }
+          }
+        }
+      }
+
+      // Ingredientes
+      if (_ingredientsEnabled) {
+        await _service.clearProductIngredients(productId);
+
+        for (final row in ingredientRows) {
+          if (row.ingredientId == null || row.nameCtrl.text.trim().isEmpty) {
+            continue;
+          }
+
+          final payload = {
+            'product_id': productId,
+            'ingredient_id': row.ingredientId,
+            'concentration': row.concentrationCtrl.text.trim().isEmpty
+                ? null
+                : double.tryParse(
+                    row.concentrationCtrl.text.trim().replaceAll(',', '.'),
+                  ),
+            'unit': row.unitCtrl.text.trim().isEmpty
+                ? null
+                : row.unitCtrl.text.trim(),
+          };
+
+          await _service.insertProductIngredient(payload);
+        }
+      } else {
+         await _service.clearProductIngredients(productId);
+      }
+
+      if (context.mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Producto guardado exitosamente',
+          backgroundColor: AppColors.success,
+        );
+      }
+      return true;
+
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error: $e',
+          backgroundColor: AppColors.error,
+        );
+      }
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    nombreCtrl.dispose();
+    costoCtrl.dispose();
+    precioCtrl.dispose();
+    precioMayorCtrl.dispose();
+    cantidadMayorCtrl.dispose();
+    descCtrl.dispose();
+    for (final draft in variantDrafts) {
+      draft.dispose();
+    }
+    for (final row in detailRows) {
+      row.dispose();
+    }
+    for (final row in ingredientRows) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+}
