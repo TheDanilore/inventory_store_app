@@ -166,31 +166,57 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     try {
       final supabase = Supabase.instance.client;
-      // CORRECCIÓN 1: El join correcto a través de la tabla intermedia attribute_values
-      final response = await supabase
+
+      // ── Query 1: variantes + imágenes (sin join profundo de atributos) ────
+      final variantRows = await supabase
           .from('product_variants')
-          .select(
-            '*, product_images(*), variant_attribute_values(attribute_values(id, value, attributes(name)))',
-          )
+          .select('*, product_images(*)')
           .eq('product_id', productId)
           .order('created_at', ascending: true);
+
+      final variantIds =
+          (variantRows as List).map((r) => r['id'] as String).toList();
+
+      // ── Query 2: atributos de todas las variantes en un solo request ──────
+      final attrRows =
+          variantIds.isEmpty
+              ? <dynamic>[]
+              : await supabase
+                  .from('variant_attribute_values')
+                  .select(
+                    'variant_id, attribute_values(id, value, attributes(id, name))',
+                  )
+                  .inFilter('variant_id', variantIds);
+
+      // Agrupar atributos por variant_id en memoria
+      final attrsByVariant = <String, List<Map<String, dynamic>>>{};
+      for (final row in attrRows) {
+        final vid = row['variant_id'] as String;
+        attrsByVariant
+            .putIfAbsent(vid, () => [])
+            .add(Map<String, dynamic>.from(row));
+      }
 
       if (!mounted) return;
 
       final drafts =
-          (response as List).map((item) {
-            final variant = ProductVariantModel.fromJson(
-              Map<String, dynamic>.from(item),
-            );
+          variantRows.map((item) {
+            final variantMap = Map<String, dynamic>.from(item as Map);
+            // Inyectar los atributos para que ProductVariantModel.fromJson los lea
+            variantMap['variant_attribute_values'] =
+                attrsByVariant[variantMap['id']] ?? [];
+
+            final variant = ProductVariantModel.fromJson(variantMap);
             final draft = VariantDraftModel.fromVariant(variant);
-            final List<dynamic> imagesData = item['product_images'] ?? [];
+            final imagesData = (item['product_images'] as List?) ?? [];
             draft.urlsExistentes =
                 imagesData.map((img) => img['image_url'] as String).toList();
             return draft;
           }).toList();
 
-      _variantDrafts.clear();
-      _variantDrafts.addAll(drafts);
+      _variantDrafts
+        ..clear()
+        ..addAll(drafts);
     } catch (e) {
       debugPrint('Error cargando variantes: $e');
       if (mounted) {
@@ -516,66 +542,83 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   ) async {
     final supabase = Supabase.instance.client;
 
-    // Borramos relaciones previas si estamos editando
+    // Borrar relaciones previas
     await supabase
         .from('variant_attribute_values')
         .delete()
         .eq('variant_id', variantId);
 
-    for (final entry in attributes.entries) {
-      final attrName = entry.key.trim();
-      final attrValue = entry.value.trim();
-      if (attrName.isEmpty || attrValue.isEmpty) continue;
+    final validEntries =
+        attributes.entries
+            .where((e) => e.key.trim().isNotEmpty && e.value.trim().isNotEmpty)
+            .toList();
+    if (validEntries.isEmpty) return;
 
-      // 1. Encontrar o crear el Atributo ("Color", "Talla", etc.)
-      var attrRecord =
-          await supabase
-              .from('attributes')
-              .select('id')
-              .eq('name', attrName)
-              .maybeSingle();
+    final attrNames = validEntries.map((e) => e.key.trim()).toSet().toList();
 
-      String attrId;
-      if (attrRecord == null) {
-        final inserted =
-            await supabase
-                .from('attributes')
-                .insert({'name': attrName})
-                .select('id')
-                .single();
-        attrId = inserted['id'] as String;
-      } else {
-        attrId = attrRecord['id'] as String;
-      }
+    // ── 1 round-trip: upsert todos los atributos de una vez ──────────────────
+    await supabase
+        .from('attributes')
+        .upsert(
+          attrNames.map((name) => {'name': name}).toList(),
+          onConflict: 'name',
+          ignoreDuplicates: true,
+        );
 
-      // 2. Encontrar o crear el Valor ("Rojo", "L", etc.)
-      var valRecord =
+    // ── 1 round-trip: leer todos los IDs de atributos ────────────────────────
+    final attrRows = await supabase
+        .from('attributes')
+        .select('id, name')
+        .inFilter('name', attrNames);
+
+    final attrIdByName = <String, String>{
+      for (final row in attrRows as List)
+        row['name'] as String: row['id'] as String,
+    };
+
+    // ── 1 round-trip: upsert todos los valores de una vez ────────────────────
+    await supabase
+        .from('attribute_values')
+        .upsert(
+          validEntries
+              .map(
+                (e) => {
+                  'attribute_id': attrIdByName[e.key.trim()]!,
+                  'value': e.value.trim(),
+                },
+              )
+              .toList(),
+          onConflict: 'attribute_id,value',
+          ignoreDuplicates: true,
+        );
+
+    // ── 1 round-trip: leer todos los IDs de valores ───────────────────────────
+    // Hacemos las N selects en paralelo (una por atributo) en lugar de en serie
+    final valIdFutures = validEntries.map((e) async {
+      final row =
           await supabase
               .from('attribute_values')
               .select('id')
-              .eq('attribute_id', attrId)
-              .eq('value', attrValue)
-              .maybeSingle();
+              .eq('attribute_id', attrIdByName[e.key.trim()]!)
+              .eq('value', e.value.trim())
+              .single();
+      return row['id'] as String;
+    });
+    final valIds = await Future.wait(valIdFutures);
 
-      String valId;
-      if (valRecord == null) {
-        final inserted =
-            await supabase
-                .from('attribute_values')
-                .insert({'attribute_id': attrId, 'value': attrValue})
-                .select('id')
-                .single();
-        valId = inserted['id'] as String;
-      } else {
-        valId = valRecord['id'] as String;
-      }
-
-      // 3. Vincularlo a la Variante
-      await supabase.from('variant_attribute_values').insert({
-        'variant_id': variantId,
-        'attribute_value_id': valId,
-      });
-    }
+    // ── 1 round-trip: insertar todos los links de una vez ─────────────────────
+    await supabase
+        .from('variant_attribute_values')
+        .insert(
+          valIds
+              .map(
+                (valId) => {
+                  'variant_id': variantId,
+                  'attribute_value_id': valId,
+                },
+              )
+              .toList(),
+        );
   }
 
   Future<void> _guardarProducto() async {
@@ -2131,7 +2174,7 @@ class _IngredientSearchDialogState extends State<_IngredientSearchDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // ESTADO: Cargando
             if (_isLoading)
               const Padding(
