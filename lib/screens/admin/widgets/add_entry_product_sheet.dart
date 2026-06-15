@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/models/warehouse_stock_batch_model.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
+import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

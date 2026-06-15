@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart'; // For EntryItemUI
+import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 

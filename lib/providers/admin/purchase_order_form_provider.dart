@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/models/warehouse_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart'; // For EntryItemUI
+import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:inventory_store_app/services/admin/purchase_orders_service.dart';
 import 'package:collection/collection.dart';
 import 'package:inventory_store_app/models/product_model.dart';

@@ -4,7 +4,7 @@ import 'package:inventory_store_app/providers/admin/purchase_order_form_provider
 import 'package:inventory_store_app/screens/admin/widgets/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_form_summary_card.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart'; // Para EntryItemUI
+import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -430,8 +430,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                           ),
                                         ],
                                         onChanged: (v) {
-                                          if (v != null)
+                                          if (v != null) {
                                             provider.setPaymentStatus(v);
+                                          }
                                         },
                                       ),
                                       if (provider.paymentStatus == 'PAID') ...[
@@ -623,8 +624,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                                     )
                                                     .toList(),
                                             onChanged: (v) {
-                                              if (v != null)
+                                              if (v != null) {
                                                 provider.setDocumentType(v);
+                                              }
                                             },
                                           ),
                                         ),

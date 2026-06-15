@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';

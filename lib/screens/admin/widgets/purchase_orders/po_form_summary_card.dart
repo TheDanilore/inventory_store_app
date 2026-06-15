@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart'; // For EntryItemUI
+import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class POFormSummaryCard extends StatelessWidget {
@@ -10,7 +10,10 @@ class POFormSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double totalCost = items.fold(0, (sum, item) => sum + item.subtotal);
-    final int totalUnits = items.fold(0, (sum, item) => sum + item.quantity.toInt());
+    final int totalUnits = items.fold(
+      0,
+      (sum, item) => sum + item.quantity.toInt(),
+    );
     final int totalVariants = items.length;
 
     return Container(
