@@ -315,7 +315,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   int _calculatePointsEarned() {
     if (_selectedCustomerId == null ||
-        _paymentMethod == 'CRÉDITO' ||
         _items.isEmpty) {
       return 0;
     }
@@ -786,11 +785,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   setState(() => _isEditing = true);
                                 }
                               },
-                              onPrint:
-                                  () => OrderPdfGenerator.printTicket(
-                                    _currentOrder,
-                                    items: _items,
-                                  ),
                               onShare:
                                   () => OrderPdfGenerator.shareTicket(
                                     _currentOrder,

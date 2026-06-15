@@ -19,6 +19,10 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/models/order_model.dart';
+import 'package:inventory_store_app/models/order_item_model.dart';
+import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 
 class AdminPosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
@@ -339,7 +343,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         ratio: pointsToSolesRatio,
       );
 
-      await _checkoutService.processSale(
+      final orderId = await _checkoutService.processSale(
         pos: pos,
         isDraft: isDraft,
         isCredito: isCredito,
@@ -368,8 +372,20 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           barrierDismissible: false,
           builder: (dialogContext) => PosSuccessDialog(
             isDraft: isDraft,
-            onPrint: () {
-              AppSnackbar.show(dialogContext, message: 'Impresión no configurada aún.', type: SnackbarType.warning);
+            onPrint: () async {
+              try {
+                final orderResp = await Supabase.instance.client.from('orders').select('id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)').eq('id', orderId).single();
+                final itemsResp = await Supabase.instance.client.from('order_items').select('id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, sku, product_images(id, image_url, is_main)), product_variants(sku, attributes, product_images(id, image_url, is_main))').eq('order_id', orderId);
+                
+                final order = OrderModel.fromJson(orderResp);
+                final items = List<Map<String, dynamic>>.from(itemsResp).map((x) => OrderItemModel.fromJson(x)).toList();
+                
+                await OrderPdfGenerator.shareTicket(order, items: items);
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  AppSnackbar.show(dialogContext, message: 'Error generando comprobante: $e', type: SnackbarType.error);
+                }
+              }
             },
           ),
         );

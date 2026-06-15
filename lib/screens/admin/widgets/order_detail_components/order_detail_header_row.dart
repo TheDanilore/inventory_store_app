@@ -6,7 +6,6 @@ class OrderDetailHeaderRow extends StatelessWidget {
   final bool isEditing;
   final bool canToggleEdit;
   final VoidCallback onToggleEditing;
-  final VoidCallback onPrint;
   final VoidCallback onShare;
 
   const OrderDetailHeaderRow({
@@ -16,7 +15,6 @@ class OrderDetailHeaderRow extends StatelessWidget {
     required this.isEditing,
     this.canToggleEdit = true,
     required this.onToggleEditing,
-    required this.onPrint,
     required this.onShare,
   });
 
@@ -51,13 +49,8 @@ class OrderDetailHeaderRow extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.print_rounded, color: Colors.blueGrey),
-              onPressed: onPrint,
-              tooltip: 'Imprimir Ticket',
-            ),
-            IconButton(
-              icon: const Icon(Icons.share_rounded, color: Colors.blueGrey),
               onPressed: onShare,
-              tooltip: 'Compartir Ticket',
+              tooltip: 'Imprimir Ticket',
             ),
             if (canToggleEdit)
               IconButton(

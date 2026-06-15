@@ -101,7 +101,7 @@ class PosCheckoutService {
     }).toList();
   }
 
-  Future<void> processSale({
+  Future<String> processSale({
     required PosProvider pos,
     required bool isDraft,
     required bool isCredito,
@@ -391,5 +391,7 @@ class PosCheckoutService {
         'created_by': currentProfileId,
       });
     }
+
+    return orderId;
   }
 }

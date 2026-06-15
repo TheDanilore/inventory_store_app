@@ -49,9 +49,9 @@ class PosConfirmationDialog extends StatelessWidget {
   }
 }
 
-class PosSuccessDialog extends StatelessWidget {
+class PosSuccessDialog extends StatefulWidget {
   final bool isDraft;
-  final VoidCallback onPrint;
+  final Future<void> Function() onPrint;
 
   const PosSuccessDialog({
     super.key,
@@ -60,31 +60,51 @@ class PosSuccessDialog extends StatelessWidget {
   });
 
   @override
+  State<PosSuccessDialog> createState() => _PosSuccessDialogState();
+}
+
+class _PosSuccessDialogState extends State<PosSuccessDialog> {
+  bool _isGenerating = false;
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Row(
         children: [
           Icon(
-            isDraft ? Icons.save_rounded : Icons.check_circle_rounded,
+            widget.isDraft ? Icons.save_rounded : Icons.check_circle_rounded,
             color: AppColors.teal,
           ),
           const SizedBox(width: 8),
-          Text(isDraft ? 'Borrador Guardado' : 'Venta Exitosa'),
+          Text(widget.isDraft ? 'Borrador Guardado' : 'Venta Exitosa'),
         ],
       ),
       content: Text(
-        isDraft
+        widget.isDraft
             ? 'El borrador se guardó correctamente.'
             : 'La venta se ha procesado con éxito.',
       ),
       actions: [
-        if (!isDraft)
+        if (!widget.isDraft)
           OutlinedButton.icon(
-            onPressed: () {
-              onPrint();
-            },
-            icon: const Icon(Icons.print_rounded, size: 18),
-            label: const Text('Imprimir Comprobante'),
+            onPressed: _isGenerating
+                ? null
+                : () async {
+                    setState(() => _isGenerating = true);
+                    try {
+                      await widget.onPrint();
+                    } finally {
+                      if (mounted) setState(() => _isGenerating = false);
+                    }
+                  },
+            icon: _isGenerating
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.share_rounded, size: 18),
+            label: Text(_isGenerating ? 'Generando...' : 'Generar Ticket'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.teal,
             ),
