@@ -61,7 +61,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   // Imágenes y Variantes
   final List<FormImageItem> _formImages = [];
-  final List<VariantDraft> _variantDrafts = [];
+  final List<VariantDraftModel> _variantDrafts = [];
   final List<String> _removedVariantIds = [];
 
   @override
@@ -170,10 +170,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     try {
       final supabase = Supabase.instance.client;
+      // Ya no leemos attributes JSON, porque vendrán por variant_attribute_values si la vista está bien configurada
       final response = await supabase
           .from('product_variants')
           .select(
-            '*, product_images(*), reorder_point, wholesale_price, wholesale_min_quantity',
+            '*, product_images(*), variant_attribute_values(id, value, attributes(name))',
           )
           .eq('product_id', productId)
           .order('created_at', ascending: true);
@@ -185,15 +186,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             final variant = ProductVariantModel.fromJson(
               Map<String, dynamic>.from(item),
             );
-            final draft = VariantDraft.fromVariant(variant);
+            final draft = VariantDraftModel.fromVariant(variant);
             final List<dynamic> imagesData = item['product_images'] ?? [];
             draft.urlsExistentes =
                 imagesData.map((img) => img['image_url'] as String).toList();
             return draft;
           }).toList();
 
-      // Agregamos todas las variantes de golpe sin usar múltiples setStates.
-      // Ya no hay "Future.delayed" aquí.
       _variantDrafts.clear();
       _variantDrafts.addAll(drafts);
     } catch (e) {
@@ -316,7 +315,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   void _addVariantDraft() {
     setState(() {
-      _variantDrafts.add(VariantDraft());
+      _variantDrafts.add(VariantDraftModel());
     });
   }
 
@@ -350,7 +349,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         return;
       }
 
-      // ── NUEVO: Borrar la imagen de la variante del Bucket físico primero ──
+      // ── Borrar la imagen de la variante del Bucket físico primero ──
       final oldImages = await supabase
           .from('product_images')
           .select('image_url')
@@ -365,9 +364,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           await supabase.storage.from('productos').remove([pathToRemove]);
         }
       }
-      // ──────────────────────────────────────────────────────────────────────
 
-      // Eliminar la variante de la base de datos (esto también borra en cascada de product_images)
+      // La eliminación en cascada debería encargarse de las relaciones si la FK está configurada así.
+      // Por si acaso, eliminamos las relaciones de la variante antes de borrar la variante:
+      await supabase
+          .from('variant_attribute_values')
+          .delete()
+          .eq('variant_id', draft.id!);
       await supabase.from('product_variants').delete().eq('id', draft.id!);
 
       setState(() {
@@ -406,7 +409,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     super.dispose();
   }
 
-  Future<void> _pickVariantImage(VariantDraft draft) async {
+  Future<void> _pickVariantImage(VariantDraftModel draft) async {
     final picker = ImagePicker();
     // Pedimos la imagen original sin tocar
     final file = await picker.pickImage(source: ImageSource.gallery);
@@ -516,6 +519,73 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     return null;
   }
 
+  // ── Helper Lógico para Insertar Atributos en las tablas relacionales ──────
+  Future<void> _saveVariantAttributes(
+    String variantId,
+    Map<String, String> attributes,
+  ) async {
+    final supabase = Supabase.instance.client;
+
+    // Borramos relaciones previas si estamos editando
+    await supabase
+        .from('variant_attribute_values')
+        .delete()
+        .eq('variant_id', variantId);
+
+    for (final entry in attributes.entries) {
+      final attrName = entry.key.trim();
+      final attrValue = entry.value.trim();
+      if (attrName.isEmpty || attrValue.isEmpty) continue;
+
+      // 1. Encontrar o crear el Atributo ("Color", "Talla", etc.)
+      var attrRecord =
+          await supabase
+              .from('attributes')
+              .select('id')
+              .eq('name', attrName)
+              .maybeSingle();
+      String attrId;
+      if (attrRecord == null) {
+        final inserted =
+            await supabase
+                .from('attributes')
+                .insert({'name': attrName})
+                .select('id')
+                .single();
+        attrId = inserted['id'] as String;
+      } else {
+        attrId = attrRecord['id'] as String;
+      }
+
+      // 2. Encontrar o crear el Valor ("Rojo", "L", etc.)
+      var valRecord =
+          await supabase
+              .from('attribute_values')
+              .select('id')
+              .eq('attribute_id', attrId)
+              .eq('value', attrValue)
+              .maybeSingle();
+      String valId;
+      if (valRecord == null) {
+        final inserted =
+            await supabase
+                .from('attribute_values')
+                .insert({'attribute_id': attrId, 'value': attrValue})
+                .select('id')
+                .single();
+        valId = inserted['id'] as String;
+      } else {
+        valId = valRecord['id'] as String;
+      }
+
+      // 3. Vincularlo a la Variante
+      await supabase.from('variant_attribute_values').insert({
+        'variant_id': variantId,
+        'attribute_value_id': valId,
+      });
+    }
+  }
+
   Future<void> _guardarProducto() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -557,7 +627,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               ? null
               : _parseDecimal(_precioMayorCtrl.text);
 
-      // ── SOLUCIÓN: Buscar el ID del Profile en lugar de usar el Auth ID ──
+      // ── Buscar el ID del Profile en lugar de usar el Auth ID ──
       final authUserId = supabase.auth.currentUser?.id;
       String? profileId;
 
@@ -590,14 +660,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         'category_id': _selectedCategoryId,
         'details': detailsMap,
-        // ── NUEVOS CAMPOS ENVIADOS A LA BD ──
         'product_type': _productType,
         'stock_control': _stockControl,
         'uses_batches': _batchManagementEnabled,
-        // ────────────────────────────────────
         if (isUpdating && profileId != null) 'updated_by': profileId,
         if (!isUpdating && profileId != null) 'created_by': profileId,
       };
+
       String productId;
       if (isUpdating) {
         productId = widget.productToEdit!.id;
@@ -613,9 +682,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
 
       // 2. Procesar imágenes principales (Orden y Portada)
-
-      // PASO CLAVE: Si estamos actualizando, quitamos temporalmente todas las
-      // portadas para evitar que el índice único de BD choque durante el reordenamiento.
       if (isUpdating && _formImages.isNotEmpty) {
         await supabase
             .from('product_images')
@@ -625,16 +691,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
       for (var i = 0; i < _formImages.length; i++) {
         final item = _formImages[i];
-        final isMain = (i == 0); // La primera imagen siempre será la portada
+        final isMain = (i == 0);
 
         if (item.isExisting) {
-          // Solo actualiza su orden y estado principal
           await supabase
               .from('product_images')
               .update({'display_order': i, 'is_main': isMain})
               .eq('id', item.existing!.id);
         } else {
-          // Sube la imagen nueva y la registra con su posición correcta
           final url = await _uploadImageToStorage(item.newBytes!, 'productos');
           if (url != null) {
             await supabase.from('product_images').insert({
@@ -656,11 +720,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _removedVariantIds.clear();
 
       // 3. Procesar Variantes y sus imágenes
-      // ignore: unused_local_variable
-      String primaryVariantId = ''; // Variable clave para vincular lotes
+      String primaryVariantId = '';
 
       if (_variantDrafts.isEmpty) {
-        // CREAR VARIANTE POR DEFECTO SILENCIOSAMENTE
         if (isUpdating) {
           final vResp =
               await supabase
@@ -671,11 +733,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   .maybeSingle();
           if (vResp != null) {
             primaryVariantId = vResp['id'] as String;
+            // Relacionamos el atributo por defecto
+            await _saveVariantAttributes(primaryVariantId, {
+              'Variante': 'Única',
+            });
           }
         } else {
           final payload = {
             'product_id': productId,
-            'attributes': {'Variante': 'Única'},
+            // Nota: YA NO enviamos 'attributes' aquí
             'sale_price': salePrice,
             'wholesale_price': wholesalePrice,
             'wholesale_min_quantity':
@@ -692,24 +758,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   .select('id')
                   .single();
           primaryVariantId = res['id'] as String;
+          // Guardamos el atributo predeterminado
+          await _saveVariantAttributes(primaryVariantId, {'Variante': 'Única'});
         }
       } else {
         for (var i = 0; i < _variantDrafts.length; i++) {
           final draft = _variantDrafts[i];
 
-          Map<String, dynamic> attrsMap = {};
-          if (draft.attributesCtrl.text.trim().isNotEmpty) {
-            try {
-              attrsMap = jsonDecode(draft.attributesCtrl.text.trim());
-            } catch (e) {
-              debugPrint('Error decodificando atributos JSON: $e');
-            }
-          }
+          // Obtenemos los atributos dinámicos que armó la Card
+          final attrsMap = draft.pendingAttributes;
 
           final skuValue = draft.skuCtrl.text.trim();
           final payload = {
             'sku': skuValue.isEmpty ? null : skuValue,
-            'attributes': attrsMap,
+            // 'attributes': ya no se envía
             'unit_cost': _parseDecimal(draft.unitCostCtrl.text) ?? 0.0,
             'sale_price': _parseDecimal(draft.priceCtrl.text),
             'wholesale_price': _parseDecimal(draft.wholesalePriceCtrl.text),
@@ -728,6 +790,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 .update(payload)
                 .eq('id', draft.id!);
             if (i == 0) primaryVariantId = draft.id!;
+
+            // Guardamos los atributos relacionales
+            await _saveVariantAttributes(draft.id!, attrsMap);
 
             if (draft.urlsExistentes.isEmpty ||
                 draft.nuevasImagenes.isNotEmpty) {
@@ -772,10 +837,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     .select('id')
                     .single();
 
-            // CORRECCIÓN: Usamos una variable local en lugar de intentar mutar draft.id
             final newVariantId = res['id'] as String;
 
             if (i == 0) primaryVariantId = newVariantId;
+
+            // Guardamos los atributos relacionales
+            await _saveVariantAttributes(newVariantId, attrsMap);
 
             if (draft.nuevasImagenes.isNotEmpty) {
               final bytes = draft.nuevasImagenes.first;
@@ -783,7 +850,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               if (url != null) {
                 await supabase.from('product_images').insert({
                   'product_id': productId,
-                  'variant_id': newVariantId, // Usamos la variable local aquí
+                  'variant_id': newVariantId,
                   'image_url': url,
                   'is_main': false,
                 });
@@ -795,14 +862,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
       // ── 4. Guardar ingredientes activos ────────────────────────────────
       if (_ingredientsEnabled) {
-        // Borramos las relaciones previas
         await supabase
             .from('product_active_ingredients')
             .delete()
             .eq('product_id', productId);
 
         for (final row in _ingredientRows) {
-          // Validamos que tenga un ingrediente válido seleccionado
           if (row.ingredientId == null || row.nameCtrl.text.trim().isEmpty) {
             continue;
           }
@@ -810,8 +875,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           // Simplemente vinculamos el ingrediente al producto
           final payload = {
             'product_id': productId,
-            'ingredient_id':
-                row.ingredientId, // <-- USA EL ID QUE VIENE DEL BUSCADOR
+            'ingredient_id': row.ingredientId,
             'concentration':
                 row.concentrationCtrl.text.trim().isEmpty
                     ? null
@@ -832,9 +896,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             .delete()
             .eq('product_id', productId);
       }
-
-      // ELIMINADO: Bloque 5 de Guardar Lotes. La creación del producto solo define "uses_batches".
-      // Los lotes reales se registran al recibir mercadería en el almacén.
 
       if (mounted) {
         AppSnackbar.show(

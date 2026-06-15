@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/variant_draft_model.dart';
@@ -34,26 +33,16 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   void _parseInitialAttributes() {
-    final rawJson = widget.draft.attributesCtrl.text.trim();
-    if (rawJson.isNotEmpty) {
-      try {
-        final Map<String, dynamic> decoded = jsonDecode(rawJson);
-        decoded.forEach((key, value) {
-          // Llenamos la lista directamente sin usar setState
-          // ya que estamos dentro de la fase de initState.
-          final keyCtrl = TextEditingController(text: key);
-          final valueCtrl = TextEditingController(text: value.toString());
-          keyCtrl.addListener(_synchronizeToJson);
-          valueCtrl.addListener(_synchronizeToJson);
+    widget.draft.pendingAttributes.forEach((key, value) {
+      final keyCtrl = TextEditingController(text: key);
+      final valueCtrl = TextEditingController(text: value);
+      keyCtrl.addListener(_synchronizeToDraft);
+      valueCtrl.addListener(_synchronizeToDraft);
 
-          _attributeRows.add(
-            _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),
-          );
-        });
-      } catch (e) {
-        debugPrint('Error al parsear atributos iniciales: $e');
-      }
-    }
+      _attributeRows.add(
+        _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),
+      );
+    });
   }
 
   void _addAttributeRow({
@@ -63,17 +52,15 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }) {
     final keyCtrl = TextEditingController(text: key);
     final valueCtrl = TextEditingController(text: value);
-    keyCtrl.addListener(_synchronizeToJson);
-    valueCtrl.addListener(_synchronizeToJson);
+    keyCtrl.addListener(_synchronizeToDraft);
+    valueCtrl.addListener(_synchronizeToDraft);
 
-    // Este setState SÍ es necesario porque este método se llama
-    // cuando el usuario presiona el botón "Añadir propiedad"
     setState(() {
       _attributeRows.add(
         _AttributeControllers(keyCtrl: keyCtrl, valueCtrl: valueCtrl),
       );
     });
-    if (sync) _synchronizeToJson();
+    if (sync) _synchronizeToDraft();
   }
 
   void _removeAttributeRow(int index) {
@@ -81,10 +68,10 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       _attributeRows[index].dispose();
       _attributeRows.removeAt(index);
     });
-    _synchronizeToJson();
+    _synchronizeToDraft();
   }
 
-  void _synchronizeToJson() {
+  void _synchronizeToDraft() {
     final Map<String, String> finalMap = {};
     for (final row in _attributeRows) {
       final key = row.keyCtrl.text.trim();
@@ -93,8 +80,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         finalMap[key] = value;
       }
     }
-    widget.draft.attributesCtrl.text =
-        finalMap.isEmpty ? '' : jsonEncode(finalMap);
+    widget.draft.pendingAttributes = finalMap;
   }
 
   @override
@@ -218,7 +204,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   child: Switch(
                     value: isActive,
                     onChanged: widget.onActiveChanged,
-                    activeColor: AppColors.success,
+                    activeThumbColor: AppColors.success,
                   ),
                 ),
                 const SizedBox(width: 2),
@@ -518,7 +504,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _attributeRows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, idx) {
               final row = _attributeRows[idx];
               return Row(

@@ -14,10 +14,9 @@ class VariantDraftModel {
   final TextEditingController reorderPointCtrl;
   final TextEditingController unitCostCtrl;
 
-  // ── Atributos nuevos (tablas estructuradas) ─────────────────────────────────
-  /// IDs de [attribute_values] seleccionados para esta variante.
-  /// Se guardan en [variant_attribute_values].
-  List<String> selectedAttributeValueIds;
+  // ── Atributos (Adaptado a nueva BD relacional) ──────────────────────────────
+  /// Mapa que mantiene los atributos en memoria durante la edición (Ej: {"Color": "Rojo"})
+  Map<String, String> pendingAttributes;
 
   bool isActive;
 
@@ -29,7 +28,7 @@ class VariantDraftModel {
     this.id,
     String? sku,
     String? barcode,
-    List<String>? attributeValueIds,
+    Map<String, String>? pendingAttributes,
     String? price,
     String? wholesalePrice,
     String? wholesaleMinQuantity,
@@ -47,18 +46,23 @@ class VariantDraftModel {
        ),
        reorderPointCtrl = TextEditingController(text: reorderPoint ?? '3'),
        unitCostCtrl = TextEditingController(text: unitCost ?? ''),
-       selectedAttributeValueIds = attributeValueIds ?? [],
+       pendingAttributes = pendingAttributes ?? {},
        urlsExistentes = urlsExistentes ?? [],
        nuevasImagenes = nuevasImagenes ?? [];
 
   // ── Desde modelo existente ──────────────────────────────────────────────────
   factory VariantDraftModel.fromVariant(ProductVariantModel variant) {
+    // Convertir los VariantAttributeValueModel estructurados a un mapa para el borrador
+    final Map<String, String> currentAttributes = {};
+    for (final av in variant.attributeValues) {
+      currentAttributes[av.attributeName] = av.value;
+    }
+
     return VariantDraftModel(
       id: variant.id,
       sku: variant.sku,
       barcode: variant.barcode,
-      attributeValueIds:
-          variant.attributeValues.map((av) => av.attributeValueId).toList(),
+      pendingAttributes: currentAttributes,
       price: variant.salePrice?.toString() ?? '',
       wholesalePrice: variant.wholesalePrice?.toString() ?? '',
       wholesaleMinQuantity: variant.wholesaleMinQuantity?.toString() ?? '',
