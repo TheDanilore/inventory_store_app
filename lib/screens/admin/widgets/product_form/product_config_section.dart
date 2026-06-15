@@ -57,7 +57,9 @@ class ProductConfigSection extends StatelessWidget {
               ),
               DropdownMenuItem(value: 'service', child: Text('Servicio')),
               DropdownMenuItem(
-                  value: 'digital', child: Text('Producto Digital')),
+                value: 'digital',
+                child: Text('Producto Digital'),
+              ),
             ],
             onChanged: (val) {
               if (val != null) {

@@ -42,23 +42,26 @@ class ProductIngredientsSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: provider.ingredientsEnabled
-                  ? AppColors.primary.withValues(alpha: 0.06)
-                  : Colors.grey.shade50,
+              color:
+                  provider.ingredientsEnabled
+                      ? AppColors.primary.withValues(alpha: 0.06)
+                      : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: provider.ingredientsEnabled
-                    ? AppColors.primary.withValues(alpha: 0.25)
-                    : Colors.grey.shade200,
+                color:
+                    provider.ingredientsEnabled
+                        ? AppColors.primary.withValues(alpha: 0.25)
+                        : Colors.grey.shade200,
               ),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.science_rounded,
-                  color: provider.ingredientsEnabled
-                      ? AppColors.primary
-                      : Colors.grey,
+                  color:
+                      provider.ingredientsEnabled
+                          ? AppColors.primary
+                          : Colors.grey,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -71,9 +74,10 @@ class ProductIngredientsSection extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: provider.ingredientsEnabled
-                              ? AppColors.primary
-                              : Colors.grey.shade600,
+                          color:
+                              provider.ingredientsEnabled
+                                  ? AppColors.primary
+                                  : Colors.grey.shade600,
                         ),
                       ),
                       Text(
@@ -99,7 +103,10 @@ class ProductIngredientsSection extends StatelessWidget {
             if (provider.ingredientRows.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 14,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(10),
@@ -134,14 +141,16 @@ class ProductIngredientsSection extends StatelessWidget {
                                 onTap: () async {
                                   final result =
                                       await showDialog<Map<String, dynamic>>(
-                                    context: context,
-                                    builder: (_) =>
-                                        const IngredientSearchDialog(),
-                                  );
+                                        context: context,
+                                        builder:
+                                            (_) =>
+                                                const IngredientSearchDialog(),
+                                      );
 
                                   if (result != null) {
                                     row.ingredientId = result['id'] as String;
-                                    row.nameCtrl.text = result['name'] as String;
+                                    row.nameCtrl.text =
+                                        result['name'] as String;
                                   }
                                 },
                                 child: AbsorbPointer(
@@ -169,7 +178,8 @@ class ProductIngredientsSection extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              onPressed: () => provider.removeIngredientRow(idx),
+                              onPressed:
+                                  () => provider.removeIngredientRow(idx),
                               icon: Icon(
                                 Icons.delete_outline_rounded,
                                 color: Colors.red.shade400,
@@ -422,8 +432,8 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _results.length,
-                  separatorBuilder: (_, _) =>
-                      Divider(height: 1, color: Colors.grey.shade200),
+                  separatorBuilder:
+                      (_, _) => Divider(height: 1, color: Colors.grey.shade200),
                   itemBuilder: (context, index) {
                     final item = _results[index];
                     return ListTile(

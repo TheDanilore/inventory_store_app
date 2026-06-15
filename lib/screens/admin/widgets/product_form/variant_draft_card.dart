@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/variant_draft_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/attribute_search_dialog.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_text_field.dart';
 
 class VariantDraftCard extends StatefulWidget {
   final int index;
   final VariantDraftModel draft;
   final VoidCallback onRemove;
+  final VoidCallback onDuplicate;
   final VoidCallback onPickImage;
   final ValueChanged<bool> onActiveChanged;
 
@@ -16,6 +19,7 @@ class VariantDraftCard extends StatefulWidget {
     required this.index,
     required this.draft,
     required this.onRemove,
+    required this.onDuplicate,
     required this.onPickImage,
     required this.onActiveChanged,
   });
@@ -25,7 +29,6 @@ class VariantDraftCard extends StatefulWidget {
 }
 
 class _VariantDraftCardState extends State<VariantDraftCard> {
-  // Ahora usamos una lista de objetos en lugar de controladores de texto libres
   final List<_AttributeSelection> _selectedAttributes = [];
 
   @override
@@ -35,7 +38,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
   }
 
   void _parseInitialAttributes() {
-    // Leemos los atributos que vienen del modo edición
     for (final attr in widget.draft.selectedAttributes) {
       _selectedAttributes.add(
         _AttributeSelection(
@@ -79,7 +81,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     _synchronizeToDraft();
   }
 
-  // Abre el buscador de Atributos (Ej: "Color", "Talla")
   Future<void> _pickAttributeKey(int index) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -92,7 +93,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       setState(() {
         _selectedAttributes[index].attributeId = result['id'];
         _selectedAttributes[index].attributeName = result['name'];
-        // Reseteamos el valor si cambia la propiedad
         _selectedAttributes[index].valueId = null;
         _selectedAttributes[index].valueName = '';
       });
@@ -100,7 +100,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     }
   }
 
-  // Abre el buscador de Valores (Ej: "Rojo", "L") filtrando por el atributo seleccionado
   Future<void> _pickAttributeValue(int index) async {
     final attributeId = _selectedAttributes[index].attributeId;
     final attributeName = _selectedAttributes[index].attributeName;
@@ -117,7 +116,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       builder:
           (_) => AttributeSearchDialog(
             mode: AttributeSearchMode.value,
-            parentAttributeId: attributeId, // Pasamos el ID!
+            parentAttributeId: attributeId,
             parentAttributeName: attributeName,
           ),
     );
@@ -129,66 +128,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       });
       _synchronizeToDraft();
     }
-  }
-
-  // ─── INPUT HELPER ─────────────────────────────────────────────────────────
-  Widget _field({
-    required String label,
-    required TextEditingController controller,
-    IconData? icon,
-    TextInputType keyboardType = TextInputType.text,
-    String? hintText,
-    List<TextInputFormatter>? inputFormatters,
-    String? prefixText,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.grey.shade600,
-            letterSpacing: 0.2,
-          ),
-        ),
-        const SizedBox(height: 5),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            hintText: hintText,
-            prefixText: prefixText,
-            prefixIcon:
-                icon != null
-                    ? Icon(icon, size: 16, color: Colors.grey.shade500)
-                    : null,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 11,
-            ),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   @override
@@ -239,6 +178,20 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                   ),
                 ),
                 const Spacer(),
+                IconButton(
+                  onPressed: widget.onDuplicate,
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  tooltip: 'Duplicar variante',
+                ),
                 Transform.scale(
                   scale: 0.85,
                   child: Switch(
@@ -271,7 +224,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: _field(
+                  child: AppTextField(
                     label: 'SKU',
                     controller: widget.draft.skuCtrl,
                     icon: Icons.qr_code_2_rounded,
@@ -280,7 +233,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _field(
+                  child: AppTextField(
                     label: 'Punto de Reorden',
                     controller: widget.draft.reorderPointCtrl,
                     icon: Icons.warning_amber_rounded,
@@ -312,13 +265,13 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                 children: [
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.attach_money_rounded,
                         size: 14,
                         color: AppColors.primary,
                       ),
                       const SizedBox(width: 4),
-                      Text(
+                      const Text(
                         'Precios de la variante',
                         style: TextStyle(
                           fontSize: 12,
@@ -328,7 +281,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '(vacío = usa precio del producto)',
+                        '(vacío = usa precio base)',
                         style: TextStyle(
                           fontSize: 10,
                           color: Colors.grey.shade500,
@@ -342,7 +295,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: _field(
+                        child: AppTextField(
                           label: 'Costo unitario',
                           controller: widget.draft.unitCostCtrl,
                           icon: Icons.price_change_outlined,
@@ -360,7 +313,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _field(
+                        child: AppTextField(
                           label: 'Precio venta',
                           controller: widget.draft.priceCtrl,
                           icon: Icons.sell_outlined,
@@ -384,7 +337,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: _field(
+                        child: AppTextField(
                           label: 'P. mayorista',
                           controller: widget.draft.wholesalePriceCtrl,
                           icon: Icons.local_offer_outlined,
@@ -402,7 +355,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _field(
+                        child: AppTextField(
                           label: 'Mín. para mayoreo',
                           controller: widget.draft.wholesaleMinQuantityCtrl,
                           icon: Icons.numbers_rounded,
@@ -458,9 +411,15 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                     _buildAddButton(),
                   if (widget.draft.urlsExistentes.isNotEmpty)
                     _buildThumbnail(
-                      Image.network(
-                        widget.draft.urlsExistentes.first,
+                      CachedNetworkImage(
+                        imageUrl: widget.draft.urlsExistentes.first,
                         fit: BoxFit.cover,
+                        placeholder:
+                            (context, url) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                        errorWidget:
+                            (context, url, error) => const Icon(Icons.error),
                       ),
                       onDelete: () {
                         setState(() {
@@ -506,8 +465,12 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             ),
             TextButton.icon(
               onPressed: () => _addAttributeRow(),
-              icon: Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
-              label: Text(
+              icon: const Icon(
+                Icons.add_rounded,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              label: const Text(
                 'Añadir propiedad',
                 style: TextStyle(fontSize: 12, color: AppColors.primary),
               ),
@@ -551,7 +514,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Botón para seleccionar Atributo
                   Expanded(
                     flex: 4,
                     child: GestureDetector(
@@ -612,7 +574,6 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                     ),
                   ),
-                  // Botón para seleccionar Valor
                   Expanded(
                     flex: 5,
                     child: GestureDetector(
@@ -702,7 +663,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             style: BorderStyle.solid,
           ),
         ),
-        child: Column(
+        child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -710,7 +671,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
               color: AppColors.primary,
               size: 22,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(
               'Añadir',
               style: TextStyle(fontSize: 10, color: AppColors.primary),

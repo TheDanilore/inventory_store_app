@@ -329,6 +329,29 @@ class ProductFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void duplicateVariantDraft(int index) {
+    final original = variantDrafts[index];
+    final copy = VariantDraftModel();
+    copy.skuCtrl.text = original.skuCtrl.text.isNotEmpty ? '${original.skuCtrl.text}-COPY' : '';
+    copy.reorderPointCtrl.text = original.reorderPointCtrl.text;
+    copy.unitCostCtrl.text = original.unitCostCtrl.text;
+    copy.priceCtrl.text = original.priceCtrl.text;
+    copy.wholesalePriceCtrl.text = original.wholesalePriceCtrl.text;
+    copy.wholesaleMinQuantityCtrl.text = original.wholesaleMinQuantityCtrl.text;
+    copy.isActive = original.isActive;
+    
+    final copiedAttributes = <Map<String, dynamic>>[];
+    for (var attr in original.selectedAttributes) {
+      copiedAttributes.add(Map<String, dynamic>.from(attr));
+    }
+    copy.selectedAttributes = copiedAttributes;
+    
+    copy.urlsExistentes.addAll(original.urlsExistentes);
+    
+    variantDrafts.insert(index + 1, copy);
+    notifyListeners();
+  }
+
   Future<void> removeVariantDraft(BuildContext context, int index) async {
     final draft = variantDrafts[index];
 

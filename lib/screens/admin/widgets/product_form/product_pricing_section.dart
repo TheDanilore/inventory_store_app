@@ -5,7 +5,7 @@ import 'package:inventory_store_app/shared/widgets/app_text_field.dart';
 
 class ProductPricingSection extends StatelessWidget {
   final GlobalKey<FormState> formKey;
-  
+
   const ProductPricingSection({super.key, required this.formKey});
 
   double? _parseDecimal(String value) {
@@ -34,7 +34,10 @@ class ProductPricingSection extends StatelessWidget {
   }
 
   String? _validateWholesalePrice(
-      String? value, String unitCostText, String salePriceText) {
+    String? value,
+    String unitCostText,
+    String salePriceText,
+  ) {
     final text = (value ?? '').trim();
     if (text.isEmpty) return null;
 
@@ -104,8 +107,8 @@ class ProductPricingSection extends StatelessWidget {
                   label: 'Precio Venta (S/.)',
                   icon: Icons.sell_outlined,
                   keyboardType: TextInputType.number,
-                  validator: (val) =>
-                      _validateSalePrice(val, provider.costoCtrl.text),
+                  validator:
+                      (val) => _validateSalePrice(val, provider.costoCtrl.text),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),
@@ -123,8 +126,12 @@ class ProductPricingSection extends StatelessWidget {
                   label: 'Precio Mayorista',
                   icon: Icons.local_offer_outlined,
                   keyboardType: TextInputType.number,
-                  validator: (val) => _validateWholesalePrice(
-                      val, provider.costoCtrl.text, provider.precioCtrl.text),
+                  validator:
+                      (val) => _validateWholesalePrice(
+                        val,
+                        provider.costoCtrl.text,
+                        provider.precioCtrl.text,
+                      ),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),

@@ -42,18 +42,20 @@ class ProductBatchSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: provider.batchManagementEnabled
-                  ? Colors.teal.withValues(alpha: 0.07)
-                  : Colors.grey.shade50,
+              color:
+                  provider.batchManagementEnabled
+                      ? Colors.teal.withValues(alpha: 0.07)
+                      : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.qr_code_2_rounded,
-                  color: provider.batchManagementEnabled
-                      ? Colors.teal
-                      : Colors.grey,
+                  color:
+                      provider.batchManagementEnabled
+                          ? Colors.teal
+                          : Colors.grey,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -68,15 +70,18 @@ class ProductBatchSection extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: provider.batchManagementEnabled
-                              ? Colors.teal.shade700
-                              : Colors.grey.shade600,
+                          color:
+                              provider.batchManagementEnabled
+                                  ? Colors.teal.shade700
+                                  : Colors.grey.shade600,
                         ),
                       ),
                       Text(
                         'Requerirá número de lote y vencimiento al ingresar stock en el Módulo de Inventario.',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade500),
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
                     ],
                   ),

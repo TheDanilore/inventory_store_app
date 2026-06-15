@@ -45,7 +45,10 @@ class ProductImagesSection extends StatelessWidget {
             child: Row(
               children: [
                 InkWell(
-                  onTap: () => context.read<ProductFormProvider>().pickImages(context),
+                  onTap:
+                      () => context.read<ProductFormProvider>().pickImages(
+                        context,
+                      ),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 100,
@@ -95,7 +98,7 @@ class ProductImagesSection extends StatelessWidget {
                         },
                         itemCount: provider.formImages.length,
                         onReorder: (oldIndex, newIndex) {
-                           provider.reorderImages(oldIndex, newIndex);
+                          provider.reorderImages(oldIndex, newIndex);
                         },
                         itemBuilder: (context, index) {
                           final item = provider.formImages[index];
@@ -108,9 +111,10 @@ class ProductImagesSection extends StatelessWidget {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isMain
-                                    ? AppColors.primary
-                                    : Colors.grey.shade300,
+                                color:
+                                    isMain
+                                        ? AppColors.primary
+                                        : Colors.grey.shade300,
                                 width: isMain ? 2.5 : 1,
                               ),
                             ),
@@ -121,23 +125,27 @@ class ProductImagesSection extends StatelessWidget {
                                 children: [
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: item.isExisting
-                                        ? CachedNetworkImage(
-                                            imageUrl: item.existing!.imageUrl,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) =>
-                                                const Center(
-                                              child:
-                                                  CircularProgressIndicator(),
+                                    child:
+                                        item.isExisting
+                                            ? CachedNetworkImage(
+                                              imageUrl: item.existing!.imageUrl,
+                                              fit: BoxFit.cover,
+                                              placeholder:
+                                                  (
+                                                    context,
+                                                    url,
+                                                  ) => const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                              errorWidget:
+                                                  (context, url, error) =>
+                                                      const Icon(Icons.error),
+                                            )
+                                            : Image.memory(
+                                              item.newBytes!,
+                                              fit: BoxFit.cover,
                                             ),
-                                            errorWidget:
-                                                (context, url, error) =>
-                                                    const Icon(Icons.error),
-                                          )
-                                        : Image.memory(
-                                            item.newBytes!,
-                                            fit: BoxFit.cover,
-                                          ),
                                   ),
                                   Positioned(
                                     top: 0,
@@ -148,8 +156,8 @@ class ProductImagesSection extends StatelessWidget {
                                       decoration: BoxDecoration(
                                         borderRadius:
                                             const BorderRadius.vertical(
-                                          top: Radius.circular(10),
-                                        ),
+                                              top: Radius.circular(10),
+                                            ),
                                         gradient: LinearGradient(
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
@@ -170,7 +178,8 @@ class ProductImagesSection extends StatelessWidget {
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withValues(
-                                              alpha: 0.4),
+                                            alpha: 0.4,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(
@@ -191,8 +200,9 @@ class ProductImagesSection extends StatelessWidget {
                                           vertical: 4,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.9),
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.9,
+                                          ),
                                           borderRadius: const BorderRadius.only(
                                             bottomLeft: Radius.circular(9),
                                             bottomRight: Radius.circular(9),
@@ -213,8 +223,11 @@ class ProductImagesSection extends StatelessWidget {
                                     top: 4,
                                     right: 4,
                                     child: GestureDetector(
-                                      onTap: () => provider.removeImage(
-                                          context, index),
+                                      onTap:
+                                          () => provider.removeImage(
+                                            context,
+                                            index,
+                                          ),
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: const BoxDecoration(
