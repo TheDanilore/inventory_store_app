@@ -108,6 +108,15 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
           }
         });
       }
+
+      if (pos.selectedClientId != null) {
+        final creditResp = await _checkoutService.fetchClientCredit(pos.selectedClientId!);
+        if (mounted) {
+          setState(() {
+            _creditInfo = creditResp;
+          });
+        }
+      }
     } catch (e) {
       debugPrint('Error cargando datos iniciales: $e');
       if (mounted) {
