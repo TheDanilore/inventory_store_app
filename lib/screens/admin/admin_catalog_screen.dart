@@ -465,7 +465,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     builder: (_) => ProductFormScreen(productToEdit: product),
                   ),
                 );
-                if (result == true) _refreshProducts();
+                if (result == true) {
+                  CatalogService.clearCache();
+                  _refreshProducts();
+                }
               },
             ),
           );
@@ -502,6 +505,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 MaterialPageRoute(builder: (_) => const ProductFormScreen()),
               );
               if (result == true) {
+                CatalogService.clearCache();
                 setState(() => _currentPage = 0);
                 _refreshProducts();
               }
