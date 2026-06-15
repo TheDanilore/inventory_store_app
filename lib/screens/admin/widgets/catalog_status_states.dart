@@ -5,7 +5,11 @@ class CatalogEmptyState extends StatelessWidget {
   final bool searchByIngredient;
   final String searchTerm;
 
-  const CatalogEmptyState({super.key, this.searchByIngredient = false, this.searchTerm = ''});
+  const CatalogEmptyState({
+    super.key,
+    this.searchByIngredient = false,
+    this.searchTerm = '',
+  });
 
   @override
   Widget build(BuildContext context) {

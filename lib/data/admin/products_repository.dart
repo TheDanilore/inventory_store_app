@@ -86,7 +86,8 @@ class ProductsRepository {
   }
 
   /// Busca productos basándose en ingredientes activos
-  Future<({List<ProductModel> products, Map<String, String> matches})> fetchProductsByIngredient({
+  Future<({List<ProductModel> products, Map<String, String> matches})>
+  fetchProductsByIngredient({
     required String searchTerm,
     String? categoryId,
     bool isAdmin = false,
@@ -105,7 +106,9 @@ class ProductsRepository {
             .toSet()
             .toList();
 
-    if (ingredientIds.isEmpty) return (products: <ProductModel>[], matches: <String, String>{});
+    if (ingredientIds.isEmpty) {
+      return (products: <ProductModel>[], matches: <String, String>{});
+    }
 
     // 2. Buscar product_ids y los datos reales de los ingredientes
     final ingResp = await _supabase
@@ -152,7 +155,9 @@ class ProductsRepository {
     }
 
     final uniqueProductIds = productIds.toSet().toList();
-    if (uniqueProductIds.isEmpty) return (products: <ProductModel>[], matches: <String, String>{});
+    if (uniqueProductIds.isEmpty) {
+      return (products: <ProductModel>[], matches: <String, String>{});
+    }
 
     var query = _supabase
         .from('products')
@@ -162,7 +167,7 @@ class ProductsRepository {
           category_id, details, created_at, updated_at,
           stock_control, uses_batches, product_type,
           categories(name),
-          product_images(image_url)
+          product_images(*)
         ''')
         .inFilter('id', uniqueProductIds);
 
@@ -191,9 +196,7 @@ class ProductsRepository {
 
   /// Suma el stock de todos los lotes por producto.
   /// Si se proveen [productIds], filtra solo esos productos para reducir el egress.
-  Future<Map<String, int>> fetchProductStock({
-    List<String>? productIds,
-  }) async {
+  Future<Map<String, int>> fetchProductStock({List<String>? productIds}) async {
     var query = _supabase
         .from('warehouse_stock_batches')
         .select('product_id, available_quantity');

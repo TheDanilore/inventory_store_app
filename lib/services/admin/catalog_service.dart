@@ -15,14 +15,17 @@ class CatalogService {
     final prefs = await SharedPreferences.getInstance();
     try {
       final categories = await _repository.fetchActiveCategories();
-      final cacheData = categories
-          .map((c) => {
-                'id': c.id,
-                'name': c.name,
-                'description': c.description,
-                'is_active': c.isActive,
-              })
-          .toList();
+      final cacheData =
+          categories
+              .map(
+                (c) => {
+                  'id': c.id,
+                  'name': c.name,
+                  'description': c.description,
+                  'is_active': c.isActive,
+                },
+              )
+              .toList();
       await prefs.setString('cached_admin_categories', jsonEncode(cacheData));
       return categories;
     } catch (e) {
@@ -58,13 +61,16 @@ class CatalogService {
       );
 
       final processedProducts = products
-          .map((product) =>
-              product.copyWith(totalStock: stockByProduct[product.id] ?? 0))
+          .map(
+            (product) =>
+                product.copyWith(totalStock: stockByProduct[product.id] ?? 0),
+          )
           .toList(growable: false);
 
       processedProducts.sort(_compareProductsForCatalog);
 
-      if (categoryId == null && (searchTerm == null || searchTerm.trim().isEmpty)) {
+      if (categoryId == null &&
+          (searchTerm == null || searchTerm.trim().isEmpty)) {
         await prefs.setString(
           'cached_admin_products',
           jsonEncode(processedProducts.map((p) => p.toJson()).toList()),
@@ -76,26 +82,32 @@ class CatalogService {
       final cached = prefs.getString('cached_admin_products');
       if (cached != null) {
         final List decoded = jsonDecode(cached);
-        var offlineProducts = decoded
-            .map((e) => ProductModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-            
+        var offlineProducts =
+            decoded
+                .map((e) => ProductModel.fromJson(Map<String, dynamic>.from(e)))
+                .toList();
+
         if (categoryId != null) {
-          offlineProducts = offlineProducts.where((p) => p.categoryId == categoryId).toList();
+          offlineProducts =
+              offlineProducts.where((p) => p.categoryId == categoryId).toList();
         }
         final term = searchTerm?.trim().toLowerCase() ?? '';
         if (term.isNotEmpty) {
-          offlineProducts = offlineProducts
-              .where((p) => p.name.toLowerCase().contains(term))
-              .toList();
+          offlineProducts =
+              offlineProducts
+                  .where((p) => p.name.toLowerCase().contains(term))
+                  .toList();
         }
         return offlineProducts;
       }
-      throw Exception('Estás sin conexión a internet y no hay catálogo guardado en este dispositivo.');
+      throw Exception(
+        'Estás sin conexión a internet y no hay catálogo guardado en este dispositivo.',
+      );
     }
   }
 
-  Future<({List<ProductModel> products, Map<String, String> matches})> loadProductsByIngredient({
+  Future<({List<ProductModel> products, Map<String, String> matches})>
+  loadProductsByIngredient({
     required String searchTerm,
     String? categoryId,
     bool isAdmin = false,
@@ -114,8 +126,10 @@ class CatalogService {
     );
 
     final processedProducts = result.products
-        .map((product) =>
-            product.copyWith(totalStock: stockByProduct[product.id] ?? 0))
+        .map(
+          (product) =>
+              product.copyWith(totalStock: stockByProduct[product.id] ?? 0),
+        )
         .toList(growable: false);
 
     processedProducts.sort(_compareProductsForCatalog);

@@ -74,14 +74,19 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
   Future<List<ProductModel>> _loadProducts() async {
     try {
-      if (_searchByIngredient && _searchCtrl.text.trim().isNotEmpty) {
-        final result = await _catalogService.loadProductsByIngredient(
-          searchTerm: _searchCtrl.text.trim(),
-          categoryId: _selectedCategoryId,
-          isAdmin: true,
-        );
-        _matchedIngredients = result.matches;
-        return result.products;
+      if (_searchByIngredient) {
+        if (_searchCtrl.text.trim().isNotEmpty) {
+          final result = await _catalogService.loadProductsByIngredient(
+            searchTerm: _searchCtrl.text.trim(),
+            categoryId: _selectedCategoryId,
+            isAdmin: true,
+          );
+          _matchedIngredients = result.matches;
+          return result.products;
+        } else {
+          _matchedIngredients = {};
+          return [];
+        }
       }
 
       final products = await _catalogService.loadProducts(
@@ -102,10 +107,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       final allProducts = await _loadProducts();
       if (!mounted) return;
 
-      final visibleProducts = allProducts
-          .skip(_currentPage * _pageSize)
-          .take(_pageSize)
-          .toList();
+      final visibleProducts =
+          allProducts.skip(_currentPage * _pageSize).take(_pageSize).toList();
 
       final max50Products = allProducts.take(50).toList();
 
@@ -133,9 +136,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       } else if (options.mode == 1) {
         filteredProducts = max50Products;
       } else if (options.mode == 2) {
-        filteredProducts = max50Products
-            .where((p) => options.selectedIds.contains(p.id))
-            .toList();
+        filteredProducts =
+            max50Products
+                .where((p) => options.selectedIds.contains(p.id))
+                .toList();
       }
 
       if (filteredProducts.isEmpty) {
@@ -153,11 +157,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       final variantsByProduct = await _catalogService.loadVariantsByProductIds(
         productIds,
       );
-      final allVariantIds = variantsByProduct.values
-          .expand((v) => v)
-          .map((v) => v.id)
-          .whereType<String>()
-          .toList();
+      final allVariantIds =
+          variantsByProduct.values
+              .expand((v) => v)
+              .map((v) => v.id)
+              .whereType<String>()
+              .toList();
       final stockByVariant = await _catalogService.loadVariantStockByVariantIds(
         allVariantIds,
       );
@@ -196,9 +201,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         if (mounted) {
           AppSnackbar.show(
             context,
-            message: willActivate
-                ? 'Producto activado exitosamente'
-                : 'Producto desactivado exitosamente',
+            message:
+                willActivate
+                    ? 'Producto activado exitosamente'
+                    : 'Producto desactivado exitosamente',
             type: willActivate ? SnackbarType.success : SnackbarType.warning,
           );
           _refreshProducts();
@@ -247,7 +253,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('cached_admin_categories');
     await prefs.remove('cached_admin_products');
-    
+
     if (!mounted) return;
     AppSnackbar.show(
       context,
@@ -300,21 +306,22 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             ),
           );
 
-          final chipsSliver = (_categories.isNotEmpty && !_searchByIngredient)
-              ? SliverToBoxAdapter(
-                  child: CategoryChips(
-                    categories: _categories,
-                    selectedCategoryId: _selectedCategoryId,
-                    onSelected: (id) {
-                      setState(() {
-                        _selectedCategoryId = id;
-                        _currentPage = 0;
-                      });
-                      _refreshProducts();
-                    },
-                  ),
-                )
-              : null;
+          final chipsSliver =
+              (_categories.isNotEmpty && !_searchByIngredient)
+                  ? SliverToBoxAdapter(
+                    child: CategoryChips(
+                      categories: _categories,
+                      selectedCategoryId: _selectedCategoryId,
+                      onSelected: (id) {
+                        setState(() {
+                          _selectedCategoryId = id;
+                          _currentPage = 0;
+                        });
+                        _refreshProducts();
+                      },
+                    ),
+                  )
+                  : null;
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return RefreshIndicator(
@@ -327,12 +334,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.all(16),
                     sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 220,
-                        mainAxisExtent: 280,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            mainAxisExtent: 280,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => AppShimmer(
                           width: double.infinity,

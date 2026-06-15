@@ -5,7 +5,7 @@ class CatalogPosCartButton extends StatelessWidget {
   final int itemCount;
   final double total;
   final VoidCallback onTap;
-  
+
   const CatalogPosCartButton({
     super.key,
     required this.itemCount,
