@@ -248,8 +248,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       final varResp = await _supabase
           .from('product_variants')
           .select(
-            // Añadir unit_cost a la consulta
-            'id, product_id, sku, attributes, product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost',
+            'id, product_id, sku, product_images(id, image_url, is_main, display_order), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost, variant_attribute_values(attribute_values(id, value, attributes(id, name)))',
           )
           .eq('product_id', productId2)
           .eq('is_active', true)

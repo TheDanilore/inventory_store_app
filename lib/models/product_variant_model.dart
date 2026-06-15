@@ -43,7 +43,14 @@ class ProductVariantModel {
   // ── Label legible ───────────────────────────────────────────────────────────
   String get label {
     if (attributeValues.isNotEmpty) {
-      return attributeValues.map((av) => av.value).join(' / ');
+      return attributeValues
+          .map(
+            (av) =>
+                av.attributeName.isNotEmpty
+                    ? '${av.attributeName}: ${av.value}'
+                    : av.value,
+          )
+          .join(' / ');
     }
     if (sku != null && sku!.trim().isNotEmpty) return sku!;
     return 'Variante estándar';
