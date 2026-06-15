@@ -109,11 +109,28 @@ class PosProvider with ChangeNotifier {
     String? sku,
     int? availableStock,
   }) {
+    if (quantity <= 0) return;
+
+    final int maxAllowed = 9999;
+    int safeQuantity = quantity > maxAllowed ? maxAllowed : quantity;
     final key = CartItemModel.buildKey(product.id, variantId);
+    final stockLimit = availableStock ?? product.totalStock;
+
+    // Si tiene control de stock, validar desde el primer ingreso
+    if (product.stockControl && safeQuantity > stockLimit) {
+      safeQuantity = stockLimit;
+    }
+    // Si el límite de stock es 0 y tiene control, no agregar
+    if (product.stockControl && safeQuantity <= 0) return;
 
     if (_items.containsKey(key)) {
       _items.update(key, (existing) {
-        existing.quantity += quantity;
+        int newQty = existing.quantity + safeQuantity;
+        if (newQty > maxAllowed) newQty = maxAllowed;
+        if (product.stockControl && newQty > stockLimit) {
+          newQty = stockLimit;
+        }
+        existing.quantity = newQty;
         return existing;
       });
       // Si se suma más cantidad al mismo ítem, el override previo ya no es
@@ -124,7 +141,7 @@ class PosProvider with ChangeNotifier {
         key,
         () => CartItemModel(
           product: product,
-          quantity: quantity,
+          quantity: safeQuantity,
           variantId: variantId,
           variantLabel: variantLabel,
           unitPrice: unitPrice ?? product.salePrice,
@@ -134,7 +151,7 @@ class PosProvider with ChangeNotifier {
           unitCost: unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
           imageUrl: imageUrl,
           sku: sku,
-          availableStock: availableStock ?? product.totalStock,
+          availableStock: stockLimit,
           cartKey: key,
           // Propagamos si el producto gestiona lotes para que el checkout
           // pueda mostrar el chip de edición sin acceder al ProductModel.

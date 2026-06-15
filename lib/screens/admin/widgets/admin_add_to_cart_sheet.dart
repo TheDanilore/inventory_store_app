@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/data/admin/products_repository.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
@@ -358,7 +359,10 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
             onTap:
                 _canSell
                     ? () {
-                      context.read<PosProvider>().addProductToPos(
+                        // Forzar vibración nativa del hardware (50ms, intensidad media)
+                        Vibration.vibrate(duration: 50, amplitude: 128);
+                        
+                        context.read<PosProvider>().addProductToPos(
                         product: widget.product,
                         quantity: _quantity,
                         variantId: _selectedVariant!.id,

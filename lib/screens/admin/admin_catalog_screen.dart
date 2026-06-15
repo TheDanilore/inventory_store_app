@@ -42,7 +42,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   String? _selectedCategoryId;
   int _currentPage = 0;
   bool _isExportingPdf = false;
-  Future<List<ProductModel>>? _productsFuture;
+  
+  List<ProductModel>? _currentProducts;
+  bool _isLoadingProducts = true;
+  String? _productsError;
+  final Set<String> _togglingProducts = {};
+  bool _isSyncing = false;
 
   final _searchCtrl = TextEditingController();
 
@@ -56,10 +61,29 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     _refreshProducts();
   }
 
-  void _refreshProducts() {
+  Future<void> _refreshProducts() async {
+    if (!mounted) return;
     setState(() {
-      _productsFuture = _loadProducts();
+      _isLoadingProducts = true;
+      _productsError = null;
     });
+
+    try {
+      final products = await _loadProducts();
+      if (mounted) {
+        setState(() {
+          _currentProducts = products;
+          _isLoadingProducts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _productsError = e.toString();
+          _isLoadingProducts = false;
+        });
+      }
+    }
   }
 
   Future<void> _fetchCategories() async {
@@ -186,6 +210,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   }
 
   Future<void> _toggleProductoActivo(ProductModel product) async {
+    if (_togglingProducts.contains(product.id)) return;
+
     final willActivate = !product.isActive;
     final confirm = await CatalogDialogs.showToggleProductActiveDialog(
       context,
@@ -193,6 +219,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     );
 
     if (confirm == true) {
+      setState(() => _togglingProducts.add(product.id));
       try {
         await _catalogService.setProductActive(
           productId: product.id,
@@ -207,7 +234,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     : 'Producto desactivado exitosamente',
             type: willActivate ? SnackbarType.success : SnackbarType.warning,
           );
-          _refreshProducts();
+          await _refreshProducts();
         }
       } catch (e) {
         if (mounted) {
@@ -216,6 +243,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             message: 'Error: $e',
             type: SnackbarType.error,
           );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _togglingProducts.remove(product.id));
         }
       }
     }
@@ -250,18 +281,33 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   }
 
   Future<void> _forceSync() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('cached_admin_categories');
-    await prefs.remove('cached_admin_products');
+    if (_isSyncing) return;
+    setState(() => _isSyncing = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_admin_categories');
+      await prefs.remove('cached_admin_products');
+      CatalogService.clearCache();
 
-    if (!mounted) return;
-    AppSnackbar.show(
-      context,
-      message: 'Caché limpiada. Sincronizando catálogo...',
-      type: SnackbarType.success,
-    );
-    _fetchCategories();
-    _refreshProducts();
+      if (!mounted) return;
+      AppSnackbar.show(
+        context,
+        message: 'Caché limpiada. Sincronizando catálogo...',
+        type: SnackbarType.success,
+      );
+      await _fetchCategories();
+      await _refreshProducts();
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al forzar sincronización: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
   }
 
   @override
@@ -290,19 +336,24 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             break;
         }
       },
-      body: FutureBuilder<List<ProductModel>>(
-        future: _productsFuture,
-        builder: (context, snapshot) {
+      body: Builder(
+        builder: (context) {
           const double fabsBottomPadding = 54;
 
           final headerSliver = SliverToBoxAdapter(
-            child: CatalogHeader(
-              searchController: _searchCtrl,
-              isExporting: _isExportingPdf,
-              onExport: _exportCatalogPdf,
-              onSearchChanged: _onSearchChanged,
-              searchByIngredient: _searchByIngredient,
-              onToggleIngredientSearch: _toggleIngredientSearch,
+            child: Column(
+              children: [
+                CatalogHeader(
+                  searchController: _searchCtrl,
+                  isExporting: _isExportingPdf,
+                  onExport: _exportCatalogPdf,
+                  onSearchChanged: _onSearchChanged,
+                  searchByIngredient: _searchByIngredient,
+                  onToggleIngredientSearch: _toggleIngredientSearch,
+                ),
+                if (_isLoadingProducts && _currentProducts != null)
+                  const LinearProgressIndicator(color: AppColors.teal, minHeight: 2),
+              ],
             ),
           );
 
@@ -323,7 +374,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   )
                   : null;
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (_isLoadingProducts && _currentProducts == null) {
             return RefreshIndicator(
               color: AppColors.teal,
               onRefresh: () async => _refreshProducts(),
@@ -356,7 +407,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
           }
 
-          if (snapshot.hasError) {
+          if (_productsError != null && _currentProducts == null) {
             return RefreshIndicator(
               color: AppColors.teal,
               onRefresh: () async => _refreshProducts(),
@@ -365,14 +416,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   headerSliver,
                   if (chipsSliver != null) chipsSliver,
                   SliverFillRemaining(
-                    child: CatalogErrorState(message: '${snapshot.error}'),
+                    child: CatalogErrorState(message: _productsError!),
                   ),
                 ],
               ),
             );
           }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if ((_currentProducts == null || _currentProducts!.isEmpty) && !_isLoadingProducts) {
             return RefreshIndicator(
               color: AppColors.teal,
               onRefresh: () async => _refreshProducts(),
@@ -391,7 +442,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
           }
 
-          final allProducts = snapshot.data!;
+          final allProducts = _currentProducts ?? [];
           return RefreshIndicator(
             color: AppColors.teal,
             onRefresh: () async => _refreshProducts(),

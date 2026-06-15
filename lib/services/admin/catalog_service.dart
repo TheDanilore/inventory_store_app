@@ -11,7 +11,16 @@ class CatalogService {
 
   final ProductsRepository _repository;
 
+  static List<CategoryModel>? _memCategories;
+  static final Map<String, List<ProductModel>> _memProducts = {};
+
+  static void clearCache() {
+    _memCategories = null;
+    _memProducts.clear();
+  }
+
   Future<List<CategoryModel>> loadCategories() async {
+    if (_memCategories != null) return _memCategories!;
     final prefs = await SharedPreferences.getInstance();
     try {
       final categories = await _repository.fetchActiveCategories();
@@ -27,14 +36,17 @@ class CatalogService {
               )
               .toList();
       await prefs.setString('cached_admin_categories', jsonEncode(cacheData));
+      _memCategories = categories;
       return categories;
     } catch (e) {
       final cached = prefs.getString('cached_admin_categories');
       if (cached != null) {
         final List decoded = jsonDecode(cached);
-        return decoded
+        final offlineCats = decoded
             .map((e) => CategoryModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
+        _memCategories = offlineCats;
+        return offlineCats;
       }
       rethrow;
     }
@@ -45,6 +57,11 @@ class CatalogService {
     String? searchTerm,
     bool isAdmin = false,
   }) async {
+    final cacheKey = '${categoryId ?? 'all'}_$isAdmin';
+    if ((searchTerm == null || searchTerm.trim().isEmpty) && _memProducts.containsKey(cacheKey)) {
+      return _memProducts[cacheKey]!;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     try {
       final products = await _repository.fetchProducts(
@@ -75,6 +92,10 @@ class CatalogService {
           'cached_admin_products',
           jsonEncode(processedProducts.map((p) => p.toJson()).toList()),
         );
+      }
+
+      if (searchTerm == null || searchTerm.trim().isEmpty) {
+        _memProducts[cacheKey] = processedProducts;
       }
 
       return processedProducts;

@@ -53,6 +53,7 @@ dependencies:
   collection: ^1.19.1
   file_saver: ^0.4.0
   cached_network_image: ^3.4.1
+  vibration: ^3.2.0
 
 dev_dependencies:
   flutter_test:
