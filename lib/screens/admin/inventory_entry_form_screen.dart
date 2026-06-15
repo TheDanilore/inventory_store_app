@@ -144,11 +144,16 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             .eq('stock_control', true)
             .neq('product_type', 'service')
             .order('name'),
+        // 1. CORRECCIÓN AQUÍ: Actualizamos la consulta para usar atributos relacionales
         _supabase
             .from('product_variants')
-            .select(
-              'id, product_id, sku, attributes, product_images(*), sale_price, unit_cost, is_active',
-            )
+            .select('''
+              id, product_id, sku, sale_price, unit_cost, is_active,
+              product_images(*),
+              variant_attribute_values(
+                attribute_values(id, value, attributes(id, name))
+              )
+            ''')
             .eq('is_active', true)
             .order('created_at', ascending: true),
         _supabase
@@ -1487,6 +1492,12 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               .imageUrl;
     }
 
+    // 2. CORRECCIÓN AQUÍ: Construimos el texto de la variante de forma segura a partir de sus atributos
+    final attrValues =
+        item.variant.attributeValues.map((v) => v.value).toList();
+    final attrsText = attrValues.join(' · ');
+    final displayVariantText = attrsText.isNotEmpty ? attrsText : 'Única';
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1520,18 +1531,24 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.variant.id.isNotEmpty) ...[
+
+                // Mostrar chip de variante solo si no es "Única"
+                if (displayVariantText != 'Única') ...[
                   const SizedBox(height: 4),
-                  _VariantChip(label: item.variant.label),
+                  _VariantChip(label: displayVariantText),
                 ],
-                if (item.batchNumber != 'DEFAULT') ...[
+
+                // 3. CORRECCIÓN LOTE: Solo mostrar Lote si usa lotes y el lote NO ES 'DEFAULT'
+                if (item.product.usesBatches &&
+                    item.batchNumber != 'DEFAULT') ...[
                   const SizedBox(height: 4),
                   _BatchInfo(
                     batchNumber: item.batchNumber,
                     expiryDate: item.expiryDate,
                   ),
                 ],
-                // Mensaje de advertencia si falta lote
+
+                // Mensaje de advertencia de lote requerido
                 if (item.product.usesBatches &&
                     (item.batchNumber == 'DEFAULT' ||
                         item.batchNumber.trim().isEmpty)) ...[

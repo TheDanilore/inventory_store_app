@@ -85,11 +85,16 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             .eq('stock_control', true)
             .neq('product_type', 'service')
             .order('name'),
+        // 1. CORRECCIÓN AQUÍ: Actualizamos la consulta para usar atributos relacionales
         _supabase
             .from('product_variants')
-            .select(
-              'id, product_id, sku, attributes, product_images(*), sale_price, unit_cost, is_active',
-            )
+            .select('''
+              id, product_id, sku, sale_price, unit_cost, is_active,
+              product_images(*),
+              variant_attribute_values(
+                attribute_values(id, value, attributes(id, name))
+              )
+            ''')
             .eq('is_active', true)
             .order('created_at', ascending: true),
       ]);
@@ -701,10 +706,27 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 
   Widget _buildItemCard(ExitItemUI item, int index) {
-    String? imageUrl =
-        item.variant.images.isNotEmpty
-            ? item.variant.images.first.imageUrl
-            : item.product.primaryImageUrl;
+    // Buscar imagen priorizando la variante
+    String? imageUrl;
+    if (item.variant.images.isNotEmpty) {
+      imageUrl = item.variant.images.first.imageUrl;
+    } else if (item.product.images.isNotEmpty) {
+      imageUrl =
+          item.product.images
+              .firstWhere(
+                (img) => img.isMain,
+                orElse: () => item.product.images.first,
+              )
+              .imageUrl;
+    }
+
+    // Extraer atributos relacionales seguros
+    final attrValues =
+        item.variant.attributeValues.map((v) => v.value).toList();
+    final attrsText = attrValues.join(' · ');
+    final displayVariantText = attrsText.isNotEmpty ? attrsText : 'Única';
+
+    final batchNumber = item.selectedBatch?['batch_number'] ?? 'DEFAULT';
 
     // Obtener cantidad máxima permitida por el lote (para el Stepper)
     final double maxAvailable =
@@ -715,7 +737,13 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color:
+              (item.product.usesBatches &&
+                      (batchNumber == 'DEFAULT' || batchNumber.trim().isEmpty))
+                  ? AppColors.danger
+                  : AppColors.border,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -757,8 +785,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (item.variant.label.isNotEmpty &&
-                    item.variant.label != 'Única') ...[
+                if (displayVariantText != 'Única') ...[
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -771,7 +798,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       border: Border.all(color: AppColors.border),
                     ),
                     child: Text(
-                      item.variant.label,
+                      displayVariantText,
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
@@ -780,25 +807,54 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.tag_rounded,
-                      size: 11,
-                      color: AppColors.textHint,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      item.selectedBatch?['batch_number'] ?? 'DEFAULT',
-                      style: const TextStyle(
-                        fontSize: 11,
+
+                // Mostrar lote SOLO si usa lotes y no es DEFAULT
+                if (item.product.usesBatches && batchNumber != 'DEFAULT') ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.tag_rounded,
+                        size: 11,
                         color: AppColors.textHint,
-                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Lote: $batchNumber',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textHint,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Mensaje de error si usa lotes pero no seleccionó uno
+                if (item.product.usesBatches &&
+                    (batchNumber == 'DEFAULT' ||
+                        batchNumber.trim().isEmpty)) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_rounded,
+                        size: 12,
+                        color: AppColors.danger,
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Requiere seleccionar lote',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -826,7 +882,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           ),
           const SizedBox(width: 8),
 
-          // ── Stepper idéntico al de Entrada ──
+          // ── Stepper ──
           _VerticalStepper(
             value: item.quantity.toInt(),
             onAdd:
