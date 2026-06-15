@@ -362,7 +362,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
     bool enabled = true,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       onChanged: enabled ? onChanged : null,
       decoration: InputDecoration(
         labelText: label,

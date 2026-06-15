@@ -659,7 +659,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                                 height: 60,
                                 fit: BoxFit.cover,
                                 placeholder:
-                                    (_, __) => Container(
+                                    (_, _) => Container(
                                       color: Colors.grey.shade100,
                                       child: const Icon(
                                         Icons.image_rounded,
@@ -667,7 +667,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                                         size: 24,
                                       ),
                                     ),
-                                errorWidget: (_, __, ___) => _imageFallback(),
+                                errorWidget: (_, _, _) => _imageFallback(),
                               )
                               : _imageFallback(),
                     ),
@@ -1179,7 +1179,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _filters.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
                           final filter = _filters[index];
                           final value = filter['value']!;

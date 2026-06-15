@@ -351,7 +351,7 @@ class _CategoriesManagementScreenState
                                         value: cat.isActive,
                                         onChanged:
                                             (val) => _toggleStatus(cat, val),
-                                        activeColor: AppColors.primary,
+                                        activeThumbColor: AppColors.primary,
                                         materialTapTargetSize:
                                             MaterialTapTargetSize.shrinkWrap,
                                       ),
@@ -612,7 +612,7 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
                 style: const TextStyle(fontSize: 12),
               ),
               value: _isActive,
-              activeColor: AppColors.primary,
+              activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
               onChanged: (val) => setState(() => _isActive = val),
             ),

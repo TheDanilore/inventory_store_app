@@ -328,7 +328,7 @@ class _MovementsTabState extends State<MovementsTab>
                                         pageItems
                                             .length, // Usamos la lista de la página
                                     separatorBuilder:
-                                        (_, __) => const SizedBox(height: 8),
+                                        (_, _) => const SizedBox(height: 8),
                                     itemBuilder:
                                         (_, i) => _MovementCard(
                                           movement: pageItems[i],

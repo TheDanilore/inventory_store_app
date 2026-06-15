@@ -278,7 +278,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
               shrinkWrap: true,
               itemCount: _batches.length,
               separatorBuilder:
-                  (_, __) => const Divider(height: 1, color: AppColors.divider),
+                  (_, _) => const Divider(height: 1, color: AppColors.divider),
               itemBuilder: (context, index) {
                 final b = _batches[index];
                 final isExpired =

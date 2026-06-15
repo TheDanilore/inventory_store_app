@@ -1126,7 +1126,7 @@ class _PODetailSheetState extends State<_PODetailSheet> {
                                         fit: BoxFit.cover,
                                         memCacheWidth: 104, // 2x para HiDPI
                                         placeholder:
-                                            (_, __) => Container(
+                                            (_, _) => Container(
                                               width: 52,
                                               height: 52,
                                               color: AppColors.surface,
@@ -1144,7 +1144,7 @@ class _PODetailSheetState extends State<_PODetailSheet> {
                                               ),
                                             ),
                                         errorWidget:
-                                            (_, __, ___) => _ImagePlaceholder(),
+                                            (_, _, _) => _ImagePlaceholder(),
                                       )
                                       : _ImagePlaceholder(),
                             ),

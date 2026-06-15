@@ -166,7 +166,7 @@ class _AccountsTabState extends State<AccountsTab>
                                         pageItems
                                             .length, // Usamos la lista cortada
                                     separatorBuilder:
-                                        (_, __) => const SizedBox(height: 8),
+                                        (_, _) => const SizedBox(height: 8),
                                     itemBuilder:
                                         (_, i) => _AccountCard(
                                           account:
@@ -452,7 +452,7 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
                   Switch(
                     value: _isActive,
                     onChanged: (v) => setState(() => _isActive = v),
-                    activeColor: AppColors.success,
+                    activeThumbColor: AppColors.success,
                   ),
                 ],
               ),

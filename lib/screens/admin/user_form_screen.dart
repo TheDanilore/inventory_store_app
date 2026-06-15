@@ -287,7 +287,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                               ),
                               Switch(
                                 value: _isActive,
-                                activeColor: AppColors.primary,
+                                activeThumbColor: AppColors.primary,
                                 onChanged:
                                     (val) => setState(() => _isActive = val),
                               ),

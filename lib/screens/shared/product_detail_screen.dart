@@ -1506,7 +1506,7 @@ class _GallerySection extends StatelessWidget {
                         ),
                       ),
                   errorWidget:
-                      (_, __, ___) => const Center(
+                      (_, _, _) => const Center(
                         child: Icon(
                           Icons.broken_image_rounded,
                           size: 48,
@@ -1958,7 +1958,7 @@ class _VariantSelector extends StatelessWidget {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: options.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        separatorBuilder: (_, _) => const SizedBox(width: 10),
                         itemBuilder: (context, idx) {
                           final option = options[idx];
                           final isSelected = selected == option;
@@ -2032,7 +2032,7 @@ class _VariantSelector extends StatelessWidget {
                                                       ),
                                                     ),
                                                 errorWidget:
-                                                    (_, __, ___) => Container(
+                                                    (_, _, _) => Container(
                                                       color: AppColors.bg,
                                                       child: const Icon(
                                                         Icons
@@ -2676,7 +2676,7 @@ class _ActiveIngredientsCard extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             itemCount: ingredients.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final item = ingredients[index];
               final ingredient =

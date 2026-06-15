@@ -123,7 +123,7 @@ class CustomerLayout extends StatelessWidget {
               Navigator.push(
                 context,
                 PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const LoginScreen(),
+                  pageBuilder: (_, _, _) => const LoginScreen(),
                   transitionDuration: Duration.zero,
                 ),
               );
@@ -135,7 +135,7 @@ class CustomerLayout extends StatelessWidget {
                   context,
                   PageRouteBuilder(
                     pageBuilder:
-                        (_, __, ___) =>
+                        (_, _, _) =>
                             const ProfileScreen(openedFromAdmin: false),
                     transitionDuration: Duration.zero,
                   ),
@@ -166,7 +166,7 @@ class CustomerLayout extends StatelessWidget {
             Navigator.push(
               context,
               PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const LoginScreen(),
+                pageBuilder: (_, _, _) => const LoginScreen(),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),
@@ -176,7 +176,7 @@ class CustomerLayout extends StatelessWidget {
               context,
               PageRouteBuilder(
                 pageBuilder:
-                    (_, __, ___) => const ProfileScreen(openedFromAdmin: false),
+                    (_, _, _) => const ProfileScreen(openedFromAdmin: false),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),
@@ -232,7 +232,7 @@ class CustomerLayout extends StatelessWidget {
                 Navigator.push(
                   context,
                   PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => const CustomerCartScreen(),
+                    pageBuilder: (_, _, _) => const CustomerCartScreen(),
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                   ),
@@ -339,7 +339,7 @@ class CustomerLayout extends StatelessWidget {
                       context,
                       PageRouteBuilder(
                         pageBuilder:
-                            (_, __, ___) => const CustomerCatalogScreen(),
+                            (_, _, _) => const CustomerCatalogScreen(),
                         transitionDuration: Duration.zero,
                       ),
                     );
@@ -359,7 +359,7 @@ class CustomerLayout extends StatelessWidget {
                     Navigator.pushReplacement(
                       context,
                       PageRouteBuilder(
-                        pageBuilder: (_, __, ___) => const LoginScreen(),
+                        pageBuilder: (_, _, _) => const LoginScreen(),
                         transitionDuration: Duration.zero,
                       ),
                     );
@@ -371,7 +371,7 @@ class CustomerLayout extends StatelessWidget {
                         context,
                         PageRouteBuilder(
                           pageBuilder:
-                              (_, __, ___) =>
+                              (_, _, _) =>
                                   const ProfileScreen(openedFromAdmin: false),
                           transitionDuration: Duration.zero,
                         ),
@@ -447,7 +447,7 @@ class CustomerLayout extends StatelessWidget {
             Navigator.pushReplacement(
               context,
               PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const CustomerCartScreen(),
+                pageBuilder: (_, _, _) => const CustomerCartScreen(),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),

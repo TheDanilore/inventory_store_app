@@ -365,7 +365,7 @@ class _WarehousesManagementScreenState
                                         value: wh.isActive,
                                         onChanged:
                                             (val) => _toggleStatus(wh, val),
-                                        activeColor: AppColors.primary,
+                                        activeThumbColor: AppColors.primary,
                                         materialTapTargetSize:
                                             MaterialTapTargetSize.shrinkWrap,
                                       ),
@@ -621,7 +621,7 @@ class _WarehouseFormSheetState extends State<_WarehouseFormSheet> {
                 style: const TextStyle(fontSize: 12),
               ),
               value: _isActive,
-              activeColor: AppColors.primary,
+              activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
               onChanged: (val) => setState(() => _isActive = val),
             ),

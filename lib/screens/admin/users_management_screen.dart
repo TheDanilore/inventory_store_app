@@ -434,7 +434,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                       ),
                       Switch(
                         value: _onlyActive,
-                        activeColor: AppColors.primary,
+                        activeThumbColor: AppColors.primary,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         onChanged: (val) {
                           setState(() {

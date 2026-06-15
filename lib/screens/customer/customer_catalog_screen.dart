@@ -1385,7 +1385,7 @@ class _HorizontalProductCard extends StatelessWidget {
                               imageUrl: imageUrl,
                               fit: BoxFit.cover,
                               placeholder:
-                                  (_, __) => const Center(
+                                  (_, _) => const Center(
                                     child: SizedBox(
                                       width: 18,
                                       height: 18,
@@ -1395,7 +1395,7 @@ class _HorizontalProductCard extends StatelessWidget {
                                     ),
                                   ),
                               errorWidget:
-                                  (_, __, ___) => Container(
+                                  (_, _, _) => Container(
                                     color: AppColors.bg,
                                     child: const Icon(
                                       Icons.image_rounded,
@@ -1537,7 +1537,7 @@ class _HorizontalShimmerState extends State<_HorizontalShimmer>
             child: AnimatedBuilder(
               animation: _anim,
               builder:
-                  (_, __) => Container(
+                  (_, _) => Container(
                     width: 160,
                     height: 16,
                     decoration: BoxDecoration(
@@ -1554,10 +1554,10 @@ class _HorizontalShimmerState extends State<_HorizontalShimmer>
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: 4,
               itemBuilder:
-                  (_, __) => AnimatedBuilder(
+                  (_, _) => AnimatedBuilder(
                     animation: _anim,
                     builder:
-                        (_, __) => Container(
+                        (_, _) => Container(
                           width: 140,
                           margin: const EdgeInsets.only(right: 12),
                           decoration: BoxDecoration(
@@ -1848,7 +1848,7 @@ class _ProductCardState extends State<ProductCard> {
                                   imageUrl: imageUrl,
                                   fit: BoxFit.cover,
                                   placeholder:
-                                      (_, __) => const Center(
+                                      (_, _) => const Center(
                                         child: SizedBox(
                                           width: 20,
                                           height: 20,
@@ -1858,7 +1858,7 @@ class _ProductCardState extends State<ProductCard> {
                                         ),
                                       ),
                                   errorWidget:
-                                      (_, __, ___) => _buildPlaceholder(),
+                                      (_, _, _) => _buildPlaceholder(),
                                 )
                                 : _buildPlaceholder(),
                       ),

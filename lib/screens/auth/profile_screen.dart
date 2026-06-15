@@ -258,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, __, ___) => const LoginScreen(),
+        pageBuilder: (context, _, _) => const LoginScreen(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -482,7 +482,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   context,
                                   PageRouteBuilder(
                                     pageBuilder:
-                                        (context, __, ___) =>
+                                        (context, _, _) =>
                                             widget.openedFromAdmin
                                                 ? const CustomerMainScreen()
                                                 : const AdminCatalogScreen(),

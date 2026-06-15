@@ -154,7 +154,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                                 businessLogoUrl,
                                 fit: BoxFit.cover,
                                 errorBuilder:
-                                    (_, __, ___) => const Icon(
+                                    (_, _, _) => const Icon(
                                       Icons.storefront_rounded,
                                       color: Colors.white,
                                       size: 34,

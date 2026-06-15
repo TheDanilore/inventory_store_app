@@ -285,7 +285,7 @@ class _ClientMatchesList extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           itemCount: matches.length,
           separatorBuilder:
-              (_, __) => const Divider(height: 1, color: AppColors.divider),
+              (_, _) => const Divider(height: 1, color: AppColors.divider),
           itemBuilder: (context, index) {
             final client = matches[index];
             final name = client['full_name'] as String? ?? 'Cliente';

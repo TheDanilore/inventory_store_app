@@ -542,7 +542,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                         itemCount: pageItems.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final account = pageItems[index];
                           return _CreditCard(
@@ -1256,7 +1256,7 @@ class _CreditAccountModalState extends State<_CreditAccountModal> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _matches.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final client = _matches[index];
                   final docType = client['document_type'] as String? ?? 'Doc';
@@ -2159,7 +2159,7 @@ class _RegisterPaymentModalState extends State<_RegisterPaymentModal> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   itemCount: _accounts.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final account = _accounts[index];
                     final isSelected = _selectedAccount?.id == account.id;

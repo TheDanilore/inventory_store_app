@@ -145,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen>
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => dest,
+          pageBuilder: (_, _, _) => dest,
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -295,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen>
                             context,
                             PageRouteBuilder(
                               pageBuilder:
-                                  (_, __, ___) => const CustomerMainScreen(),
+                                  (_, _, _) => const CustomerMainScreen(),
                               transitionDuration: Duration.zero,
                               reverseTransitionDuration: Duration.zero,
                             ),

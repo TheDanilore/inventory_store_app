@@ -773,7 +773,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                             height: 56,
                             fit: BoxFit.cover,
                             placeholder:
-                                (_, __) => const Center(
+                                (_, _) => const Center(
                                   child: SizedBox(
                                     width: 18,
                                     height: 18,
@@ -783,7 +783,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                   ),
                                 ),
                             errorWidget:
-                                (_, __, ___) => _buildImagePlaceholder(),
+                                (_, _, _) => _buildImagePlaceholder(),
                           )
                           : _buildImagePlaceholder(),
                 ),
@@ -1713,7 +1713,7 @@ class _VariantPickerSheet extends StatelessWidget {
                                       height: 48,
                                       fit: BoxFit.cover,
                                       placeholder:
-                                          (_, __) => const Center(
+                                          (_, _) => const Center(
                                             child: SizedBox(
                                               width: 16,
                                               height: 16,
@@ -1723,7 +1723,7 @@ class _VariantPickerSheet extends StatelessWidget {
                                             ),
                                           ),
                                       errorWidget:
-                                          (_, __, ___) => _imgFallback(),
+                                          (_, _, _) => _imgFallback(),
                                     )
                                     : _imgFallback(),
                           ),

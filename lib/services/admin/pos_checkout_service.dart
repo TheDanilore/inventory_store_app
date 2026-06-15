@@ -4,29 +4,44 @@ import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PosCheckoutService {
+  static final PosCheckoutService _instance = PosCheckoutService._internal();
+  factory PosCheckoutService() => _instance;
+  PosCheckoutService._internal();
+
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  Future<Map<String, dynamic>> loadInitialData() async {
-    final whRes = await _supabase
-        .from('warehouses')
-        .select()
-        .eq('is_active', true)
-        .order('name');
-    final warehouses =
-        (whRes as List).map((w) => WarehouseModel.fromJson(w)).toList();
+  List<WarehouseModel>? _cachedWarehouses;
+  List<Map<String, dynamic>>? _cachedAccounts;
 
-    final accRes = await _supabase
-        .from('financial_accounts')
-        .select('id, name, type, balance')
-        .eq('is_active', true)
-        .order('type')
-        .order('name');
-    final accounts = List<Map<String, dynamic>>.from(accRes);
+  Future<Map<String, dynamic>> loadInitialData({
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh) {
+      _cachedWarehouses = null;
+      _cachedAccounts = null;
+    }
 
-    return {
-      'warehouses': warehouses,
-      'accounts': accounts,
-    };
+    if (_cachedWarehouses == null) {
+      final whRes = await _supabase
+          .from('warehouses')
+          .select()
+          .eq('is_active', true)
+          .order('name');
+      _cachedWarehouses =
+          (whRes as List).map((w) => WarehouseModel.fromJson(w)).toList();
+    }
+
+    if (_cachedAccounts == null) {
+      final accRes = await _supabase
+          .from('financial_accounts')
+          .select('id, name, type, balance')
+          .eq('is_active', true)
+          .order('type')
+          .order('name');
+      _cachedAccounts = List<Map<String, dynamic>>.from(accRes);
+    }
+
+    return {'warehouses': _cachedWarehouses!, 'accounts': _cachedAccounts!};
   }
 
   Future<Map<String, dynamic>?> checkActiveShift(String accountId) async {
@@ -101,14 +116,15 @@ class PosCheckoutService {
     required double descuentoExtra,
     required String? customerManualName,
     List<BatchAssignmentModel>? Function(PosProvider pos, String cartKey)?
-        getBatchOverride,
+    getBatchOverride,
   }) async {
     final authUserId = _supabase.auth.currentUser?.id;
-    final profileResp = await _supabase
-        .from('profiles')
-        .select('id')
-        .eq('auth_user_id', authUserId!)
-        .single();
+    final profileResp =
+        await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', authUserId!)
+            .single();
     final String currentProfileId = profileResp['id'];
 
     List<Map<String, dynamic>> batchUpdates = [];
@@ -207,25 +223,27 @@ class PosCheckoutService {
         isDraft ? 0 : (totalFinal * earningRate / pointsToSolesRatio).toInt();
     final orderStatus = isDraft ? 'PENDING' : 'COMPLETED';
 
-    final orderResp = await _supabase
-        .from('orders')
-        .insert({
-          'customer_id': pos.selectedClientId,
-          'customer_name': pos.selectedClientId == null ? customerManualName : null,
-          'warehouse_id': pos.selectedWarehouseId,
-          'total_amount': totalFinal,
-          'total_profit': totalProfit,
-          'discount_amount': descuentoExtra,
-          'payment_method': pos.paymentMethod,
-          'payment_status': paymentStatus,
-          'amount_paid': amountPaid,
-          'status': orderStatus,
-          'points_used': isDraft ? 0 : puntosUsados,
-          'points_earned': puntosGanados,
-          'created_by': currentProfileId,
-        })
-        .select('id')
-        .single();
+    final orderResp =
+        await _supabase
+            .from('orders')
+            .insert({
+              'customer_id': pos.selectedClientId,
+              'customer_name':
+                  pos.selectedClientId == null ? customerManualName : null,
+              'warehouse_id': pos.selectedWarehouseId,
+              'total_amount': totalFinal,
+              'total_profit': totalProfit,
+              'discount_amount': descuentoExtra,
+              'payment_method': pos.paymentMethod,
+              'payment_status': paymentStatus,
+              'amount_paid': amountPaid,
+              'status': orderStatus,
+              'points_used': isDraft ? 0 : puntosUsados,
+              'points_earned': puntosGanados,
+              'created_by': currentProfileId,
+            })
+            .select('id')
+            .single();
 
     final orderId = orderResp['id'];
 
@@ -274,11 +292,12 @@ class PosCheckoutService {
         'created_by': currentProfileId,
       });
 
-      final accResp = await _supabase
-          .from('financial_accounts')
-          .select('balance')
-          .eq('id', selectedAccountId!)
-          .single();
+      final accResp =
+          await _supabase
+              .from('financial_accounts')
+              .select('balance')
+              .eq('id', selectedAccountId!)
+              .single();
 
       final currentBalance = (accResp['balance'] as num).toDouble();
       await _supabase
@@ -289,13 +308,17 @@ class PosCheckoutService {
 
     if (!isDraft && pos.selectedClientId != null) {
       if (puntosUsados > 0) {
-        final profileData = await _supabase
-            .from('profiles')
-            .select('wallet_balance')
-            .eq('id', pos.selectedClientId!)
-            .single();
+        final profileData =
+            await _supabase
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', pos.selectedClientId!)
+                .single();
         final currentBalance = (profileData['wallet_balance'] as num).toInt();
-        final newBalance = (currentBalance - puntosUsados).clamp(0, currentBalance);
+        final newBalance = (currentBalance - puntosUsados).clamp(
+          0,
+          currentBalance,
+        );
 
         await _supabase
             .from('profiles')
@@ -312,11 +335,12 @@ class PosCheckoutService {
       }
 
       if (puntosGanados > 0) {
-        final profileData = await _supabase
-            .from('profiles')
-            .select('wallet_balance')
-            .eq('id', pos.selectedClientId!)
-            .single();
+        final profileData =
+            await _supabase
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', pos.selectedClientId!)
+                .single();
         final currentBalance = (profileData['wallet_balance'] as num).toInt();
 
         await _supabase
@@ -335,11 +359,12 @@ class PosCheckoutService {
     }
 
     if (!isDraft && isCredito && pos.selectedClientId != null) {
-      final latestCredit = await _supabase
-          .from('customer_credits')
-          .select('id, current_debt')
-          .eq('profile_id', pos.selectedClientId!)
-          .single();
+      final latestCredit =
+          await _supabase
+              .from('customer_credits')
+              .select('id, current_debt')
+              .eq('profile_id', pos.selectedClientId!)
+              .single();
 
       final creditId = latestCredit['id'] as String;
       final currentDebt = (latestCredit['current_debt'] as num).toDouble();
