@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
@@ -61,6 +62,8 @@ class _ExitItemModel {
   final double quantity;
   final double unitCost;
   final String batchNumber;
+  final bool usesBatches; // <-- NUEVO
+  final String? imageUrl; // <-- NUEVO
 
   const _ExitItemModel({
     this.productName,
@@ -69,6 +72,8 @@ class _ExitItemModel {
     required this.quantity,
     required this.unitCost,
     required this.batchNumber,
+    required this.usesBatches,
+    this.imageUrl,
   });
 
   double get subtotal => quantity * unitCost;
@@ -185,19 +190,59 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     final resp = await _supabase
         .from('inventory_exit_items')
         .select('''
-          quantity, unit_cost, batch_number,
-          products(name),
-          product_variants(attributes, sku)
+          quantity, unit_cost, batch_number, variant_id,
+          products(
+            name, 
+            uses_batches,
+            product_images(image_url, is_main, variant_id)
+          ),
+          product_variants(
+            sku,
+            variant_attribute_values(
+              attribute_values(value)
+            )
+          )
         ''')
         .eq('exit_id', exitId);
 
     return (resp as List).map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
       final variant = r['product_variants'] as Map<String, dynamic>?;
-      final attrs = Map<String, dynamic>.from(
-        (variant?['attributes'] as Map?) ?? {},
-      );
-      final attrsText = attrs.values.map((e) => '$e').join(' · ');
+      final variantId = r['variant_id'] as String?;
+
+      // Extraemos los atributos
+      final vavList =
+          variant?['variant_attribute_values'] as List<dynamic>? ?? [];
+      final List<String> attrValues = [];
+      for (var vav in vavList) {
+        final av = vav['attribute_values'] as Map<String, dynamic>?;
+        if (av != null && av['value'] != null) {
+          attrValues.add(av['value'].toString());
+        }
+      }
+      final attrsText = attrValues.join(' · ');
+
+      // Lógica de Lotes
+      final bool usesBatches = prod?['uses_batches'] == true;
+
+      // Lógica de Imágenes (Prioriza la variante, si no, busca la principal)
+      String? finalImageUrl;
+      final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+      if (imagesList.isNotEmpty) {
+        final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+          (img) => img['variant_id'] == variantId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+          finalImageUrl = variantImage['image_url'] as String;
+        } else {
+          final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+            (img) => img['is_main'] == true,
+            orElse: () => imagesList.first as Map<String, dynamic>,
+          );
+          finalImageUrl = mainImage['image_url'] as String?;
+        }
+      }
 
       return _ExitItemModel(
         productName: prod?['name'] as String?,
@@ -206,6 +251,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         quantity: (r['quantity'] as num).toDouble(),
         unitCost: (r['unit_cost'] as num?)?.toDouble() ?? 0.0,
         batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+        usesBatches: usesBatches,
+        imageUrl: finalImageUrl,
       );
     }).toList();
   }
@@ -720,6 +767,63 @@ class _ExitDetailSheetState extends State<_ExitDetailSheet> {
                         ),
                         child: Row(
                           children: [
+                            // ── IMAGEN EN CACHÉ ──────────────────────────
+                            Container(
+                              width: 48,
+                              height: 48,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(7),
+                                child:
+                                    item.imageUrl != null &&
+                                            item.imageUrl!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                          imageUrl: item.imageUrl!,
+                                          fit: BoxFit.cover,
+                                          placeholder:
+                                              (context, url) => Container(
+                                                color: Colors.grey.shade50,
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                          errorWidget:
+                                              (
+                                                context,
+                                                url,
+                                                error,
+                                              ) => Container(
+                                                color: Colors.grey.shade50,
+                                                child: Icon(
+                                                  Icons.broken_image_outlined,
+                                                  size: 20,
+                                                  color: Colors.grey.shade400,
+                                                ),
+                                              ),
+                                        )
+                                        : Container(
+                                          color: Colors.grey.shade50,
+                                          child: Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 22,
+                                            color: Colors.grey.shade400,
+                                          ),
+                                        ),
+                              ),
+                            ),
+                            // ── TEXTOS ───────────────────────────────────
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -742,7 +846,19 @@ class _ExitDetailSheetState extends State<_ExitDetailSheet> {
                                         ),
                                       ),
                                     ),
-                                  if (item.batchNumber != 'DEFAULT')
+                                  if (item.sku != null && item.sku!.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        'SKU: ${item.sku}',
+                                        style: const TextStyle(
+                                          color: AppColors.textHint,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  if (item
+                                      .usesBatches) // Solo mostrar si usa lotes
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Row(
@@ -776,6 +892,7 @@ class _ExitDetailSheetState extends State<_ExitDetailSheet> {
                                 ],
                               ),
                             ),
+                            // ── TOTAL ───────────────────────────────────
                             Text(
                               'S/ ${item.subtotal.toStringAsFixed(2)}',
                               style: const TextStyle(
@@ -788,7 +905,6 @@ class _ExitDetailSheetState extends State<_ExitDetailSheet> {
                         ),
                       ),
                     ),
-
                   const SizedBox(height: 32),
                 ],
               ),
