@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:inventory_store_app/data/admin/products_repository.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CatalogService {
   CatalogService({ProductsRepository? repository})
@@ -9,40 +11,116 @@ class CatalogService {
 
   final ProductsRepository _repository;
 
-  Future<List<CategoryModel>> loadCategories() {
-    return _repository.fetchActiveCategories();
+  Future<List<CategoryModel>> loadCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      final categories = await _repository.fetchActiveCategories();
+      final cacheData = categories
+          .map((c) => {
+                'id': c.id,
+                'name': c.name,
+                'description': c.description,
+                'is_active': c.isActive,
+              })
+          .toList();
+      await prefs.setString('cached_admin_categories', jsonEncode(cacheData));
+      return categories;
+    } catch (e) {
+      final cached = prefs.getString('cached_admin_categories');
+      if (cached != null) {
+        final List decoded = jsonDecode(cached);
+        return decoded
+            .map((e) => CategoryModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+      rethrow;
+    }
   }
 
-  // 1. AÑADIMOS EL PARÁMETRO isAdmin AQUÍ
   Future<List<ProductModel>> loadProducts({
     String? categoryId,
     String? searchTerm,
     bool isAdmin = false,
   }) async {
-    // 1. Traer los productos primero
-    final products = await _repository.fetchProducts(
-      categoryId: categoryId,
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      final products = await _repository.fetchProducts(
+        categoryId: categoryId,
+        searchTerm: searchTerm,
+        isAdmin: isAdmin,
+      );
+
+      if (products.isEmpty) return [];
+
+      final productIds = products.map((p) => p.id).toList(growable: false);
+      final stockByProduct = await _repository.fetchProductStock(
+        productIds: productIds,
+      );
+
+      final processedProducts = products
+          .map((product) =>
+              product.copyWith(totalStock: stockByProduct[product.id] ?? 0))
+          .toList(growable: false);
+
+      processedProducts.sort(_compareProductsForCatalog);
+
+      if (categoryId == null && (searchTerm == null || searchTerm.trim().isEmpty)) {
+        await prefs.setString(
+          'cached_admin_products',
+          jsonEncode(processedProducts.map((p) => p.toJson()).toList()),
+        );
+      }
+
+      return processedProducts;
+    } catch (e) {
+      final cached = prefs.getString('cached_admin_products');
+      if (cached != null) {
+        final List decoded = jsonDecode(cached);
+        var offlineProducts = decoded
+            .map((e) => ProductModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+            
+        if (categoryId != null) {
+          offlineProducts = offlineProducts.where((p) => p.categoryId == categoryId).toList();
+        }
+        final term = searchTerm?.trim().toLowerCase() ?? '';
+        if (term.isNotEmpty) {
+          offlineProducts = offlineProducts
+              .where((p) => p.name.toLowerCase().contains(term))
+              .toList();
+        }
+        return offlineProducts;
+      }
+      throw Exception('Estás sin conexión a internet y no hay catálogo guardado en este dispositivo.');
+    }
+  }
+
+  Future<({List<ProductModel> products, Map<String, String> matches})> loadProductsByIngredient({
+    required String searchTerm,
+    String? categoryId,
+    bool isAdmin = false,
+  }) async {
+    final result = await _repository.fetchProductsByIngredient(
       searchTerm: searchTerm,
+      categoryId: categoryId,
       isAdmin: isAdmin,
     );
 
-    if (products.isEmpty) return [];
+    if (result.products.isEmpty) return result;
 
-    // 2. Traer stock SOLO de los productos visibles (reduce egress)
-    final productIds = products.map((p) => p.id).toList(growable: false);
+    final productIds = result.products.map((p) => p.id).toList(growable: false);
     final stockByProduct = await _repository.fetchProductStock(
       productIds: productIds,
     );
 
-    final processedProducts = products
-        .map(
-          (product) =>
-              product.copyWith(totalStock: stockByProduct[product.id] ?? 0),
-        )
+    final processedProducts = result.products
+        .map((product) =>
+            product.copyWith(totalStock: stockByProduct[product.id] ?? 0))
         .toList(growable: false);
 
     processedProducts.sort(_compareProductsForCatalog);
-    return processedProducts;
+
+    return (products: processedProducts, matches: result.matches);
   }
 
   Future<Map<String, List<ProductVariantModel>>> loadVariantsByProductIds(

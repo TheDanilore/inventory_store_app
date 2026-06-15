@@ -85,6 +85,108 @@ class ProductsRepository {
     ).map(ProductModel.fromJson).toList(growable: false);
   }
 
+  /// Busca productos basándose en ingredientes activos
+  Future<({List<ProductModel> products, Map<String, String> matches})> fetchProductsByIngredient({
+    required String searchTerm,
+    String? categoryId,
+    bool isAdmin = false,
+  }) async {
+    // 1. RPC: buscar ingredient_ids.
+    final List<dynamic> aiResp = await _supabase.rpc(
+      'search_ingredients_unaccent',
+      params: {'search_term': searchTerm},
+    );
+
+    final ingredientIds =
+        (aiResp)
+            .map((r) => (r as Map<String, dynamic>)['id']?.toString())
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toSet()
+            .toList();
+
+    if (ingredientIds.isEmpty) return (products: <ProductModel>[], matches: <String, String>{});
+
+    // 2. Buscar product_ids y los datos reales de los ingredientes
+    final ingResp = await _supabase
+        .from('product_active_ingredients')
+        .select('product_id, concentration, unit, active_ingredients(name)')
+        .inFilter('ingredient_id', ingredientIds);
+
+    final productIds = <String>[];
+    final newMatches = <String, String>{};
+
+    for (final e in ingResp as List) {
+      final row = e as Map<String, dynamic>;
+      final pId = row['product_id']?.toString();
+      if (pId == null || pId.isEmpty) continue;
+
+      productIds.add(pId);
+
+      final aiMap = row['active_ingredients'] as Map<String, dynamic>?;
+      final name = aiMap?['name']?.toString() ?? 'Desconocido';
+      final conc = row['concentration'];
+      final unit = row['unit']?.toString().trim();
+
+      String label = name;
+      if (conc != null) {
+        final concStr =
+            (conc is num && conc == conc.toInt())
+                ? conc.toInt().toString()
+                : conc.toString();
+        label += ' $concStr';
+      }
+      if (unit != null && unit.isNotEmpty) {
+        if (unit.startsWith('%')) {
+          label += unit;
+        } else {
+          label += ' $unit';
+        }
+      }
+
+      if (newMatches.containsKey(pId)) {
+        newMatches[pId] = '${newMatches[pId]} + $label';
+      } else {
+        newMatches[pId] = label;
+      }
+    }
+
+    final uniqueProductIds = productIds.toSet().toList();
+    if (uniqueProductIds.isEmpty) return (products: <ProductModel>[], matches: <String, String>{});
+
+    var query = _supabase
+        .from('products')
+        .select('''
+          id, name, unit_cost, sale_price, wholesale_price,
+          wholesale_min_quantity, is_active, description,
+          category_id, details, created_at, updated_at,
+          stock_control, uses_batches, product_type,
+          categories(name),
+          product_images(image_url)
+        ''')
+        .inFilter('id', uniqueProductIds);
+
+    if (!isAdmin) {
+      query = query.eq('is_active', true);
+    }
+    if (categoryId != null) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    final resp = await query.order('name');
+
+    final productsList = <ProductModel>[];
+    for (final e in resp as List) {
+      try {
+        final row = Map<String, dynamic>.from(e as Map);
+        if (row['id'] == null || row['name'] == null) continue;
+        productsList.add(ProductModel.fromJson(row));
+      } catch (_) {}
+    }
+
+    return (products: productsList, matches: newMatches);
+  }
+
   // ── Stock de productos ────────────────────────────────────────────────────
 
   /// Suma el stock de todos los lotes por producto.
