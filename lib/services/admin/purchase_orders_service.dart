@@ -165,4 +165,149 @@ class PurchaseOrdersService {
         })
         .eq('id', poId);
   }
+
+  /// Creates a new Purchase Order and its items, handling financial logic too.
+  Future<void> createPurchaseOrder({
+    required String supplierId,
+    required String supplierName,
+    required String warehouseId,
+    required List<dynamic> items, // Expected to be EntryItemUI from UI layer, we will use dynamic to avoid circular import, or just pass primitives
+    required double totalAmount,
+    required String paymentMode,
+    required String paymentStatus,
+    required String? accountId,
+    required String? activeShiftId,
+    required DateTime? dueDate,
+    required DateTime? documentDate,
+    required String documentType,
+    required String? documentNumber,
+    required String? notes,
+  }) async {
+    final currentUser = _supabase.auth.currentUser;
+    String? profileId;
+    if (currentUser != null) {
+      final profile = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', currentUser.id)
+          .maybeSingle();
+      profileId = profile?['id'] as String?;
+    }
+
+    // 1. Insert Purchase Order
+    final poResp = await _supabase
+        .from('purchase_orders')
+        .insert({
+          'supplier_id': supplierId,
+          'supplier_name': supplierName,
+          'warehouse_id': warehouseId,
+          'status': 'SENT',
+          'total_amount': totalAmount,
+          'payment_method': paymentMode,
+          'payment_status': paymentStatus,
+          'amount_paid': paymentStatus == 'PAID' ? totalAmount : 0,
+          'due_date': dueDate?.toIso8601String().split('T').first,
+          'document_type': documentType,
+          'document_number': documentNumber,
+          'document_date': documentDate?.toIso8601String().split('T').first,
+          'notes': notes,
+          'created_by': profileId,
+        })
+        .select('id')
+        .single();
+
+    final poId = poResp['id'] as String;
+
+    // 2. Insert Items
+    for (final item in items) {
+      await _supabase.from('purchase_order_items').insert({
+        'purchase_order_id': poId,
+        'product_id': item.product.id,
+        'variant_id': item.variant.id,
+        'quantity_ordered': item.quantity,
+        'unit_cost': item.unitCost,
+        'net_cost': item.subtotal,
+        'batch_number': item.batchNumber,
+        'expiry_date': item.expiryDate?.toIso8601String().split('T').first,
+      });
+    }
+
+    // 3. Finanzas: Pago Adelantado
+    if (paymentStatus == 'PAID' && accountId != null) {
+      final accountDataResp = await _supabase
+          .from('financial_accounts')
+          .select('balance')
+          .eq('id', accountId)
+          .single();
+      
+      final currentBalance = (accountDataResp['balance'] as num).toDouble();
+
+      await _supabase.from('account_movements').insert({
+        'account_id': accountId,
+        'movement_type': 'EXPENSE',
+        'amount': totalAmount,
+        'description': 'Pago adelantado Orden de Compra · $supplierName',
+        'reference_type': 'purchase_order',
+        'reference_id': poId,
+        'created_by': profileId,
+        'shift_id': activeShiftId,
+      });
+
+      await _supabase
+          .from('financial_accounts')
+          .update({'balance': currentBalance - totalAmount})
+          .eq('id', accountId);
+    }
+    // 4. Finanzas: Compra a Crédito
+    else if (paymentMode == 'CREDITO') {
+      final creditResp = await _supabase
+          .from('supplier_credits')
+          .select('id, current_debt')
+          .eq('supplier_id', supplierId)
+          .single();
+      final supplierCreditId = creditResp['id'] as String;
+
+      await _supabase
+          .from('supplier_credits')
+          .update({
+            'current_debt': (creditResp['current_debt'] as num).toDouble() + totalAmount,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', supplierCreditId);
+
+      await _supabase.from('supplier_credit_movements').insert({
+        'supplier_credit_id': supplierCreditId,
+        'purchase_order_id': poId,
+        'movement_type': 'CHARGE',
+        'amount': totalAmount,
+        'payment_method': 'CREDITO',
+        'due_date': dueDate?.toIso8601String().split('T').first,
+        'notes': 'Orden de Compra en Tránsito',
+        'created_by': profileId,
+      });
+    }
+  }
+
+  /// Busca productos de manera asíncrona en el servidor.
+  Future<List<Map<String, dynamic>>> searchProducts(String queryText) async {
+    final response = await _supabase
+        .from('products')
+        .select('*, product_images(*)')
+        .eq('is_active', true)
+        .eq('stock_control', true)
+        .neq('product_type', 'service')
+        .ilike('name', '%$queryText%')
+        .limit(20);
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  /// Obtiene variantes dado un product_id.
+  Future<List<Map<String, dynamic>>> getProductVariants(String productId) async {
+    final response = await _supabase
+        .from('product_variants')
+        .select('*, product_images(*), variant_attribute_values(attribute_values(value, attributes(name)))')
+        .eq('product_id', productId)
+        .eq('is_active', true);
+    return List<Map<String, dynamic>>.from(response as List);
+  }
 }

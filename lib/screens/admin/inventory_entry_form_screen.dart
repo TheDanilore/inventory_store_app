@@ -74,7 +74,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   bool _loadingWarehouses = true;
 
   // ── Productos ─────────────────────────────────────────────────────────────
-  List<ProductModel> _allProducts = [];
   bool _loadingProducts = true;
   final Map<String, List<ProductVariantModel>> _variantsByProduct = {};
 
@@ -199,8 +198,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           _selectedSupplierId = widget.prefillSupplierId;
         }
 
-        _allProducts =
-            productsResp.map((p) => ProductModel.fromJson(p)).toList();
 
         _variantsByProduct.clear();
         for (final variant in variants) {
@@ -277,8 +274,6 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (context) => AddEntryProductSheet(
-            allProducts: _allProducts,
-            variantsByProduct: _variantsByProduct,
             warehouseId: _selectedWarehouseId,
           ),
     );

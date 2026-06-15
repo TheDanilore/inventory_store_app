@@ -11,15 +11,13 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:inventory_store_app/services/admin/purchase_orders_service.dart';
+
 class AddEntryProductSheet extends StatefulWidget {
-  final List<ProductModel> allProducts;
-  final Map<String, List<ProductVariantModel>> variantsByProduct;
   final String? warehouseId;
 
   const AddEntryProductSheet({
     super.key,
-    required this.allProducts,
-    required this.variantsByProduct,
     this.warehouseId,
   });
 
@@ -35,6 +33,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   final _batchCtrl = TextEditingController();
   DateTime? _expiryDate;
   List<WarehouseStockBatchModel> _existingBatches = [];
+  List<ProductVariantModel> _availableVariants = [];
+
+  final PurchaseOrdersService _service = PurchaseOrdersService();
 
   Future<void> _fetchExistingBatches(String variantId) async {
     if (widget.warehouseId == null) return;
@@ -76,7 +77,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     return product?.unitCost ?? 0;
   }
 
-  void _onProductChanged(ProductModel? val) {
+  Future<void> _onProductChanged(ProductModel? val) async {
     setState(() {
       _selectedProduct = val;
       _selectedVariant = null;
@@ -84,12 +85,43 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _batchCtrl.clear();
       _expiryDate = null;
       _existingBatches = [];
+      _availableVariants = [];
       if (val != null) {
         _costCtrl.text = val.unitCost.toStringAsFixed(2);
       } else {
         _costCtrl.clear();
       }
     });
+
+    if (val != null) {
+      try {
+        final variantsData = await _service.getProductVariants(val.id);
+        if (mounted) {
+          setState(() {
+            _availableVariants = variantsData.map((v) {
+              if (v['variant_attribute_values'] is List) {
+                final Map<String, dynamic> flatAttributes = {};
+                for (final vav in v['variant_attribute_values'] as List) {
+                  if (vav is Map && vav['attribute_values'] is Map) {
+                    final av = vav['attribute_values'] as Map;
+                    if (av['attributes'] is Map) {
+                      final attr = av['attributes'] as Map;
+                      if (attr['name'] != null) {
+                        flatAttributes[attr['name'].toString()] = av['value']?.toString() ?? '';
+                      }
+                    }
+                  }
+                }
+                v['attributes'] = flatAttributes;
+              }
+              return ProductVariantModel.fromJson(v);
+            }).toList();
+          });
+        }
+      } catch (e) {
+        debugPrint('Error fetching variants: $e');
+      }
+    }
   }
 
   void _onVariantChanged(ProductVariantModel? val) {
@@ -162,10 +194,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
   void _submit() {
     final cost = double.tryParse(_costCtrl.text.trim()) ?? 0.0;
-    final availableVariants =
-        _selectedProduct == null
-            ? const <ProductVariantModel>[]
-            : (widget.variantsByProduct[_selectedProduct!.id] ?? []);
+    final availableVariants = _availableVariants;
 
     if (_selectedProduct == null) {
       AppSnackbar.show(
@@ -234,10 +263,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final availableVariants =
-        _selectedProduct == null
-            ? const <ProductVariantModel>[]
-            : (widget.variantsByProduct[_selectedProduct!.id] ?? []);
+    final availableVariants = _availableVariants;
 
     String? currentImageUrl;
     if (_selectedVariant?.images.isNotEmpty == true) {
@@ -304,15 +330,17 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
               ),
               child: Autocomplete<ProductModel>(
                 displayStringForOption: (p) => p.name,
-                optionsBuilder: (textEditingValue) {
+                optionsBuilder: (textEditingValue) async {
                   if (textEditingValue.text.isEmpty) {
                     return const Iterable<ProductModel>.empty();
                   }
-                  return widget.allProducts.where(
-                    (p) => p.name.toLowerCase().contains(
-                      textEditingValue.text.toLowerCase(),
-                    ),
-                  );
+                  try {
+                    final res = await _service.searchProducts(textEditingValue.text);
+                    return res.map((p) => ProductModel.fromJson(p));
+                  } catch (e) {
+                    debugPrint('Error en autocomplete: $e');
+                    return const Iterable<ProductModel>.empty();
+                  }
                 },
                 onSelected: _onProductChanged,
                 fieldViewBuilder: (
