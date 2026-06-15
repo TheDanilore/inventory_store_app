@@ -16,6 +16,25 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _supabase = Supabase.instance.client;
 
+  // 1. Declarar las variables para guardar los Futures
+  late Future<List<Map<String, dynamic>>> _productsFuture;
+  late Future<List<Map<String, dynamic>>> _batchesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // 2. Inicializar los Futures solo UNA vez al cargar la pantalla
+    _cargarDatos();
+  }
+
+  // Método para cargar/recargar los datos
+  void _cargarDatos() {
+    setState(() {
+      _productsFuture = _loadProducts();
+      _batchesFuture = _loadExpiringBatches();
+    });
+  }
+
   Future<List<Map<String, dynamic>>> _loadProducts() async {
     final response = await _supabase
         .from('products')
@@ -67,7 +86,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .select('''
           id, batch_number, expiry_date, available_quantity,
           products(name),
-          product_variants(sku, attributes),
+          product_variants(
+            sku, 
+            variant_attribute_values(
+              attribute_values(value, attributes(name))
+            )
+          ),
           warehouses(name)
         ''')
         .not('expiry_date', 'is', null)
@@ -88,393 +112,397 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return AdminLayout(
       title: 'Dashboard Financiero',
       showBackButton: true,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Meta de Ahorro ─────────────────────────────────────────
-            AdminGoalCard(
-              currentAmount: adminGoalCurrent,
-              targetAmount: adminGoalTarget,
-              onAddPressed:
-                  () => _configurarMetaDialog(
-                    context,
-                    adminGoalCurrent,
-                    adminGoalTarget,
-                  ),
-            ),
-            const SizedBox(height: 24),
+      // 3. Agregamos RefreshIndicator para que el usuario pueda recargar manualmente
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _cargarDatos();
+        },
+        child: SingleChildScrollView(
+          physics:
+              const AlwaysScrollableScrollPhysics(), // Necesario para RefreshIndicator
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Meta de Ahorro ─────────────────────────────────────────
+              AdminGoalCard(
+                currentAmount: adminGoalCurrent,
+                targetAmount: adminGoalTarget,
+                onAddPressed:
+                    () => _configurarMetaDialog(
+                      context,
+                      adminGoalCurrent,
+                      adminGoalTarget,
+                    ),
+              ),
+              const SizedBox(height: 24),
 
-            // ── Alertas: Lotes por Vencer ───────────────────────────────
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _loadExpiringBatches(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox.shrink();
-                }
-                final batches = snapshot.data ?? [];
-                if (batches.isEmpty) return const SizedBox.shrink();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _ExpiringBatchesCard(batches: batches),
-                    const SizedBox(height: 24),
-                  ],
-                );
-              },
-            ),
-
-            // ── Inventario ─────────────────────────────────────────────
-            _SectionHeader(
-              icon: Icons.inventory_2_rounded,
-              title: 'Inventario',
-              subtitle: 'Valorización y proyecciones de stock',
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _loadProducts(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const _LoadingPlaceholder();
-                }
-
-                if (snapshot.hasError) {
-                  return _ErrorCard(message: 'Error cargando inventario');
-                }
-
-                int totalStock = 0;
-                double inversionTotal = 0;
-                double valorVentaMinorista = 0;
-                double gananciaEsperadaMax = 0;
-                double gananciaEsperadaMin = 0;
-                double gananciaBruta = 0;
-                int productosBajoStock = 0;
-                int totalProductos = 0;
-
-                final products = snapshot.data ?? [];
-
-                for (var row in products) {
-                  final prodUnitCost =
-                      (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-                  final prodSalePrice =
-                      (row['sale_price'] as num?)?.toDouble() ?? 0.0;
-                  final prodWholesalePrice =
-                      (row['wholesale_price'] as num?)?.toDouble();
-                  final prodWholesaleMinQty =
-                      (row['wholesale_min_quantity'] as num?)?.toInt() ?? 3;
-
-                  final activeVariants =
-                      row['active_variants_list']
-                          as List<Map<String, dynamic>>? ??
-                      [];
-
-                  totalProductos++;
-
-                  // Calculamos por variante para usar su unit_cost/sale_price
-                  // con fallback al del producto padre.
-                  final batches = List<Map<String, dynamic>>.from(
-                    row['warehouse_stock_batches'] ?? [],
+              // ── Alertas: Lotes por Vencer ───────────────────────────────
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _batchesFuture, // Usamos la variable de estado
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox.shrink();
+                  }
+                  final batches = snapshot.data ?? [];
+                  if (batches.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _ExpiringBatchesCard(batches: batches),
+                      const SizedBox(height: 24),
+                    ],
                   );
+                },
+              ),
 
-                  bool prodHasLowStock = false;
-
-                  for (final variant in activeVariants) {
-                    final variantId = variant['id'] as String?;
-                    if (variantId == null) continue;
-
-                    final variantStock = batches
-                        .where((b) => b['variant_id'] == variantId)
-                        .fold<int>(
-                          0,
-                          (s, b) =>
-                              s +
-                              ((b['available_quantity'] as num?)?.toInt() ?? 0),
-                        );
-
-                    if (variantStock <= 0) continue;
-
-                    final varUnitCost =
-                        ((variant['unit_cost'] as num?)?.toDouble() ?? 0) > 0
-                            ? (variant['unit_cost'] as num).toDouble()
-                            : prodUnitCost;
-
-                    final varSalePrice =
-                        (variant['sale_price'] as num?)?.toDouble() ??
-                        prodSalePrice;
-
-                    final varWholesalePrice =
-                        (variant['wholesale_price'] as num?)?.toDouble() ??
-                        prodWholesalePrice;
-                    final varWholesaleMinQty =
-                        (variant['wholesale_min_quantity'] as num?)?.toInt() ??
-                        prodWholesaleMinQty;
-                    final reorderPoint =
-                        (variant['reorder_point'] as num?)?.toInt() ?? 3;
-
-                    totalStock += variantStock;
-                    inversionTotal += variantStock * varUnitCost;
-                    valorVentaMinorista += variantStock * varSalePrice;
-
-                    gananciaBruta +=
-                        (variantStock * varSalePrice) -
-                        (variantStock * varUnitCost);
-                    gananciaEsperadaMax +=
-                        (variantStock * varSalePrice) -
-                        (variantStock * varUnitCost);
-
-                    final canApplyWholesale =
-                        varWholesalePrice != null &&
-                        variantStock >= varWholesaleMinQty;
-                    final effectiveWholesale =
-                        canApplyWholesale ? varWholesalePrice : varSalePrice;
-                    gananciaEsperadaMin +=
-                        (variantStock * effectiveWholesale) -
-                        (variantStock * varUnitCost);
-
-                    if (variantStock <= reorderPoint) prodHasLowStock = true;
+              // ── Inventario ─────────────────────────────────────────────
+              const _SectionHeader(
+                icon: Icons.inventory_2_rounded,
+                title: 'Inventario',
+                subtitle: 'Valorización y proyecciones de stock',
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _productsFuture, // Usamos la variable de estado
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const _LoadingPlaceholder();
                   }
 
-                  if (prodHasLowStock) productosBajoStock++;
-                }
-
-                final margenBruto =
-                    inversionTotal > 0
-                        ? (gananciaBruta / valorVentaMinorista) * 100
-                        : 0.0;
-
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Stock Total',
-                            value: '$totalStock',
-                            subtitle: '$totalProductos productos activos',
-                            icon: Icons.inventory_2_rounded,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.blue,
-                                AppColors.blue.withValues(alpha: 0.8),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Bajo Stock',
-                            value: '$productosBajoStock',
-                            subtitle: 'Productos en alerta',
-                            icon: Icons.warning_amber_rounded,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.warning,
-                                AppColors.warning.withValues(alpha: 0.8),
-                              ],
-                            ),
-                            badge: productosBajoStock > 0 ? '!' : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _KpiCardWide(
-                      title: 'Inversión en Inventario',
-                      value: 'S/ ${inversionTotal.toStringAsFixed(2)}',
-                      subtitle: 'Valor al precio de compra',
-                      icon: Icons.account_balance_wallet_rounded,
-                      color: AppColors.textSecondary,
-                      rightLabel: 'Valor venta minorista',
-                      rightValue:
-                          'S/ ${valorVentaMinorista.toStringAsFixed(2)}',
-                    ),
-                    const SizedBox(height: 12),
-                    const _SubSectionLabel(
-                      label: 'Indicadores de Ganancia Proyectada',
-                    ),
-                    const SizedBox(height: 8),
-                    _GananciaBrutaCard(
-                      gananciaBruta: gananciaBruta,
-                      margenPct: margenBruto,
-                      inversion: inversionTotal,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'G. Minorista',
-                            value:
-                                'S/ ${gananciaEsperadaMax.toStringAsFixed(2)}',
-                            subtitle: 'Vendiendo al detalle',
-                            icon: Icons.trending_up_rounded,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.teal,
-                                AppColors.teal.withValues(alpha: 0.8),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'G. Mayorista',
-                            value:
-                                'S/ ${gananciaEsperadaMin.toStringAsFixed(2)}',
-                            subtitle: 'Aplicando precio por mayor',
-                            icon: Icons.people_alt_rounded,
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primaryDark,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-
-            const SizedBox(height: 28),
-
-            // ── Ventas ─────────────────────────────────────────────────
-            _SectionHeader(
-              icon: Icons.point_of_sale_rounded,
-              title: 'Ventas Registradas',
-              subtitle: 'Órdenes con estado COMPLETADO',
-            ),
-            const SizedBox(height: 12),
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _supabase
-                  .from('orders')
-                  .stream(primaryKey: ['id'])
-                  .eq('status', 'COMPLETED'),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const _LoadingPlaceholder();
-                }
-
-                int totalVentas = 0;
-                double ingresoTotal = 0;
-                double gananciaTotal = 0;
-
-                if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                  for (var venta in snapshot.data!) {
-                    totalVentas += 1;
-                    // Según tu esquema DB, la tabla 'orders' almacena el ingreso (total_amount)
-                    // y la ganancia (total_profit).
-                    ingresoTotal += (venta['total_amount'] as num).toDouble();
-                    gananciaTotal += (venta['total_profit'] as num).toDouble();
+                  if (snapshot.hasError) {
+                    return const _ErrorCard(
+                      message: 'Error cargando inventario',
+                    );
                   }
-                }
 
-                // CÁLCULO FONDO DE REPOSICIÓN:
-                // Ingreso Total - Ganancia Neta = Costo de lo vendido (Capital a recuperar)
-                final fondoReposicion = ingresoTotal - gananciaTotal;
+                  int totalStock = 0;
+                  double inversionTotal = 0;
+                  double valorVentaMinorista = 0;
+                  double gananciaEsperadaMax = 0;
+                  double gananciaEsperadaMin = 0;
+                  double gananciaBruta = 0;
+                  int productosBajoStock = 0;
+                  int totalProductos = 0;
 
-                final ticketPromedio =
-                    totalVentas > 0 ? ingresoTotal / totalVentas : 0.0;
-                final margenVentas =
-                    ingresoTotal > 0
-                        ? (gananciaTotal / ingresoTotal) * 100
-                        : 0.0;
+                  final products = snapshot.data ?? [];
 
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Órdenes',
-                            value: '$totalVentas',
-                            subtitle: 'Ventas completadas',
-                            icon: Icons.shopping_bag_rounded,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primary.withValues(alpha: 0.85),
-                              ],
+                  for (var row in products) {
+                    final prodUnitCost =
+                        (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
+                    final prodSalePrice =
+                        (row['sale_price'] as num?)?.toDouble() ?? 0.0;
+                    final prodWholesalePrice =
+                        (row['wholesale_price'] as num?)?.toDouble();
+                    final prodWholesaleMinQty =
+                        (row['wholesale_min_quantity'] as num?)?.toInt() ?? 3;
+
+                    final activeVariants =
+                        row['active_variants_list']
+                            as List<Map<String, dynamic>>? ??
+                        [];
+
+                    totalProductos++;
+
+                    final batches = List<Map<String, dynamic>>.from(
+                      row['warehouse_stock_batches'] ?? [],
+                    );
+
+                    bool prodHasLowStock = false;
+
+                    for (final variant in activeVariants) {
+                      final variantId = variant['id'] as String?;
+                      if (variantId == null) continue;
+
+                      final variantStock = batches
+                          .where((b) => b['variant_id'] == variantId)
+                          .fold<int>(
+                            0,
+                            (s, b) =>
+                                s +
+                                ((b['available_quantity'] as num?)?.toInt() ??
+                                    0),
+                          );
+
+                      if (variantStock <= 0) continue;
+
+                      final varUnitCost =
+                          ((variant['unit_cost'] as num?)?.toDouble() ?? 0) > 0
+                              ? (variant['unit_cost'] as num).toDouble()
+                              : prodUnitCost;
+
+                      final varSalePrice =
+                          (variant['sale_price'] as num?)?.toDouble() ??
+                          prodSalePrice;
+
+                      final varWholesalePrice =
+                          (variant['wholesale_price'] as num?)?.toDouble() ??
+                          prodWholesalePrice;
+                      final varWholesaleMinQty =
+                          (variant['wholesale_min_quantity'] as num?)
+                              ?.toInt() ??
+                          prodWholesaleMinQty;
+                      final reorderPoint =
+                          (variant['reorder_point'] as num?)?.toInt() ?? 3;
+
+                      totalStock += variantStock;
+                      inversionTotal += variantStock * varUnitCost;
+                      valorVentaMinorista += variantStock * varSalePrice;
+
+                      gananciaBruta +=
+                          (variantStock * varSalePrice) -
+                          (variantStock * varUnitCost);
+                      gananciaEsperadaMax +=
+                          (variantStock * varSalePrice) -
+                          (variantStock * varUnitCost);
+
+                      final canApplyWholesale =
+                          varWholesalePrice != null &&
+                          variantStock >= varWholesaleMinQty;
+                      final effectiveWholesale =
+                          canApplyWholesale ? varWholesalePrice : varSalePrice;
+                      gananciaEsperadaMin +=
+                          (variantStock * effectiveWholesale) -
+                          (variantStock * varUnitCost);
+
+                      if (variantStock <= reorderPoint) prodHasLowStock = true;
+                    }
+
+                    if (prodHasLowStock) productosBajoStock++;
+                  }
+
+                  final margenBruto =
+                      inversionTotal > 0
+                          ? (gananciaBruta / valorVentaMinorista) * 100
+                          : 0.0;
+
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'Stock Total',
+                              value: '$totalStock',
+                              subtitle: '$totalProductos productos activos',
+                              icon: Icons.inventory_2_rounded,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.blue,
+                                  AppColors.blue.withValues(alpha: 0.8),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _KpiCard(
-                            title: 'Ticket Prom.',
-                            value: 'S/ ${ticketPromedio.toStringAsFixed(2)}',
-                            subtitle: 'Por orden vendida',
-                            icon: Icons.receipt_long_rounded,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.blue,
-                                AppColors.blue.withValues(alpha: 0.85),
-                              ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'Bajo Stock',
+                              value: '$productosBajoStock',
+                              subtitle: 'Productos en alerta',
+                              icon: Icons.warning_amber_rounded,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.warning,
+                                  AppColors.warning.withValues(alpha: 0.8),
+                                ],
+                              ),
+                              badge: productosBajoStock > 0 ? '!' : null,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _KpiCardWide(
+                        title: 'Inversión en Inventario',
+                        value: 'S/ ${inversionTotal.toStringAsFixed(2)}',
+                        subtitle: 'Valor al precio de compra',
+                        icon: Icons.account_balance_wallet_rounded,
+                        color: AppColors.textSecondary,
+                        rightLabel: 'Valor venta minorista',
+                        rightValue:
+                            'S/ ${valorVentaMinorista.toStringAsFixed(2)}',
+                      ),
+                      const SizedBox(height: 12),
+                      const _SubSectionLabel(
+                        label: 'Indicadores de Ganancia Proyectada',
+                      ),
+                      const SizedBox(height: 8),
+                      _GananciaBrutaCard(
+                        gananciaBruta: gananciaBruta,
+                        margenPct: margenBruto,
+                        inversion: inversionTotal,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'G. Minorista',
+                              value:
+                                  'S/ ${gananciaEsperadaMax.toStringAsFixed(2)}',
+                              subtitle: 'Vendiendo al detalle',
+                              icon: Icons.trending_up_rounded,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.teal,
+                                  AppColors.teal.withValues(alpha: 0.8),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'G. Mayorista',
+                              value:
+                                  'S/ ${gananciaEsperadaMin.toStringAsFixed(2)}',
+                              subtitle: 'Aplicando precio por mayor',
+                              icon: Icons.people_alt_rounded,
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.primary,
+                                  AppColors.primaryDark,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
 
-                    // CARD 1: Ingresos Generales vs Ganancia Neta
-                    _KpiCardWide(
-                      title: 'Ingreso Total Bruto',
-                      value: 'S/ ${ingresoTotal.toStringAsFixed(2)}',
-                      subtitle: 'Facturado en caja',
-                      icon: Icons.monetization_on_rounded,
-                      color: AppColors.tealDark,
-                      rightLabel: 'Ganancia Neta',
-                      rightValue: 'S/ ${gananciaTotal.toStringAsFixed(2)}',
-                      rightColor: AppColors.success,
-                    ),
-                    const SizedBox(height: 12),
+              const SizedBox(height: 28),
 
-                    // CARD 2: NUEVA - Fondo de Reposición (Capital)
-                    _KpiCardWide(
-                      title: 'Fondo de Reposición',
-                      value: 'S/ ${fondoReposicion.toStringAsFixed(2)}',
-                      subtitle: 'Costo unitario de lo vendido',
-                      icon: Icons.currency_exchange_rounded,
-                      color: Colors.blueGrey.shade600,
-                      rightLabel: '% del Ingreso',
-                      rightValue:
-                          ingresoTotal > 0
-                              ? '${((fondoReposicion / ingresoTotal) * 100).toStringAsFixed(1)}%'
-                              : '0.0%',
-                      rightColor: Colors.blueGrey.shade600,
-                    ),
-                    const SizedBox(height: 12),
+              // ── Ventas ─────────────────────────────────────────────────
+              const _SectionHeader(
+                icon: Icons.point_of_sale_rounded,
+                title: 'Ventas Registradas',
+                subtitle: 'Órdenes con estado COMPLETADO',
+              ),
+              const SizedBox(height: 12),
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _supabase
+                    .from('orders')
+                    .stream(primaryKey: ['id'])
+                    .eq('status', 'COMPLETED'),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const _LoadingPlaceholder();
+                  }
 
-                    _MargenBar(
-                      label: 'Margen Nivelado sobre ventas',
-                      percent: margenVentas,
-                      color: AppColors.success,
-                    ),
-                  ],
-                );
-              },
-            ),
+                  int totalVentas = 0;
+                  double ingresoTotal = 0;
+                  double gananciaTotal = 0;
 
-            const SizedBox(height: 28),
-          ],
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    for (var venta in snapshot.data!) {
+                      totalVentas += 1;
+                      ingresoTotal += (venta['total_amount'] as num).toDouble();
+                      gananciaTotal +=
+                          (venta['total_profit'] as num).toDouble();
+                    }
+                  }
+
+                  final fondoReposicion = ingresoTotal - gananciaTotal;
+                  final ticketPromedio =
+                      totalVentas > 0 ? ingresoTotal / totalVentas : 0.0;
+                  final margenVentas =
+                      ingresoTotal > 0
+                          ? (gananciaTotal / ingresoTotal) * 100
+                          : 0.0;
+
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'Órdenes',
+                              value: '$totalVentas',
+                              subtitle: 'Ventas completadas',
+                              icon: Icons.shopping_bag_rounded,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.primary,
+                                  AppColors.primary.withValues(alpha: 0.85),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _KpiCard(
+                              title: 'Ticket Prom.',
+                              value: 'S/ ${ticketPromedio.toStringAsFixed(2)}',
+                              subtitle: 'Por orden vendida',
+                              icon: Icons.receipt_long_rounded,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.blue,
+                                  AppColors.blue.withValues(alpha: 0.85),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      _KpiCardWide(
+                        title: 'Ingreso Total Bruto',
+                        value: 'S/ ${ingresoTotal.toStringAsFixed(2)}',
+                        subtitle: 'Facturado en caja',
+                        icon: Icons.monetization_on_rounded,
+                        color: AppColors.tealDark,
+                        rightLabel: 'Ganancia Neta',
+                        rightValue: 'S/ ${gananciaTotal.toStringAsFixed(2)}',
+                        rightColor: AppColors.success,
+                      ),
+                      const SizedBox(height: 12),
+
+                      _KpiCardWide(
+                        title: 'Fondo de Reposición',
+                        value: 'S/ ${fondoReposicion.toStringAsFixed(2)}',
+                        subtitle: 'Costo unitario de lo vendido',
+                        icon: Icons.currency_exchange_rounded,
+                        color: Colors.blueGrey.shade600,
+                        rightLabel: '% del Ingreso',
+                        rightValue:
+                            ingresoTotal > 0
+                                ? '${((fondoReposicion / ingresoTotal) * 100).toStringAsFixed(1)}%'
+                                : '0.0%',
+                        rightColor: Colors.blueGrey.shade600,
+                      ),
+                      const SizedBox(height: 12),
+
+                      _MargenBar(
+                        label: 'Margen Nivelado sobre ventas',
+                        percent: margenVentas,
+                        color: AppColors.success,
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 28),
+            ],
+          ),
         ),
       ),
     );
@@ -615,8 +643,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       description: 'Meta de ahorro del administrador',
                     );
 
+                    // 4. Arreglamos la validación del context después de un evento async
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext);
+                    }
+                    if (mounted) {
                       AppSnackbar.show(
                         context,
                         message: '¡Meta actualizada con éxito!',
@@ -1248,19 +1279,29 @@ class _ExpiringBatchesCardState extends State<_ExpiringBatchesCard> {
                 (batch['products'] as Map?)?['name'] as String? ?? '–';
             final warehouseName =
                 (batch['warehouses'] as Map?)?['name'] as String? ?? '–';
-            final variantAttrs =
-                (batch['product_variants'] as Map?)?['attributes'] as Map? ??
-                {};
-            final sku = (batch['product_variants'] as Map?)?['sku'] as String?;
+            final variantData =
+                batch['product_variants'] as Map<String, dynamic>?;
+            final sku = variantData?['sku'] as String?;
             final batchNumber = batch['batch_number'] as String? ?? '–';
             final qty = (batch['available_quantity'] as num?)?.toInt() ?? 0;
             final expiryStr = batch['expiry_date'] as String?;
             final urgencyColor = _urgencyColor(expiryStr);
             final daysLabel = _daysLabel(expiryStr);
 
-            final attrsDesc = variantAttrs.entries
-                .map((e) => '${e.value}')
-                .join(' · ');
+            // Extraemos los valores relacionales de los atributos
+            final vavList =
+                variantData?['variant_attribute_values'] as List<dynamic>? ??
+                [];
+            final List<String> attrValues = [];
+            for (var vav in vavList) {
+              final av = vav['attribute_values'] as Map<String, dynamic>?;
+              if (av != null && av['value'] != null) {
+                attrValues.add(
+                  av['value'].toString(),
+                ); // Extrae "Rojo", "L", etc.
+              }
+            }
+            final attrsDesc = attrValues.join(' · ');
 
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),

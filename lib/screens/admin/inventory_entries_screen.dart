@@ -68,6 +68,8 @@ class _EntryItemDetail {
   final double unitCost;
   final String batchNumber;
   final DateTime? expiryDate;
+  final bool usesBatches; // <-- NUEVO
+  final String? imageUrl; // <-- NUEVO
 
   const _EntryItemDetail({
     required this.productName,
@@ -76,6 +78,8 @@ class _EntryItemDetail {
     required this.unitCost,
     required this.batchNumber,
     this.expiryDate,
+    required this.usesBatches,
+    this.imageUrl,
   });
 
   double get subtotal => quantity * unitCost;
@@ -203,21 +207,38 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   }
 
   Future<List<_EntryItemDetail>> _loadItems(String entryId) async {
+    // 1. Actualizamos la consulta para usar el JOIN relacional
     final resp = await _supabase
         .from('inventory_entry_items')
         .select('''
           quantity, unit_cost, batch_number, expiry_date,
           products(name),
-          product_variants(attributes)
+          product_variants(
+            variant_attribute_values(
+              attribute_values(value)
+            )
+          )
         ''')
         .eq('entry_id', entryId);
+
     return (resp as List).map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
-      final variant = r['product_variants'] as Map<String, dynamic>?;
-      final attrs = Map<String, dynamic>.from(
-        (variant?['attributes'] as Map?) ?? {},
-      );
-      final attrsText = attrs.values.map((e) => '$e').join(' · ');
+      final variantData = r['product_variants'] as Map<String, dynamic>?;
+
+      // 2. Extraemos los valores de la nueva estructura de listas
+      final vavList =
+          variantData?['variant_attribute_values'] as List<dynamic>? ?? [];
+      final List<String> attrValues = [];
+
+      for (var vav in vavList) {
+        final av = vav['attribute_values'] as Map<String, dynamic>?;
+        if (av != null && av['value'] != null) {
+          attrValues.add(av['value'].toString());
+        }
+      }
+
+      final attrsText = attrValues.join(' · ');
+
       return _EntryItemDetail(
         productName: prod?['name'] as String? ?? '—',
         variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
