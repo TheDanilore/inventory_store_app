@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
@@ -211,8 +212,12 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     final resp = await _supabase
         .from('inventory_entry_items')
         .select('''
-          quantity, unit_cost, batch_number, expiry_date,
-          products(name),
+          quantity, unit_cost, batch_number, expiry_date, variant_id,
+          products(
+            name, 
+            uses_batches, 
+            product_images(image_url, is_main, variant_id)
+          ),
           product_variants(
             variant_attribute_values(
               attribute_values(value)
@@ -224,8 +229,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     return (resp as List).map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
       final variantData = r['product_variants'] as Map<String, dynamic>?;
+      final variantId = r['variant_id'] as String?;
 
-      // 2. Extraemos los valores de la nueva estructura de listas
+      // Extraemos atributos
       final vavList =
           variantData?['variant_attribute_values'] as List<dynamic>? ?? [];
       final List<String> attrValues = [];
@@ -239,6 +245,28 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
       final attrsText = attrValues.join(' · ');
 
+      // Lógica de Lotes
+      final bool usesBatches = prod?['uses_batches'] == true;
+
+      // Lógica de Imágenes (Prioriza la imagen de la variante, si no, usa la principal)
+      String? finalImageUrl;
+      final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+      if (imagesList.isNotEmpty) {
+        final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+          (img) => img['variant_id'] == variantId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+          finalImageUrl = variantImage['image_url'] as String;
+        } else {
+          final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+            (img) => img['is_main'] == true,
+            orElse: () => imagesList.first as Map<String, dynamic>,
+          );
+          finalImageUrl = mainImage['image_url'] as String?;
+        }
+      }
+
       return _EntryItemDetail(
         productName: prod?['name'] as String? ?? '—',
         variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
@@ -249,6 +277,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             r['expiry_date'] != null
                 ? DateTime.tryParse(r['expiry_date'] as String)
                 : null,
+        usesBatches: usesBatches,
+        imageUrl: finalImageUrl,
       );
     }).toList();
   }
@@ -727,6 +757,75 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                                 ),
                                 child: Row(
                                   children: [
+                                    // ── IMAGEN EN CACHÉ ──────────────────────────
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      margin: const EdgeInsets.only(right: 12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(7),
+                                        child:
+                                            item.imageUrl != null &&
+                                                    item.imageUrl!.isNotEmpty
+                                                ? CachedNetworkImage(
+                                                  imageUrl: item.imageUrl!,
+                                                  fit: BoxFit.cover,
+                                                  placeholder:
+                                                      (
+                                                        context,
+                                                        url,
+                                                      ) => Container(
+                                                        color:
+                                                            Colors.grey.shade50,
+                                                        child: const Center(
+                                                          child: SizedBox(
+                                                            width: 16,
+                                                            height: 16,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  errorWidget:
+                                                      (
+                                                        context,
+                                                        url,
+                                                        error,
+                                                      ) => Container(
+                                                        color:
+                                                            Colors.grey.shade50,
+                                                        child: Icon(
+                                                          Icons
+                                                              .broken_image_outlined,
+                                                          size: 20,
+                                                          color:
+                                                              Colors
+                                                                  .grey
+                                                                  .shade400,
+                                                        ),
+                                                      ),
+                                                )
+                                                : Container(
+                                                  color: Colors.grey.shade50,
+                                                  child: Icon(
+                                                    Icons.inventory_2_outlined,
+                                                    size: 22,
+                                                    color: Colors.grey.shade400,
+                                                  ),
+                                                ),
+                                      ),
+                                    ),
+                                    // ── TEXTOS ───────────────────────────────────
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -739,14 +838,19 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                                               fontSize: 13,
                                             ),
                                           ),
+                                          // Condicional: Solo mostrar Lote si usa lotes
                                           Text(
-                                            '${item.variantAttrs} · Lote: ${item.batchNumber}',
+                                            item.usesBatches
+                                                ? '${item.variantAttrs} · Lote: ${item.batchNumber}'
+                                                : item.variantAttrs,
                                             style: const TextStyle(
                                               fontSize: 11,
                                               color: AppColors.textSecondary,
                                             ),
                                           ),
-                                          if (item.expiryDate != null)
+                                          // Condicional: Solo mostrar Vencimiento si usa lotes
+                                          if (item.usesBatches &&
+                                              item.expiryDate != null)
                                             Text(
                                               'Vence: ${DateFormat('dd/MM/yyyy').format(item.expiryDate!)}',
                                               style: const TextStyle(
@@ -757,6 +861,7 @@ class _EntryDetailSheetState extends State<_EntryDetailSheet> {
                                         ],
                                       ),
                                     ),
+                                    // ── PRECIOS ──────────────────────────────────
                                     Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.end,
