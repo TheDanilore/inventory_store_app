@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/data/admin/products_repository.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -359,10 +360,12 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
             onTap:
                 _canSell
                     ? () {
-                        // Forzar vibración nativa del hardware (50ms, intensidad media)
+                      // Solo vibrar si no es web para evitar MissingPluginException
+                      if (!kIsWeb) {
                         Vibration.vibrate(duration: 50, amplitude: 128);
-                        
-                        context.read<PosProvider>().addProductToPos(
+                      }
+
+                      context.read<PosProvider>().addProductToPos(
                         product: widget.product,
                         quantity: _quantity,
                         variantId: _selectedVariant!.id,

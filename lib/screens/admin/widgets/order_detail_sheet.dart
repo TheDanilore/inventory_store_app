@@ -56,6 +56,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   bool _isEditing = false;
   bool _isSaving = false;
   bool _isReturning = false;
+  bool _wasModified = false;
+
+  late OrderModel _currentOrder;
 
   String? _selectedCustomerId;
   String _currentStatus = '';
@@ -65,7 +68,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   Map<String, dynamic>? _creditInfo;
 
   bool get _isCompleted => _currentStatus.toUpperCase() == 'COMPLETED';
-  bool get _canToggleEdit => widget.order.status.toUpperCase() == 'PENDING';
+  bool get _canToggleEdit => _currentOrder.status.toUpperCase() == 'PENDING';
 
   List<Map<String, dynamic>> get _filteredProfiles {
     final query = _customerSearchCtrl.text.trim().toLowerCase();
@@ -73,21 +76,25 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     return _profiles.where((profile) {
       final name = (profile['full_name'] as String? ?? '').toLowerCase();
       final phone = (profile['phone'] as String? ?? '').toLowerCase();
-      final document = (profile['document_number'] as String? ?? '').toLowerCase();
-      return name.contains(query) || phone.contains(query) || document.contains(query);
+      final document =
+          (profile['document_number'] as String? ?? '').toLowerCase();
+      return name.contains(query) ||
+          phone.contains(query) ||
+          document.contains(query);
     }).toList();
   }
 
   @override
   void initState() {
+    _currentOrder = widget.order;
     super.initState();
-    _selectedCustomerId = widget.order.customerId;
-    _currentStatus = widget.order.status;
-    _pointsUsed = widget.order.pointsUsed;
-    _pointsEarned = widget.order.pointsEarned;
-    _paymentMethod = widget.order.paymentMethod;
+    _selectedCustomerId = _currentOrder.customerId;
+    _currentStatus = _currentOrder.status;
+    _pointsUsed = _currentOrder.pointsUsed;
+    _pointsEarned = _currentOrder.pointsEarned;
+    _paymentMethod = _currentOrder.paymentMethod;
     _pointsUsedCtrl.text = _pointsUsed.toString();
-    _manualNameCtrl.text = widget.order.displayCustomerName.trim();
+    _manualNameCtrl.text = _currentOrder.displayCustomerName.trim();
     _fetchData();
   }
 
@@ -110,19 +117,38 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
     try {
       final futures = <Future>[
-        _supabase.from('order_items').select('''
+        _supabase
+            .from('order_items')
+            .select('''
           id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at,
           products ( name, uses_batches, unit_cost, product_images(id, image_url, is_main, display_order, variant_id) ),
           product_variants ( sku, unit_cost, product_images(id, image_url, is_main, display_order), variant_attribute_values(attribute_values(id, value, attributes(id, name))) )
-        ''').eq('order_id', widget.order.id),
-        _supabase.from('profiles').select('id, full_name, phone, document_number, role, is_active').eq('is_active', true).order('full_name'),
-        _supabase.from('financial_accounts').select('id, name, type, balance').eq('is_active', true).order('name'),
+        ''')
+            .eq('order_id', _currentOrder.id),
+        _supabase
+            .from('profiles')
+            .select('id, full_name, phone, document_number, role, is_active')
+            .eq('is_active', true)
+            .order('full_name'),
+        _supabase
+            .from('financial_accounts')
+            .select('id, name, type, balance')
+            .eq('is_active', true)
+            .order('name'),
+        _supabase
+            .from('orders')
+            .select('*, profiles:customer_id(*)')
+            .eq('id', _currentOrder.id)
+            .single(),
       ];
 
       if (_selectedCustomerId != null) {
         futures.add(
-          _supabase.from('customer_credits').select('id, credit_limit, current_debt, is_active')
-              .eq('profile_id', _selectedCustomerId!).maybeSingle(),
+          _supabase
+              .from('customer_credits')
+              .select('id, credit_limit, current_debt, is_active')
+              .eq('profile_id', _selectedCustomerId!)
+              .maybeSingle(),
         );
       }
 
@@ -130,30 +156,39 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       if (!mounted) return;
 
       final itemsRaw = results[0] as List;
-      final items = itemsRaw.map((row) {
-        final variantId = row['variant_id'] as String?;
-        final prod = row['products'] as Map<String, dynamic>?;
-        final variant = row['product_variants'] as Map<String, dynamic>?;
+      final items =
+          itemsRaw.map((row) {
+            final variantId = row['variant_id'] as String?;
+            final prod = row['products'] as Map<String, dynamic>?;
+            final variant = row['product_variants'] as Map<String, dynamic>?;
 
-        if (variantId != null && prod != null) {
-          _usesBatchesMap[variantId] = prod['uses_batches'] == true;
-        }
+            if (variantId != null && prod != null) {
+              _usesBatchesMap[variantId] = prod['uses_batches'] == true;
+            }
 
-        double resolvedUnitCost = 0.0;
-        if (variant != null && variant['unit_cost'] != null && (variant['unit_cost'] as num) > 0) {
-          resolvedUnitCost = (variant['unit_cost'] as num).toDouble();
-        } else if (prod != null && prod['unit_cost'] != null) {
-          resolvedUnitCost = (prod['unit_cost'] as num).toDouble();
-        } else {
-          resolvedUnitCost = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-        }
-        row['unit_cost'] = resolvedUnitCost;
-        return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
-      }).toList();
+            double resolvedUnitCost = 0.0;
+            if (variant != null &&
+                variant['unit_cost'] != null &&
+                (variant['unit_cost'] as num) > 0) {
+              resolvedUnitCost = (variant['unit_cost'] as num).toDouble();
+            } else if (prod != null && prod['unit_cost'] != null) {
+              resolvedUnitCost = (prod['unit_cost'] as num).toDouble();
+            } else {
+              resolvedUnitCost = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
+            }
+            row['unit_cost'] = resolvedUnitCost;
+            return OrderItemModel.fromJson(Map<String, dynamic>.from(row));
+          }).toList();
 
-      List<Map<String, dynamic>> profiles = List<Map<String, dynamic>>.from(results[1]);
-      List<Map<String, dynamic>> accounts = List<Map<String, dynamic>>.from(results[2]);
-      
+      List<Map<String, dynamic>> profiles = List<Map<String, dynamic>>.from(
+        results[1],
+      );
+      List<Map<String, dynamic>> accounts = List<Map<String, dynamic>>.from(
+        results[2],
+      );
+      final updatedOrderMap = results[3] as Map<String, dynamic>;
+      final updatedOrder = OrderModel.fromJson(updatedOrderMap);
+
       const accountTypeOrder = {'CAJA': 0, 'BANCO': 1, 'DIGITAL': 2, 'OTRO': 3};
       accounts.sort((a, b) {
         final oa = accountTypeOrder[a['type'] as String? ?? ''] ?? 99;
@@ -162,29 +197,42 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         return (a['name'] as String).compareTo(b['name'] as String);
       });
 
-      final currentCustomerId = _selectedCustomerId ?? widget.order.customerId;
-      if (currentCustomerId != null && !profiles.any((p) => p['id'] == currentCustomerId)) {
+      final currentCustomerId = _selectedCustomerId ?? _currentOrder.customerId;
+      if (currentCustomerId != null &&
+          !profiles.any((p) => p['id'] == currentCustomerId)) {
         try {
-          final missingProfile = await _supabase.from('profiles').select('id, full_name, phone, document_number, role, is_active')
-              .eq('id', currentCustomerId).maybeSingle();
+          final missingProfile =
+              await _supabase
+                  .from('profiles')
+                  .select(
+                    'id, full_name, phone, document_number, role, is_active',
+                  )
+                  .eq('id', currentCustomerId)
+                  .maybeSingle();
           if (missingProfile != null) profiles = [missingProfile, ...profiles];
         } catch (_) {}
       }
 
       setState(() {
+        _currentOrder = updatedOrder;
         _items = items;
         _profiles = profiles;
         _accounts = accounts;
-        if (results.length > 3) {
-          _creditInfo = results[3] as Map<String, dynamic>?;
+        if (results.length > 4) {
+          _creditInfo = results[4] as Map<String, dynamic>?;
         }
         _pointsEarned = _calculatePointsEarned();
         _isLoading = false;
       });
 
-      _quantityControllers = _items.map((item) => TextEditingController(text: item.quantity.toString())).toList();
+      _quantityControllers =
+          _items
+              .map(
+                (item) => TextEditingController(text: item.quantity.toString()),
+              )
+              .toList();
 
-      if (widget.order.status.toUpperCase() == 'COMPLETED') {
+      if (_currentOrder.status.toUpperCase() == 'COMPLETED') {
         _fetchBatchMovements();
       }
     } catch (e) {
@@ -193,15 +241,24 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         _isLoading = false;
         _hasError = true;
       });
-      AppSnackbar.show(context, message: 'Error cargando datos: $e', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: 'Error cargando datos: $e',
+        type: SnackbarType.error,
+      );
     }
   }
 
   Future<void> _fetchBatchMovements() async {
     try {
-      final resp = await _supabase.from('inventory_movements').select('''
+      final resp = await _supabase
+          .from('inventory_movements')
+          .select('''
         variant_id, quantity, warehouse_stock_batches!inner ( batch_number, expiry_date )
-      ''').eq('order_id', widget.order.id).eq('reason', 'SALE').neq('warehouse_stock_batches.batch_number', 'DEFAULT');
+      ''')
+          .eq('order_id', _currentOrder.id)
+          .eq('reason', 'SALE')
+          .neq('warehouse_stock_batches.batch_number', 'DEFAULT');
 
       final Map<String, List<Map<String, dynamic>>> grouped = {};
       for (final row in (resp as List)) {
@@ -220,8 +277,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   Future<void> _loadCreditInfo(String profileId) async {
     try {
-      final resp = await _supabase.from('customer_credits').select('id, credit_limit, current_debt, is_active')
-          .eq('profile_id', profileId).maybeSingle();
+      final resp =
+          await _supabase
+              .from('customer_credits')
+              .select('id, credit_limit, current_debt, is_active')
+              .eq('profile_id', profileId)
+              .maybeSingle();
       if (mounted) setState(() => _creditInfo = resp);
     } catch (_) {}
   }
@@ -237,7 +298,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   String _customerLabelFor(String? customerId) {
     if (customerId == null) {
-      final manualName = widget.order.displayCustomerName.trim();
+      final manualName = _currentOrder.displayCustomerName.trim();
       return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
     }
     if (_profiles.isNotEmpty) {
@@ -247,21 +308,30 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         if (name != null && name.isNotEmpty) return name;
       } catch (_) {}
     }
-    return widget.order.displayCustomerName.isNotEmpty ? widget.order.displayCustomerName : 'Cliente mostrador';
+    return _currentOrder.displayCustomerName.isNotEmpty
+        ? _currentOrder.displayCustomerName
+        : 'Cliente mostrador';
   }
 
   int _calculatePointsEarned() {
-    if (_selectedCustomerId == null || _paymentMethod == 'CRÉDITO' || _items.isEmpty) return 0;
+    if (_selectedCustomerId == null ||
+        _paymentMethod == 'CRÉDITO' ||
+        _items.isEmpty) {
+      return 0;
+    }
     final config = context.read<AppConfigProvider>();
     final subtotal = _items.fold(0.0, (sum, i) => sum + i.subtotal);
-    final discountAmount = widget.order.discountAmount;
+    final discountAmount = _currentOrder.discountAmount;
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
     double appliedDiscount = _pointsUsed * pointsToSolesRatio;
     final maxDiscount = subtotal * 0.5;
     if (appliedDiscount > maxDiscount) appliedDiscount = maxDiscount;
 
-    final totalFinal = (subtotal - appliedDiscount - discountAmount).clamp(0.0, double.infinity);
+    final totalFinal = (subtotal - appliedDiscount - discountAmount).clamp(
+      0.0,
+      double.infinity,
+    );
     final solesToPointsRatio = config.getDouble('soles_to_points_ratio', 1.0);
     if (solesToPointsRatio <= 0) return 0;
     return (totalFinal / solesToPointsRatio).floor();
@@ -269,12 +339,16 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   double _calculateOrderFinalAmount() {
     final subtotal = _items.fold(0.0, (sum, i) => sum + i.subtotal);
-    final discountAmount = widget.order.discountAmount;
+    final discountAmount = _currentOrder.discountAmount;
     final config = context.read<AppConfigProvider>();
-    double appliedDiscount = _pointsUsed * config.getDouble('points_to_soles_ratio', 0.01);
+    double appliedDiscount =
+        _pointsUsed * config.getDouble('points_to_soles_ratio', 0.01);
     final maxDiscount = subtotal * 0.5;
     if (appliedDiscount > maxDiscount) appliedDiscount = maxDiscount;
-    return (subtotal - appliedDiscount - discountAmount).clamp(0.0, double.infinity);
+    return (subtotal - appliedDiscount - discountAmount).clamp(
+      0.0,
+      double.infinity,
+    );
   }
 
   double _calculateOrderTotalProfit() {
@@ -286,34 +360,51 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   }
 
   Future<void> _showBatchEditSheet(OrderItemModel item) async {
-    final warehouseId = widget.order.warehouseId;
+    final warehouseId = _currentOrder.warehouseId;
     if (warehouseId == null) return;
 
     List<BatchAssignmentModel> batches;
     try {
-      final resp = await _supabase.from('warehouse_stock_batches')
+      final resp = await _supabase
+          .from('warehouse_stock_batches')
           .select('id, batch_number, expiry_date, available_quantity')
           .eq('variant_id', item.variantId ?? '')
           .eq('warehouse_id', warehouseId)
           .neq('batch_number', 'DEFAULT')
           .gt('available_quantity', 0)
           .order('expiry_date', ascending: true, nullsFirst: false);
-      batches = (resp as List).map((b) => BatchAssignmentModel(
-        batchId: b['id'] as String,
-        batchNumber: b['batch_number'] as String,
-        expiryDate: b['expiry_date'] != null ? DateTime.tryParse(b['expiry_date'] as String) : null,
-        available: (b['available_quantity'] as num).toInt(),
-        assigned: 0,
-      )).toList();
+      batches =
+          (resp as List)
+              .map(
+                (b) => BatchAssignmentModel(
+                  batchId: b['id'] as String,
+                  batchNumber: b['batch_number'] as String,
+                  expiryDate:
+                      b['expiry_date'] != null
+                          ? DateTime.tryParse(b['expiry_date'] as String)
+                          : null,
+                  available: (b['available_quantity'] as num).toInt(),
+                  assigned: 0,
+                ),
+              )
+              .toList();
     } catch (e) {
       if (!mounted) return;
-      AppSnackbar.show(context, message: 'Error cargando lotes: $e', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: 'Error cargando lotes: $e',
+        type: SnackbarType.error,
+      );
       return;
     }
 
     if (batches.isEmpty) {
       if (!mounted) return;
-      AppSnackbar.show(context, message: 'No hay lotes con stock para este producto.', type: SnackbarType.warning);
+      AppSnackbar.show(
+        context,
+        message: 'No hay lotes con stock para este producto.',
+        type: SnackbarType.warning,
+      );
       return;
     }
 
@@ -337,12 +428,13 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => BatchEditSheet(
-        productName: item.productName ?? 'Producto',
-        variantLabel: item.variantLabel,
-        totalRequired: item.quantity,
-        batches: batches,
-      ),
+      builder:
+          (_) => BatchEditSheet(
+            productName: item.productName ?? 'Producto',
+            variantLabel: item.variantLabel,
+            totalRequired: item.quantity,
+            batches: batches,
+          ),
     );
 
     if (result != null && mounted) {
@@ -354,24 +446,30 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     setState(() => _isSaving = true);
     try {
       String? notesOverride;
-      
+
       // Si se está cancelando o completando, solicitar motivo opcional
       final isNowCancelled = _currentStatus.toUpperCase() == 'CANCELLED';
       if (isNowCancelled) {
-        notesOverride = await _showReasonDialog('Cancelar Pedido', 'Ingresa el motivo de la cancelación:');
+        notesOverride = await _showReasonDialog(
+          'Cancelar Pedido',
+          'Ingresa el motivo de la cancelación:',
+        );
         if (notesOverride == null) {
           setState(() => _isSaving = false);
           return; // Canceló el diálogo
         }
       }
 
-      final String? customerNameToSave = _selectedCustomerId != null 
-          ? null 
-          : (_manualNameCtrl.text.trim().isEmpty ? null : _manualNameCtrl.text.trim());
+      final String? customerNameToSave =
+          _selectedCustomerId != null
+              ? null
+              : (_manualNameCtrl.text.trim().isEmpty
+                  ? null
+                  : _manualNameCtrl.text.trim());
 
       final result = await _service.saveOrderChanges(
-        orderId: widget.order.id,
-        originalStatus: widget.order.status,
+        orderId: _currentOrder.id,
+        originalStatus: _currentOrder.status,
         newStatus: _currentStatus,
         paymentMethod: _paymentMethod,
         selectedCustomerId: _selectedCustomerId,
@@ -388,55 +486,85 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       if (!mounted) return;
 
       if (result.success) {
-        AppSnackbar.show(context, message: 'Cambios guardados correctamente', type: SnackbarType.success);
+        AppSnackbar.show(
+          context,
+          message: 'Cambios guardados correctamente',
+          type: SnackbarType.success,
+        );
         Navigator.pop(context, true);
       } else if (result.stockError) {
         _showStockErrorDialog(result.stockMessages);
       } else {
-        AppSnackbar.show(context, message: result.errorMessage ?? 'Error desconocido', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: result.errorMessage ?? 'Error desconocido',
+          type: SnackbarType.error,
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      AppSnackbar.show(context, message: 'Excepción inesperada: $e', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: 'Excepción inesperada: $e',
+        type: SnackbarType.error,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
   Future<void> _confirmReturn() async {
-    final notes = await _showReasonDialog('Registrar Devolución', 'Ingresa el motivo de la devolución:');
+    final notes = await _showReasonDialog(
+      'Registrar Devolución',
+      'Ingresa el motivo de la devolución:',
+    );
     if (notes == null) return; // Canceló el diálogo
 
     if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.assignment_return_rounded, color: Colors.red.shade600),
-            const SizedBox(width: 8),
-            const Text('Confirmar Devolución', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text(
-          'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\n\n'
-          '• Stock de productos devuelto al almacén\n'
-          '• Monedas de fidelidad revertidas\n'
-          '• Deuda de crédito o cuenta ajustada\n\n'
-          '¿Deseas continuar?',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white),
-            icon: const Icon(Icons.assignment_return_rounded, size: 18),
-            label: const Text('Confirmar'),
-            onPressed: () => Navigator.pop(ctx, true),
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.assignment_return_rounded,
+                  color: Colors.red.shade600,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Confirmar Devolución',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\n\n'
+              '• Stock de productos devuelto al almacén\n'
+              '• Monedas de fidelidad revertidas\n'
+              '• Deuda de crédito o cuenta ajustada\n\n'
+              '¿Deseas continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.assignment_return_rounded, size: 18),
+                label: const Text('Confirmar'),
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true && mounted) {
@@ -448,20 +576,34 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     setState(() => _isReturning = true);
     try {
       final result = await _service.processReturn(
-        orderId: widget.order.id,
+        orderId: _currentOrder.id,
         items: _items,
         notesOverride: notes,
       );
 
       if (!mounted) return;
       if (result.success) {
-        AppSnackbar.show(context, message: 'Devolución procesada con éxito', type: SnackbarType.success);
+        AppSnackbar.show(
+          context,
+          message: 'Devolución procesada con éxito',
+          type: SnackbarType.success,
+        );
         Navigator.pop(context, true);
       } else {
-        AppSnackbar.show(context, message: result.errorMessage ?? 'Error procesando devolución', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: result.errorMessage ?? 'Error procesando devolución',
+          type: SnackbarType.error,
+        );
       }
     } catch (e) {
-      if (mounted) AppSnackbar.show(context, message: 'Error: $e', type: SnackbarType.error);
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error: $e',
+          type: SnackbarType.error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isReturning = false);
     }
@@ -471,34 +613,47 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     String notes = '';
     return showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(hint, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 12),
-            TextField(
-              maxLines: 3,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Ej. Producto dañado, cliente cambió de opinión...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onChanged: (val) => notes = val,
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, notes),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal, foregroundColor: Colors.white),
-            child: const Text('Continuar'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(hint, style: const TextStyle(fontSize: 14)),
+                const SizedBox(height: 12),
+                TextField(
+                  maxLines: 3,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Ej. Producto dañado, cliente cambió de opinión...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onChanged: (val) => notes = val,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, notes),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Continuar'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -506,14 +661,25 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     if (!mounted) return;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Stock Insuficiente', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('El stock varió y ya no hay disponibilidad para completar este pedido:\n\n${messages.join('\n')}'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendido')),
-        ],
-      ),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text(
+              'Stock Insuficiente',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'El stock varió y ya no hay disponibilidad para completar este pedido:\n\n${messages.join('\n')}',
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
     );
   }
 
@@ -521,52 +687,86 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   Widget build(BuildContext context) {
     final subtotal = _items.fold(0.0, (sum, i) => sum + i.subtotal);
     final config = context.watch<AppConfigProvider>();
-    final maxPtsUser = _selectedCustomerId != null ? _profiles.firstWhere((p) => p['id'] == _selectedCustomerId, orElse: () => {'wallet_balance': 0})['wallet_balance'] as int? ?? 0 : 0;
-    
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 5),
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+    final maxPtsUser =
+        _selectedCustomerId != null
+            ? _profiles.firstWhere(
+                      (p) => p['id'] == _selectedCustomerId,
+                      orElse: () => {'wallet_balance': 0},
+                    )['wallet_balance']
+                    as int? ??
+                0
+            : 0;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, dynamic result) {
+        if (didPop) return;
+        Navigator.pop(context, _wasModified);
+      },
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 5),
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: _isLoading
-                  ? const Padding(padding: EdgeInsets.all(16.0), child: OrderDetailSkeleton())
-                  : _hasError
-                      ? Center(
+              Expanded(
+                child:
+                    _isLoading
+                        ? const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: OrderDetailSkeleton(),
+                        )
+                        : _hasError
+                        ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade300),
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 64,
+                                color: Colors.red.shade300,
+                              ),
                               const SizedBox(height: 16),
-                              const Text('Ocurrió un error al cargar el pedido', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              const Text(
+                                'Ocurrió un error al cargar el pedido',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
                                 onPressed: _fetchData,
                                 icon: const Icon(Icons.refresh_rounded),
                                 label: const Text('Reintentar'),
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal, foregroundColor: Colors.white),
-                              )
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.teal,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
                             ],
                           ),
                         )
-                      : ListView(
+                        : ListView(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                           children: [
                             OrderDetailHeaderRow(
-                              orderId: widget.order.id,
+                              orderId: _currentOrder.id,
                               isCompleted: _isCompleted,
                               isEditing: _isEditing,
                               canToggleEdit: _canToggleEdit,
@@ -574,26 +774,38 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 if (_isEditing) {
                                   setState(() {
                                     _isEditing = false;
-                                    _currentStatus = widget.order.status;
-                                    _paymentMethod = widget.order.paymentMethod;
-                                    _pointsUsed = widget.order.pointsUsed;
-                                    _pointsEarned = widget.order.pointsEarned;
-                                    _selectedCustomerId = widget.order.customerId;
+                                    _currentStatus = _currentOrder.status;
+                                    _paymentMethod =
+                                        _currentOrder.paymentMethod;
+                                    _pointsUsed = _currentOrder.pointsUsed;
+                                    _pointsEarned = _currentOrder.pointsEarned;
+                                    _selectedCustomerId =
+                                        _currentOrder.customerId;
                                   });
                                 } else {
                                   setState(() => _isEditing = true);
                                 }
                               },
-                              onPrint: () => OrderPdfGenerator.printTicket(widget.order, items: _items),
-                              onShare: () => OrderPdfGenerator.shareTicket(widget.order, items: _items),
+                              onPrint:
+                                  () => OrderPdfGenerator.printTicket(
+                                    _currentOrder,
+                                    items: _items,
+                                  ),
+                              onShare:
+                                  () => OrderPdfGenerator.shareTicket(
+                                    _currentOrder,
+                                    items: _items,
+                                  ),
                             ),
                             const Divider(height: 32),
                             OrderDetailStatusSection(
                               currentStatus: _currentStatus,
-                              originalStatus: widget.order.status,
+                              originalStatus: _currentOrder.status,
                               isEditing: _isEditing,
                               onChanged: (val) {
-                                if (val != null) setState(() => _currentStatus = val);
+                                if (val != null) {
+                                  setState(() => _currentStatus = val);
+                                }
                               },
                             ),
                             OrderDetailCustomerSection(
@@ -603,7 +815,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               manualNameController: _manualNameCtrl,
                               searchController: _customerSearchCtrl,
                               filteredProfiles: _filteredProfiles,
-                              selectedCustomerLabel: _customerLabelFor(_selectedCustomerId),
+                              selectedCustomerLabel: _customerLabelFor(
+                                _selectedCustomerId,
+                              ),
                               selectedCustomerId: _selectedCustomerId,
                               onSearchChanged: () => setState(() {}),
                               onClearSearch: () {
@@ -611,16 +825,19 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 setState(() {});
                               },
                               onSelectCustomer: _selectCustomer,
-                              onClearCustomer: () => setState(() {
-                                _selectedCustomerId = null;
-                                _creditInfo = null;
-                                _pointsEarned = _calculatePointsEarned();
-                              }),
+                              onClearCustomer:
+                                  () => setState(() {
+                                    _selectedCustomerId = null;
+                                    _creditInfo = null;
+                                    _pointsEarned = _calculatePointsEarned();
+                                  }),
                             ),
                             OrderDetailPaymentSection(
                               currentPaymentMethod: _paymentMethod,
                               isEditing: _isEditing,
-                              isCompleted: widget.order.status.toUpperCase() == 'COMPLETED',
+                              isCompleted:
+                                  _currentOrder.status.toUpperCase() ==
+                                  'COMPLETED',
                               accounts: _accounts,
                               onChanged: (val) {
                                 if (val != null) {
@@ -636,20 +853,22 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 creditInfo: _creditInfo,
                                 customerId: _selectedCustomerId,
                               ),
-                              if (widget.order.status.toUpperCase() == 'COMPLETED') ...[
+                              if (_currentOrder.status.toUpperCase() ==
+                                  'COMPLETED') ...[
                                 const SizedBox(height: 16),
                                 PaymentStatusSection(
-                                  paymentStatus: widget.order.paymentStatus,
-                                  totalAmount: widget.order.totalAmount,
-                                  amountPaid: widget.order.amountPaid,
+                                  paymentStatus: _currentOrder.paymentStatus,
+                                  totalAmount: _currentOrder.totalAmount,
+                                  amountPaid: _currentOrder.amountPaid,
                                   paymentMethod: _paymentMethod,
                                   creditInfo: _creditInfo,
-                                  orderId: widget.order.id,
+                                  orderId: _currentOrder.id,
                                   supabase: _supabase,
                                   accounts: _accounts,
                                   customerId: _selectedCustomerId,
                                   pointsEarned: _pointsEarned,
                                   onPaymentRegistered: () {
+                                    _wasModified = true;
                                     _fetchData(); // Recargar todo el pedido
                                   },
                                 ),
@@ -660,7 +879,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               items: _items,
                               isLoading: _isLoading,
                               isEditing: _isEditing,
-                              isLocked: widget.order.status.toUpperCase() == 'COMPLETED',
+                              isLocked:
+                                  _currentOrder.status.toUpperCase() ==
+                                  'COMPLETED',
                               batchesByVariant: _batchesByVariant,
                               usesBatchesMap: _usesBatchesMap,
                               batchOverrides: _batchOverrides,
@@ -668,17 +889,25 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               onDecrease: (idx) {
                                 if (_items[idx].quantity > 1) {
                                   setState(() {
-                                    _items[idx] = _items[idx].copyWith(quantity: _items[idx].quantity - 1);
-                                    _quantityControllers[idx].text = _items[idx].quantity.toString();
+                                    _items[idx] = _items[idx].copyWith(
+                                      quantity: _items[idx].quantity - 1,
+                                    );
+                                    _quantityControllers[idx].text =
+                                        _items[idx].quantity.toString();
                                     _pointsEarned = _calculatePointsEarned();
-                                    _batchOverrides.remove(_items[idx].id); // Reajustar lotes si cambia cantidad
+                                    _batchOverrides.remove(
+                                      _items[idx].id,
+                                    ); // Reajustar lotes si cambia cantidad
                                   });
                                 }
                               },
                               onIncrease: (idx) {
                                 setState(() {
-                                  _items[idx] = _items[idx].copyWith(quantity: _items[idx].quantity + 1);
-                                  _quantityControllers[idx].text = _items[idx].quantity.toString();
+                                  _items[idx] = _items[idx].copyWith(
+                                    quantity: _items[idx].quantity + 1,
+                                  );
+                                  _quantityControllers[idx].text =
+                                      _items[idx].quantity.toString();
                                   _pointsEarned = _calculatePointsEarned();
                                   _batchOverrides.remove(_items[idx].id);
                                 });
@@ -687,22 +916,31 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 final qty = int.tryParse(val) ?? 1;
                                 if (qty > 0) {
                                   setState(() {
-                                    _items[idx] = _items[idx].copyWith(quantity: qty);
+                                    _items[idx] = _items[idx].copyWith(
+                                      quantity: qty,
+                                    );
                                     _pointsEarned = _calculatePointsEarned();
                                     _batchOverrides.remove(_items[idx].id);
                                   });
                                 }
                               },
-                              onEditBatches: (item) => _showBatchEditSheet(item),
+                              onEditBatches:
+                                  (item) => _showBatchEditSheet(item),
                             ),
                             const SizedBox(height: 16),
-                            if (config.getDouble('enable_loyalty_system', 1) == 1.0 && _selectedCustomerId != null && _paymentMethod != 'CRÉDITO') ...[
+                            if (config.getDouble('enable_loyalty_system', 1) ==
+                                    1.0 &&
+                                _selectedCustomerId != null &&
+                                _paymentMethod != 'CRÉDITO') ...[
                               OrderDetailPointsSection(
                                 isEditing: _isEditing,
                                 pointsUsed: _pointsUsed,
                                 pointsUsedCtrl: _pointsUsedCtrl,
                                 maxPointsAvailable: maxPtsUser,
-                                pointsToSolesRatio: config.getDouble('points_to_soles_ratio', 0.01),
+                                pointsToSolesRatio: config.getDouble(
+                                  'points_to_soles_ratio',
+                                  0.01,
+                                ),
                                 onPointsChanged: (val) {
                                   final pts = int.tryParse(val) ?? 0;
                                   if (pts <= maxPtsUser) {
@@ -711,7 +949,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       _pointsEarned = _calculatePointsEarned();
                                     });
                                   } else {
-                                    _pointsUsedCtrl.text = maxPtsUser.toString();
+                                    _pointsUsedCtrl.text =
+                                        maxPtsUser.toString();
                                     setState(() {
                                       _pointsUsed = maxPtsUser;
                                       _pointsEarned = _calculatePointsEarned();
@@ -725,66 +964,117 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               subtotal: subtotal,
                               pointsUsed: _pointsUsed,
                               pointsEarned: _pointsEarned,
-                              pointsToSolesRatio: config.getDouble('points_to_soles_ratio', 0.01),
-                              discountAmount: widget.order.discountAmount,
+                              pointsToSolesRatio: config.getDouble(
+                                'points_to_soles_ratio',
+                                0.01,
+                              ),
+                              discountAmount: _currentOrder.discountAmount,
                             ),
                           ],
                         ),
-            ),
-            // Bottom Action Buttons
-            if (!_isLoading && !_hasError)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
-                ),
-                child: Row(
-                  children: [
-                    if (_isEditing)
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _saveChanges,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Text('Guardar Cambios', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                      )
-                    else if (widget.order.status.toUpperCase() == 'COMPLETED')
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isReturning ? null : _confirmReturn,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade50,
-                            foregroundColor: Colors.red.shade700,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.red.shade200)),
-                          ),
-                          icon: _isReturning
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
-                              : const Icon(Icons.assignment_return_rounded),
-                          label: const Text('Registrar Devolución', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      )
-                    else
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                          child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                  ],
-                ),
               ),
-          ],
+              // Bottom Action Buttons
+              if (!_isLoading && !_hasError)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      if (_isEditing)
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _saveChanges,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child:
+                                _isSaving
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : const Text(
+                                      'Guardar Cambios',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                          ),
+                        )
+                      else if (_currentOrder.status.toUpperCase() ==
+                          'COMPLETED')
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isReturning ? null : _confirmReturn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade50,
+                              foregroundColor: Colors.red.shade700,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.red.shade200),
+                              ),
+                            ),
+                            icon:
+                                _isReturning
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.red,
+                                      ),
+                                    )
+                                    : const Icon(
+                                      Icons.assignment_return_rounded,
+                                    ),
+                            label: const Text(
+                              'Registrar Devolución',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: TextButton(
+                            onPressed:
+                                () => Navigator.pop(context, _wasModified),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: const Text(
+                              'Cerrar',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
