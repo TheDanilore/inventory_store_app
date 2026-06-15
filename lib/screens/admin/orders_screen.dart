@@ -85,8 +85,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
       ''');
 
       if (_statusFilter != 'ALL') query = query.eq('status', _statusFilter);
-      if (_paymentStatusFilter != 'ALL')
+      if (_paymentStatusFilter != 'ALL') {
         query = query.eq('payment_status', _paymentStatusFilter);
+      }
 
       if (_dateRange != null) {
         final start = _dateRange!.start.toIso8601String();

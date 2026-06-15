@@ -13,6 +13,8 @@ class PaymentStatusSection extends StatefulWidget {
   final String orderId;
   final SupabaseClient supabase;
   final List<Map<String, dynamic>> accounts; // cuentas financieras ordenadas
+  final String? customerId;
+  final int pointsEarned;
   final VoidCallback onPaymentRegistered;
 
   const PaymentStatusSection({
@@ -25,6 +27,8 @@ class PaymentStatusSection extends StatefulWidget {
     required this.orderId,
     required this.supabase,
     required this.accounts,
+    required this.customerId,
+    required this.pointsEarned,
     required this.onPaymentRegistered,
   });
 
@@ -208,6 +212,41 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
             'amount_paid': newOrderAmountPaid,
           })
           .eq('id', widget.orderId);
+
+      // 3.5 Otorgar monedas si el pedido a crédito fue pagado completamente
+      if (newPaymentStatus == 'PAID' && widget.paymentMethod == 'CRÉDITO' && widget.customerId != null && widget.pointsEarned > 0) {
+        final earnedExists = await widget.supabase
+            .from('wallet_movements')
+            .select('id')
+            .eq('order_id', widget.orderId)
+            .eq('movement_type', 'EARNED')
+            .maybeSingle();
+
+        if (earnedExists == null) {
+          final profileData = await widget.supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('id', widget.customerId!)
+              .maybeSingle();
+
+          if (profileData != null) {
+            final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+            await Future.wait([
+              widget.supabase
+                  .from('profiles')
+                  .update({'wallet_balance': curBal + widget.pointsEarned})
+                  .eq('id', widget.customerId!),
+              widget.supabase.from('wallet_movements').insert({
+                'profile_id': widget.customerId!,
+                'order_id': widget.orderId,
+                'points': widget.pointsEarned,
+                'movement_type': 'EARNED',
+                'description': 'Monedas obtenidas al pagar crédito de pedido #${widget.orderId}',
+              }),
+            ]);
+          }
+        }
+      }
 
       // 4. Registrar INGRESO en account_movements
       final shiftId =

@@ -23,6 +23,7 @@ import 'package:inventory_store_app/screens/admin/widgets/order_detail_component
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_total_summary_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_items_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_credit_section.dart';
+import 'package:inventory_store_app/screens/admin/widgets/payment_status_section.dart';
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderModel order;
@@ -630,11 +631,30 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 }
                               },
                             ),
-                            if (_paymentMethod == 'CRÉDITO')
+                            if (_paymentMethod == 'CRÉDITO') ...[
                               OrderDetailCreditSection(
                                 creditInfo: _creditInfo,
                                 customerId: _selectedCustomerId,
                               ),
+                              if (widget.order.status.toUpperCase() == 'COMPLETED') ...[
+                                const SizedBox(height: 16),
+                                PaymentStatusSection(
+                                  paymentStatus: widget.order.paymentStatus,
+                                  totalAmount: widget.order.totalAmount,
+                                  amountPaid: widget.order.amountPaid,
+                                  paymentMethod: _paymentMethod,
+                                  creditInfo: _creditInfo,
+                                  orderId: widget.order.id,
+                                  supabase: _supabase,
+                                  accounts: _accounts,
+                                  customerId: _selectedCustomerId,
+                                  pointsEarned: _pointsEarned,
+                                  onPaymentRegistered: () {
+                                    _fetchData(); // Recargar todo el pedido
+                                  },
+                                ),
+                              ],
+                            ],
                             const SizedBox(height: 16),
                             OrderDetailItemsSection(
                               items: _items,
