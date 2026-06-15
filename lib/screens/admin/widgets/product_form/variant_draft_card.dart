@@ -90,6 +90,23 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     );
 
     if (result != null) {
+      final selectedId = result['id'];
+      
+      // Validar que el atributo no se haya seleccionado ya en otra fila
+      final isAlreadyUsed = _selectedAttributes.asMap().entries.any((entry) => 
+          entry.key != index && entry.value.attributeId == selectedId);
+
+      if (isAlreadyUsed) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Esta propiedad ya fue agregada a la variante.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _selectedAttributes[index].attributeId = result['id'];
         _selectedAttributes[index].attributeName = result['name'];
