@@ -286,8 +286,8 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 12 - (widget.index * 2),
-                          offset: Offset(0, (4 + widget.index) as double),
+                          blurRadius: (12 - (widget.index * 2)).toDouble(),
+                          offset: Offset(0, (4 + widget.index).toDouble()),
                         ),
                       ],
                     ),
