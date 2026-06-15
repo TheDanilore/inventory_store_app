@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -946,10 +945,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               ? const Center(child: CircularProgressIndicator())
               : Form(
                 key: _formKey,
-                // Cambiamos SingleChildScrollView por CustomScrollView
                 child: CustomScrollView(
                   slivers: [
-                    // 1. Todo el formulario superior renderizado normalmente
                     SliverPadding(
                       padding: const EdgeInsets.all(16.0),
                       sliver: SliverList(
@@ -1018,7 +1015,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Encabezado de la sección de Variantes
                           Row(
                             children: [
                               const Expanded(
@@ -1053,37 +1049,30 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       ),
                     ),
 
-                    // 2. CONSTRUCCIÓN PEREZOSA (LAZY) DE LAS VARIANTES
-                    // Flutter solo dibujará las tarjetas que se vean en pantalla.
                     if (_variantDrafts.isNotEmpty)
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              return VariantDraftCard(
-                                index: index,
-                                draft: _variantDrafts[index],
-                                onRemove: () => _removeVariantDraft(index),
-                                onActiveChanged:
-                                    (val) => setState(
-                                      () =>
-                                          _variantDrafts[index].isActive = val,
-                                    ),
-                                onPickImage:
-                                    () => _pickVariantImage(
-                                      _variantDrafts[index],
-                                    ),
-                              );
-                            },
-                            childCount:
-                                _variantDrafts
-                                    .length, // Sabe exactamente cuántas renderizar bajo demanda
-                          ),
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            return VariantDraftCard(
+                              index: index,
+                              draft: _variantDrafts[index],
+                              onRemove: () => _removeVariantDraft(index),
+                              onActiveChanged:
+                                  (val) => setState(
+                                    () => _variantDrafts[index].isActive = val,
+                                  ),
+                              onPickImage:
+                                  () =>
+                                      _pickVariantImage(_variantDrafts[index]),
+                            );
+                          }, childCount: _variantDrafts.length),
                         ),
                       ),
 
-                    // 3. Botones finales (Agregar otra variante y Guardar Producto)
                     if (_variantDrafts.isNotEmpty)
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1160,7 +1149,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           height: 120,
           child: Row(
             children: [
-              // Botón de agregar fijo a la izquierda
               InkWell(
                 onTap: _seleccionarImagenes,
                 borderRadius: BorderRadius.circular(12),
@@ -1196,14 +1184,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               ),
               const SizedBox(width: 12),
 
-              // Lista horizontal reordenable
               Expanded(
                 child: ReorderableListView.builder(
                   scrollDirection: Axis.horizontal,
-                  buildDefaultDragHandles:
-                      false, // Apagamos el default para controlarlo
+                  buildDefaultDragHandles: false,
                   proxyDecorator: (child, index, animation) {
-                    // Este decorador hace que la imagen se "levante" con sombra al moverla
                     return Material(
                       color: Colors.transparent,
                       elevation: 12,
@@ -1213,6 +1198,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     );
                   },
                   itemCount: _formImages.length,
+                  // ignore: deprecated_member_use
                   onReorder: (oldIndex, newIndex) {
                     setState(() {
                       if (newIndex > oldIndex) newIndex -= 1;
@@ -1236,13 +1222,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           width: isMain ? 2.5 : 1,
                         ),
                       ),
-                      // Permite hacer scroll normal, y arrastrar solo si mantienes presionado
                       child: ReorderableDelayedDragStartListener(
                         index: index,
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // 1. Imagen
                             ClipRRect(
                               borderRadius: BorderRadius.circular(10),
                               child:
@@ -1256,8 +1240,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                         fit: BoxFit.cover,
                                       ),
                             ),
-
-                            // 2. Sombreado superior para que los botones blancos siempre se lean
                             Positioned(
                               top: 0,
                               left: 0,
@@ -1279,8 +1261,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 ),
                               ),
                             ),
-
-                            // 3. NUEVO: Botón de arrastre instantáneo (Drag Handle)
                             Positioned(
                               top: 4,
                               left: 4,
@@ -1300,8 +1280,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 ),
                               ),
                             ),
-
-                            // 4. Etiqueta de Portada
                             if (isMain)
                               Positioned(
                                 bottom: 0,
@@ -1331,8 +1309,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                   ),
                                 ),
                               ),
-
-                            // 5. Botón eliminar (X)
                             Positioned(
                               top: 4,
                               right: 4,
@@ -1412,7 +1388,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         _loadingCategories
             ? const CircularProgressIndicator()
             : DropdownButtonFormField<String>(
-              value: _selectedCategoryId,
+              initialValue: _selectedCategoryId,
               decoration: InputDecoration(
                 labelText: 'Categoría',
                 prefixIcon: const Icon(Icons.category_outlined),
@@ -1455,7 +1431,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
-          value: _productType,
+          initialValue: _productType,
           decoration: InputDecoration(
             labelText: 'Tipo de Producto',
             prefixIcon: const Icon(Icons.category_outlined),
@@ -1491,10 +1467,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color:
-                  isService
-                      ? Colors.grey
-                      : AppColors.textPrimary, // Se pone gris si es servicio
+              color: isService ? Colors.grey : AppColors.textPrimary,
             ),
           ),
           subtitle: Text(
@@ -1506,19 +1479,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               color: isService ? Colors.grey : AppColors.textSecondary,
             ),
           ),
-          value:
-              isService ? false : _stockControl, // Siempre falso si es servicio
-          // Si es servicio, pasamos null para deshabilitar el botón
+          value: isService ? false : _stockControl,
           onChanged:
               isService ? null : (val) => setState(() => _stockControl = val),
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
           contentPadding: EdgeInsets.zero,
         ),
       ],
     );
   }
 
-  // NUEVO: Interfaz para los Detalles Técnicos Dinámicos
   Widget _buildDetailsInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1568,7 +1538,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _detailRows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, idx) {
               final row = _detailRows[idx];
               return Row(
@@ -1707,11 +1677,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     );
   }
 
-  // ── WIDGET: Gestión por Lotes ──────────────────────────────────────────────
   Widget _buildBatchSection() {
-    // NUEVA VALIDACIÓN: Si es servicio, ocultamos la sección por completo
     if (_productType == 'service') {
-      return const SizedBox.shrink(); // Retorna un widget vacío invisible
+      return const SizedBox.shrink();
     }
 
     return Container(
@@ -1757,7 +1725,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           Switch.adaptive(
             value: _batchManagementEnabled,
             onChanged: (v) => setState(() => _batchManagementEnabled = v),
-            activeColor: Colors.teal,
+            activeThumbColor: Colors.teal,
           ),
         ],
       ),
@@ -1819,7 +1787,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               Switch.adaptive(
                 value: _ingredientsEnabled,
                 onChanged: (v) => setState(() => _ingredientsEnabled = v),
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
               ),
             ],
           ),
@@ -1845,7 +1813,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _ingredientRows.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, idx) {
                 final row = _ingredientRows[idx];
                 return Container(
@@ -1862,7 +1830,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () async {
-                                // Abre el buscador interactivo
                                 final result =
                                     await showDialog<Map<String, dynamic>>(
                                       context: context,
@@ -1871,7 +1838,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                               const _IngredientSearchDialog(),
                                     );
 
-                                // Si seleccionó o creó uno, actualizamos la UI
                                 if (result != null) {
                                   setState(() {
                                     row.ingredientId = result['id'] as String;
@@ -1881,7 +1847,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 }
                               },
                               child: AbsorbPointer(
-                                // AbsorbPointer hace que el TextField sea de solo lectura para abrir el Dialog
                                 child: TextField(
                                   controller: row.nameCtrl,
                                   decoration: InputDecoration(
@@ -2245,7 +2210,7 @@ class _IngredientSearchDialogState extends State<_IngredientSearchDialog> {
                   shrinkWrap: true,
                   itemCount: _results.length,
                   separatorBuilder:
-                      (_, __) =>
+                      (_, _) =>
                           Divider(height: 1, color: Colors.grey.shade200),
                   itemBuilder: (context, index) {
                     final item = _results[index];
