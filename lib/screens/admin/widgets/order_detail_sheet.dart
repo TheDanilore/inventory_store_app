@@ -963,7 +963,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 0.01,
                               ),
                               discountAmount: _currentOrder.discountAmount,
-                              isCompleted: _isCompleted,
+                              isCompleted: _isCompleted && _currentOrder.paymentStatus == 'PAID',
                             ),
                           ],
                         ),
