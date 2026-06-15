@@ -88,10 +88,19 @@ class ProductsRepository {
   // ── Stock de productos ────────────────────────────────────────────────────
 
   /// Suma el stock de todos los lotes por producto.
-  Future<Map<String, int>> fetchProductStock() async {
-    final response = await _supabase
+  /// Si se proveen [productIds], filtra solo esos productos para reducir el egress.
+  Future<Map<String, int>> fetchProductStock({
+    List<String>? productIds,
+  }) async {
+    var query = _supabase
         .from('warehouse_stock_batches')
         .select('product_id, available_quantity');
+
+    if (productIds != null && productIds.isNotEmpty) {
+      query = query.inFilter('product_id', productIds);
+    }
+
+    final response = await query;
 
     final stockByProduct = <String, int>{};
     for (final row in List<Map<String, dynamic>>.from(response)) {

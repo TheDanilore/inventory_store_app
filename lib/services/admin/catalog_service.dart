@@ -19,20 +19,25 @@ class CatalogService {
     String? searchTerm,
     bool isAdmin = false,
   }) async {
-    final stockByProduct = await _repository.fetchProductStock();
-
-    // 2. SE LO PASAMOS AL REPOSITORIO
+    // 1. Traer los productos primero
     final products = await _repository.fetchProducts(
       categoryId: categoryId,
       searchTerm: searchTerm,
       isAdmin: isAdmin,
     );
 
+    if (products.isEmpty) return [];
+
+    // 2. Traer stock SOLO de los productos visibles (reduce egress)
+    final productIds = products.map((p) => p.id).toList(growable: false);
+    final stockByProduct = await _repository.fetchProductStock(
+      productIds: productIds,
+    );
+
     final processedProducts = products
         .map(
-          (product) => product.copyWith(
-            totalStock: stockByProduct[product.id] ?? 0,
-          ),
+          (product) =>
+              product.copyWith(totalStock: stockByProduct[product.id] ?? 0),
         )
         .toList(growable: false);
 
