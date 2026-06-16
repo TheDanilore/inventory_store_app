@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:inventory_store_app/screens/admin/customer_detail_screen.dart';
-import 'package:inventory_store_app/screens/admin/widgets/customer_form_sheet.dart';
-import 'package:inventory_store_app/screens/admin/widgets/customers_stats_header.dart';
-import 'package:inventory_store_app/screens/admin/widgets/top_customers_section.dart';
-import 'package:inventory_store_app/screens/admin/widgets/customer_list_card.dart';
+import 'package:inventory_store_app/screens/admin/widgets/customers/customer_form_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/customers/customers_stats_header.dart';
+import 'package:inventory_store_app/screens/admin/widgets/customers/top_customers_section.dart';
+import 'package:inventory_store_app/screens/admin/widgets/customers/customer_list_card.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 
@@ -228,7 +229,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             // LISTA PRINCIPAL
             if (provider.isLoading && provider.customers.isEmpty)
               const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+                child: _CustomersSkeleton(),
               )
             else if (provider.customers.isEmpty)
               SliverFillRemaining(
@@ -297,6 +298,50 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CustomersSkeleton extends StatelessWidget {
+  const _CustomersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.grey.shade200),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const AppShimmer(width: 48, height: 48, borderRadius: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      AppShimmer(width: 150, height: 16, borderRadius: 4),
+                      SizedBox(height: 8),
+                      AppShimmer(width: 100, height: 12, borderRadius: 4),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const AppShimmer(width: 60, height: 24, borderRadius: 12),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

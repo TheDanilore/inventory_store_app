@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/customer_detail_provider.dart';
 import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
-import 'package:inventory_store_app/screens/admin/widgets/customer_form_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_header_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_kpi_row.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_credit_section.dart';

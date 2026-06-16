@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/models/credit_movement_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/customer_credit_models.dart';
 
@@ -345,5 +346,82 @@ class CustomerCreditsService {
         .from('financial_accounts')
         .update({'balance': newBalance})
         .eq('id', selectedAccount.id);
+  }
+
+  // 6. Obtener movimientos paginados
+  Future<({List<CreditMovementModel> movements, int count})>
+  fetchCreditMovementsPaginated({
+    required String creditId,
+    required int page,
+    required int pageSize,
+    String? dateFilter, // '30_days', 'this_month', 'all'
+  }) async {
+    final from = page * pageSize;
+    final to = from + pageSize - 1;
+
+    var query = _supabase
+        .from('credit_movements_summary')
+        .select()
+        .eq('credit_id', creditId);
+
+    // Filtros de fecha
+    if (dateFilter == '30_days') {
+      final date30DaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      query = query.gte('created_at', date30DaysAgo.toIso8601String());
+    } else if (dateFilter == 'this_month') {
+      final now = DateTime.now();
+      final firstDayOfMonth = DateTime(now.year, now.month, 1);
+      query = query.gte('created_at', firstDayOfMonth.toIso8601String());
+    }
+
+    final response = await query
+        .order('created_at', ascending: false)
+        .range(from, to)
+        .count(CountOption.exact);
+
+    final count = response.count;
+    final list =
+        (response.data as List)
+            .map((e) => CreditMovementModel.fromJson(e))
+            .toList();
+
+    return (movements: list, count: count);
+  }
+
+  // 7. Obtener totales de movimientos
+  Future<({double totalCharged, double totalPaid})> fetchCreditMovementsTotals({
+    required String creditId,
+    String? dateFilter,
+  }) async {
+    var query = _supabase
+        .from('credit_movements_summary')
+        .select('movement_type, amount')
+        .eq('credit_id', creditId);
+
+    // Filtros de fecha
+    if (dateFilter == '30_days') {
+      final date30DaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      query = query.gte('created_at', date30DaysAgo.toIso8601String());
+    } else if (dateFilter == 'this_month') {
+      final now = DateTime.now();
+      final firstDayOfMonth = DateTime(now.year, now.month, 1);
+      query = query.gte('created_at', firstDayOfMonth.toIso8601String());
+    }
+
+    final response = await query;
+
+    double charged = 0;
+    double paid = 0;
+
+    for (final m in response as List) {
+      final amount = (m['amount'] as num).toDouble();
+      if (m['movement_type'] == 'CHARGE') {
+        charged += amount;
+      } else if (m['movement_type'] == 'PAYMENT') {
+        paid += amount;
+      }
+    }
+
+    return (totalCharged: charged, totalPaid: paid);
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class KardexSkeleton extends StatelessWidget {
   const KardexSkeleton({super.key});
@@ -19,100 +20,37 @@ class KardexSkeleton extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      height: 14,
-                      width: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Container(
-                      height: 20,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                  children: const [
+                    AppShimmer(width: 100, height: 14, borderRadius: 4),
+                    AppShimmer(width: 60, height: 20, borderRadius: 10),
                   ],
                 ),
                 const Divider(height: 24),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    const AppShimmer(width: 52, height: 52, borderRadius: 12),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 18,
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 14,
-                            width: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 14,
-                            width: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
+                        children: const [
+                          AppShimmer(width: 150, height: 18, borderRadius: 4),
+                          SizedBox(height: 8),
+                          AppShimmer(width: 100, height: 14, borderRadius: 4),
+                          SizedBox(height: 8),
+                          AppShimmer(width: 80, height: 14, borderRadius: 4),
                         ],
                       ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 12,
-                          width: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 24,
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          height: 12,
-                          width: 70,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
+                      children: const [
+                        AppShimmer(width: 40, height: 12, borderRadius: 4),
+                        SizedBox(height: 4),
+                        AppShimmer(width: 50, height: 24, borderRadius: 4),
+                        SizedBox(height: 4),
+                        AppShimmer(width: 70, height: 12, borderRadius: 4),
                       ],
                     ),
                   ],
