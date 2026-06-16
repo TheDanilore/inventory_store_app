@@ -223,7 +223,7 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearDraft() async {
+  Future<void> clearDraft() async {
     _items.clear();
     _selectedSupplierId = null;
     final prefs = await SharedPreferences.getInstance();

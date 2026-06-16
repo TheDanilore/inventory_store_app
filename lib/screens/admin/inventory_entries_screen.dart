@@ -38,7 +38,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   Future<void> _checkDraft() async {
     final prefs = await SharedPreferences.getInstance();
-    final itemsString = prefs.getString('inventory_entry_draft_items');
+    final itemsString = prefs.getString('inventory_entry_draft');
     if (mounted) {
       setState(() {
         _hasDraft =

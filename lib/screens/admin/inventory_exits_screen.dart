@@ -12,6 +12,9 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/services/admin/inventory_exits_service.dart';
 import 'package:inventory_store_app/services/admin/inventory_exits_pdf_generator.dart';
+import 'package:inventory_store_app/screens/admin/widgets/kardex/kardex_skeleton.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InventoryExitsScreen extends StatefulWidget {
   const InventoryExitsScreen({super.key});
@@ -23,6 +26,8 @@ class InventoryExitsScreen extends StatefulWidget {
 class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   final _searchCtrl = TextEditingController();
 
+  bool _hasDraft = false;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +36,17 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       _searchCtrl.text = provider.searchQuery;
       provider.initLoad();
     });
+    _checkDraft();
+  }
+
+  Future<void> _checkDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftString = prefs.getString('inventory_exit_draft');
+    if (mounted) {
+      setState(() {
+        _hasDraft = draftString != null && draftString.isNotEmpty;
+      });
+    }
   }
 
   @override
@@ -121,6 +137,18 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   Widget build(BuildContext context) {
     return Consumer<InventoryExitsProvider>(
       builder: (context, provider, _) {
+        if (provider.errorMessage != null && !provider.isLoading) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            AppSnackbar.show(
+              context,
+              message: provider.errorMessage!,
+              type: SnackbarType.error,
+            );
+            // Si quieres limpiar el error después de mostrarlo para no repetirlo
+            // provider.clearError();
+          });
+        }
+
         final totalCost = provider.exits.fold<double>(
           0,
           (s, e) => s + e.totalCost,
@@ -138,7 +166,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           ],
           onSettingsSelected: (val) {
             if (val == 'pdf' && provider.exits.isNotEmpty) {
-              InventoryExitsPdfGenerator.printReport(
+              InventoryExitsPdfGenerator.shareReport(
                 exits: provider.exits,
                 dateRange: provider.dateRange,
               );
@@ -150,6 +178,55 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           },
           body: Column(
             children: [
+              // ── Borrador ──
+              if (_hasDraft)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_document, color: AppColors.warning),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Tienes un borrador de salida en progreso.',
+                          style: TextStyle(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final result = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const InventoryExitFormScreen(),
+                            ),
+                          );
+                          _checkDraft();
+                          if (result == true && context.mounted) {
+                            context.read<InventoryExitsProvider>().initLoad();
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.warning,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Continuar', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+
               // ── Resumen ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -203,9 +280,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               // ── Lista ──
               Expanded(
                 child: provider.isLoading && provider.exits.isEmpty
-                    ? const Center(
-                        child: CircularProgressIndicator(color: AppColors.danger),
-                      )
+                    ? const KardexSkeleton()
                     : provider.errorMessage != null && provider.exits.isEmpty
                         ? Center(
                             child: Text(

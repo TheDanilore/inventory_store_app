@@ -11,6 +11,7 @@ import 'package:inventory_store_app/models/product_variant_model.dart';
 
 class InventoryEntryFormProvider extends ChangeNotifier {
   final InventoryEntriesService _service = InventoryEntriesService();
+  static const _draftKey = 'inventory_entry_draft';
 
   // ── CATÁLOGOS ──
   List<WarehouseModel> _warehouses = [];
@@ -108,35 +109,42 @@ class InventoryEntryFormProvider extends ChangeNotifier {
   // ── SETTERS ──
   void setWarehouse(String? id) {
     _selectedWarehouseId = id;
+    _saveDraft();
     notifyListeners();
   }
 
   void setSupplier(String? id) {
     _selectedSupplierId = id;
+    _saveDraft();
     notifyListeners();
   }
 
   void setDocumentType(String type) {
     _documentType = type;
+    _saveDraft();
     notifyListeners();
   }
   
   void setDocumentNumber(String? num) {
     _documentNumber = num;
+    _saveDraft();
   }
 
   void setDocumentDate(DateTime? date) {
     _documentDate = date;
+    _saveDraft();
     notifyListeners();
   }
 
   void setPaymentMode(String mode) {
     _paymentMode = mode;
+    _saveDraft();
     notifyListeners();
   }
 
   void setAccount(String? id) {
     _selectedAccountId = id;
+    _saveDraft();
     notifyListeners();
   }
 
@@ -261,18 +269,39 @@ class InventoryEntryFormProvider extends ChangeNotifier {
       };
     }).toList();
 
-    await prefs.setString('inventory_entry_draft_items', jsonEncode(itemsJson));
+    final draftData = {
+      'warehouseId': _selectedWarehouseId,
+      'supplierId': _selectedSupplierId,
+      'documentType': _documentType,
+      'documentNumber': _documentNumber,
+      'documentDate': _documentDate?.toIso8601String(),
+      'paymentMode': _paymentMode,
+      'accountId': _selectedAccountId,
+      'items': itemsJson,
+    };
+
+    await prefs.setString(_draftKey, jsonEncode(draftData));
   }
 
   Future<void> _loadDraft() async {
     if (_purchaseOrderId != null) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final itemsString = prefs.getString('inventory_entry_draft_items');
+    final draftString = prefs.getString(_draftKey);
     
-    if (itemsString != null && itemsString.isNotEmpty) {
+    if (draftString != null && draftString.isNotEmpty) {
       try {
-        final List<dynamic> itemsJson = jsonDecode(itemsString);
+        final draftData = jsonDecode(draftString) as Map<String, dynamic>;
+        
+        if (draftData['warehouseId'] != null) _selectedWarehouseId = draftData['warehouseId'];
+        if (draftData['supplierId'] != null) _selectedSupplierId = draftData['supplierId'];
+        if (draftData['documentType'] != null) _documentType = draftData['documentType'];
+        if (draftData['documentNumber'] != null) _documentNumber = draftData['documentNumber'];
+        if (draftData['documentDate'] != null) _documentDate = DateTime.tryParse(draftData['documentDate']);
+        if (draftData['paymentMode'] != null) _paymentMode = draftData['paymentMode'];
+        if (draftData['accountId'] != null) _selectedAccountId = draftData['accountId'];
+
+        final itemsJson = draftData['items'] as List<dynamic>? ?? [];
         _items.clear();
         for (final itemJson in itemsJson) {
           final p = ProductModel.fromJson(itemJson['product']);
@@ -297,7 +326,7 @@ class InventoryEntryFormProvider extends ChangeNotifier {
   Future<void> clearDraft() async {
     _items.clear();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('inventory_entry_draft_items');
+    await prefs.remove(_draftKey);
     notifyListeners();
   }
 }

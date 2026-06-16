@@ -3,6 +3,8 @@ import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/models/warehouse_model.dart';
 import 'package:inventory_store_app/services/admin/inventory_exits_service.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ExitItemUI {
@@ -26,6 +28,7 @@ class ExitItemUI {
 class InventoryExitFormProvider extends ChangeNotifier {
   final _service = InventoryExitsService();
   final _supabase = Supabase.instance.client;
+  static const _draftKey = 'inventory_exit_draft';
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -94,6 +97,8 @@ class InventoryExitFormProvider extends ChangeNotifier {
       for (final v in variants) {
         _variantsByProduct.putIfAbsent(v.productId, () => []).add(v);
       }
+      
+      await _loadDraft();
     } catch (e) {
       _errorMessage = 'Error cargando datos: $e';
     } finally {
@@ -106,12 +111,14 @@ class InventoryExitFormProvider extends ChangeNotifier {
     if (id != null && id != _selectedWarehouseId) {
       _selectedWarehouseId = id;
       _items.clear();
+      _saveDraft();
       notifyListeners();
     }
   }
 
   void selectReason(String reason) {
     _selectedReason = reason;
+    _saveDraft();
     notifyListeners();
   }
 
@@ -127,17 +134,20 @@ class InventoryExitFormProvider extends ChangeNotifier {
     } else {
       _items.add(newItem);
     }
+    _saveDraft();
     notifyListeners();
   }
 
   void removeItem(int index) {
     _items.removeAt(index);
+    _saveDraft();
     notifyListeners();
   }
 
   void updateQuantity(int index, double newQuantity) {
     if (newQuantity > 0) {
       _items[index].quantity = newQuantity;
+      _saveDraft();
       notifyListeners();
     }
   }
@@ -183,6 +193,8 @@ class InventoryExitFormProvider extends ChangeNotifier {
         items: itemsData,
       );
 
+      await clearDraft();
+
       return true;
     } catch (e) {
       _errorMessage = 'Error registrando salida: $e';
@@ -197,5 +209,70 @@ class InventoryExitFormProvider extends ChangeNotifier {
     _items.clear();
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final itemsJson = _items.map((e) {
+      return {
+        'product': e.product.toJson(),
+        'variant': e.variant.toJson(),
+        'selectedBatch': e.selectedBatch,
+        'quantity': e.quantity,
+        'unit_cost': e.unitCost,
+      };
+    }).toList();
+
+    final draftData = {
+      'warehouseId': _selectedWarehouseId,
+      'reason': _selectedReason,
+      'items': itemsJson,
+    };
+
+    await prefs.setString(_draftKey, jsonEncode(draftData));
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftString = prefs.getString(_draftKey);
+    
+    if (draftString != null && draftString.isNotEmpty) {
+      try {
+        final draftData = jsonDecode(draftString) as Map<String, dynamic>;
+        
+        if (draftData['warehouseId'] != null) {
+          _selectedWarehouseId = draftData['warehouseId'] as String;
+        }
+        if (draftData['reason'] != null) {
+          _selectedReason = draftData['reason'] as String;
+        }
+        
+        final itemsJson = draftData['items'] as List<dynamic>? ?? [];
+        _items.clear();
+        
+        for (final itemJson in itemsJson) {
+          final p = ProductModel.fromJson(itemJson['product']);
+          final vJson = itemJson['variant'];
+          final v = ProductVariantModel.fromJson(vJson);
+
+          _items.add(ExitItemUI(
+            product: p,
+            variant: v,
+            selectedBatch: itemJson['selectedBatch'] as Map<String, dynamic>?,
+            quantity: (itemJson['quantity'] as num).toDouble(),
+            unitCost: (itemJson['unit_cost'] as num).toDouble(),
+          ));
+        }
+      } catch (e) {
+        debugPrint('Error loading exit draft: $e');
+      }
+    }
+  }
+
+  Future<void> clearDraft() async {
+    _items.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_draftKey);
   }
 }
