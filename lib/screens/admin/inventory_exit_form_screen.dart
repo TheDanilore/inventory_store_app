@@ -324,7 +324,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                     const SizedBox(height: 16),
 
                                     DropdownButtonFormField<String>(
-                                      initialValue: provider.selectedWarehouseId,
+                                      initialValue:
+                                          provider.selectedWarehouseId,
                                       decoration: _dropdownDeco(
                                         'Almacén de Origen',
                                         Icons.warehouse_rounded,
