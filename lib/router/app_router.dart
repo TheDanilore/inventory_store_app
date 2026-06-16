@@ -154,9 +154,11 @@ class AppRouter {
         final isSplash = currentPath == '/';
         final isLogin = currentPath == '/login';
 
-        // ── Paso 1: Sesión aún cargando → mostrar splash ─────────────────
+        // ── Paso 1: Sesión aún cargando → mostrar splash siempre ─────────
+        // IMPORTANTE: No permitimos entrar a NINGUNA ruta hasta que la sesión
+        // esté lista. Esto evita el crash por state.extra == null en rutas
+        // que requieren datos pasados por navegación (no sobreviven reload).
         if (!isSessionReady) {
-          // Redirigir al splash sin tocar la URL del browser
           return isSplash ? null : '/';
         }
 
@@ -177,7 +179,8 @@ class AppRouter {
         // ── Paso 3: Sin sesión ───────────────────────────────────────────
         if (role == null) {
           if (isLogin) return null;
-          if (currentPath.startsWith('/customer')) return null;
+          // ELIMINADO: ya no permitimos /customer sin sesión para evitar
+          // que rutas que dependen de state.extra crasheen al recargar.
           return '/login';
         }
 
@@ -260,9 +263,21 @@ class AppRouter {
             GoRoute(
               path: 'customer-detail/:id',
               builder: (context, state) {
-                final customer = state.extra;
-                // Si customer es nulo por refrescar la página, el CustomerDetailScreen deberá encargarse de cargar los datos con su provider pasandole el id. (Requerirá modificación menor en la pantalla si aún no lo hace, o puede simplemente lanzar error, por ahora devolvemos la pantalla)
-                return CustomerDetailScreen(customer: customer as dynamic);
+                // state.extra es null al recargar/pegar la URL (no sobrevive
+                // a reloads). Pasamos null de forma segura; CustomerDetailScreen
+                // debe usar el pathParameter 'id' para recargar los datos.
+                final customer = state.extra; // puede ser null en deep link
+                final customerId = state.pathParameters['id'] ?? '';
+                if (customer == null && customerId.isEmpty) {
+                  return Scaffold(
+                    appBar: AppBar(title: const Text('Error')),
+                    body: const Center(child: Text('Cliente no encontrado.')),
+                  );
+                }
+                return CustomerDetailScreen(
+                  customer: customer as dynamic,
+                  // Pasa el id para que la pantalla pueda recargar si customer==null
+                );
               },
             ),
             GoRoute(
@@ -527,6 +542,7 @@ class AppRouter {
           path: '/product/:id',
           builder: (context, state) {
             final productId = state.pathParameters['id'];
+            // state.extra es null al recargar/pegar URL: cast seguro con 'as?'
             final product = state.extra as ProductModel?;
             final role = context.read<AuthProvider>().currentUserRole;
             final isAdmin = role == AppRoles.admin;
@@ -535,7 +551,7 @@ class AppRouter {
               return ProductDetailScreen(product: product, isAdmin: isAdmin);
             }
 
-            if (productId == null) {
+            if (productId == null || productId.isEmpty) {
               return const Scaffold(
                 body: Center(
                   child: Text('Error: ID de producto no proporcionado.'),
@@ -543,28 +559,9 @@ class AppRouter {
               );
             }
 
-            return FutureBuilder<ProductModel?>(
-              future: CatalogService().getProductById(productId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (snapshot.hasError || snapshot.data == null) {
-                  return Scaffold(
-                    appBar: AppBar(title: const Text('Producto no encontrado')),
-                    body: const Center(
-                      child: Text('El producto no existe o fue eliminado.'),
-                    ),
-                  );
-                }
-                return ProductDetailScreen(
-                  product: snapshot.data!,
-                  isAdmin: isAdmin,
-                );
-              },
-            );
+            // Usamos _ProductLoader (StatefulWidget) para que el Future
+            // no se relance en cada rebuild del árbol de widgets.
+            return _ProductLoader(productId: productId, isAdmin: isAdmin);
           },
         ),
         GoRoute(
