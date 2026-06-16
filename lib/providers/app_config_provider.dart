@@ -18,10 +18,12 @@ class AppConfigProvider extends ChangeNotifier {
   bool _isLoaded = false;
   bool _businessInfoLoaded = false;
   bool _isSavingBusinessInfo = false;
+  bool _isSavingSettings = false;
 
   Map<String, double> get values => Map.unmodifiable(_values);
   bool get isLoaded => _isLoaded;
   bool get isSavingBusinessInfo => _isSavingBusinessInfo;
+  bool get isSavingSettings => _isSavingSettings;
   String get businessName => _businessName;
   String get businessTaxId => _businessTaxId;
   String get businessAddress => _businessAddress;
@@ -230,6 +232,43 @@ class AppConfigProvider extends ChangeNotifier {
     await _supabase.from('app_settings').upsert(payload, onConflict: 'key');
     _values[key] = value;
     _safeNotify();
+  }
+
+  Future<bool> saveMultipleValues(
+    Map<String, double> newValues, {
+    Map<String, String>? descriptions,
+  }) async {
+    if (_isSavingSettings) return false;
+    _isSavingSettings = true;
+    _safeNotify();
+
+    try {
+      final List<Map<String, dynamic>> payloadList = [];
+
+      for (final entry in newValues.entries) {
+        final payload = <String, dynamic>{
+          'key': entry.key,
+          'value': entry.value,
+        };
+        if (descriptions != null && descriptions.containsKey(entry.key)) {
+          payload['description'] = descriptions[entry.key];
+        }
+        payloadList.add(payload);
+      }
+
+      if (payloadList.isNotEmpty) {
+        await _supabase.from('app_settings').upsert(payloadList, onConflict: 'key');
+        _values.addAll(newValues);
+      }
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error saving multiple settings: $e');
+      return false;
+    } finally {
+      _isSavingSettings = false;
+      _safeNotify();
+    }
   }
 
   @override
