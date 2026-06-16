@@ -121,7 +121,9 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -148,7 +150,9 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Text('Con Deuda'),
-                                if (provider.accounts.any((a) => a.currentDebt > 0 && a.isActive)) ...[
+                                if (provider.accounts.any(
+                                  (a) => a.currentDebt > 0 && a.isActive,
+                                )) ...[
                                   const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(

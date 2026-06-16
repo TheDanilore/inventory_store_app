@@ -215,6 +215,10 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
     final bool cajaSinTurno = _selectedAccount?.type == 'CAJA' && _activeShift == null;
     final bool isButtonEnabled = !_isSaving && !isLoading && !cajaSinTurno && _selectedAccount != null && _amountCtrl.text.trim().isNotEmpty && _errorMessage == null;
 
+    final config = context.watch<AppConfigProvider>();
+    final ratio = config.getDouble('points_to_soles_ratio', 0.01);
+    final rate = config.getDouble('points_earning_rate', 0.03);
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       decoration: const BoxDecoration(
@@ -285,10 +289,18 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
                 final shortId = orderId.substring(0, 8).toUpperCase();
                 final pending = _pendingOf(order);
                 final isParcial = order['payment_status'] == 'PARTIAL';
+
+                final total = (order['total_amount'] as num).toDouble();
+                int pointsEarned = 0;
+                if (rate > 0 && ratio > 0) {
+                  pointsEarned = (total * rate / ratio).floor();
+                }
+
                 return _OrderSelectionTile(
                   label: 'Pedido #$shortId',
                   sublabel: isParcial ? 'Pago parcial · Pendiente S/ ${pending.toStringAsFixed(2)}' : 'Sin cobrar · S/ ${pending.toStringAsFixed(2)}',
                   amount: pending,
+                  pointsEarned: pointsEarned,
                   isSelected: _selectedOrderId == orderId,
                   onTap: () {
                     setState(() {
@@ -458,10 +470,11 @@ class _OrderSelectionTile extends StatelessWidget {
   final String label;
   final String sublabel;
   final double? amount;
+  final int? pointsEarned;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _OrderSelectionTile({required this.label, required this.sublabel, this.amount, required this.isSelected, required this.onTap});
+  const _OrderSelectionTile({required this.label, required this.sublabel, this.amount, this.pointsEarned, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -479,6 +492,23 @@ class _OrderSelectionTile extends StatelessWidget {
             Icon(isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded, color: isSelected ? AppColors.teal : AppColors.textMuted, size: 20),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isSelected ? AppColors.tealDark : AppColors.textPrimary)), const SizedBox(height: 2), Text(sublabel, style: TextStyle(fontSize: 11, color: isSelected ? AppColors.teal : AppColors.textMuted))])),
+            if (pointsEarned != null && pointsEarned! > 0)
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.stars_rounded, color: Colors.amber, size: 14),
+                    const SizedBox(width: 4),
+                    Text('+$pointsEarned', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade800)),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

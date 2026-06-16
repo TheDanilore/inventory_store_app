@@ -24,16 +24,16 @@ import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 
-class AdminPosCheckoutScreen extends StatefulWidget {
+class PosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
 
-  const AdminPosCheckoutScreen({super.key, this.onSaleCompleted});
+  const PosCheckoutScreen({super.key, this.onSaleCompleted});
 
   @override
-  State<AdminPosCheckoutScreen> createState() => _AdminPosCheckoutScreenState();
+  State<PosCheckoutScreen> createState() => _PosCheckoutScreenState();
 }
 
-class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
+class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   final PosCheckoutService _checkoutService = PosCheckoutService();
 
   // Controladores

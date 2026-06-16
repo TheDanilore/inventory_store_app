@@ -489,7 +489,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   final success = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const AdminPosCheckoutScreen(),
+                      builder: (_) => const PosCheckoutScreen(),
                     ),
                   );
                   if (success == true) setState(() {});
