@@ -30,6 +30,7 @@ import 'package:inventory_store_app/providers/customer/cart_checkout_provider.da
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
 import 'package:inventory_store_app/providers/customer/customer_orders_provider.dart';
 import 'package:inventory_store_app/providers/customer/customer_wishlist_provider.dart';
+import 'package:inventory_store_app/providers/customer/customer_addresses_provider.dart';
 
 class AppProviders {
   // Lista COMPLETA (por compatibilidad, aunque ya no se usa en main.dart)
@@ -41,27 +42,64 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => CustomerCreditsProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => CustomerCatalogProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => CustomerCreditsProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => CustomerCatalogProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => CartCheckoutProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PointsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CustomerOrdersProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => CustomerWishlistProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => SupplierCreditsProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => CustomerWishlistProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => CustomerAddressesProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => SupplierCreditsProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => PurchaseOrderFormProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => InventoryEntryFormProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => InventoryEntriesProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => PurchaseOrderFormProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => InventoryEntryFormProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => InventoryEntriesProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => InventoryExitsProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => InventoryExitFormProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => InventoryExitFormProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => InventoryProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => FinancialAccountsProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => AccountMovementsProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => FinancialAccountsProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => AccountMovementsProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => CashShiftsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CategoriesProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => AttributesProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => ActiveIngredientsProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => ActiveIngredientsProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => WarehousesProvider(), lazy: true),
   ];
 
@@ -78,27 +116,64 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => CustomerCreditsProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => CustomerCatalogProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => CustomerCreditsProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => CustomerCatalogProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => CartCheckoutProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PointsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CustomerOrdersProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => CustomerWishlistProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => SupplierCreditsProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => CustomerWishlistProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => CustomerAddressesProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => SupplierCreditsProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => PurchaseOrderFormProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => InventoryEntryFormProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => InventoryEntriesProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => PurchaseOrderFormProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => InventoryEntryFormProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => InventoryEntriesProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => InventoryExitsProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => InventoryExitFormProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => InventoryExitFormProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => InventoryProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => FinancialAccountsProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => AccountMovementsProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => FinancialAccountsProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => AccountMovementsProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => CashShiftsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CategoriesProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => AttributesProvider(), lazy: true),
-    ChangeNotifierProvider(create: (_) => ActiveIngredientsProvider(), lazy: true),
+    ChangeNotifierProvider(
+      create: (_) => ActiveIngredientsProvider(),
+      lazy: true,
+    ),
     ChangeNotifierProvider(create: (_) => WarehousesProvider(), lazy: true),
   ];
 }
