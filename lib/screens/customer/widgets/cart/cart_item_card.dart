@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/providers/customer/cart_checkout_provider.dart';
+import 'package:inventory_store_app/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -39,8 +40,7 @@ class CartItemCard extends StatelessWidget {
                 .imageUrl
             : null);
 
-    final isWholesale =
-        item.quantity >= (product.wholesaleMinQuantity);
+    final isWholesale = item.quantity >= (product.wholesaleMinQuantity);
     final appliedPoints = checkoutProvider.getAppliedPointsForItem(
       item,
       cart,
@@ -120,38 +120,53 @@ class CartItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 if (item.variantLabel != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            item.variantLabel!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade800,
-                              fontWeight: FontWeight.w600,
+                  GestureDetector(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder:
+                            (context) => CartVariantPickerSheet(
+                              cart: cart,
+                              product: product,
+                              existingCartItem: item,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              item.variantLabel!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade800,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),

@@ -176,7 +176,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       showWalletChip: true,
       currentIndex: 1,
       body:
-          cart.items.isEmpty
+          cart.isLoading
+              ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                ),
+              )
+              : cart.items.isEmpty
               ? const AppEmptyState(
                 icon: Icons.shopping_bag_outlined,
                 title: 'Tu carrito está vacío',

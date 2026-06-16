@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class NetworkProvider with ChangeNotifier {
   bool _isOnline = true;
+  StreamSubscription? _connectivitySubscription;
+
   bool get isOnline => _isOnline;
 
   NetworkProvider() {
@@ -15,7 +18,9 @@ class NetworkProvider with ChangeNotifier {
     _updateStatus(result);
 
     // Escuchar cambios en tiempo real
-    Connectivity().onConnectivityChanged.listen((result) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      result,
+    ) {
       _updateStatus(result);
     });
   }
@@ -35,5 +40,11 @@ class NetworkProvider with ChangeNotifier {
       _isOnline = isConnected;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 }

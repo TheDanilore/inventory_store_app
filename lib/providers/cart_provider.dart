@@ -1,18 +1,31 @@
-import 'dart:convert';
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/services/customer/cart_cloud_service.dart';
+import 'package:inventory_store_app/services/customer/cart_local_service.dart';
 
 class CartProvider with ChangeNotifier {
   Map<String, CartItemModel> _items = {};
   bool _disposed = false;
 
+  bool _isLoading = false;
+  bool _isSyncing = false;
+  String? _errorMessage;
+
+  final CartCloudService _cloudService = CartCloudService();
+  final CartLocalService _localService = CartLocalService();
+
+  StreamSubscription? _authSubscription;
+  Timer? _debounceTimer;
+
   Map<String, CartItemModel> get items => {..._items};
   int get itemCount => _items.length;
+  bool get isLoading => _isLoading;
+  bool get isSyncing => _isSyncing;
+  String? get errorMessage => _errorMessage;
 
   List<CartItemModel> get selectedItems =>
       _items.values.where((item) => item.isSelected).toList();
@@ -35,194 +48,59 @@ class CartProvider with ChangeNotifier {
   }
 
   Future<void> _initCart() async {
-    // 1. Carga local primero (UI no queda en blanco sin internet)
-    await loadCartFromPrefs();
+    _setLoading(true);
+
+    // 1. Carga local primero
+    _items = await _localService.loadCart();
+    _setLoading(false);
 
     // 2. Si ya hay sesión, sincronizamos con la nube
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
-      await _downloadCloudCart();
+      await _downloadCloudCart(user.id);
     }
 
     // 3. Escuchamos cambios de sesión
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      data,
+    ) {
       if (_disposed) return;
       final event = data.event;
-      if (event == AuthChangeEvent.signedIn) {
-        _downloadCloudCart();
+      final sessionUser = data.session?.user;
+
+      if (event == AuthChangeEvent.signedIn && sessionUser != null) {
+        _downloadCloudCart(sessionUser.id);
       } else if (event == AuthChangeEvent.signedOut) {
         _items.clear();
-        _saveCartToPrefs();
+        _localService.clearCart();
         if (!_disposed) notifyListeners();
       }
     });
   }
 
-  // ── Obtener profileId de forma segura ────────────────────────────────────
-  Future<String?> _getProfileId(
-    SupabaseClient supabase,
-    String authUserId,
-  ) async {
-    // Intentamos buscar el perfil hasta 3 veces (para dar tiempo en registros nuevos)
-    for (int i = 0; i < 3; i++) {
-      final profile =
-          await supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', authUserId)
-              .maybeSingle();
-
-      if (profile != null) {
-        return profile['id'] as String?; // Perfil encontrado con éxito
-      }
-
-      // Si no existe aún, esperamos 500 milisegundos antes del siguiente intento
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    return null; // Si después de 3 intentos no está, devolvemos null
+  void _setLoading(bool value) {
+    _isLoading = value;
+    if (!_disposed) notifyListeners();
   }
 
-  // ── Obtener o crear cartId de forma segura ────────────────────────────────
-  Future<String?> _getOrCreateCartId(
-    SupabaseClient supabase,
-    String profileId,
-  ) async {
-    final existing =
-        await supabase
-            .from('shopping_carts')
-            .select('id')
-            .eq('profile_id', profileId)
-            .maybeSingle();
+  void _setSyncing(bool value) {
+    _isSyncing = value;
+    if (!_disposed) notifyListeners();
+  }
 
-    if (existing != null) {
-      return existing['id'] as String?;
-    }
-
-    final created =
-        await supabase
-            .from('shopping_carts')
-            .insert({'profile_id': profileId})
-            .select('id')
-            .maybeSingle();
-    return created?['id'] as String?;
+  void _setError(String? message) {
+    _errorMessage = message;
+    if (!_disposed) notifyListeners();
   }
 
   // ── Descargar carrito desde la nube ──────────────────────────────────────
-  Future<void> _downloadCloudCart() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-
+  Future<void> _downloadCloudCart(String authUserId) async {
+    _setSyncing(true);
+    _setError(null);
     try {
-      final supabase = Supabase.instance.client;
+      final cloudItems = await _cloudService.downloadCloudCart(authUserId);
+      if (cloudItems == null) return;
 
-      final profileId = await _getProfileId(supabase, user.id);
-      if (profileId == null) {
-        debugPrint('CartProvider: perfil no encontrado para el usuario.');
-        return;
-      }
-
-      final cartId = await _getOrCreateCartId(supabase, profileId);
-      if (cartId == null) {
-        debugPrint('CartProvider: no se pudo obtener o crear el carrito.');
-        return;
-      }
-
-      final itemsResponse = await supabase
-          .from('cart_items')
-          .select('''
-            quantity,
-            variant_id,
-            is_selected,
-            products (
-              id, name, description, unit_cost, sale_price,
-              wholesale_price, wholesale_min_quantity, is_active,
-              product_images (*)
-            ),
-            product_variants (
-              id, product_id, sku, barcode,
-              unit_cost, sale_price, wholesale_price,
-              wholesale_min_quantity, is_active, reorder_point,
-              product_images (*),
-              variant_attribute_values (
-                attribute_value_id,
-                attribute_values (
-                  id, value,
-                  attributes ( id, name )
-                )
-              )
-            )
-          ''')
-          .eq('cart_id', cartId);
-
-      final Map<String, CartItemModel> cloudItems = {};
-
-      for (final row in List<Map<String, dynamic>>.from(itemsResponse)) {
-        // ── Proteger product join ──────────────────────────────────────────────
-        final rawProduct = row['products'];
-        // Supabase puede devolver Map o List según el join; normalizamos
-        final productJson =
-            rawProduct is Map
-                ? rawProduct
-                : (rawProduct is List && rawProduct.isNotEmpty
-                    ? rawProduct.first
-                    : null);
-        if (productJson == null) continue;
-
-        final product = ProductModel.fromJson(
-          Map<String, dynamic>.from(productJson as Map),
-        );
-
-        final qty = (row['quantity'] as num?)?.toInt() ?? 1;
-        final isSelected = row['is_selected'] as bool? ?? true;
-        final rawVariantId = row['variant_id'] as String?;
-
-        // ── Proteger variant join (puede ser null, Map, o List vacía) ──────────
-        final rawVariant = row['product_variants'];
-        final variantJson =
-            rawVariant is Map
-                ? rawVariant
-                : (rawVariant is List && rawVariant.isNotEmpty
-                    ? rawVariant.first
-                    : null);
-
-        ProductVariantModel? variant;
-        if (variantJson != null) {
-          try {
-            variant = ProductVariantModel.fromJson(
-              Map<String, dynamic>.from(variantJson as Map),
-            );
-          } catch (e) {
-            debugPrint('CartProvider: error parseando variante: $e');
-          }
-        }
-
-        final finalVariantId = variant?.id ?? rawVariantId;
-        final cartKey = CartItemModel.buildKey(product.id, finalVariantId);
-
-        // Costo unitario: variante primero (si > 0), sino del producto
-        final effectiveUnitCost =
-            ((variant?.unitCost ?? 0) > 0)
-                ? variant!.unitCost!
-                : product.unitCost;
-
-        cloudItems[cartKey] = CartItemModel(
-          product: product,
-          quantity: qty,
-          variantId: finalVariantId,
-          variantLabel:
-              variant?.label ??
-              (finalVariantId != null ? 'Variante seleccionada' : null),
-          unitPrice: variant?.salePrice ?? product.salePrice,
-          unitCost: effectiveUnitCost,
-          wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
-          imageUrl: variant?.primaryImageUrl ?? product.primaryImageUrl,
-          sku: variant?.sku,
-          availableStock: 999,
-          cartKey: cartKey,
-          isSelected: isSelected,
-        );
-      }
       // Fusión: items locales que no están en la nube (agregados sin internet)
       bool localChanged = false;
       for (final localItem in _items.values) {
@@ -233,47 +111,29 @@ class CartProvider with ChangeNotifier {
       }
 
       _items = cloudItems;
-      _saveCartToPrefs();
-      if (!_disposed) notifyListeners();
+      await _localService.saveCart(_items);
 
-      if (localChanged) _syncToCloud();
-    } catch (e) {
-      debugPrint('Error descargando carrito de la nube: $e');
-    }
-  }
-
-  // ── Cargar carrito local ──────────────────────────────────────────────────
-  Future<void> loadCartFromPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cartString = prefs.getString('local_cart');
-      if (cartString != null) {
-        final Map<String, dynamic> decodedMap = json.decode(cartString);
-        _items = decodedMap.map(
-          (key, value) => MapEntry(key, CartItemModel.fromJson(value)),
-        );
-        if (!_disposed) notifyListeners();
+      if (localChanged) {
+        _debouncedSyncToCloud();
       }
     } catch (e) {
-      debugPrint('Error al cargar el carrito local: $e');
+      _setError(e.toString());
+    } finally {
+      _setSyncing(false);
     }
   }
 
-  // ── Guardar local + sincronizar nube ──────────────────────────────────────
-  Future<void> _saveCartToPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final encodedMap = json.encode(
-        _items.map((key, value) => MapEntry(key, value.toJson())),
-      );
-      await prefs.setString('local_cart', encodedMap);
-      _syncToCloud(); // fire-and-forget
-    } catch (e) {
-      debugPrint('Error al guardar el carrito: $e');
+  // ── Sincronizar a Supabase con Debounce ──────────────────────────────────
+  void _debouncedSyncToCloud() {
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer!.cancel();
     }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _syncToCloud();
+    });
   }
 
-  // ── Sincronizar a Supabase ────────────────────────────────────────────────
   Future<void> _syncToCloud() async {
     final result = await Connectivity().checkConnectivity();
     if (result.contains(ConnectivityResult.none)) return;
@@ -281,39 +141,14 @@ class CartProvider with ChangeNotifier {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
+    _setSyncing(true);
+    _setError(null);
     try {
-      final supabase = Supabase.instance.client;
-
-      final profileId = await _getProfileId(supabase, user.id);
-      if (profileId == null) return;
-
-      final cartId = await _getOrCreateCartId(supabase, profileId);
-      if (cartId == null) return;
-
-      await supabase.from('cart_items').delete().eq('cart_id', cartId);
-
-      if (_items.isNotEmpty) {
-        final itemsToInsert =
-            _items.values.map((item) {
-              final vid = item.variantId;
-              return {
-                'cart_id': cartId,
-                'product_id': item.product.id,
-                'variant_id': (vid == null || vid.isEmpty) ? null : vid,
-                'quantity': item.quantity,
-                'is_selected': item.isSelected,
-              };
-            }).toList();
-
-        await supabase
-            .from('cart_items')
-            .upsert(
-              itemsToInsert,
-              onConflict: 'cart_id, product_id, variant_id',
-            );
-      }
+      await _cloudService.syncToCloud(user.id, _items);
     } catch (e) {
-      debugPrint('Error sincronizando a la nube: $e');
+      _setError(e.toString());
+    } finally {
+      _setSyncing(false);
     }
   }
 
@@ -321,8 +156,7 @@ class CartProvider with ChangeNotifier {
   void toggleItemSelection(String cartKey) {
     if (_items.containsKey(cartKey)) {
       _items[cartKey]!.isSelected = !_items[cartKey]!.isSelected;
-      notifyListeners();
-      _saveCartToPrefs();
+      _saveAndSync();
     }
   }
 
@@ -330,14 +164,12 @@ class CartProvider with ChangeNotifier {
     for (var item in _items.values) {
       item.isSelected = select;
     }
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
   }
 
   void removeSelectedItems() {
     _items.removeWhere((key, item) => item.isSelected);
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
   }
 
   // ── CRUD del carrito ──────────────────────────────────────────────────────
@@ -374,8 +206,6 @@ class CartProvider with ChangeNotifier {
           variantId: safeVariantId,
           variantLabel: variantLabel,
           unitPrice: unitPrice ?? product.salePrice,
-
-          // Si el unitCost es 0 o null, lo tomamos del producto para evitar problemas en el checkout
           unitCost:
               unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
           wholesalePrice: wholesalePrice,
@@ -387,14 +217,14 @@ class CartProvider with ChangeNotifier {
         ),
       );
     }
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
   }
 
   void removeItem(String cartKey) {
-    _items.remove(cartKey);
-    notifyListeners();
-    _saveCartToPrefs();
+    if (_items.containsKey(cartKey)) {
+      _items.remove(cartKey);
+      _saveAndSync();
+    }
   }
 
   void removeSingleItem(String cartKey) {
@@ -407,8 +237,7 @@ class CartProvider with ChangeNotifier {
     } else {
       _items.remove(cartKey);
     }
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
   }
 
   void setQuantity(String cartKey, int quantity) {
@@ -424,8 +253,7 @@ class CartProvider with ChangeNotifier {
         return existing;
       });
     }
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
   }
 
   void updateItemStock(String cartKey, int realStock) {
@@ -437,19 +265,25 @@ class CartProvider with ChangeNotifier {
       }
       return existing;
     });
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
   }
 
   void clear() {
     _items = {};
-    notifyListeners();
-    _saveCartToPrefs();
+    _saveAndSync();
+  }
+
+  void _saveAndSync() {
+    if (!_disposed) notifyListeners();
+    _localService.saveCart(_items);
+    _debouncedSyncToCloud();
   }
 
   @override
   void dispose() {
     _disposed = true;
+    _authSubscription?.cancel();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 }

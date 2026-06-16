@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/models/cart_item_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
@@ -13,11 +14,13 @@ import 'package:inventory_store_app/services/customer/catalog_service.dart';
 class CartVariantPickerSheet extends StatefulWidget {
   final CartProvider cart;
   final ProductModel product;
+  final CartItemModel? existingCartItem;
 
   const CartVariantPickerSheet({
     super.key,
     required this.cart,
     required this.product,
+    this.existingCartItem,
   });
 
   @override
@@ -156,9 +159,18 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
               ? null
               : () {
                 if (!kIsWeb) Vibration.vibrate(duration: 50, amplitude: 128);
+
+                final int quantity = widget.existingCartItem?.quantity ?? 1;
+
+                // Si estamos cambiando una variante desde el carrito
+                if (widget.existingCartItem != null &&
+                    widget.existingCartItem!.variantId != variant.id) {
+                  widget.cart.removeItem(widget.existingCartItem!.cartKey);
+                }
+
                 widget.cart.addItem(
                   widget.product,
-                  quantity: 1,
+                  quantity: quantity,
                   variantId: variant.id,
                   variantLabel: variant.label,
                   unitPrice: variant.salePrice ?? widget.product.salePrice,
@@ -174,7 +186,9 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                 AppSnackbar.show(
                   context,
                   message:
-                      '${widget.product.name} - ${variant.label} añadido al carrito',
+                      widget.existingCartItem != null
+                          ? 'Variante actualizada a ${variant.label}'
+                          : '${widget.product.name} - ${variant.label} añadido al carrito',
                   backgroundColor: AppColors.success,
                 );
               },
