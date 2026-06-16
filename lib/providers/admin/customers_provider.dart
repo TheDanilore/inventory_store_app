@@ -85,6 +85,9 @@ class CustomersProvider extends ChangeNotifier {
   int _activeCustomersCount = 0;
   int get activeCustomersCount => _activeCustomersCount;
 
+  int _debtCustomersCount = 0;
+  int get debtCustomersCount => _debtCustomersCount;
+
   double _totalRevenue = 0;
   double get totalRevenue => _totalRevenue;
 
@@ -164,10 +167,14 @@ class CustomersProvider extends ChangeNotifier {
           .select('profile_id, current_debt');
 
       double debt = 0;
+      int debtCount = 0;
       for (final c in creditsRes) {
-        debt += (c['current_debt'] as num).toDouble();
+        final currentDebt = (c['current_debt'] as num).toDouble();
+        debt += currentDebt;
+        if (currentDebt > 0) debtCount++;
       }
       _totalDebt = debt;
+      _debtCustomersCount = debtCount;
 
       // 4. Calcular Top 5 Global y obtener sus perfiles completos
       final sortedEntries =
@@ -244,7 +251,7 @@ class CustomersProvider extends ChangeNotifier {
         query = _supabase
             .from('profiles')
             .select(
-              'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits!inner(current_debt)',
+              'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits!customer_credits_profile_id_fkey!inner(current_debt)',
             )
             .eq('role', 'customer')
             .gt('customer_credits.current_debt', 0);
@@ -386,7 +393,7 @@ class CustomersProvider extends ChangeNotifier {
         query = _supabase
             .from('profiles')
             .select(
-              'id, full_name, phone, document_number, document_type, is_active, created_at, customer_credits!inner(current_debt)',
+              'id, full_name, phone, document_number, document_type, is_active, created_at, customer_credits!customer_credits_profile_id_fkey!inner(current_debt)',
             )
             .eq('role', 'customer')
             .gt('customer_credits.current_debt', 0);

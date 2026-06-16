@@ -211,9 +211,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
-                    tabs: const [
-                      Tab(text: 'Todos los clientes'),
-                      Tab(text: 'Con deuda activa'),
+                    tabs: [
+                      const Tab(text: 'Todos los clientes'),
+                      Tab(
+                        text: provider.debtCustomersCount > 0 
+                            ? 'Con deuda activa (${provider.debtCustomersCount})' 
+                            : 'Con deuda activa'
+                      ),
                     ],
                   ),
                 ),
