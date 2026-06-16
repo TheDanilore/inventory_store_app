@@ -10,6 +10,7 @@ import 'package:inventory_store_app/providers/admin/inventory_entries_provider.d
 import 'package:inventory_store_app/providers/admin/inventory_exits_provider.dart';
 import 'package:inventory_store_app/providers/admin/inventory_entry_form_provider.dart';
 import 'package:inventory_store_app/providers/admin/inventory_exit_form_provider.dart';
+import 'package:inventory_store_app/providers/admin/inventory_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
@@ -45,12 +46,31 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => PurchaseOrderFormProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => InventoryEntryFormProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => InventoryEntriesProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => InventoryExitsProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => InventoryExitFormProvider(), lazy: true),
+        ChangeNotifierProvider(
+          create: (_) => PurchaseOrdersProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PurchaseOrderFormProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => InventoryEntryFormProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => InventoryEntriesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => InventoryExitsProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => InventoryExitFormProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(create: (_) => InventoryProvider(), lazy: true),
       ],
       child: MaterialApp(
         title: 'Inventario Store',
