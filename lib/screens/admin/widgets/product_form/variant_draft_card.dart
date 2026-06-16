@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/variant_draft_model.dart';
-import 'package:inventory_store_app/screens/admin/widgets/attribute_search_dialog.dart';
+import 'package:inventory_store_app/screens/admin/widgets/product_form/attribute_search_dialog.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_text_field.dart';
 

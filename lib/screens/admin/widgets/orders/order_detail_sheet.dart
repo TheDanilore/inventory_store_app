@@ -21,7 +21,7 @@ import 'package:inventory_store_app/screens/admin/widgets/order_detail_component
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_total_summary_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_items_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_credit_section.dart';
-import 'package:inventory_store_app/screens/admin/widgets/payment_status_section.dart';
+import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/payment_status_section.dart';
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderModel order;

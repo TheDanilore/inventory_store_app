@@ -15,13 +15,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Widgets extraídos
-import 'package:inventory_store_app/screens/admin/widgets/catalog_header.dart';
-import 'package:inventory_store_app/screens/admin/widgets/catalog_category_chips.dart';
-import 'package:inventory_store_app/screens/admin/widgets/catalog_grid_view.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_add_to_cart_sheet.dart';
-import 'package:inventory_store_app/screens/admin/widgets/catalog_dialogs.dart';
-import 'package:inventory_store_app/screens/admin/widgets/catalog_status_states.dart';
-import 'package:inventory_store_app/screens/admin/widgets/catalog_fab_buttons.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_header.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_category_chips.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_grid_view.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/admin_add_to_cart_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_status_states.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_fab_buttons.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
   const AdminCatalogScreen({super.key});
