@@ -59,6 +59,8 @@ class AppColors {
     0xFFE6E6F0,
   ); // Un tono claro del Navy para fondos de iconos
 
+  static const Color surfaceDark = Color(0xFF0F0F1A);
+
   static const Color textHint = Color(0xFF9CA3AF);
 
   // --- Semantic & Status ---

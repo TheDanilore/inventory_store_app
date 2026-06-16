@@ -285,7 +285,7 @@ class _MovementsShimmer extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: 5,
             itemBuilder:
-                (_, __) => const Padding(
+                (_, _) => const Padding(
                   padding: EdgeInsets.only(bottom: 12),
                   child: AppShimmer(height: 80, borderRadius: 14),
                 ),

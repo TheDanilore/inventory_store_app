@@ -291,7 +291,7 @@ class _ItemsSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       itemCount: 4,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, __) {
+      itemBuilder: (_, _) {
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(

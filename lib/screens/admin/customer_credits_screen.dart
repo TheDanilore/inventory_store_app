@@ -421,7 +421,7 @@ class _CustomerCreditsSkeleton extends StatelessWidget {
       itemCount: 6,
       physics: const NeverScrollableScrollPhysics(),
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, __) {
+      itemBuilder: (_, _) {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

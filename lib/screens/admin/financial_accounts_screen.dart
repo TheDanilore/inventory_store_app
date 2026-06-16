@@ -4,6 +4,10 @@ import 'package:inventory_store_app/screens/admin/widgets/movements_tab.dart';
 import 'package:inventory_store_app/screens/admin/widgets/shifts_tab.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/admin/financial_accounts_provider.dart';
+import 'package:inventory_store_app/providers/admin/account_movements_provider.dart';
+import 'package:inventory_store_app/providers/admin/cash_shifts_provider.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FINANCIAL ACCOUNTS SCREEN — Cuentas · Movimientos · Turnos de Caja
@@ -25,6 +29,15 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    
+    // Fetch data initially
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<FinancialAccountsProvider>().fetchAccounts();
+        context.read<AccountMovementsProvider>().fetchMovements();
+        context.read<CashShiftsProvider>().fetchShifts();
+      }
+    });
   }
 
   @override

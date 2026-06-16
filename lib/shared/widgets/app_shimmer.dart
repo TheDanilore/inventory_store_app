@@ -4,12 +4,14 @@ class AppShimmer extends StatefulWidget {
   final double width;
   final double height;
   final double borderRadius;
+  final bool isCircular;
 
   const AppShimmer({
     super.key,
     this.width = double.infinity,
     this.height = 20,
     this.borderRadius = 8.0,
+    this.isCircular = false,
   });
 
   @override
@@ -49,7 +51,8 @@ class _AppShimmerState extends State<AppShimmer>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
+            shape: widget.isCircular ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: widget.isCircular ? null : BorderRadius.circular(widget.borderRadius),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,

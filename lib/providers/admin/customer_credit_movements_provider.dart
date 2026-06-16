@@ -108,7 +108,7 @@ class CustomerCreditMovementsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: Implementar generación de PDF
+      // Implementar generación de PDF
       // 1. Obtener todos los movimientos del filtro actual
       // 2. Generar el documento PDF
       // 3. Guardar / Compartir

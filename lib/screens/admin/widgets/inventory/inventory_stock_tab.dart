@@ -383,7 +383,7 @@ class _InventoryStockSkeleton extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 6,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, __) {
+      itemBuilder: (_, _) {
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
