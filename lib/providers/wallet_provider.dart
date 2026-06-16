@@ -1,25 +1,29 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/services/customer/wallet_service.dart';
 
 /// Provider global que mantiene el saldo de monedas del usuario autenticado.
-/// Usa Realtime de Supabase para actualizarse automáticamente.
 class WalletProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
+  final WalletService _service = WalletService();
 
   int? _balance;
   bool _isLoading = false;
   bool _disposed = false;
-  StreamSubscription<List<Map<String, dynamic>>>? _sub;
+  String? _error;
+  
+  StreamSubscription<AuthState>? _authSub;
 
   int? get balance => _balance;
   bool get isLoading => _isLoading;
   bool get hasBalance => _balance != null;
+  String? get error => _error;
 
   WalletProvider() {
     _init();
 
-    _supabase.auth.onAuthStateChange.listen((event) {
+    _authSub = _supabase.auth.onAuthStateChange.listen((event) {
       if (_disposed) return;
       if (event.event == AuthChangeEvent.signedIn ||
           event.event == AuthChangeEvent.tokenRefreshed) {
@@ -30,7 +34,7 @@ class WalletProvider extends ChangeNotifier {
     });
   }
 
-  void _init() {
+  Future<void> _init() async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
       _clear();
@@ -39,37 +43,29 @@ class WalletProvider extends ChangeNotifier {
 
     if (_disposed) return;
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
-    _sub?.cancel();
-
-    _sub = _supabase
-        .from('profiles')
-        .stream(primaryKey: ['id'])
-        .eq('auth_user_id', user.id)
-        .listen(
-          (rows) {
-            if (_disposed) return;
-            if (rows.isNotEmpty) {
-              _balance = (rows.first['wallet_balance'] as num?)?.toInt() ?? 0;
-            }
-            _isLoading = false;
-            notifyListeners();
-          },
-          onError: (_) {
-            if (_disposed) return;
-            _balance = _balance ?? 0;
-            _isLoading = false;
-            notifyListeners();
-          },
-        );
+    try {
+      final balance = await _service.fetchBalance(user.id);
+      if (_disposed) return;
+      _balance = balance;
+    } catch (e) {
+      if (_disposed) return;
+      _error = 'No se pudo cargar el saldo: $e';
+      _balance = _balance ?? 0;
+    } finally {
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
   }
 
   void _clear() {
-    _sub?.cancel();
-    _sub = null;
     _balance = null;
     _isLoading = false;
+    _error = null;
     if (!_disposed) notifyListeners();
   }
 
@@ -78,26 +74,29 @@ class WalletProvider extends ChangeNotifier {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
-    try {
-      final row =
-          await _supabase
-              .from('profiles')
-              .select('wallet_balance')
-              .eq('auth_user_id', user.id)
-              .single();
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
+    try {
+      final balance = await _service.fetchBalance(user.id);
       if (_disposed) return;
-      _balance = (row['wallet_balance'] as num?)?.toInt() ?? 0;
-      notifyListeners();
+      _balance = balance;
     } catch (e) {
-      debugPrint('Error refrescando saldo: $e');
+      if (_disposed) return;
+      _error = 'Error refrescando saldo: $e';
+    } finally {
+      if (!_disposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   @override
   void dispose() {
     _disposed = true;
-    _sub?.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 }
