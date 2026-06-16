@@ -63,7 +63,7 @@ class AppProviders {
 
   /// Todos los providers EXCEPTO AuthProvider.
   ///
-  /// Úsalo en main.dart junto con un ChangeNotifierProvider<AuthProvider>.value
+  /// Úsalo en main.dart junto con un ChangeNotifierProvider AuthProvider.value
   /// que apunte a la instancia global creada antes de runApp(). Esto garantiza
   /// que el GoRouter y el AuthProvider sean singletons verdaderos y nunca se
   /// recreen durante rebuilds del árbol de widgets.
