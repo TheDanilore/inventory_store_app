@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/providers/customer/catalog_provider.dart';
-import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
@@ -66,24 +65,13 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   Future<void> _handleAddToCart(ProductModel product) async {
     final cart = context.read<CartProvider>();
 
-    if (product.productVariants.isNotEmpty) {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (context) => CartVariantPickerSheet(cart: cart, product: product),
-      );
-    } else {
-      cart.addItem(product, quantity: 1, variantId: null, variantLabel: null);
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: '${product.name} añadido al carrito',
-          backgroundColor: AppColors.success,
-        );
-      }
-    }
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => CartVariantPickerSheet(cart: cart, product: product),
+    );
   }
 
   @override

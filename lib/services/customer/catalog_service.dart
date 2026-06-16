@@ -19,7 +19,18 @@ class CatalogService {
   }) async {
     var query = _supabase
         .from('products')
-        .select('*, product_images!inner(*)')
+        .select('''
+          *,
+          product_images!inner(*),
+          product_variants(
+            *,
+            product_images(id, image_url, is_main, display_order),
+            variant_attribute_values(
+              attribute_values(id, value, attributes(id, name))
+            )
+          ),
+          warehouse_stock_batches(*)
+        ''')
         .eq('is_active', true);
 
     if (categoryId != null) {
