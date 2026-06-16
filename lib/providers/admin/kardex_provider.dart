@@ -211,9 +211,9 @@ class KardexProvider extends ChangeNotifier {
       );
 
       final bytes = await pdf.save();
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => bytes,
-        name: 'Kardex_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: 'Kardex_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
       );
     } catch (e) {
       _errorMessage = 'Error al exportar PDF: $e';
