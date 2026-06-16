@@ -7,7 +7,7 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_sale_points_sect
 import 'package:inventory_store_app/screens/admin/widgets/payment_warehouse_account_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/pos_checkout/pos_cart_items_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/pos_checkout/pos_total_summary_section.dart';
-import 'package:inventory_store_app/screens/admin/widgets/pos_checkout/pos_batch_edit_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/screens/admin/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/services/admin/pos_checkout_service.dart';
@@ -449,7 +449,7 @@ class _AdminPosCheckoutScreenState extends State<AdminPosCheckoutScreen> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
-            (_) => PosBatchEditSheet(
+            (_) => BatchEditSheet(
               productName: item.product.name,
               variantLabel: item.variantLabel,
               totalRequired: item.quantity,

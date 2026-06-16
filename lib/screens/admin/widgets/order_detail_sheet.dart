@@ -11,7 +11,7 @@ import 'package:inventory_store_app/services/admin/order_pdf_generator.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
-import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/batch_edit_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_points_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_skeleton.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_header_row.dart';
