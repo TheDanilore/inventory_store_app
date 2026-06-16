@@ -389,7 +389,11 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               if (provider.isSaving)
-                                const AppShimmer(width: 80, height: 32, borderRadius: 4)
+                                const AppShimmer(
+                                  width: 80,
+                                  height: 32,
+                                  borderRadius: 4,
+                                )
                               else
                                 Text(
                                   balance.toString(),
@@ -547,9 +551,17 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                       const SizedBox(height: 24),
                       const AppShimmer(width: 200, height: 16, borderRadius: 4),
                       const SizedBox(height: 12),
-                      const AppShimmer(width: double.infinity, height: 60, borderRadius: 12),
+                      const AppShimmer(
+                        width: double.infinity,
+                        height: 60,
+                        borderRadius: 12,
+                      ),
                       const SizedBox(height: 8),
-                      const AppShimmer(width: double.infinity, height: 60, borderRadius: 12),
+                      const AppShimmer(
+                        width: double.infinity,
+                        height: 60,
+                        borderRadius: 12,
+                      ),
                     ] else if (provider.recentMovements.isNotEmpty) ...[
                       const SizedBox(height: 24),
                       const Text(
@@ -625,7 +637,6 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                 ),
               ),
             ),
-
           ],
         );
       },
