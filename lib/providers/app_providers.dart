@@ -28,6 +28,7 @@ import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/providers/customer/catalog_provider.dart';
 import 'package:inventory_store_app/providers/customer/cart_checkout_provider.dart';
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
+import 'package:inventory_store_app/providers/customer/customer_orders_provider.dart';
 
 class AppProviders {
   // Lista COMPLETA (por compatibilidad, aunque ya no se usa en main.dart)
@@ -43,6 +44,7 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => CustomerCatalogProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CartCheckoutProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PointsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CustomerOrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => SupplierCreditsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
@@ -78,6 +80,7 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => CustomerCatalogProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CartCheckoutProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PointsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CustomerOrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => SupplierCreditsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
