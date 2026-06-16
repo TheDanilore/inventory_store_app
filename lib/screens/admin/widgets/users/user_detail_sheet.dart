@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/providers/admin/user_detail_provider.dart';
-import 'package:inventory_store_app/screens/admin/user_form_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class UserDetailSheet extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -72,11 +72,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     UserDetailProvider provider,
   ) async {
     if (provider.user == null) return;
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => UserFormScreen(existingUser: provider.user!),
-      ),
+    final result = await context.push(
+      '/admin/user-form',
+      extra: {'existingUser': provider.user!},
     );
 
     if (result == true && mounted) {

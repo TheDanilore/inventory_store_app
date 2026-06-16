@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/user_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/users/users_tab.dart';
 import 'package:inventory_store_app/shared/constants/app_roles.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -246,11 +246,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
         onPressed: () async {
           final initialRole =
               _tabController.index == 0 ? AppRoles.customer : AppRoles.admin;
-          final changed = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => UserFormScreen(initialRole: initialRole),
-            ),
+          final changed = await context.push<bool?>(
+            '/admin/user-form',
+            extra: {'initialRole': initialRole},
           );
           if (changed == true) {
             _fetchGlobalCounts();

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:provider/provider.dart';
@@ -7,8 +8,6 @@ import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/models/purchase_order_model.dart';
 import 'package:inventory_store_app/providers/admin/purchase_orders_provider.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
-import 'package:inventory_store_app/screens/admin/purchase_order_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_detail_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -165,20 +164,17 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               if (!context.mounted) return;
               Navigator.pop(context); // Cierra BottomSheet
 
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (_) => InventoryEntryFormScreen(
-                        purchaseOrderId: po.id,
-                        prefillSupplierId: po.supplierId,
-                        prefillSupplierName: po.supplierName,
-                        prefillItems: entryItems,
-                        prefillDocumentType: po.documentType,
-                        prefillDocumentNumber: po.documentNumber,
-                        prefillDocumentDate: po.createdAt,
-                      ),
-                ),
+              final result = await context.push<bool>(
+                '/admin/inventory-entry-form?purchaseOrderId=${po.id}',
+                extra: {
+                  'purchaseOrderId': po.id,
+                  'prefillSupplierId': po.supplierId,
+                  'prefillSupplierName': po.supplierName,
+                  'prefillItems': entryItems,
+                  'prefillDocumentType': po.documentType,
+                  'prefillDocumentNumber': po.documentNumber,
+                  'prefillDocumentDate': po.createdAt,
+                },
               );
               if (result == true && context.mounted) {
                 context.read<PurchaseOrdersProvider>().loadOrders();
@@ -237,11 +233,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: InkWell(
                     onTap: () async {
-                      final result = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PurchaseOrderFormScreen(),
-                        ),
+                      final result = await context.push<bool>(
+                        '/admin/purchase-order-form',
                       );
                       if (result == true && context.mounted) {
                         context.read<PurchaseOrdersProvider>().loadOrders();
@@ -476,11 +469,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           // ── FAB NUEVA ORDEN ──
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PurchaseOrderFormScreen(),
-                ),
+              final result = await context.push<bool>(
+                '/admin/purchase-order-form',
               );
               if (result == true && context.mounted) {
                 context.read<PurchaseOrdersProvider>().loadOrders();

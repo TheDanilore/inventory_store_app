@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/screens/admin/active_ingredients_screen.dart';
 import 'package:inventory_store_app/screens/admin/attributes_management_screen.dart';
 import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
@@ -146,16 +147,11 @@ class _AppDrawerState extends State<AppDrawer> {
                             : CustomerCatalogScreen,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) =>
-                                  widget.isAdmin
-                                      ? const AdminCatalogScreen()
-                                      : const CustomerCatalogScreen(),
-                        ),
-                      );
+                      if (widget.isAdmin) {
+                        context.go('/admin');
+                      } else {
+                        context.go('/customer');
+                      }
                     },
                   ),
                 ),
@@ -167,12 +163,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     screenType: DashboardScreen,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DashboardScreen(),
-                        ),
-                      );
+                      context.push('/admin/dashboard');
                     },
                   ),
                 ),
@@ -185,12 +176,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: CustomerCartScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CustomerCartScreen(),
-                          ),
-                        );
+                        context.push('/customer/cart');
                       },
                     ),
                   ),
@@ -214,12 +200,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           trailing: count > 0 ? _buildBadge(count) : null,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const OrdersScreen(),
-                              ),
-                            );
+                            context.push('/admin/orders');
                           },
                         ),
                       );
@@ -239,12 +220,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: PurchaseOrdersScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const PurchaseOrdersScreen(),
-                              ),
-                            );
+                            context.push('/admin/purchase-orders');
                           },
                         ),
                         _DrawerSubItem(
@@ -253,12 +229,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: InventoryEntriesScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const InventoryEntriesScreen(),
-                              ),
-                            );
+                            context.push('/admin/inventory-entries');
                           },
                         ),
                         _DrawerSubItem(
@@ -267,12 +238,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: SupplierCreditsScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SupplierCreditsScreen(),
-                              ),
-                            );
+                            context.push('/admin/supplier-credits');
                           },
                         ),
                         _DrawerSubItem(
@@ -281,12 +247,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: SuppliersScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SuppliersScreen(),
-                              ),
-                            );
+                            context.push('/admin/suppliers');
                           },
                         ),
                       ],
@@ -306,12 +267,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: InventoryScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const InventoryScreen(),
-                              ),
-                            );
+                            context.push('/admin/inventory');
                           },
                         ),
                         _DrawerSubItem(
@@ -320,12 +276,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: KardexScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const KardexScreen(),
-                              ),
-                            );
+                            context.push('/admin/kardex');
                           },
                         ),
 
@@ -335,12 +286,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: InventoryExitsScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const InventoryExitsScreen(),
-                              ),
-                            );
+                            context.push('/admin/inventory-exits');
                           },
                         ),
                       ],
@@ -359,12 +305,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: CustomersScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const CustomersScreen(),
-                              ),
-                            );
+                            context.push('/admin/customers');
                           },
                         ),
                         _DrawerSubItem(
@@ -373,12 +314,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           screenType: CustomerCreditsScreen,
                           onTap: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const CustomerCreditsScreen(),
-                              ),
-                            );
+                            context.push('/admin/customer-credits');
                           },
                         ),
                       ],
@@ -393,12 +329,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: FinancialAccountsScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FinancialAccountsScreen(),
-                          ),
-                        );
+                        context.push('/admin/financial-accounts');
                       },
                     ),
                   ),
@@ -411,12 +342,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: CategoriesManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CategoriesManagementScreen(),
-                          ),
-                        );
+                        context.push('/admin/categories');
                       },
                     ),
                   ),
@@ -429,12 +355,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: WarehousesManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const WarehousesManagementScreen(),
-                          ),
-                        );
+                        context.push('/admin/warehouses');
                       },
                     ),
                   ),
@@ -447,12 +368,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: AttributesManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AttributesManagementScreen(),
-                          ),
-                        );
+                        context.push('/admin/attributes');
                       },
                     ),
                   ),
@@ -465,12 +381,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: ActiveIngredientsScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ActiveIngredientsScreen(),
-                          ),
-                        );
+                        context.push('/admin/active-ingredients');
                       },
                     ),
                   ),
@@ -483,12 +394,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: UsersManagementScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const UsersManagementScreen(),
-                          ),
-                        );
+                        context.push('/admin/users');
                       },
                     ),
                   ),
@@ -501,12 +407,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: BusinessInfoScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const BusinessInfoScreen(),
-                          ),
-                        );
+                        context.push('/admin/business-info');
                       },
                     ),
                   ),
@@ -519,12 +420,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       screenType: PointsSettingsScreen,
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PointsSettingsScreen(),
-                          ),
-                        );
+                        context.push('/admin/points-settings');
                       },
                     ),
                   ),
@@ -547,13 +443,11 @@ class _AppDrawerState extends State<AppDrawer> {
                 screenType: ProfileScreen,
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ProfileScreen(openedFromAdmin: widget.isAdmin),
-                    ),
-                  );
+                  if (widget.isAdmin) {
+                    context.push('/admin/profile');
+                  } else {
+                    context.push('/customer/profile');
+                  }
                 },
               ),
             ),

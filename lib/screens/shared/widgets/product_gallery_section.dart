@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/screens/shared/widgets/full_screen_gallery.dart';
 import 'package:inventory_store_app/models/product_image_model.dart';
+import 'package:go_router/go_router.dart';
 
 // ─── GALLERY ─────────────────────────────────────────────────────────────────
 
@@ -60,15 +60,9 @@ class ProductGallerySection extends StatelessWidget {
             }
             return GestureDetector(
               onTap:
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => FullScreenGallery(
-                            imageUrls: effectiveUrls,
-                            initialIndex: index,
-                          ),
-                    ),
+                  () => context.push(
+                    '/gallery',
+                    extra: {'imageUrls': effectiveUrls, 'initialIndex': index},
                   ),
               child: Padding(
                 padding: const EdgeInsets.all(16),

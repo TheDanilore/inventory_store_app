@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -7,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
@@ -354,12 +354,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(product: product),
-        ),
-      );
+      context.push('/product/${product.id}', extra: product);
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(context, message: 'No se pudo abrir el producto: $e');

@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
-import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -348,12 +348,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap:
-              () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductDetailScreen(product: product),
-                ),
-              ),
+              () => context.push('/product/${product.id}', extra: product),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(

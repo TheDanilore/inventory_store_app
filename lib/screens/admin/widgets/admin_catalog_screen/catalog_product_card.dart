@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
 
 /// Tarjeta de producto del catálogo admin con imagen, badges de estado y acciones.
 class AdminProductCard extends StatelessWidget {
@@ -27,14 +27,7 @@ class AdminProductCard extends StatelessWidget {
     final isDesactivado = !product.isActive;
 
     return GestureDetector(
-      onTap:
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (_) => ProductDetailScreen(product: product, isAdmin: true),
-            ),
-          ),
+      onTap: () => context.push('/product/${product.id}'),
       child: Container(
         decoration: BoxDecoration(
           color: isDesactivado ? const Color(0xFFF8FAFC) : Colors.white,

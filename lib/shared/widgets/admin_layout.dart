@@ -1,12 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/auth/login_screen.dart';
-import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 import 'package:inventory_store_app/shared/widgets/app_drawer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class AdminLayout extends StatelessWidget {
   final String title;
@@ -37,17 +36,9 @@ class AdminLayout extends StatelessWidget {
   void _openProfile(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      context.go('/login');
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ProfileScreen(openedFromAdmin: true),
-        ),
-      );
+      context.push('/admin/profile');
     }
   }
 

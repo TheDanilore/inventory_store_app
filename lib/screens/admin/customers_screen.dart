@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/customers_provider.dart';
-import 'package:inventory_store_app/screens/admin/customer_detail_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customers/customers_stats_header.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customers/top_customers_section.dart';
@@ -70,12 +70,9 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   }
 
   void _openDetail(CustomerSummary customer) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CustomerDetailScreen(customer: customer),
-      ),
-    ).then((_) {
+    context.push('/admin/customer-detail/${customer.id}', extra: {'customer': customer}).then((
+      _,
+    ) {
       if (mounted) {
         context.read<CustomersProvider>().reload();
       }

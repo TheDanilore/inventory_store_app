@@ -11,6 +11,12 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoginMode => _isLoginMode;
 
+  bool _isSessionReady = false;
+  String? _currentUserRole;
+
+  bool get isSessionReady => _isSessionReady;
+  String? get currentUserRole => _currentUserRole;
+
   bool _disposed = false;
 
   @override
@@ -66,6 +72,11 @@ class AuthProvider extends ChangeNotifier {
           }
         }
       }
+      
+      // Obtener rol y notificar para que GoRouter redirija
+      final role = await checkAndGetRole();
+      await initializeSession(role);
+      
       return null;
     } on AuthException catch (e) {
       return _authErrorMessage(e);
@@ -76,11 +87,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Verifica si la sesión es válida y retorna la ruta a la cual navegar (ruta de Admin o Cliente), 
-  /// o un mensaje de error si está inactivo.
-  Future<Map<String, dynamic>> checkAndGetRedirectRoute() async {
+  /// Inicia la verificación de sesión y rol de usuario.
+  /// Usado desde el SplashScreen.
+  Future<void> initializeSession(String? role) async {
+    _currentUserRole = role;
+    _isSessionReady = true;
+    _safeNotify();
+  }
+
+  /// Limpia la sesión local al cerrar sesión.
+  void clearSession() {
+    _currentUserRole = null;
+    _safeNotify();
+  }
+
+  /// Verifica si la sesión es válida (usado post-login para obtener el rol).
+  Future<String?> checkAndGetRole() async {
     final session = _supabase.auth.currentSession;
-    if (session == null) return {'success': false};
+    if (session == null) return null;
 
     setLoading(true);
     try {
@@ -92,14 +116,13 @@ class AuthProvider extends ChangeNotifier {
 
       if (data['is_active'] == false) {
         await _supabase.auth.signOut();
-        return {'success': false, 'error': 'Tu cuenta ha sido desactivada. Contacta al administrador.'};
+        return null;
       }
 
-      final route = data['role'] == AppRoles.admin ? 'admin' : 'customer';
-      return {'success': true, 'route': route};
+      return data['role'] as String?;
     } catch (e) {
       await _supabase.auth.signOut();
-      return {'success': false, 'error': 'Error al verificar el perfil. Intenta nuevamente.'};
+      return null;
     } finally {
       setLoading(false);
     }

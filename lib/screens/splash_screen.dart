@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
-import 'package:inventory_store_app/screens/customer/customer_main_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/shared/constants/app_roles.dart';
-import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,18 +38,22 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    // 2. AHORA SÍ, verificamos la sesión y navegamos
+    if (!mounted) return;
+
+    // 2. AHORA SÍ, notificamos al AuthProvider para que maneje la sesión y GoRouter redirija
+    final authProvider = context.read<AuthProvider>();
+    
     final session = Supabase.instance.client.auth.currentSession;
     final prefs = await SharedPreferences.getInstance();
 
     if (session == null || session.isExpired) {
-      _navigateBasedOnRole(null);
+      authProvider.initializeSession(null);
       return;
     }
 
     final cachedRole = prefs.getString('cached_user_role');
     if (cachedRole != null) {
-      _navigateBasedOnRole(cachedRole);
+      authProvider.initializeSession(cachedRole);
       _updateRoleInBackground(session.user.id, prefs);
       return;
     }
@@ -67,11 +69,11 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
       final role = data['role'] as String;
       await prefs.setString('cached_user_role', role);
-      _navigateBasedOnRole(role);
+      authProvider.initializeSession(role);
     } catch (e) {
       await Supabase.instance.client.auth.signOut();
       if (!mounted) return;
-      _navigateBasedOnRole(null);
+      authProvider.initializeSession(null);
     }
   }
 
@@ -88,20 +90,6 @@ class _SplashScreenState extends State<SplashScreen> {
               .single();
       await prefs.setString('cached_user_role', data['role'] as String);
     } catch (_) {}
-  }
-
-  void _navigateBasedOnRole(String? role) {
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder:
-            (_) =>
-                role == AppRoles.admin
-                    ? const AdminCatalogScreen()
-                    : const CustomerMainScreen(),
-      ),
-    );
   }
 
   @override

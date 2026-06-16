@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/models/inventory_entry_model.dart';
 import 'package:inventory_store_app/providers/admin/inventory_entries_provider.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/inventory_entries/inventory_entry_detail_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
@@ -196,11 +196,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                       ),
                       TextButton(
                         onPressed: () async {
-                          final result = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const InventoryEntryFormScreen(),
-                            ),
+                          final result = await context.push<bool>(
+                            '/admin/inventory-entry-form',
                           );
                           _checkDraft();
                           if (result == true && context.mounted) {
@@ -391,11 +388,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const InventoryEntryFormScreen(),
-                ),
+              final result = await context.push<bool>(
+                '/admin/inventory-entry-form',
               );
               if (result == true) {
                 provider.loadEntries(page: 0); // Refrescar en la misma pantalla

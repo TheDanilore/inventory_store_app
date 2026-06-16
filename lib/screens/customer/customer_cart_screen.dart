@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
-import 'package:inventory_store_app/screens/customer/address_management_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,7 +11,6 @@ import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
-import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -211,23 +210,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       );
 
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => ProductDetailScreen(
-                product: product.copyWith(totalStock: totalStock),
-              ),
-        ),
+      context.push(
+        '/product/${product.id}',
+        extra: product.copyWith(totalStock: totalStock),
       );
     } catch (_) {
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(product: product),
-        ),
-      );
+      context.push('/product/${product.id}', extra: product);
     }
   }
   // ─── Cambiar variante de un ítem ─────────────────────────────────────────
@@ -320,12 +309,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AddressManagementScreen(),
-              ),
-            );
+            await context.push('/customer/address');
             if (mounted) _cargarDireccion();
           },
           borderRadius: BorderRadius.circular(16),

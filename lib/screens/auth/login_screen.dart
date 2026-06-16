@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/auth_provider.dart';
-import 'package:inventory_store_app/screens/customer/customer_main_screen.dart';
-import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
@@ -39,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeCtrl.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkSession();
+      // GoRouter maneja la redirección, ya no es necesario checar sesión manualmente aquí.
     });
   }
 
@@ -52,35 +51,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  Future<void> _checkSession() async {
-    final provider = context.read<AuthProvider>();
-    final result = await provider.checkAndGetRedirectRoute();
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final route = result['route'];
-      final dest =
-          route == 'admin'
-              ? const AdminCatalogScreen()
-              : const CustomerMainScreen();
-
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, _, _) => dest,
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
-      );
-    } else if (result.containsKey('error') && result['error'] != null) {
-      AppSnackbar.show(
-        context,
-        message: result['error'],
-        type: SnackbarType.error,
-      );
-    }
-  }
+  // Removido _checkSession ya que GoRouter lo maneja globalmente
 
   Future<void> _authenticate() async {
     if (!_formKey.currentState!.validate()) {
@@ -115,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen>
           type: SnackbarType.success,
         );
       }
-      _checkSession();
+      // Al autenticar exitosamente, AuthProvider notifica y GoRouter redirige solo.
     }
   }
 
@@ -192,16 +163,7 @@ class _LoginScreenState extends State<LoginScreen>
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      onPressed:
-                          () => Navigator.pushReplacement(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder:
-                                  (_, _, _) => const CustomerMainScreen(),
-                              transitionDuration: Duration.zero,
-                              reverseTransitionDuration: Duration.zero,
-                            ),
-                          ),
+                      onPressed: () => context.go('/customer'),
                     ),
                   ),
                 ),

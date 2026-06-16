@@ -55,6 +55,23 @@ class CatalogService {
     }
   }
 
+  Future<ProductModel?> getProductById(String id) async {
+    for (final list in _memProducts.values) {
+      for (final p in list) {
+        if (p.id == id) return p;
+      }
+    }
+    // Si no está en memoria, buscalo en Supabase a través del repositorio.
+    // Usamos fetchProducts para re-utilizar la query que trae stock y otros datos básicos.
+    try {
+      final products = await _repository.fetchProducts();
+      final p = products.firstWhere((p) => p.id == id);
+      return p;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<ProductModel>> loadProducts({
     String? categoryId,
     String? searchTerm,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
-import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
@@ -1351,13 +1351,7 @@ class _HorizontalProductCard extends StatelessWidget {
             : null;
 
     return GestureDetector(
-      onTap:
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProductDetailScreen(product: product),
-            ),
-          ),
+      onTap: () => context.push('/product/${product.id}', extra: product),
       child: Container(
         width: 140,
         margin: const EdgeInsets.only(right: 12),
@@ -1806,13 +1800,7 @@ class _ProductCardState extends State<ProductCard> {
       onEnter: (_) => setState(() => _isCardHovered = true),
       onExit: (_) => setState(() => _isCardHovered = false),
       child: GestureDetector(
-        onTap:
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProductDetailScreen(product: product),
-              ),
-            ),
+        onTap: () => context.push('/product/${product.id}', extra: product),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(

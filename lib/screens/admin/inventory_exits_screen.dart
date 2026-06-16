@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/models/inventory_exit_model.dart';
 import 'package:inventory_store_app/providers/admin/inventory_exits_provider.dart';
-import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -209,12 +209,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       ),
                       TextButton(
                         onPressed: () async {
-                          final result = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const InventoryExitFormScreen(),
-                            ),
-                          );
+                          final result = await context.push<bool>('/admin/inventory-exit-form');
                           _checkDraft();
                           if (result == true && context.mounted) {
                             context.read<InventoryExitsProvider>().initLoad();
@@ -376,12 +371,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const InventoryExitFormScreen(),
-                ),
-              );
+              final result = await context.push<bool>('/admin/inventory-exit-form');
               if (result == true) {
                 provider.loadExits(isRefresh: true);
               }

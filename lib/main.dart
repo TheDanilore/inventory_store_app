@@ -26,8 +26,8 @@ import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
-import 'package:inventory_store_app/screens/splash_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_theme.dart';
+import 'package:inventory_store_app/router/app_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -111,23 +111,24 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => WarehousesProvider(), lazy: true),
       ],
-      child: MaterialApp(
-        title: 'Inventario Store',
-        theme: AppTheme.light(),
-        debugShowCheckedModeBanner: false,
+      child: Builder(
+        builder: (context) {
+          final router = AppRouter.createRouter(context);
+          return MaterialApp.router(
+            title: 'Inventario Store',
+            theme: AppTheme.light(),
+            debugShowCheckedModeBanner: false,
 
-        // 2. AGREGA ESTAS DOS LÍNEAS AQUÍ:
-        supportedLocales: const [
-          Locale('es', 'ES'), // Idioma principal (Español)
-          Locale('en', 'US'), // Opcional (Inglés)
-        ],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
+            supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
 
-        home: const SplashScreen(),
+            routerConfig: router,
+          );
+        },
       ),
     );
   }

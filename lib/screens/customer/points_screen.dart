@@ -1,15 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
-import 'package:inventory_store_app/screens/customer/games/coin_catcher_game_screen.dart';
-import 'package:inventory_store_app/screens/customer/games/dodge_game_screen.dart';
-import 'package:inventory_store_app/screens/customer/games/memorama_game_screen.dart';
-import 'package:inventory_store_app/screens/customer/games/pinata_game_screen.dart';
-import 'package:inventory_store_app/screens/customer/games/super_salto_screen.dart';
-import 'package:inventory_store_app/screens/customer/games/claw_machine_screen.dart';
-import 'package:inventory_store_app/screens/customer/games/stack_game_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
@@ -448,11 +442,8 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('catcher_daily_limit', 1)
             .round();
     if (_profileId == null || _catcherPlaysToday >= limit) return;
-    final reward = await Navigator.push<int>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CoinCatcherGameScreen(profileId: _profileId!),
-      ),
+    final reward = await context.push<int>(
+      '/customer/games/coin-catcher/$_profileId',
     );
     if (!mounted) return;
     if (reward != null) {
@@ -471,11 +462,8 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('memorama_daily_limit', 1)
             .round();
     if (_profileId == null || _memoramaPlaysToday >= limit) return;
-    final reward = await Navigator.push<int>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MemoramaGameScreen(profileId: _profileId!),
-      ),
+    final reward = await context.push<int>(
+      '/customer/games/memorama/$_profileId',
     );
     if (!mounted) return;
     if (reward != null) {
@@ -494,11 +482,8 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('pinata_daily_limit', 1)
             .round();
     if (_profileId == null || _pinataPlaysToday >= limit) return;
-    final reward = await Navigator.push<int>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PinataGameScreen(profileId: _profileId!),
-      ),
+    final reward = await context.push<int>(
+      '/customer/games/pinata/$_profileId',
     );
     if (!mounted) return;
     if (reward != null) {
@@ -517,11 +502,8 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('jump_daily_limit', 1)
             .round();
     if (_profileId == null || _superSaltoPlaysToday >= limit) return;
-    final pts = await Navigator.push<int>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SuperSaltoScreen(profileId: _profileId!),
-      ),
+    final pts = await context.push<int>(
+      '/customer/games/super-salto/$_profileId',
     );
     if (!mounted) return;
     if (pts != null) {
@@ -540,11 +522,8 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('claw_daily_limit', 1)
             .round();
     if (_profileId == null || _clawPlaysToday >= limit) return;
-    final r = await Navigator.push<int>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ClawMachineScreen(profileId: _profileId!),
-      ),
+    final r = await context.push<int>(
+      '/customer/games/claw-machine/$_profileId',
     );
     if (!mounted) return;
     if (r != null) {
@@ -563,12 +542,7 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('stack_daily_limit', 1)
             .round();
     if (_profileId == null || _stackPlaysToday >= limit) return;
-    final r = await Navigator.push<int?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StackGameScreen(profileId: _profileId!),
-      ),
-    );
+    final r = await context.push<int?>('/customer/games/stack/$_profileId');
     if (!mounted) return;
     if (r != null) {
       await _fetchPointsData();
@@ -585,12 +559,7 @@ class _PointsScreenState extends State<PointsScreen> {
             .getDouble('dodge_daily_limit', 1)
             .round();
     if (_profileId == null || _dodgePlaysToday >= limit) return;
-    final r = await Navigator.push<int?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DodgeGameScreen(profileId: _profileId!),
-      ),
-    );
+    final r = await context.push<int?>('/customer/games/dodge/$_profileId');
     if (!mounted) return;
     if (r != null) {
       await _fetchPointsData();

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/models/supplier_credit_models.dart';
-import 'package:inventory_store_app/screens/admin/supplier_credit_movements_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/supplier_credits/supplier_credit_account_modal.dart';
 import 'package:inventory_store_app/screens/admin/widgets/supplier_credits/supplier_payment_modal.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -148,18 +148,16 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
               title: const Text('Ver historial de movimientos'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (_) => SupplierCreditMovementsScreen(
-                          creditId: account.creditId,
-                          supplierName: account.supplierName,
-                          currentDebt: account.currentDebt,
-                          creditLimit: account.creditLimit,
-                        ),
-                  ),
-                ).then((_) => onRefresh());
+                context
+                    .push(
+                      '/admin/supplier-credit-movements/${account.creditId}?name=${Uri.encodeComponent(account.supplierName)}&debt=${account.currentDebt}&limit=${account.creditLimit}',
+                      extra: {
+                        'supplierName': account.supplierName,
+                        'currentDebt': account.currentDebt,
+                        'creditLimit': account.creditLimit,
+                      },
+                    )
+                    .then((_) => onRefresh());
               },
             ),
 

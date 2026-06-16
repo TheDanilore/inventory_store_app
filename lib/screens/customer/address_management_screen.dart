@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/models/profile_address_entry.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/screens/customer/address_config_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -146,17 +146,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     Map<String, dynamic>? existingAddress,
   }) async {
     if (_profileId == null) return;
-    final result = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder:
-            (_) => AddressConfigScreen(
-              initialAddress:
-                  existingAddress == null
-                      ? null
-                      : _buildAddressLine(existingAddress),
-            ),
-      ),
+    final queryParam =
+        existingAddress == null
+            ? ''
+            : '?initialAddress=${Uri.encodeComponent(_buildAddressLine(existingAddress))}';
+
+    final result = await context.push<String>(
+      '/customer/address/config$queryParam',
     );
     if (!mounted || result == null) return;
     final parsed = _parseAddressPreview(result);

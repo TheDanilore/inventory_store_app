@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/customer_credits_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -8,7 +9,6 @@ import 'package:inventory_store_app/screens/admin/widgets/customer_credits/globa
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/credit_account_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/credit_account_modal.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/register_payment_modal.dart';
-import 'package:inventory_store_app/screens/admin/customer_credit_movements_screen.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
@@ -313,18 +313,16 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                 title: const Text('Ver historial de movimientos'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => CustomerCreditMovementsScreen(
-                            creditId: account.creditId,
-                            customerName: account.partnerName,
-                            currentDebt: account.currentDebt,
-                            creditLimit: account.creditLimit,
-                          ),
-                    ),
-                  ).then((_) => provider.fetchPage());
+                  context
+                      .push(
+                        '/admin/customer-credit-movements/${account.creditId}?name=${Uri.encodeComponent(account.partnerName)}&debt=${account.currentDebt}&limit=${account.creditLimit}',
+                        extra: {
+                          'customerName': account.partnerName,
+                          'currentDebt': account.currentDebt,
+                          'creditLimit': account.creditLimit,
+                        },
+                      )
+                      .then((_) => provider.fetchPage());
                 },
               ),
               ListTile(

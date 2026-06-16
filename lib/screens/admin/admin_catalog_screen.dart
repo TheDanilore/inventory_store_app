@@ -1,12 +1,11 @@
 import 'dart:async';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/screens/admin/pos_checkout_screen.dart';
 import 'package:inventory_store_app/services/admin/catalog_pdf_generator.dart';
 import 'package:inventory_store_app/services/admin/catalog_service.dart';
-import 'package:inventory_store_app/screens/admin/product_form_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -463,11 +462,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               headerSliver: headerSliver,
               chipsSliver: chipsSliver,
               onEdit: (product) async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProductFormScreen(productToEdit: product),
-                  ),
+                final result = await context.push(
+                  '/admin/product-form',
+                  extra: {'productToEdit': product},
                 );
                 if (result == true) {
                   CatalogService.clearCache();
@@ -490,12 +487,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 itemCount: pos.itemCount,
                 total: pos.totalAmount,
                 onTap: () async {
-                  final success = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PosCheckoutScreen(),
-                    ),
-                  );
+                  final success = await context.push('/admin/pos-checkout');
                   if (success == true) setState(() {});
                 },
               );
@@ -504,10 +496,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           const SizedBox(height: 12),
           CatalogAddProductFab(
             onTap: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProductFormScreen()),
-              );
+              final result = await context.push('/admin/product-form');
               if (result == true) {
                 CatalogService.clearCache();
                 setState(() => _currentPage = 0);

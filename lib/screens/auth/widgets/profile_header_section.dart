@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
-import 'package:inventory_store_app/screens/customer/points_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileHeaderSection extends StatelessWidget {
   final String displayName;
@@ -203,12 +203,7 @@ class ProfileHeaderSection extends StatelessWidget {
                 const SizedBox(height: 18),
                 InkWell(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const PointsScreen(),
-                      ),
-                    );
+                    context.push('/customer/points');
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(

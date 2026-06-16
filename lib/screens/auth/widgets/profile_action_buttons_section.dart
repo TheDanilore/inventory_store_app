@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
-import 'package:inventory_store_app/screens/auth/login_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileActionButtonsSection extends StatelessWidget {
   final bool isAdmin;
@@ -87,13 +87,7 @@ class ProfileActionButtonsSection extends StatelessWidget {
                               }
                             } else {
                               if (ctx.mounted) {
-                                Navigator.pushAndRemoveUntil(
-                                  ctx,
-                                  MaterialPageRoute(
-                                    builder: (_) => const LoginScreen(),
-                                  ),
-                                  (route) => false,
-                                );
+                                ctx.go('/login');
                               }
                             }
                           },

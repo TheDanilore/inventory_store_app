@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
-import 'package:inventory_store_app/screens/auth/profile_screen.dart';
-import 'package:inventory_store_app/screens/auth/login_screen.dart';
-import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
-import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
-import 'package:inventory_store_app/screens/customer/points_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
@@ -58,10 +54,7 @@ class CustomerLayout extends StatelessWidget {
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
             onTap:
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PointsScreen()),
-                ),
+                () => context.push('/customer/points'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -120,26 +113,12 @@ class CustomerLayout extends StatelessWidget {
           } else {
             final user = Supabase.instance.client.auth.currentUser;
             if (user == null) {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, _, _) => const LoginScreen(),
-                  transitionDuration: Duration.zero,
-                ),
-              );
+              context.go('/login');
             } else {
               if (onTabSelected != null) {
                 onTabSelected!(2);
               } else {
-                Navigator.pushReplacement(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder:
-                        (_, _, _) =>
-                            const ProfileScreen(openedFromAdmin: false),
-                    transitionDuration: Duration.zero,
-                  ),
-                );
+                context.go('/customer/profile');
               }
             }
           }
@@ -163,24 +142,9 @@ class CustomerLayout extends StatelessWidget {
         onPressed: () {
           final user = Supabase.instance.client.auth.currentUser;
           if (user == null) {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, _, _) => const LoginScreen(),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
+            context.push('/login');
           } else {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder:
-                    (_, _, _) => const ProfileScreen(openedFromAdmin: false),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
+            context.push('/customer/profile');
           }
         },
       );
@@ -229,14 +193,7 @@ class CustomerLayout extends StatelessWidget {
               if (onTabSelected != null) {
                 onTabSelected!(1);
               } else {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (_, _, _) => const CustomerCartScreen(),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
+                context.push('/customer/cart');
               }
             },
             child: Container(
@@ -335,13 +292,7 @@ class CustomerLayout extends StatelessWidget {
                   if (onTabSelected != null) {
                     onTabSelected!(0);
                   } else {
-                    Navigator.pushReplacement(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, _, _) => const CustomerCatalogScreen(),
-                        transitionDuration: Duration.zero,
-                      ),
-                    );
+                    context.go('/customer');
                   }
                 },
               ),
@@ -355,26 +306,12 @@ class CustomerLayout extends StatelessWidget {
                 onTap: () {
                   final user = Supabase.instance.client.auth.currentUser;
                   if (user == null) {
-                    Navigator.pushReplacement(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, _, _) => const LoginScreen(),
-                        transitionDuration: Duration.zero,
-                      ),
-                    );
+                    context.go('/login');
                   } else {
                     if (onTabSelected != null) {
                       onTabSelected!(2);
                     } else {
-                      Navigator.pushReplacement(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (_, _, _) =>
-                                  const ProfileScreen(openedFromAdmin: false),
-                          transitionDuration: Duration.zero,
-                        ),
-                      );
+                      context.go('/customer/profile');
                     }
                   }
                 },
@@ -443,14 +380,7 @@ class CustomerLayout extends StatelessWidget {
           if (onTabSelected != null) {
             onTabSelected!(1);
           } else {
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, _, _) => const CustomerCartScreen(),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
+            context.go('/customer/cart');
           }
         },
         child: Container(

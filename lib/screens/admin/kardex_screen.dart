@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/kardex_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entry_form_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/kardex/kardex_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -51,10 +50,7 @@ class _KardexViewState extends State<_KardexView> {
 
   Future<void> _openExitScreen(BuildContext context) async {
     final provider = context.read<KardexProvider>();
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const InventoryExitFormScreen()),
-    );
+    final result = await context.push('/admin/inventory-exit-form');
     if (result == true) {
       provider.refresh();
     }
@@ -62,10 +58,7 @@ class _KardexViewState extends State<_KardexView> {
 
   Future<void> _openEntryScreen(BuildContext context) async {
     final provider = context.read<KardexProvider>();
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const InventoryEntryFormScreen()),
-    );
+    final result = await context.push('/admin/inventory-entry-form');
     if (result == true) {
       provider.refresh();
     }

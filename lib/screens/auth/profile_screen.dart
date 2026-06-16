@@ -3,12 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
-import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
-import 'package:inventory_store_app/screens/customer/customer_main_screen.dart';
-import 'package:inventory_store_app/screens/customer/points_screen.dart';
-import 'package:inventory_store_app/screens/customer/customer_orders_screen.dart';
-import 'package:inventory_store_app/screens/customer/wishlist_screen.dart';
-import 'package:inventory_store_app/screens/customer/address_management_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
@@ -18,7 +14,6 @@ import 'package:inventory_store_app/screens/auth/widgets/profile_read_only_info_
 import 'package:inventory_store_app/screens/auth/widgets/profile_edit_form_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_action_buttons_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_shimmer.dart';
-import 'package:inventory_store_app/screens/auth/login_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -40,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _docNumCtrl = TextEditingController();
   final _newPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
-  
+
   bool _isEditing = false;
   String _docType = 'DNI';
   bool _hasInitialized = false;
@@ -181,152 +176,159 @@ class _ProfileScreenState extends State<ProfileScreen> {
       showProfileIcon: false,
       showBottomNav: !widget.openedFromAdmin,
       showCartIcon: false,
-      body: provider.isLoading || !_hasInitialized
-          ? const ProfileShimmer()
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ProfileHeaderSection(
-                    displayName: provider.fullName.isEmpty ? 'Usuario' : provider.fullName,
-                    userRole: provider.userRole,
-                    email: email,
-                    walletBalance: walletBalance,
-                    avatarUrl: provider.avatarUrl,
-                    imageBytes: provider.imageBytes,
-                    isEditing: _isEditing,
-                    onPickImage: _pickImage,
-                    onEditToggle: () => setState(() {
-                      if (_isEditing) {
-                        // Cancelar edición revierte los valores
-                        _nameCtrl.text = provider.fullName;
-                        _phoneCtrl.text = provider.phone;
-                        _docNumCtrl.text = provider.documentNumber;
-                        _docType = provider.documentType;
-                        provider.setImageBytes(null);
-                      }
-                      _isEditing = !_isEditing;
-                    }),
-                  ),
-                  const SizedBox(height: 8),
-
-                  if (!widget.openedFromAdmin) ...[
-                    _sectionLabel('Accesos rápidos'),
-                    ProfileQuickActionGrid(
-                      items: [
-                        ProfileQuickActionItem(
-                          title: 'Monedas',
-                          value: 'Canjear ',
-                          icon: Icons.stars_rounded,
-                          color: AppColors.gold,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PointsScreen())),
-                        ),
-                        ProfileQuickActionItem(
-                          title: 'Pedidos',
-                          value: 'Ver historial',
-                          icon: Icons.receipt_long_rounded,
-                          color: AppColors.info,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerOrdersScreen())),
-                        ),
-                        ProfileQuickActionItem(
-                          title: 'Direcciones',
-                          value: 'Ver direcciones',
-                          icon: Icons.location_on_rounded,
-                          color: AppColors.success,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressManagementScreen())),
-                        ),
-                        ProfileQuickActionItem(
-                          title: 'Deseos',
-                          value: 'Ver wishlist',
-                          icon: Icons.favorite_rounded,
-                          color: AppColors.accent,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WishlistScreen())),
-                        ),
-                      ],
+      body:
+          provider.isLoading || !_hasInitialized
+              ? const ProfileShimmer()
+              : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ProfileHeaderSection(
+                      displayName:
+                          provider.fullName.isEmpty
+                              ? 'Usuario'
+                              : provider.fullName,
+                      userRole: provider.userRole,
+                      email: email,
+                      walletBalance: walletBalance,
+                      avatarUrl: provider.avatarUrl,
+                      imageBytes: provider.imageBytes,
+                      isEditing: _isEditing,
+                      onPickImage: _pickImage,
+                      onEditToggle:
+                          () => setState(() {
+                            if (_isEditing) {
+                              // Cancelar edición revierte los valores
+                              _nameCtrl.text = provider.fullName;
+                              _phoneCtrl.text = provider.phone;
+                              _docNumCtrl.text = provider.documentNumber;
+                              _docType = provider.documentType;
+                              provider.setImageBytes(null);
+                            }
+                            _isEditing = !_isEditing;
+                          }),
                     ),
-                  ],
+                    const SizedBox(height: 8),
 
-                  const SizedBox(height: 4),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_isEditing) ...[
-                          _sectionLabelInline('Editar datos personales'),
-                          Stack(
-                            children: [
-                              ProfileEditFormSection(
-                                nameCtrl: _nameCtrl,
-                                phoneCtrl: _phoneCtrl,
-                                docNumCtrl: _docNumCtrl,
-                                docType: _docType,
-                                onDocTypeChanged: (v) => setState(() => _docType = v),
-                                onSave: provider.isSaving ? () {} : _saveProfile,
-                              ),
-                              if (provider.isSaving)
-                                const Positioned.fill(
-                                  child: ColoredBox(
-                                    color: Colors.white54,
-                                    child: Center(child: CircularProgressIndicator()),
-                                  ),
-                                ),
-                            ],
+                    if (!widget.openedFromAdmin) ...[
+                      _sectionLabel('Accesos rápidos'),
+                      ProfileQuickActionGrid(
+                        items: [
+                          ProfileQuickActionItem(
+                            title: 'Monedas',
+                            value: 'Canjear ',
+                            icon: Icons.stars_rounded,
+                            color: AppColors.gold,
+                            onTap:
+                                () => context.push('/customer/points'),
                           ),
-                          const SizedBox(height: 14),
-                          _sectionLabelInline('Seguridad'),
-                          PasswordChangeCard(
-                            newPasswordCtrl: _newPasswordCtrl,
-                            confirmPasswordCtrl: _confirmPasswordCtrl,
-                            isUpdating: provider.isUpdatingPassword,
-                            onSave: _changePassword,
+                          ProfileQuickActionItem(
+                            title: 'Pedidos',
+                            value: 'Ver historial',
+                            icon: Icons.receipt_long_rounded,
+                            color: AppColors.info,
+                            onTap:
+                                () => context.push('/customer/orders'),
                           ),
-                        ] else ...[
-                          _sectionLabelInline('Información de cuenta'),
-                          ProfileReadOnlyInfoSection(
-                            email: email.isEmpty ? 'Sin correo' : email,
-                            userRole: provider.userRole,
-                            fullName: provider.fullName,
-                            phone: provider.phone,
-                            docType: provider.documentType,
-                            docNum: provider.documentNumber,
+                          ProfileQuickActionItem(
+                            title: 'Direcciones',
+                            value: 'Ver direcciones',
+                            icon: Icons.location_on_rounded,
+                            color: AppColors.success,
+                            onTap:
+                                () => context.push('/customer/address'),
+                          ),
+                          ProfileQuickActionItem(
+                            title: 'Deseos',
+                            value: 'Ver wishlist',
+                            icon: Icons.favorite_rounded,
+                            color: AppColors.accent,
+                            onTap:
+                                () => context.push('/customer/wishlist'),
                           ),
                         ],
+                      ),
+                    ],
 
-                        const SizedBox(height: 20),
+                    const SizedBox(height: 4),
 
-                        ProfileActionButtonsSection(
-                          isAdmin: provider.userRole == 'Administrador',
-                          openedFromAdmin: widget.openedFromAdmin,
-                          onToggleView: () => Navigator.pushReplacement(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder: (context, _, _) =>
-                                  widget.openedFromAdmin ? const CustomerMainScreen() : const AdminCatalogScreen(),
-                              transitionDuration: Duration.zero,
-                              reverseTransitionDuration: Duration.zero,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_isEditing) ...[
+                            _sectionLabelInline('Editar datos personales'),
+                            Stack(
+                              children: [
+                                ProfileEditFormSection(
+                                  nameCtrl: _nameCtrl,
+                                  phoneCtrl: _phoneCtrl,
+                                  docNumCtrl: _docNumCtrl,
+                                  docType: _docType,
+                                  onDocTypeChanged:
+                                      (v) => setState(() => _docType = v),
+                                  onSave:
+                                      provider.isSaving ? () {} : _saveProfile,
+                                ),
+                                if (provider.isSaving)
+                                  const Positioned.fill(
+                                    child: ColoredBox(
+                                      color: Colors.white54,
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                          onSignOut: () {
-                            provider.signOut().then((_) {
-                              if (context.mounted) {
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                  (route) => false,
-                                );
+                            const SizedBox(height: 14),
+                            _sectionLabelInline('Seguridad'),
+                            PasswordChangeCard(
+                              newPasswordCtrl: _newPasswordCtrl,
+                              confirmPasswordCtrl: _confirmPasswordCtrl,
+                              isUpdating: provider.isUpdatingPassword,
+                              onSave: _changePassword,
+                            ),
+                          ] else ...[
+                            _sectionLabelInline('Información de cuenta'),
+                            ProfileReadOnlyInfoSection(
+                              email: email.isEmpty ? 'Sin correo' : email,
+                              userRole: provider.userRole,
+                              fullName: provider.fullName,
+                              phone: provider.phone,
+                              docType: provider.documentType,
+                              docNum: provider.documentNumber,
+                            ),
+                          ],
+
+                          const SizedBox(height: 20),
+
+                          ProfileActionButtonsSection(
+                            isAdmin: provider.userRole == 'Administrador',
+                            openedFromAdmin: widget.openedFromAdmin,
+                            onToggleView: () {
+                              if (widget.openedFromAdmin) {
+                                context.go('/customer');
+                              } else {
+                                context.go('/admin');
                               }
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+                            },
+                            onSignOut: () {
+                              provider.signOut().then((_) {
+                                if (context.mounted) {
+                                  context.read<AuthProvider>().clearSession();
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
     );
   }
 
