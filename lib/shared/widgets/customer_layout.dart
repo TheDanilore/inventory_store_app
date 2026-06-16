@@ -222,24 +222,7 @@ class CustomerLayout extends StatelessWidget {
                       return Positioned(
                         right: 4,
                         top: 4,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: const BoxDecoration(
-                            color: AppColors.accent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${cart.itemCount > 9 ? "9+" : cart.itemCount}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ),
+                        child: _AnimatedCartBadge(itemCount: cart.itemCount),
                       );
                     },
                   ),
@@ -549,6 +532,72 @@ class CustomerLayout extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       bottomNavigationBar:
           showBottomNav ? _buildBottomNav(context) : bottomNavigationBar,
+    );
+  }
+}
+
+class _AnimatedCartBadge extends StatefulWidget {
+  final int itemCount;
+  const _AnimatedCartBadge({required this.itemCount});
+
+  @override
+  State<_AnimatedCartBadge> createState() => _AnimatedCartBadgeState();
+}
+
+class _AnimatedCartBadgeState extends State<_AnimatedCartBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.4), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedCartBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.itemCount > oldWidget.itemCount) {
+      _ctrl.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: Container(
+        width: 16,
+        height: 16,
+        decoration: const BoxDecoration(
+          color: AppColors.accent,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            '${widget.itemCount > 9 ? "9+" : widget.itemCount}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
