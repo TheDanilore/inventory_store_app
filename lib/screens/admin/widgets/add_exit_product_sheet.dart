@@ -1,13 +1,11 @@
-// ─── Bottom Sheet Modal para Añadir Producto (Salida) ──────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
+import 'package:inventory_store_app/providers/admin/inventory_exit_form_provider.dart';
+import 'package:inventory_store_app/services/admin/inventory_exits_service.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddExitProductSheet extends StatefulWidget {
   final List<ProductModel> allProducts;
@@ -26,7 +24,7 @@ class AddExitProductSheet extends StatefulWidget {
 }
 
 class _AddExitProductSheetState extends State<AddExitProductSheet> {
-  final _supabase = Supabase.instance.client;
+  final _service = InventoryExitsService();
 
   ProductModel? _selectedProduct;
   ProductVariantModel? _selectedVariant;
@@ -70,25 +68,27 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   Future<void> _fetchBatchesForVariant(String variantId) async {
     setState(() => _loadingBatches = true);
     try {
-      final resp = await _supabase
-          .from('warehouse_stock_batches')
-          .select()
-          .eq('variant_id', variantId)
-          .eq('warehouse_id', widget.warehouseId)
-          .gt('available_quantity', 0)
-          .order('expiry_date', ascending: true, nullsFirst: false)
-          .order('created_at', ascending: true);
-
+      final batches = await _service.getBatchesForVariant(
+        variantId,
+        widget.warehouseId,
+      );
       if (mounted) {
         setState(() {
-          _availableBatches = List<Map<String, dynamic>>.from(resp);
+          _availableBatches = List<Map<String, dynamic>>.from(batches);
           if (_availableBatches.isNotEmpty) {
             _selectedBatch = _availableBatches.first;
           }
-          _loadingBatches = false;
         });
       }
     } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error cargando lotes: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
       if (mounted) setState(() => _loadingBatches = false);
     }
   }
@@ -137,7 +137,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.danger,
-                ), 
+                ),
                 onPressed: () {
                   final newQty = double.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
@@ -194,7 +194,6 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             ? const <ProductVariantModel>[]
             : (widget.variantsByProduct[_selectedProduct!.id] ?? []);
 
-    // Obtener imagen actual
     String? currentImageUrl;
     if (_selectedVariant?.images.isNotEmpty == true) {
       currentImageUrl = _selectedVariant!.images.first.imageUrl;
@@ -210,7 +209,6 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
       currentImageUrl = _selectedProduct!.primaryImageUrl;
     }
 
-    // Calcular costo a mostrar
     double displayCost = 0.0;
     if (_selectedProduct != null) {
       final double varCost = _selectedVariant?.unitCost ?? 0.0;
@@ -371,18 +369,20 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                   'Selecciona la Variante (Obligatorio)',
                 ),
                 items:
-                    availableVariants.map((v) {
-                      return DropdownMenuItem(
-                        value: v,
-                        child: Text(
-                          v.label,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                    availableVariants
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(
+                              v.label,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                        )
+                        .toList(),
                 onChanged: _onVariantSelected,
               ),
               const SizedBox(height: 16),
@@ -480,12 +480,11 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                           ),
                         );
                       }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedBatch = val;
-                      _quantity = 1;
-                    });
-                  },
+                  onChanged:
+                      (val) => setState(() {
+                        _selectedBatch = val;
+                        _quantity = 1;
+                      }),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -655,7 +654,10 @@ class _QtyButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: enabled ? AppColors.danger : AppColors.danger.withValues(alpha: 0.5),
+          color:
+              enabled
+                  ? AppColors.danger
+                  : AppColors.danger.withValues(alpha: 0.5),
           size: 22,
         ),
       ),

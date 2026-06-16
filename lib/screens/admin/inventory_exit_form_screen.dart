@@ -1,34 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/models/product_variant_model.dart';
-import 'package:inventory_store_app/models/warehouse_model.dart';
+import 'package:inventory_store_app/providers/admin/inventory_exit_form_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/add_exit_product_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 
-// ─── Modelo de UI local ───────────────────────────────────────────────────────
-class ExitItemUI {
-  final ProductModel product;
-  final ProductVariantModel variant;
-  final Map<String, dynamic>? selectedBatch;
-  double quantity;
-  final double unitCost; // COSTO REAL EXTRAÍDO PARA VALORIZAR PÉRDIDA
-
-  ExitItemUI({
-    required this.product,
-    required this.variant,
-    this.selectedBatch,
-    required this.quantity,
-    required this.unitCost,
-  });
-
-  double get totalCost => quantity * unitCost;
-}
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 class InventoryExitFormScreen extends StatefulWidget {
   const InventoryExitFormScreen({super.key});
 
@@ -38,34 +16,14 @@ class InventoryExitFormScreen extends StatefulWidget {
 }
 
 class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
-  final _supabase = Supabase.instance.client;
-
-  String? _selectedWarehouseId;
-  String _selectedReason = 'AJUSTE';
-  List<WarehouseModel> _warehouses = [];
-
-  List<ProductModel> _allProducts = [];
-  final Map<String, List<ProductVariantModel>> _variantsByProduct = {};
-
-  final List<ExitItemUI> _items = [];
   final _notesCtrl = TextEditingController();
-
-  bool _loadingData = true;
-  bool _saving = false;
-
-  static const List<String> _reasons = [
-    'AJUSTE',
-    'MERMA',
-    'DAÑO',
-    'VENCIMIENTO',
-    'ROBO/PÉRDIDA',
-    'CONSUMO INTERNO',
-  ];
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<InventoryExitFormProvider>().loadInitialData();
+    });
   }
 
   @override
@@ -74,72 +32,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchData() async {
-    try {
-      final results = await Future.wait([
-        _supabase.from('warehouses').select('id, name').eq('is_active', true),
-        _supabase
-            .from('products')
-            .select('*, product_images(*)')
-            .eq('is_active', true)
-            .eq('stock_control', true)
-            .neq('product_type', 'service')
-            .order('name'),
-        // 1. CORRECCIÓN AQUÍ: Actualizamos la consulta para usar atributos relacionales
-        _supabase
-            .from('product_variants')
-            .select('''
-              id, product_id, sku, sale_price, unit_cost, is_active,
-              product_images(*),
-              variant_attribute_values(
-                attribute_values(id, value, attributes(id, name))
-              )
-            ''')
-            .eq('is_active', true)
-            .order('created_at', ascending: true),
-      ]);
-
-      if (!mounted) return;
-
-      final variants =
-          (results[2] as List)
-              .map(
-                (p) =>
-                    ProductVariantModel.fromJson(Map<String, dynamic>.from(p)),
-              )
-              .toList();
-
-      setState(() {
-        _warehouses =
-            (results[0] as List)
-                .map(
-                  (w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w)),
-                )
-                .toList();
-        if (_warehouses.isNotEmpty) _selectedWarehouseId = _warehouses.first.id;
-
-        _allProducts =
-            (results[1] as List).map((p) => ProductModel.fromJson(p)).toList();
-
-        for (final v in variants) {
-          _variantsByProduct.putIfAbsent(v.productId, () => []).add(v);
-        }
-        _loadingData = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error cargando datos: $e',
-          type: SnackbarType.error,
-        );
-        setState(() => _loadingData = false);
-      }
-    }
-  }
-
   Future<void> _showAddProductSheet() async {
-    if (_selectedWarehouseId == null) {
+    final provider = context.read<InventoryExitFormProvider>();
+    if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
         message: 'Primero selecciona el almacén de origen.',
@@ -154,38 +49,27 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (context) => AddExitProductSheet(
-            allProducts: _allProducts,
-            variantsByProduct: _variantsByProduct,
-            warehouseId: _selectedWarehouseId!,
+            allProducts: provider.allProducts,
+            variantsByProduct: provider.variantsByProduct,
+            warehouseId: provider.selectedWarehouseId!,
           ),
     );
 
     if (newItem != null && mounted) {
-      final existingIdx = _items.indexWhere(
-        (item) =>
-            item.product.id == newItem.product.id &&
-            item.variant.id == newItem.variant.id &&
-            item.selectedBatch?['id'] == newItem.selectedBatch?['id'],
-      );
-      setState(() {
-        if (existingIdx >= 0) {
-          _items[existingIdx].quantity += newItem.quantity;
-        } else {
-          _items.add(newItem);
-        }
-      });
+      provider.addItem(newItem);
     }
   }
 
-  // ── Modal para modificar cantidad manualmente ──
   Future<void> _mostrarDialogoCantidadItem(
     int index,
     double cantidadActual,
     double maxAvailable,
   ) async {
+    final provider = context.read<InventoryExitFormProvider>();
     final qtyCtrl = TextEditingController(
       text: cantidadActual.toStringAsFixed(0),
     );
+
     await showDialog<void>(
       context: context,
       builder:
@@ -225,11 +109,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 onPressed: () {
                   final newQty = double.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
-                    setState(() {
-                      // Asegurar que no se sobrepase el stock disponible
-                      _items[index].quantity =
-                          newQty > maxAvailable ? maxAvailable : newQty;
-                    });
+                    final qty = newQty > maxAvailable ? maxAvailable : newQty;
+                    provider.updateQuantity(index, qty);
                   }
                   Navigator.pop(dialogContext);
                 },
@@ -245,7 +126,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 
   Future<void> _saveExit() async {
-    if (_selectedWarehouseId == null) {
+    final provider = context.read<InventoryExitFormProvider>();
+
+    if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
         message: 'Seleccione un almacén',
@@ -253,7 +136,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       );
       return;
     }
-    if (_items.isEmpty) {
+    if (provider.items.isEmpty) {
       AppSnackbar.show(
         context,
         message: 'Agregue al menos un producto a retirar',
@@ -262,451 +145,470 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       return;
     }
 
-    setState(() => _saving = true);
+    // Modal de Confirmación Estricta (CONFIRMAR)
+    final confirmCtrl = TextEditingController();
+    bool isConfirmed = false;
 
-    try {
-      final notes = _notesCtrl.text.trim();
-      String? createdByProfileId;
-      final currentUser = _supabase.auth.currentUser;
-      if (currentUser != null) {
-        final profile =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', currentUser.id)
-                .maybeSingle();
-        createdByProfileId = profile?['id'] as String?;
-      }
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_rounded, color: AppColors.danger, size: 28),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Confirmar Salida Múltiple',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estás a punto de confirmar una pérdida valorizada de S/ ${provider.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Para autorizar, escribe la palabra CONFIRMAR (en mayúsculas):',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: confirmCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'CONFIRMAR',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.background,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ),
+                onPressed: () {
+                  if (confirmCtrl.text.trim() == 'CONFIRMAR') {
+                    isConfirmed = true;
+                    Navigator.pop(ctx);
+                  } else {
+                    AppSnackbar.show(
+                      ctx,
+                      message: 'Debes escribir CONFIRMAR correctamente',
+                      type: SnackbarType.error,
+                    );
+                  }
+                },
+                child: const Text(
+                  'Autorizar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+    );
 
-      // 1. ── Cabecera de la Salida ──
-      final exitHeader =
-          await _supabase
-              .from('inventory_exits')
-              .insert({
-                'warehouse_id': _selectedWarehouseId,
-                'reason': _selectedReason,
-                'notes': notes.isEmpty ? null : notes,
-                'created_by': createdByProfileId,
-              })
-              .select('id')
-              .single();
+    confirmCtrl.dispose();
 
-      final exitId = exitHeader['id'] as String;
+    if (!isConfirmed) return;
 
-      for (final item in _items) {
-        final batchData = item.selectedBatch;
-        final String batchNumber = batchData?['batch_number'] ?? 'DEFAULT';
-        final String batchId = batchData!['id'] as String;
+    final success = await provider.saveExit(_notesCtrl.text.trim());
+    if (!mounted) return;
 
-        // RE-VALIDACIÓN DE STOCK EN TIEMPO REAL
-        final currentBatch =
-            await _supabase
-                .from('warehouse_stock_batches')
-                .select('available_quantity')
-                .eq('id', batchId)
-                .single();
-        final double previousStock =
-            (currentBatch['available_quantity'] as num).toDouble();
-        final double newStock = previousStock - item.quantity;
-
-        if (newStock < 0) {
-          throw Exception(
-            'Stock insuficiente para ${item.product.name} (Lote: $batchNumber). Disponible actual: $previousStock',
-          );
-        }
-
-        // 2. ── Detalle de salida (inventory_exit_items) ──
-        await _supabase.from('inventory_exit_items').insert({
-          'exit_id': exitId,
-          'product_id': item.product.id,
-          'variant_id': item.variant.id,
-          'quantity': item.quantity,
-          'batch_number': batchNumber,
-          'unit_cost': item.unitCost, // <-- COSTO UNITARIO INYECTADO A LA BD
-        });
-
-        // 3. ── Actualización de Stock (Kardex Físico) ──
-        await _supabase
-            .from('warehouse_stock_batches')
-            .update({
-              'available_quantity': newStock,
-              'updated_at': DateTime.now().toIso8601String(),
-              'updated_by': createdByProfileId,
-            })
-            .eq('id', batchId);
-
-        // 4. ── Movimiento Histórico (Kardex Valorizado) ──
-        await _supabase.from('inventory_movements').insert({
-          'variant_id': item.variant.id,
-          'warehouse_id': _selectedWarehouseId,
-          'stock_batch_id': batchId,
-          'inventory_exit_id': exitId,
-          'quantity': -item.quantity, // Negativo porque SALE inventario
-          'previous_stock': previousStock,
-          'new_stock': newStock,
-          'unit_cost': item.unitCost,
-          'total_cost': item.totalCost, // PÉRDIDA VALORIZADA
-          'reason': 'EXIT',
-          'notes': 'Salida por: $_selectedReason',
-          'created_by': createdByProfileId,
-        });
-      }
-
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Salida de inventario registrada con éxito.',
-          type: SnackbarType.success,
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error registrando salida: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
+    if (success) {
+      AppSnackbar.show(
+        context,
+        message: 'Salida de inventario registrada con éxito.',
+        type: SnackbarType.success,
+      );
+      Navigator.pop(context, true);
+    } else if (provider.errorMessage != null) {
+      AppSnackbar.show(
+        context,
+        message: provider.errorMessage!,
+        type: SnackbarType.error,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingData) {
-      return const AdminLayout(
-        title: 'Nueva Salida',
-        showBackButton: true,
-        body: Center(child: CircularProgressIndicator(color: AppColors.danger)),
-      );
-    }
+    return Consumer<InventoryExitFormProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const AdminLayout(
+            title: 'Nueva Salida',
+            showBackButton: true,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.danger),
+            ),
+          );
+        }
 
-    final double totalLossCost = _items.fold(
-      0,
-      (sum, item) => sum + item.totalCost,
-    );
-    final int totalUnits = _items.fold(
-      0,
-      (sum, item) => sum + item.quantity.toInt(),
-    );
-
-    return AdminLayout(
-      title: 'Registrar Salida',
-      showBackButton: true,
-      body:
-          _saving
-              ? const Center(
-                child: CircularProgressIndicator(color: AppColors.danger),
-              )
-              : Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Datos de la salida ──
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
+        return AdminLayout(
+          title: 'Registrar Salida',
+          showBackButton: true,
+          body:
+              provider.isSaving
+                  ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.danger),
+                  )
+                  : Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ── Datos de la salida ──
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      Icons.output_rounded,
-                                      size: 16,
-                                      color: AppColors.danger,
+                                    const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.output_rounded,
+                                          size: 16,
+                                          color: AppColors.danger,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Información General',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Información General',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
+                                    const SizedBox(height: 16),
+
+                                    DropdownButtonFormField<String>(
+                                      initialValue: provider.selectedWarehouseId,
+                                      decoration: _dropdownDeco(
+                                        'Almacén de Origen',
+                                        Icons.warehouse_rounded,
+                                      ),
+                                      items:
+                                          provider.warehouses
+                                              .map(
+                                                (w) => DropdownMenuItem(
+                                                  value: w.id,
+                                                  child: Text(
+                                                    w.name,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                      onChanged: provider.selectWarehouse,
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    DropdownButtonFormField<String>(
+                                      initialValue: provider.selectedReason,
+                                      decoration: _dropdownDeco(
+                                        'Motivo de Salida',
+                                        Icons.assignment_late_rounded,
+                                      ),
+                                      items:
+                                          [
+                                                'AJUSTE',
+                                                'MERMA',
+                                                'DAÑO',
+                                                'VENCIMIENTO',
+                                                'ROBO/PÉRDIDA',
+                                                'CONSUMO INTERNO',
+                                              ]
+                                              .map(
+                                                (r) => DropdownMenuItem(
+                                                  value: r,
+                                                  child: Text(
+                                                    r,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                      onChanged: (v) {
+                                        if (v != null) provider.selectReason(v);
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    TextField(
+                                      controller: _notesCtrl,
+                                      decoration: _dropdownDeco(
+                                        'Notas / Justificación (Opcional)',
+                                        Icons.notes_rounded,
+                                      ).copyWith(
+                                        hintText:
+                                            'Ej: Botellas rotas durante traslado',
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
+                              ),
+                              const SizedBox(height: 16),
 
-                                DropdownButtonFormField<String>(
-                                  initialValue: _selectedWarehouseId,
-                                  decoration: _dropdownDeco(
-                                    'Almacén de Origen',
-                                    Icons.warehouse_rounded,
+                              // ── Lista de ítems ──
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.danger.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.inventory_2_rounded,
+                                          size: 18,
+                                          color: AppColors.danger,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Items (${provider.items.length})',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  items:
-                                      _warehouses
-                                          .map(
-                                            (w) => DropdownMenuItem(
-                                              value: w.id,
-                                              child: Text(
-                                                w.name,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (v) {
-                                    if (v != null &&
-                                        v != _selectedWarehouseId) {
-                                      setState(() {
-                                        _selectedWarehouseId = v;
-                                        _items
-                                            .clear(); // Limpiar la lista si cambian de almacén porque los lotes cambian
-                                      });
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
+                                  TextButton.icon(
+                                    onPressed: _showAddProductSheet,
+                                    icon: const Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                      'Retirar Producto',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.danger,
+                                      backgroundColor: AppColors.danger
+                                          .withValues(alpha: 0.1),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
 
-                                DropdownButtonFormField<String>(
-                                  initialValue: _selectedReason,
-                                  decoration: _dropdownDeco(
-                                    'Motivo de Salida',
-                                    Icons.assignment_late_rounded,
+                              if (provider.items.isEmpty)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 40,
                                   ),
-                                  items:
-                                      _reasons
-                                          .map(
-                                            (r) => DropdownMenuItem(
-                                              value: r,
-                                              child: Text(
-                                                r,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (v) {
-                                    if (v != null) {
-                                      setState(() => _selectedReason = v);
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-
-                                TextField(
-                                  controller: _notesCtrl,
-                                  decoration: _dropdownDeco(
-                                    'Notas / Justificación (Opcional)',
-                                    Icons.notes_rounded,
-                                  ).copyWith(
-                                    hintText:
-                                        'Ej: Botellas rotas durante traslado',
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: AppColors.border),
                                   ),
+                                  child: const Column(
+                                    children: [
+                                      Icon(
+                                        Icons.outbox_rounded,
+                                        size: 32,
+                                        color: AppColors.textHint,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Sin productos a retirar',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: provider.items.length,
+                                  separatorBuilder:
+                                      (_, _) => const SizedBox(height: 10),
+                                  itemBuilder:
+                                      (context, index) => _buildItemCard(
+                                        provider,
+                                        provider.items[index],
+                                        index,
+                                      ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
+                        ),
+                      ),
 
-                          // ── Lista de ítems ──
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // ── Panel Inferior Fijo ──
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.danger.withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              offset: const Offset(0, -6),
+                            ),
+                          ],
+                        ),
+                        child: SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.danger.withValues(
-                                        alpha: 0.1,
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Pérdida Valorizada',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.inventory_2_rounded,
-                                      size: 18,
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${provider.items.length} items · ${provider.totalUnits} unidades retiradas',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    'S/ ${provider.totalLossCost.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w900,
                                       color: AppColors.danger,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'Items (${_items.length})',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 16,
-                                      color: AppColors.textPrimary,
+                                      letterSpacing: -0.5,
                                     ),
                                   ),
                                 ],
                               ),
-                              TextButton.icon(
-                                onPressed: _showAddProductSheet,
-                                icon: const Icon(
-                                  Icons.add_circle_outline_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text(
-                                  'Retirar Producto',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.danger,
-                                  backgroundColor: AppColors.danger.withValues(
-                                    alpha: 0.1,
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      provider.items.isNotEmpty
+                                          ? _saveExit
+                                          : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.danger,
+                                    disabledBackgroundColor:
+                                        AppColors.background,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline_rounded,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    'Confirmar Salida',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-
-                          if (_items.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 40),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: const Column(
-                                children: [
-                                  Icon(
-                                    Icons.outbox_rounded,
-                                    size: 32,
-                                    color: AppColors.textHint,
-                                  ),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Sin productos a retirar',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 16,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else
-                            ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _items.length,
-                              separatorBuilder:
-                                  (_, _) => const SizedBox(height: 10),
-                              itemBuilder:
-                                  (context, index) =>
-                                      _buildItemCard(_items[index], index),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ── Panel Inferior Fijo ──
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.danger.withValues(alpha: 0.08),
-                          blurRadius: 24,
-                          offset: const Offset(0, -6),
                         ),
-                      ],
-                    ),
-                    child: SafeArea(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Pérdida Valorizada',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${_items.length} items · $totalUnits unidades retiradas',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'S/ ${totalLossCost.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.danger,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton.icon(
-                              onPressed: _items.isNotEmpty ? _saveExit : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.danger,
-                                disabledBackgroundColor: AppColors.background,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.remove_circle_outline_rounded,
-                                size: 20,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Confirmar Salida',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+        );
+      },
     );
   }
 
-  Widget _buildItemCard(ExitItemUI item, int index) {
-    // Buscar imagen priorizando la variante
+  Widget _buildItemCard(
+    InventoryExitFormProvider provider,
+    ExitItemUI item,
+    int index,
+  ) {
     String? imageUrl;
     if (item.variant.images.isNotEmpty) {
       imageUrl = item.variant.images.first.imageUrl;
@@ -720,15 +622,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               .imageUrl;
     }
 
-    // Extraer atributos relacionales seguros
     final attrValues =
         item.variant.attributeValues.map((v) => v.value).toList();
     final attrsText = attrValues.join(' · ');
     final displayVariantText = attrsText.isNotEmpty ? attrsText : 'Única';
-
     final batchNumber = item.selectedBatch?['batch_number'] ?? 'DEFAULT';
-
-    // Obtener cantidad máxima permitida por el lote (para el Stepper)
     final double maxAvailable =
         (item.selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
 
@@ -763,6 +661,22 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       ? CachedNetworkImage(
                         imageUrl: imageUrl,
                         fit: BoxFit.cover,
+                        placeholder:
+                            (context, url) => const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                        errorWidget:
+                            (context, url, error) => const Icon(
+                              Icons.image_not_supported_rounded,
+                              color: AppColors.textHint,
+                            ),
                       )
                       : const Icon(
                         Icons.inventory_2_rounded,
@@ -807,8 +721,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ),
                   ),
                 ],
-
-                // Mostrar lote SOLO si usa lotes y no es DEFAULT
                 if (item.product.usesBatches && batchNumber != 'DEFAULT') ...[
                   const SizedBox(height: 4),
                   Row(
@@ -830,21 +742,19 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ],
                   ),
                 ],
-
-                // Mensaje de error si usa lotes pero no seleccionó uno
                 if (item.product.usesBatches &&
                     (batchNumber == 'DEFAULT' ||
                         batchNumber.trim().isEmpty)) ...[
                   const SizedBox(height: 4),
-                  Row(
+                  const Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.warning_rounded,
                         size: 12,
                         color: AppColors.danger,
                       ),
-                      const SizedBox(width: 4),
-                      const Text(
+                      SizedBox(width: 4),
+                      Text(
                         'Requiere seleccionar lote',
                         style: TextStyle(
                           fontSize: 11,
@@ -887,11 +797,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             value: item.quantity.toInt(),
             onAdd:
                 item.quantity < maxAvailable
-                    ? () => setState(() => _items[index].quantity++)
-                    : null, // Se bloquea si llega al límite
+                    ? () => provider.updateQuantity(index, item.quantity + 1)
+                    : null,
             onRemove:
                 item.quantity > 1
-                    ? () => setState(() => _items[index].quantity--)
+                    ? () => provider.updateQuantity(index, item.quantity - 1)
                     : null,
             onTapValue:
                 () => _mostrarDialogoCantidadItem(
@@ -909,7 +819,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             ),
             padding: const EdgeInsets.all(4),
             constraints: const BoxConstraints(),
-            onPressed: () => setState(() => _items.removeAt(index)),
+            onPressed: () => provider.removeItem(index),
           ),
         ],
       ),
@@ -932,8 +842,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 }
 
-// ─── Componentes Auxiliares ───────────────────────────────────────────────────
-
 class _VerticalStepper extends StatelessWidget {
   final int value;
   final VoidCallback? onAdd;
@@ -955,9 +863,7 @@ class _VerticalStepper extends StatelessWidget {
         _stepperBtn(Icons.add_rounded, onAdd == null, onAdd ?? () {}),
         const SizedBox(height: 4),
         Material(
-          color: AppColors.primary.withValues(
-            alpha: 0.06,
-          ), // Mantengo Primary igual a la foto
+          color: AppColors.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(8),
           child: InkWell(
             onTap: onTapValue,
@@ -982,25 +888,25 @@ class _VerticalStepper extends StatelessWidget {
       ],
     );
   }
-}
 
-Widget _stepperBtn(IconData icon, bool disabled, VoidCallback onTap) {
-  return Material(
-    color: disabled ? const Color(0xFFF1F5F9) : AppColors.primary,
-    borderRadius: BorderRadius.circular(10),
-    child: InkWell(
-      onTap: disabled ? null : onTap,
+  Widget _stepperBtn(IconData icon, bool disabled, VoidCallback onTap) {
+    return Material(
+      color: disabled ? const Color(0xFFF1F5F9) : AppColors.primary,
       borderRadius: BorderRadius.circular(10),
-      child: Container(
-        width: 32,
-        height: 32,
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: 18,
-          color: disabled ? AppColors.textMuted : Colors.white,
+      child: InkWell(
+        onTap: disabled ? null : onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 18,
+            color: disabled ? AppColors.textMuted : Colors.white,
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
