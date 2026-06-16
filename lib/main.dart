@@ -16,6 +16,7 @@ import 'package:inventory_store_app/providers/admin/customer_credits_provider.da
 import 'package:inventory_store_app/providers/admin/supplier_credits_provider.dart';
 import 'package:inventory_store_app/providers/admin/financial_accounts_provider.dart';
 import 'package:inventory_store_app/providers/admin/account_movements_provider.dart';
+import 'package:inventory_store_app/providers/admin/attributes_provider.dart';
 import 'package:inventory_store_app/providers/admin/cash_shifts_provider.dart';
 import 'package:inventory_store_app/providers/admin/categories_provider.dart';
 import 'package:provider/provider.dart';
@@ -97,6 +98,7 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => CashShiftsProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => CategoriesProvider(), lazy: true),
+        ChangeNotifierProvider(create: (_) => AttributesProvider(), lazy: true),
       ],
       child: MaterialApp(
         title: 'Inventario Store',
