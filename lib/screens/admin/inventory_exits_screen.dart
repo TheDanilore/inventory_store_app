@@ -39,68 +39,81 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadItemsAndShowDetail(BuildContext context, InventoryExitModel exitData) async {
+  Future<void> _loadItemsAndShowDetail(
+    BuildContext context,
+    InventoryExitModel exitData,
+  ) async {
     final service = InventoryExitsService();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => InventoryExitDetailSheet(
-        exitData: exitData,
-        loadItems: () async {
-          final itemsList = await service.getExitItems(exitData.id);
-          return itemsList.map((r) {
-            final prod = r['products'] as Map<String, dynamic>?;
-            final variant = r['product_variants'] as Map<String, dynamic>?;
-            final variantId = r['variant_id'] as String?;
+      builder:
+          (_) => InventoryExitDetailSheet(
+            exitData: exitData,
+            loadItems: () async {
+              final itemsList = await service.getExitItems(exitData.id);
+              return itemsList.map((r) {
+                final prod = r['products'] as Map<String, dynamic>?;
+                final variant = r['product_variants'] as Map<String, dynamic>?;
+                final variantId = r['variant_id'] as String?;
 
-            final vavList = variant?['variant_attribute_values'] as List<dynamic>? ?? [];
-            final List<String> attrValues = [];
-            for (var vav in vavList) {
-              final av = vav['attribute_values'] as Map<String, dynamic>?;
-              if (av != null && av['value'] != null) {
-                attrValues.add(av['value'].toString());
-              }
-            }
-            final attrsText = attrValues.join(' · ');
+                final vavList =
+                    variant?['variant_attribute_values'] as List<dynamic>? ??
+                    [];
+                final List<String> attrValues = [];
+                for (var vav in vavList) {
+                  final av = vav['attribute_values'] as Map<String, dynamic>?;
+                  if (av != null && av['value'] != null) {
+                    attrValues.add(av['value'].toString());
+                  }
+                }
+                final attrsText = attrValues.join(' · ');
 
-            final bool usesBatches = prod?['uses_batches'] == true;
+                final bool usesBatches = prod?['uses_batches'] == true;
 
-            String? finalImageUrl;
-            final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
-            if (imagesList.isNotEmpty) {
-              final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-                (img) => img['variant_id'] == variantId,
-                orElse: () => <String, dynamic>{},
-              );
-              if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
-                finalImageUrl = variantImage['image_url'] as String;
-              } else {
-                final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-                  (img) => img['is_main'] == true,
-                  orElse: () => imagesList.first as Map<String, dynamic>,
+                String? finalImageUrl;
+                final imagesList =
+                    prod?['product_images'] as List<dynamic>? ?? [];
+                if (imagesList.isNotEmpty) {
+                  final variantImage = imagesList
+                      .cast<Map<String, dynamic>>()
+                      .firstWhere(
+                        (img) => img['variant_id'] == variantId,
+                        orElse: () => <String, dynamic>{},
+                      );
+                  if (variantImage.isNotEmpty &&
+                      variantImage['image_url'] != null) {
+                    finalImageUrl = variantImage['image_url'] as String;
+                  } else {
+                    final mainImage = imagesList
+                        .cast<Map<String, dynamic>>()
+                        .firstWhere(
+                          (img) => img['is_main'] == true,
+                          orElse:
+                              () => imagesList.first as Map<String, dynamic>,
+                        );
+                    finalImageUrl = mainImage['image_url'] as String?;
+                  }
+                }
+
+                return InventoryExitItemModel(
+                  id: r['id'] as String? ?? '',
+                  exitId: exitData.id,
+                  productId: prod?['id'] as String? ?? '',
+                  variantId: variantId ?? '',
+                  productName: prod?['name'] as String? ?? '—',
+                  variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+                  quantity: (r['quantity'] as num).toDouble(),
+                  unitCost: (r['unit_cost'] as num).toDouble(),
+                  batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+                  usesBatches: usesBatches,
+                  imageUrl: finalImageUrl,
+                  sku: variant?['sku'] as String?,
                 );
-                finalImageUrl = mainImage['image_url'] as String?;
-              }
-            }
-
-            return InventoryExitItemModel(
-              id: r['id'] as String? ?? '',
-              exitId: exitData.id,
-              productId: prod?['id'] as String? ?? '',
-              variantId: variantId ?? '',
-              productName: prod?['name'] as String? ?? '—',
-              variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
-              quantity: (r['quantity'] as num).toDouble(),
-              unitCost: (r['unit_cost'] as num).toDouble(),
-              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-              usesBatches: usesBatches,
-              imageUrl: finalImageUrl,
-              sku: variant?['sku'] as String?,
-            );
-          }).toList();
-        },
-      ),
+              }).toList();
+            },
+          ),
     );
   }
 
@@ -108,14 +121,20 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   Widget build(BuildContext context) {
     return Consumer<InventoryExitsProvider>(
       builder: (context, provider, _) {
-        final totalCost = provider.exits.fold<double>(0, (s, e) => s + e.totalCost);
+        final totalCost = provider.exits.fold<double>(
+          0,
+          (s, e) => s + e.totalCost,
+        );
 
         return AdminLayout(
           title: 'Salidas de Inventario',
           showBackButton: true,
           showSettingsButton: true,
           settingsActions: const [
-            PopupMenuItem(value: 'pdf', child: Text('Exportar a PDF (Historial)')),
+            PopupMenuItem(
+              value: 'pdf',
+              child: Text('Exportar a PDF (Historial)'),
+            ),
           ],
           onSettingsSelected: (val) {
             if (val == 'pdf' && provider.exits.isNotEmpty) {
@@ -196,7 +215,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       child: CircularProgressIndicator(color: AppColors.danger),
                     ),
                   )
-                else if (provider.errorMessage != null && provider.exits.isEmpty)
+                else if (provider.errorMessage != null &&
+                    provider.exits.isEmpty)
                   SliverFillRemaining(
                     child: Center(
                       child: Text(
@@ -210,9 +230,11 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                   SliverFillRemaining(
                     child: _EmptyState(
                       icon: Icons.inventory_2_outlined,
-                      message: provider.searchQuery.isEmpty && provider.dateRange == null
-                          ? 'No hay salidas registradas'
-                          : 'Sin resultados para los filtros',
+                      message:
+                          provider.searchQuery.isEmpty &&
+                                  provider.dateRange == null
+                              ? 'No hay salidas registradas'
+                              : 'Sin resultados para los filtros',
                     ),
                   )
                 else
@@ -221,10 +243,15 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     sliver: SliverList.separated(
                       itemCount: provider.exits.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) => _ExitCard(
-                        exitData: provider.exits[i],
-                        onTap: () => _loadItemsAndShowDetail(context, provider.exits[i]),
-                      ),
+                      itemBuilder:
+                          (_, i) => _ExitCard(
+                            exitData: provider.exits[i],
+                            onTap:
+                                () => _loadItemsAndShowDetail(
+                                  context,
+                                  provider.exits[i],
+                                ),
+                          ),
                     ),
                   ),
 
@@ -248,7 +275,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
             onPressed: () async {
               final result = await Navigator.push<bool>(
                 context,
-                MaterialPageRoute(builder: (_) => const InventoryExitFormScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const InventoryExitFormScreen(),
+                ),
               );
               if (result == true) {
                 provider.loadExits(isRefresh: true);
@@ -271,19 +300,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 // ══════════════════════════════════════════════════════════════════════════════
 // WIDGETS AUXILIARES
 // ══════════════════════════════════════════════════════════════════════════════
-
-Color _reasonColor(String reason) {
-  final r = reason.toUpperCase();
-  if (r.contains('MERMA') || r.contains('DAÑO') || r.contains('VENCIMIENTO')) {
-    return AppColors.danger;
-  }
-  if (r.contains('ROBO') || r.contains('PÉRDIDA')) return Colors.red.shade900;
-  if (r.contains('CONSUMO') || r.contains('USO INTERNO')) {
-    return Colors.blue.shade600;
-  }
-  if (r.contains('AJUSTE')) return Colors.orange.shade600;
-  return AppColors.textSecondary;
-}
 
 class _ExitCard extends StatelessWidget {
   final InventoryExitModel exitData;
@@ -353,9 +369,12 @@ class _ExitCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      exitData.createdAt != null 
-                        ? DateFormat('dd MMM yyyy - HH:mm', 'es').format(exitData.createdAt!.toLocal())
-                        : '—',
+                      exitData.createdAt != null
+                          ? DateFormat(
+                            'dd MMM yyyy - HH:mm',
+                            'es',
+                          ).format(exitData.createdAt!.toLocal())
+                          : '—',
                       style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,
@@ -464,12 +483,13 @@ class _SearchField extends StatelessWidget {
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       prefixIcon: const Icon(Icons.search_rounded, size: 20),
-      suffixIcon: controller.text.isNotEmpty
-          ? IconButton(
-              icon: const Icon(Icons.clear_rounded, size: 18),
-              onPressed: onClear,
-            )
-          : null,
+      suffixIcon:
+          controller.text.isNotEmpty
+              ? IconButton(
+                icon: const Icon(Icons.clear_rounded, size: 18),
+                onPressed: onClear,
+              )
+              : null,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(vertical: 11),
       border: OutlineInputBorder(

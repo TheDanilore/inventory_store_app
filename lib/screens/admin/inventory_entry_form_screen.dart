@@ -254,7 +254,8 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     DropdownButtonFormField<String>(
-                                      initialValue: provider.selectedWarehouseId,
+                                      initialValue:
+                                          provider.selectedWarehouseId,
                                       icon: const Icon(
                                         Icons.expand_more_rounded,
                                       ),
@@ -367,7 +368,8 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                           'CONTADO') ...[
                                         const SizedBox(height: 12),
                                         DropdownButtonFormField<String>(
-                                          initialValue: provider.selectedAccountId,
+                                          initialValue:
+                                              provider.selectedAccountId,
                                           isExpanded: true,
                                           icon: const Icon(
                                             Icons.expand_more_rounded,
