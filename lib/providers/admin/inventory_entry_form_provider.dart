@@ -25,14 +25,14 @@ class InventoryEntryFormProvider extends ChangeNotifier {
   // ── ESTADO DEL FORMULARIO ──
   String? _selectedWarehouseId;
   String? _selectedSupplierId;
-  
+
   String _documentType = 'NINGUNO';
   String? _documentNumber;
   DateTime? _documentDate;
-  
+
   String _paymentMode = 'CONTADO';
   String? _selectedAccountId;
-  
+
   String? _purchaseOrderId; // Para saber si viene de una orden
   String? _activeShiftId;
 
@@ -84,9 +84,19 @@ class InventoryEntryFormProvider extends ChangeNotifier {
         _service.getActiveAccounts(),
       ]);
 
-      _warehouses = (results[0] as List).map((w) => WarehouseModel(id: w['id'], name: w['name'])).toList();
+      _warehouses =
+          (results[0] as List)
+              .map((w) => WarehouseModel(id: w['id'], name: w['name']))
+              .toList();
       _suppliers = List<Map<String, dynamic>>.from(results[1]);
-      _accounts = (results[2] as List).map((a) => FinancialAccountModel.fromJson(Map<String,dynamic>.from(a))).toList();
+      _accounts =
+          (results[2] as List)
+              .map(
+                (a) => FinancialAccountModel.fromJson(
+                  Map<String, dynamic>.from(a),
+                ),
+              )
+              .toList();
 
       if (_warehouses.length == 1) {
         _selectedWarehouseId = _warehouses.first.id;
@@ -124,7 +134,7 @@ class InventoryEntryFormProvider extends ChangeNotifier {
     _saveDraft();
     notifyListeners();
   }
-  
+
   void setDocumentNumber(String? num) {
     _documentNumber = num;
     _saveDraft();
@@ -154,7 +164,10 @@ class InventoryEntryFormProvider extends ChangeNotifier {
 
   // ── MANEJO DE ITEMS ──
   void addItem(EntryItemUI item) {
-    final existing = _items.firstWhereOrNull((i) => i.variant.id == item.variant.id && i.batchNumber == item.batchNumber);
+    final existing = _items.firstWhereOrNull(
+      (i) =>
+          i.variant.id == item.variant.id && i.batchNumber == item.batchNumber,
+    );
     if (existing != null) {
       existing.quantity += item.quantity;
     } else {
@@ -191,14 +204,18 @@ class InventoryEntryFormProvider extends ChangeNotifier {
         return false;
       }
       if (_paymentMode == 'CONTADO' && _selectedAccountId != null) {
-        final accountData = _accounts.firstWhereOrNull((a) => a.id == _selectedAccountId);
-        if (accountData?.type.toUpperCase() == 'CAJA' && activeShiftId.isEmpty) {
+        final accountData = _accounts.firstWhereOrNull(
+          (a) => a.id == _selectedAccountId,
+        );
+        if (accountData?.type.toUpperCase() == 'CAJA' &&
+            activeShiftId.isEmpty) {
           _errorMessage = 'La caja seleccionada no tiene un turno abierto.';
           return false;
         }
         final totalCost = _items.fold(0.0, (sum, item) => sum + item.subtotal);
         if (accountData != null && accountData.balance < totalCost) {
-          _errorMessage = 'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)';
+          _errorMessage =
+              'Saldo insuficiente en la cuenta (S/ ${accountData.balance.toStringAsFixed(2)} disponible)';
           return false;
         }
       }
@@ -209,8 +226,10 @@ class InventoryEntryFormProvider extends ChangeNotifier {
     }
 
     for (final item in _items) {
-      if (item.product.usesBatches && (item.batchNumber == 'DEFAULT' || item.batchNumber.trim().isEmpty)) {
-        _errorMessage = 'El producto "${item.product.name}" requiere un lote válido.';
+      if (item.product.usesBatches &&
+          (item.batchNumber == 'DEFAULT' || item.batchNumber.trim().isEmpty)) {
+        _errorMessage =
+            'El producto "${item.product.name}" requiere un lote válido.';
         return false;
       }
     }
@@ -252,22 +271,24 @@ class InventoryEntryFormProvider extends ChangeNotifier {
 
   // ── SHARED PREFERENCES DRAFT ──
   Future<void> _saveDraft() async {
-    if (_purchaseOrderId != null) return; // No guardamos borrador si viene de una orden de compra prellenada
-    
+    if (_purchaseOrderId != null)
+      return; // No guardamos borrador si viene de una orden de compra prellenada
+
     final prefs = await SharedPreferences.getInstance();
-    
-    final itemsJson = _items.map((e) {
-      final pJson = e.product.toJson()..remove('images');
-      final vJson = e.variant.toJson()..remove('product_images');
-      return {
-        'product': pJson,
-        'variant': vJson,
-        'quantity': e.quantity,
-        'unit_cost': e.unitCost,
-        'batch_number': e.batchNumber,
-        'expiry_date': e.expiryDate?.toIso8601String(),
-      };
-    }).toList();
+
+    final itemsJson =
+        _items.map((e) {
+          final pJson = e.product.toJson();
+          final vJson = e.variant.toJson();
+          return {
+            'product': pJson,
+            'variant': vJson,
+            'quantity': e.quantity,
+            'unit_cost': e.unitCost,
+            'batch_number': e.batchNumber,
+            'expiry_date': e.expiryDate?.toIso8601String(),
+          };
+        }).toList();
 
     final draftData = {
       'warehouseId': _selectedWarehouseId,
@@ -288,18 +309,25 @@ class InventoryEntryFormProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     final draftString = prefs.getString(_draftKey);
-    
+
     if (draftString != null && draftString.isNotEmpty) {
       try {
         final draftData = jsonDecode(draftString) as Map<String, dynamic>;
-        
-        if (draftData['warehouseId'] != null) _selectedWarehouseId = draftData['warehouseId'];
-        if (draftData['supplierId'] != null) _selectedSupplierId = draftData['supplierId'];
-        if (draftData['documentType'] != null) _documentType = draftData['documentType'];
-        if (draftData['documentNumber'] != null) _documentNumber = draftData['documentNumber'];
-        if (draftData['documentDate'] != null) _documentDate = DateTime.tryParse(draftData['documentDate']);
-        if (draftData['paymentMode'] != null) _paymentMode = draftData['paymentMode'];
-        if (draftData['accountId'] != null) _selectedAccountId = draftData['accountId'];
+
+        if (draftData['warehouseId'] != null)
+          _selectedWarehouseId = draftData['warehouseId'];
+        if (draftData['supplierId'] != null)
+          _selectedSupplierId = draftData['supplierId'];
+        if (draftData['documentType'] != null)
+          _documentType = draftData['documentType'];
+        if (draftData['documentNumber'] != null)
+          _documentNumber = draftData['documentNumber'];
+        if (draftData['documentDate'] != null)
+          _documentDate = DateTime.tryParse(draftData['documentDate']);
+        if (draftData['paymentMode'] != null)
+          _paymentMode = draftData['paymentMode'];
+        if (draftData['accountId'] != null)
+          _selectedAccountId = draftData['accountId'];
 
         final itemsJson = draftData['items'] as List<dynamic>? ?? [];
         _items.clear();
@@ -308,14 +336,19 @@ class InventoryEntryFormProvider extends ChangeNotifier {
           final vJson = itemJson['variant'];
           final v = ProductVariantModel.fromJson(vJson);
 
-          _items.add(EntryItemUI(
-            product: p,
-            variant: v,
-            quantity: (itemJson['quantity'] as num).toDouble(),
-            unitCost: (itemJson['unit_cost'] as num).toDouble(),
-            batchNumber: itemJson['batch_number'] ?? 'DEFAULT',
-            expiryDate: itemJson['expiry_date'] != null ? DateTime.tryParse(itemJson['expiry_date']) : null,
-          ));
+          _items.add(
+            EntryItemUI(
+              product: p,
+              variant: v,
+              quantity: (itemJson['quantity'] as num).toDouble(),
+              unitCost: (itemJson['unit_cost'] as num).toDouble(),
+              batchNumber: itemJson['batch_number'] ?? 'DEFAULT',
+              expiryDate:
+                  itemJson['expiry_date'] != null
+                      ? DateTime.tryParse(itemJson['expiry_date'])
+                      : null,
+            ),
+          );
         }
       } catch (e) {
         debugPrint('Error loading entry draft: $e');

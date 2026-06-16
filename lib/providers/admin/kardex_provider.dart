@@ -71,12 +71,15 @@ class KardexProvider extends ChangeNotifier {
     await _loadMovements();
   }
 
-  PostgrestFilterBuilder<T> _buildBaseQuery<T>(PostgrestFilterBuilder<T> query) {
+  PostgrestFilterBuilder<T> _buildBaseQuery<T>(
+    PostgrestFilterBuilder<T> query,
+  ) {
     if (_dateRange != null) {
       final startStr = _dateRange!.start.toIso8601String();
-      final endStr = _dateRange!.end
-          .add(const Duration(hours: 23, minutes: 59, seconds: 59))
-          .toIso8601String();
+      final endStr =
+          _dateRange!.end
+              .add(const Duration(hours: 23, minutes: 59, seconds: 59))
+              .toIso8601String();
       query = query.gte('created_at', startStr).lte('created_at', endStr);
     }
 
@@ -87,7 +90,7 @@ class KardexProvider extends ChangeNotifier {
     } else if (_typeFilter == 'SALE') {
       query = query.not('order_id', 'is', null);
     }
-    
+
     return query;
   }
 
@@ -120,9 +123,10 @@ class KardexProvider extends ChangeNotifier {
           .count(CountOption.exact);
 
       _totalCount = response.count;
-      _movements = (response.data as List)
-          .map((row) => KardexMovementModel.fromSupabaseRow(row))
-          .toList();
+      _movements =
+          (response.data as List)
+              .map((row) => KardexMovementModel.fromSupabaseRow(row))
+              .toList();
     } catch (e) {
       _errorMessage = 'Error al cargar kardex: $e';
     } finally {
@@ -133,14 +137,14 @@ class KardexProvider extends ChangeNotifier {
 
   Future<void> exportToPdf() async {
     if (_isExporting) return;
-    
+
     _isExporting = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       // Para exportar, traemos todos los registros (sin .range) de acuerdo a los filtros actuales.
-      // Advertencia: si son decenas de miles, esto podría ser pesado. 
+      // Advertencia: si son decenas de miles, esto podría ser pesado.
       // Si llega a serlo, habría que limitar o advertir al usuario.
       var query = _supabase.from('inventory_movements').select('''
         *,
@@ -155,12 +159,13 @@ class KardexProvider extends ChangeNotifier {
       ''');
 
       query = _buildBaseQuery(query);
-      
+
       final response = await query.order('created_at', ascending: false);
-      
-      final allMovements = (response as List)
-          .map((row) => KardexMovementModel.fromSupabaseRow(row))
-          .toList();
+
+      final allMovements =
+          (response as List)
+              .map((row) => KardexMovementModel.fromSupabaseRow(row))
+              .toList();
 
       final pdf = pw.Document();
 
@@ -176,34 +181,60 @@ class KardexProvider extends ChangeNotifier {
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('Reporte de Kardex', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())),
+                    pw.Text(
+                      'Reporte de Kardex',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                    ),
                   ],
                 ),
               ),
               pw.SizedBox(height: 10),
-              
+
               if (_dateRange != null)
-                pw.Text('Fechas: ${DateFormat('dd/MM/yyyy').format(_dateRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_dateRange!.end)}'),
-              
+                pw.Text(
+                  'Fechas: ${DateFormat('dd/MM/yyyy').format(_dateRange!.start)} - ${DateFormat('dd/MM/yyyy').format(_dateRange!.end)}',
+                ),
+
               pw.Text('Tipo de filtro: ${_getTypeFilterName()}'),
               pw.SizedBox(height: 20),
-              
+
               pw.TableHelper.fromTextArray(
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 10,
+                ),
                 cellStyle: const pw.TextStyle(fontSize: 9),
-                headers: ['Fecha', 'Tipo', 'Producto / SKU', 'Almacén', 'Stock Ant.', 'Cant.', 'Nuevo Stock'],
-                data: allMovements.map((m) {
-                  return [
-                    m.movement.createdAt != null ? DateFormat('dd/MM/yy HH:mm').format(m.movement.createdAt!.toLocal()) : '',
-                    m.movementType,
-                    '${m.productName} ${m.attrsText != 'Única' ? '(${m.attrsText})' : ''} ${m.sku != null ? '\nSKU: ${m.sku}' : ''}',
-                    m.warehouseName,
-                    m.movement.previousStock.toString(),
-                    '${m.isEntry ? '+' : ''}${m.movement.quantity}',
-                    m.movement.newStock.toString(),
-                  ];
-                }).toList(),
+                headers: [
+                  'Fecha',
+                  'Tipo',
+                  'Producto / SKU',
+                  'Almacén',
+                  'Stock Ant.',
+                  'Cant.',
+                  'Nuevo Stock',
+                ],
+                data:
+                    allMovements.map((m) {
+                      return [
+                        m.movement.createdAt != null
+                            ? DateFormat(
+                              'dd/MM/yy HH:mm',
+                            ).format(m.movement.createdAt!.toLocal())
+                            : '',
+                        m.movementType,
+                        '${m.productName} ${m.attrsText != 'Única' ? '(${m.attrsText})' : ''} ${m.sku != null ? '\nSKU: ${m.sku}' : ''}',
+                        m.warehouseName,
+                        m.movement.previousStock.toString(),
+                        '${m.isEntry ? '+' : ''}${m.movement.quantity}',
+                        m.movement.newStock.toString(),
+                      ];
+                    }).toList(),
               ),
             ];
           },
@@ -213,7 +244,8 @@ class KardexProvider extends ChangeNotifier {
       final bytes = await pdf.save();
       await Printing.sharePdf(
         bytes: bytes,
-        filename: 'Kardex_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
+        filename:
+            'Kardex_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
       );
     } catch (e) {
       _errorMessage = 'Error al exportar PDF: $e';
@@ -225,10 +257,14 @@ class KardexProvider extends ChangeNotifier {
 
   String _getTypeFilterName() {
     switch (_typeFilter) {
-      case 'ENTRY': return 'Ingresos';
-      case 'EXIT': return 'Salidas';
-      case 'SALE': return 'Ventas';
-      default: return 'Todos los movimientos';
+      case 'ENTRY':
+        return 'Ingresos';
+      case 'EXIT':
+        return 'Salidas';
+      case 'SALE':
+        return 'Ventas';
+      default:
+        return 'Todos los movimientos';
     }
   }
 }

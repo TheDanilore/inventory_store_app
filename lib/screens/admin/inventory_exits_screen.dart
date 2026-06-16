@@ -182,10 +182,15 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               if (_hasDraft)
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.1),
-                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.3),
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -221,7 +226,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text('Continuar', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Continuar',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
@@ -279,75 +287,90 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
               // ── Lista ──
               Expanded(
-                child: provider.isLoading && provider.exits.isEmpty
-                    ? const KardexSkeleton()
-                    : provider.errorMessage != null && provider.exits.isEmpty
+                child:
+                    provider.isLoading && provider.exits.isEmpty
+                        ? const KardexSkeleton()
+                        : provider.errorMessage != null &&
+                            provider.exits.isEmpty
                         ? Center(
-                            child: Text(
-                              provider.errorMessage!,
-                              style: const TextStyle(color: AppColors.danger),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
+                          child: Text(
+                            provider.errorMessage!,
+                            style: const TextStyle(color: AppColors.danger),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
                         : provider.exits.isEmpty
-                            ? _EmptyState(
-                                icon: Icons.inventory_2_outlined,
-                                message:
-                                    provider.searchQuery.isEmpty &&
-                                            provider.dateRange == null
-                                        ? 'No hay salidas registradas'
-                                        : 'Sin resultados para los filtros',
-                              )
-                            : Column(
+                        ? _EmptyState(
+                          icon: Icons.inventory_2_outlined,
+                          message:
+                              provider.searchQuery.isEmpty &&
+                                      provider.dateRange == null
+                                  ? 'No hay salidas registradas'
+                                  : 'Sin resultados para los filtros',
+                        )
+                        : Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Row(
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                                    child: Row(
-                                      children: [
-                                        const Spacer(),
-                                        Text(
-                                          'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
+                                  const Spacer(),
+                                  Text(
+                                    'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  Expanded(
-                                    child: RefreshIndicator(
-                                      color: AppColors.danger,
-                                      onRefresh: () => provider.loadExits(isRefresh: true),
-                                      child: ListView.separated(
-                                        physics: const AlwaysScrollableScrollPhysics(),
-                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                                        itemCount: provider.exits.length,
-                                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                        itemBuilder:
-                                            (_, i) => _ExitCard(
-                                              exitData: provider.exits[i],
-                                              onTap:
-                                                  () => _loadItemsAndShowDetail(
-                                                    context,
-                                                    provider.exits[i],
-                                                  ),
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                  if (provider.totalPages > 1)
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                                      child: AdminPageBlocks(
-                                        currentPage: provider.currentPage,
-                                        totalPages: provider.totalPages,
-                                        onPageChanged: provider.changePage,
-                                      ),
-                                    ),
                                 ],
                               ),
+                            ),
+                            Expanded(
+                              child: RefreshIndicator(
+                                color: AppColors.danger,
+                                onRefresh:
+                                    () => provider.loadExits(isRefresh: true),
+                                child: ListView.separated(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    0,
+                                  ),
+                                  itemCount: provider.exits.length,
+                                  separatorBuilder:
+                                      (_, _) => const SizedBox(height: 10),
+                                  itemBuilder:
+                                      (_, i) => _ExitCard(
+                                        exitData: provider.exits[i],
+                                        onTap:
+                                            () => _loadItemsAndShowDetail(
+                                              context,
+                                              provider.exits[i],
+                                            ),
+                                      ),
+                                ),
+                              ),
+                            ),
+                            if (provider.totalPages > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  8,
+                                ),
+                                child: AdminPageBlocks(
+                                  currentPage: provider.currentPage,
+                                  totalPages: provider.totalPages,
+                                  onPageChanged: provider.changePage,
+                                ),
+                              ),
+                          ],
+                        ),
               ),
             ],
           ),

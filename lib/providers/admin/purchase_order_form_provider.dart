@@ -75,7 +75,9 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
       final results = await Future.wait([
         _supabase
             .from('suppliers')
-            .select('id, name, supplier_credits(credit_limit, current_debt, payment_terms_days, is_active)')
+            .select(
+              'id, name, supplier_credits(credit_limit, current_debt, payment_terms_days, is_active)',
+            )
             .eq('is_active', true)
             .order('name'),
         _supabase.from('warehouses').select('id, name').eq('is_active', true),
@@ -87,8 +89,18 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
       ]);
 
       _suppliers = List<Map<String, dynamic>>.from(results[0] as List);
-      _warehouses = (results[1] as List).map((w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w))).toList();
-      _accounts = (results[2] as List).map((a) => FinancialAccountModel.fromJson(Map<String, dynamic>.from(a))).toList();
+      _warehouses =
+          (results[1] as List)
+              .map((w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w)))
+              .toList();
+      _accounts =
+          (results[2] as List)
+              .map(
+                (a) => FinancialAccountModel.fromJson(
+                  Map<String, dynamic>.from(a),
+                ),
+              )
+              .toList();
 
       _accounts.sort((a, b) {
         final isCajaA = a.type.toUpperCase() == 'CAJA';
@@ -105,7 +117,6 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
       }
 
       await _loadDraft();
-
     } catch (e) {
       _errorMessage = 'Error cargando datos: $e';
     } finally {
@@ -116,12 +127,13 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
   Future<void> _checkActiveShift(String accountId) async {
     try {
-      final shiftRes = await _supabase
-          .from('cash_shifts')
-          .select('id')
-          .eq('account_id', accountId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
+      final shiftRes =
+          await _supabase
+              .from('cash_shifts')
+              .select('id')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
       _activeShiftId = shiftRes?['id'] as String?;
     } catch (e) {
       debugPrint('Error verificando turno: $e');
@@ -131,7 +143,10 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
   // ── SETTERS ──
   void _recalculateDueDate() {
     if (_paymentMode == 'CREDITO' && _selectedSupplierId != null) {
-      final supplier = _suppliers.firstWhere((s) => s['id'] == _selectedSupplierId, orElse: () => {});
+      final supplier = _suppliers.firstWhere(
+        (s) => s['id'] == _selectedSupplierId,
+        orElse: () => {},
+      );
       final creditData = getCreditData(supplier);
       if (creditData != null && creditData['payment_terms_days'] != null) {
         final days = creditData['payment_terms_days'] as int;
@@ -197,7 +212,10 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
   void addItem(EntryItemUI item) {
     final existingIdx = _items.indexWhere(
-      (i) => i.product.id == item.product.id && i.variant.id == item.variant.id && i.batchNumber == item.batchNumber,
+      (i) =>
+          i.product.id == item.product.id &&
+          i.variant.id == item.variant.id &&
+          i.batchNumber == item.batchNumber,
     );
     if (existingIdx >= 0) {
       _items[existingIdx].quantity += item.quantity;
@@ -239,9 +257,12 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<bool> saveOrder({required String documentNumber, required String notes}) async {
+  Future<bool> saveOrder({
+    required String documentNumber,
+    required String notes,
+  }) async {
     _errorMessage = '';
-    
+
     if (_selectedSupplierId == null) {
       _errorMessage = 'Debe seleccionar un proveedor';
       notifyListeners();
@@ -262,7 +283,9 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
     // Validación Contado
     if (_paymentStatus == 'PAID' && _selectedAccountId != null) {
-      final accountData = _accounts.firstWhereOrNull((a) => a.id == _selectedAccountId);
+      final accountData = _accounts.firstWhereOrNull(
+        (a) => a.id == _selectedAccountId,
+      );
       if (accountData?.type.toUpperCase() == 'CAJA' && _activeShiftId == null) {
         _errorMessage = 'La caja seleccionada no tiene un turno abierto.';
         notifyListeners();
@@ -281,16 +304,20 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
       final creditData = getCreditData(sup);
 
       if (creditData == null || creditData['is_active'] == false) {
-        _errorMessage = 'Este proveedor no tiene una línea de crédito activa configurada.';
+        _errorMessage =
+            'Este proveedor no tiene una línea de crédito activa configurada.';
         notifyListeners();
         return false;
       }
 
-      final creditLimit = (creditData['credit_limit'] as num?)?.toDouble() ?? 0.0;
-      final currentDebt = (creditData['current_debt'] as num?)?.toDouble() ?? 0.0;
+      final creditLimit =
+          (creditData['credit_limit'] as num?)?.toDouble() ?? 0.0;
+      final currentDebt =
+          (creditData['current_debt'] as num?)?.toDouble() ?? 0.0;
 
       if ((currentDebt + totalAmount) > creditLimit) {
-        _errorMessage = 'Excede límite de crédito.\nDeuda: S/ ${currentDebt.toStringAsFixed(2)}\nLímite: S/ ${creditLimit.toStringAsFixed(2)}';
+        _errorMessage =
+            'Excede límite de crédito.\nDeuda: S/ ${currentDebt.toStringAsFixed(2)}\nLímite: S/ ${creditLimit.toStringAsFixed(2)}';
         notifyListeners();
         return false;
       }
@@ -300,7 +327,9 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final supplierName = _suppliers.firstWhere((s) => s['id'] == _selectedSupplierId)['name'] as String;
+      final supplierName =
+          _suppliers.firstWhere((s) => s['id'] == _selectedSupplierId)['name']
+              as String;
 
       await _service.createPurchaseOrder(
         supplierId: _selectedSupplierId!,
@@ -335,25 +364,23 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
   // ── SHARED PREFERENCES DRAFT ──
   Future<void> _saveDraft() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // We only save the items list to keep it simple, since products are hard to lose.
     // If we want to save everything, we serialize to JSON.
-    final itemsJson = _items.map((e) {
-      final pJson = e.product.toJson();
-      pJson.remove('images');
-      
-      final vJson = e.variant.toJson();
-      vJson.remove('product_images');
+    final itemsJson =
+        _items.map((e) {
+          final pJson = e.product.toJson();
+          final vJson = e.variant.toJson();
 
-      return {
-        'product': pJson,
-        'variant': vJson,
-        'quantity': e.quantity,
-        'unit_cost': e.unitCost,
-        'batch_number': e.batchNumber,
-        'expiry_date': e.expiryDate?.toIso8601String(),
-      };
-    }).toList();
+          return {
+            'product': pJson,
+            'variant': vJson,
+            'quantity': e.quantity,
+            'unit_cost': e.unitCost,
+            'batch_number': e.batchNumber,
+            'expiry_date': e.expiryDate?.toIso8601String(),
+          };
+        }).toList();
 
     final data = {
       'items': itemsJson,
@@ -370,25 +397,31 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
     if (str != null) {
       try {
         final data = jsonDecode(str) as Map<String, dynamic>;
-        
-        if (data['supplier_id'] != null && _suppliers.any((s) => s['id'] == data['supplier_id'])) {
+
+        if (data['supplier_id'] != null &&
+            _suppliers.any((s) => s['id'] == data['supplier_id'])) {
           _selectedSupplierId = data['supplier_id'];
         }
-        if (data['warehouse_id'] != null && _warehouses.any((w) => w.id == data['warehouse_id'])) {
+        if (data['warehouse_id'] != null &&
+            _warehouses.any((w) => w.id == data['warehouse_id'])) {
           _selectedWarehouseId = data['warehouse_id'];
         }
 
         final itemsList = data['items'] as List;
-        _items = itemsList.map((i) {
-          return EntryItemUI(
-            product: ProductModel.fromJson(i['product']),
-            variant: ProductVariantModel.fromJson(i['variant']),
-            quantity: (i['quantity'] as num).toDouble(),
-            unitCost: (i['unit_cost'] as num).toDouble(),
-            batchNumber: i['batch_number'] as String? ?? 'DEFAULT',
-            expiryDate: i['expiry_date'] != null ? DateTime.tryParse(i['expiry_date']) : null,
-          );
-        }).toList();
+        _items =
+            itemsList.map((i) {
+              return EntryItemUI(
+                product: ProductModel.fromJson(i['product']),
+                variant: ProductVariantModel.fromJson(i['variant']),
+                quantity: (i['quantity'] as num).toDouble(),
+                unitCost: (i['unit_cost'] as num).toDouble(),
+                batchNumber: i['batch_number'] as String? ?? 'DEFAULT',
+                expiryDate:
+                    i['expiry_date'] != null
+                        ? DateTime.tryParse(i['expiry_date'])
+                        : null,
+              );
+            }).toList();
       } catch (e) {
         debugPrint('Error loading draft: $e');
       }
