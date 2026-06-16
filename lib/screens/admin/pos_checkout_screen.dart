@@ -398,7 +398,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     final itemsResp = await Supabase.instance.client
                         .from('order_items')
                         .select(
-                          'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, product_images(id, image_url, is_main))',
+                          'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, product_images(id, image_url, is_main), variant_attribute_values(attribute_values(value, attributes(name))))',
                         )
                         .eq('order_id', orderId);
 

@@ -438,7 +438,7 @@ class OrdersService {
           products!inner ( name ),
           product_variants (
             sku,
-            variant_attribute_values(attribute_values(value))
+            variant_attribute_values(attribute_values(value, attributes(name)))
           )
         ''')
         .eq('order_id', orderId);

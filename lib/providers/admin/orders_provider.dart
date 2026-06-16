@@ -19,7 +19,7 @@ class OrdersProvider extends ChangeNotifier {
 
   final _ordersService = OrdersService();
   final Set<String> _processingOrders = {};
-  bool _isGeneratingPDF = false;
+  String? _generatingPdfOrderId;
 
   // Filtros
   String _statusFilter = 'ALL';
@@ -35,7 +35,7 @@ class OrdersProvider extends ChangeNotifier {
   String get errorMessage => _errorMessage;
 
   bool isOrderProcessing(String id) => _processingOrders.contains(id);
-  bool get isGeneratingPDF => _isGeneratingPDF;
+  bool isGeneratingPDF(String id) => _generatingPdfOrderId == id;
 
   int get currentPage => _currentPage;
   int get totalPages =>
@@ -218,8 +218,8 @@ class OrdersProvider extends ChangeNotifier {
   }
 
   Future<void> generatePdfTicket(OrderModel order) async {
-    if (_isGeneratingPDF) return;
-    _isGeneratingPDF = true;
+    if (_generatingPdfOrderId != null) return;
+    _generatingPdfOrderId = order.id;
     notifyListeners();
 
     try {
@@ -231,7 +231,7 @@ class OrdersProvider extends ChangeNotifier {
 
       await OrderPdfGenerator.shareTicket(order, items: items);
     } finally {
-      _isGeneratingPDF = false;
+      _generatingPdfOrderId = null;
       notifyListeners();
     }
   }
