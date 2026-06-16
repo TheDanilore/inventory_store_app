@@ -27,7 +27,7 @@ class AdminProductCard extends StatelessWidget {
     final isDesactivado = !product.isActive;
 
     return GestureDetector(
-      onTap: () => context.push('/product/${product.id}'),
+      onTap: () => context.go('/admin/product/${product.id}', extra: product),
       child: Container(
         decoration: BoxDecoration(
           color: isDesactivado ? const Color(0xFFF8FAFC) : Colors.white,

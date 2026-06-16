@@ -3,14 +3,17 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:inventory_store_app/providers/app_providers.dart';
 import 'package:inventory_store_app/shared/theme/app_theme.dart';
 import 'package:inventory_store_app/router/app_router.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 Future<void> main() async {
   // Asegura que Flutter esté inicializado antes de ejecutar código nativo o asíncrono
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Usa rutas sin el '#' (Path URL strategy) para la versión web
+  usePathUrlStrategy();
 
   try {
     // Inicializa los datos de fecha para español

@@ -354,7 +354,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
       if (!mounted) return;
 
-      context.push('/product/${product.id}', extra: product);
+      context.go('/customer/product/${product.id}', extra: product);
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(context, message: 'No se pudo abrir el producto: $e');

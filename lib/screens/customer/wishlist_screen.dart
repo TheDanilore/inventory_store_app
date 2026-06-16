@@ -347,7 +347,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          onTap: () => context.push('/product/${product.id}', extra: product),
+          onTap: () => context.go('/customer/product/${product.id}', extra: product),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(

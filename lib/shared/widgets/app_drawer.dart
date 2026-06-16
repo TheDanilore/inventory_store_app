@@ -140,7 +140,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     routePath: '/admin/dashboard',
                     onTap: () {
                       Navigator.pop(context);
-                      context.push('/admin/dashboard');
+                      context.go('/admin/dashboard');
                     },
                   ),
                 ),
@@ -153,7 +153,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/customer/cart',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/customer/cart');
+                        context.go('/customer/cart');
                       },
                     ),
                   ),
@@ -185,7 +185,7 @@ class _AppDrawerState extends State<AppDrawer> {
                                   : null),
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/orders');
+                        context.go('/admin/orders');
                       },
                     ),
                   ),
@@ -204,7 +204,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/purchase-orders',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/purchase-orders');
+                            context.go('/admin/purchase-orders');
                           },
                         ),
                         _DrawerSubItem(
@@ -213,7 +213,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/inventory-entries',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/inventory-entries');
+                            context.go('/admin/inventory-entries');
                           },
                         ),
                         _DrawerSubItem(
@@ -222,7 +222,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/supplier-credits',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/supplier-credits');
+                            context.go('/admin/supplier-credits');
                           },
                         ),
                         _DrawerSubItem(
@@ -231,7 +231,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/suppliers',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/suppliers');
+                            context.go('/admin/suppliers');
                           },
                         ),
                       ],
@@ -252,7 +252,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/inventory',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/inventory');
+                            context.go('/admin/inventory');
                           },
                         ),
                         _DrawerSubItem(
@@ -261,7 +261,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/kardex',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/kardex');
+                            context.go('/admin/kardex');
                           },
                         ),
 
@@ -271,7 +271,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/inventory-exits',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/inventory-exits');
+                            context.go('/admin/inventory-exits');
                           },
                         ),
                       ],
@@ -291,7 +291,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/customers',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/customers');
+                            context.go('/admin/customers');
                           },
                         ),
                         _DrawerSubItem(
@@ -300,7 +300,7 @@ class _AppDrawerState extends State<AppDrawer> {
                           routePath: '/admin/customer-credits',
                           onTap: () {
                             Navigator.pop(context);
-                            context.push('/admin/customer-credits');
+                            context.go('/admin/customer-credits');
                           },
                         ),
                       ],
@@ -315,7 +315,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/financial-accounts',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/financial-accounts');
+                        context.go('/admin/financial-accounts');
                       },
                     ),
                   ),
@@ -328,7 +328,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/categories',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/categories');
+                        context.go('/admin/categories');
                       },
                     ),
                   ),
@@ -341,7 +341,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/warehouses',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/warehouses');
+                        context.go('/admin/warehouses');
                       },
                     ),
                   ),
@@ -354,7 +354,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/attributes',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/attributes');
+                        context.go('/admin/attributes');
                       },
                     ),
                   ),
@@ -367,7 +367,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/active-ingredients',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/active-ingredients');
+                        context.go('/admin/active-ingredients');
                       },
                     ),
                   ),
@@ -380,7 +380,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/users',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/users');
+                        context.go('/admin/users');
                       },
                     ),
                   ),
@@ -393,7 +393,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/business-info',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/business-info');
+                        context.go('/admin/business-info');
                       },
                     ),
                   ),
@@ -406,7 +406,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       routePath: '/admin/points-settings',
                       onTap: () {
                         Navigator.pop(context);
-                        context.push('/admin/points-settings');
+                        context.go('/admin/points-settings');
                       },
                     ),
                   ),
@@ -784,9 +784,9 @@ class _DrawerFooter extends StatelessWidget {
                     onTap: () {
                       Navigator.pop(context);
                       if (isAdmin) {
-                        context.push('/admin/profile');
+                        context.go('/admin/profile');
                       } else {
-                        context.push('/customer/profile');
+                        context.go('/customer/profile');
                       }
                     },
                     child: Container(

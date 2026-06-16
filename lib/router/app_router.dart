@@ -81,35 +81,52 @@ class AppRouter {
         final isSessionReady = authProvider.isSessionReady;
         final role = authProvider.currentUserRole;
 
-        final isSplash = state.matchedLocation == '/';
-        final isLogin = state.matchedLocation == '/login';
-        final isAuthAction = isSplash || isLogin;
+        final currentPath = state.matchedLocation;
+        final isSplash = currentPath == '/';
+        final isLogin = currentPath == '/login';
 
-        // Si la sesión no ha terminado de cargarse, debe quedarse en Splash
+        // ── Paso 1: Sesión aún cargando ─────────────────────────────────
         if (!isSessionReady) {
-          return isSplash ? null : '/';
+          // Si ya estamos en splash, no redirigir (evita loop)
+          if (isSplash) return null;
+          // Guardamos la ruta deseada en el parámetro redirect
+          final encoded = Uri.encodeComponent(state.uri.toString());
+          return '/?redirect=$encoded';
         }
 
-        // Si ya cargó y NO hay sesión (usuario deslogueado/invitado)
-        if (role == null) {
-          // Permite explorar como invitado (login, customer base, y producto)
-          if (isLogin) return null;
-          if (state.matchedLocation.startsWith('/customer') ||
-              state.matchedLocation.startsWith('/product')) {
-            return null; // Guest can view customer catalog and products
+        // ── Paso 2: Sesión lista → recuperar redirect pendiente ──────────
+        final redirectParam = state.uri.queryParameters['redirect'];
+        final pendingRoute = redirectParam != null
+            ? Uri.decodeComponent(redirectParam)
+            : null;
+
+        // Si venimos del splash con un redirect válido y la sesión ya cargó
+        if (isSplash && pendingRoute != null && pendingRoute != '/') {
+          // Solo si tiene el rol correcto para esa ruta
+          if (pendingRoute.startsWith('/admin') && role == AppRoles.admin) {
+            return pendingRoute;
           }
-          // Todo lo demás fuerza al login
+          if (pendingRoute.startsWith('/customer') && role != null) {
+            return pendingRoute;
+          }
+        }
+
+        // ── Paso 3: Sin sesión ───────────────────────────────────────────
+        if (role == null) {
+          if (isLogin) return null;
+          // Rutas públicas de cliente
+          if (currentPath.startsWith('/customer')) return null;
+          // Resto → login
           return '/login';
         }
 
-        // Si YA hay sesión, no deberíamos estar en splash o login
-        if (isAuthAction) {
+        // ── Paso 4: Con sesión, en pantalla de auth ──────────────────────
+        if (isSplash || isLogin) {
           return role == AppRoles.admin ? '/admin' : '/customer';
         }
 
-        // Proteger rutas de admin
-        if (state.matchedLocation.startsWith('/admin') &&
-            role != AppRoles.admin) {
+        // ── Paso 5: Proteger rutas de admin ──────────────────────────────
+        if (currentPath.startsWith('/admin') && role != AppRoles.admin) {
           return '/customer';
         }
 
@@ -322,6 +339,25 @@ class AppRouter {
               path: 'warehouses',
               builder: (context, state) => const WarehousesManagementScreen(),
             ),
+            GoRoute(
+              path: 'product/:id',
+              builder: (context, state) {
+                final productId = state.pathParameters['id'];
+                final product = state.extra as ProductModel?;
+                if (product != null) {
+                  return ProductDetailScreen(product: product, isAdmin: true);
+                }
+                if (productId == null) return const Scaffold(body: Center(child: Text('Error')));
+                return FutureBuilder<ProductModel?>(
+                  future: CatalogService().getProductById(productId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                    if (snapshot.hasError || snapshot.data == null) return Scaffold(appBar: AppBar(title: const Text('Error')), body: const Center(child: Text('El producto no existe')));
+                    return ProductDetailScreen(product: snapshot.data!, isAdmin: true);
+                  },
+                );
+              },
+            ),
           ],
         ),
 
@@ -412,6 +448,25 @@ class AppRouter {
                   (context, state) => SuperSaltoScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
+            ),
+            GoRoute(
+              path: 'product/:id',
+              builder: (context, state) {
+                final productId = state.pathParameters['id'];
+                final product = state.extra as ProductModel?;
+                if (product != null) {
+                  return ProductDetailScreen(product: product, isAdmin: false);
+                }
+                if (productId == null) return const Scaffold(body: Center(child: Text('Error')));
+                return FutureBuilder<ProductModel?>(
+                  future: CatalogService().getProductById(productId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                    if (snapshot.hasError || snapshot.data == null) return Scaffold(appBar: AppBar(title: const Text('Error')), body: const Center(child: Text('El producto no existe')));
+                    return ProductDetailScreen(product: snapshot.data!, isAdmin: false);
+                  },
+                );
+              },
             ),
           ],
         ),
