@@ -10,38 +10,43 @@ import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
-// ─── Instancias globales creadas UNA SOLA VEZ ────────────────────────────────
-// El GoRouter NO puede vivir dentro del árbol de widgets porque cualquier
-// rebuild de MyApp (incluso causado por notifyListeners del AuthProvider)
-// recrearía el router y lanzaría el "DartError: Assertion failed" de Flutter Web.
-// Al crearlos aquí, en el top-level, están garantizados como singletons.
-late final AuthProvider _authProvider;
-late final GoRouter _router;
+// ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
+// En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
+// el entrypoint varias veces. Usar `late final` sin guard causaría
+// "DartError: Assertion failed" al intentar reasignar una variable `late final`
+// ya inicializada. La solución es usar nullable + inicialización condicional.
+AuthProvider? _authProvider;
+GoRouter? _router;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Usa rutas sin '#' (Path URL strategy) para la versión web
   usePathUrlStrategy();
 
+  // Supabase.initialize lanza si ya fue inicializado (en hot restart).
+  // Lo envolvemos para que sea idempotente.
   try {
     await initializeDateFormatting('es', null);
-
     await Supabase.initialize(
       url: 'https://lvupdgdmlmzztjmydqak.supabase.co',
       publishableKey: 'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB',
     );
   } catch (e) {
-    debugPrint('Error crítico inicializando la app: $e');
+    // En hot restart Supabase ya está inicializado → ignoramos el error.
+    debugPrint('Supabase init (posiblemente ya inicializado): $e');
   }
 
-  // Captura la URL inicial ANTES de que el router haga cualquier redirección
+  // Capturamos la URL inicial solo la primera vez.
+  // En llamadas subsiguientes de main() (hot restart) _pendingDeepLink
+  // ya fue capturado, así que captureInitialRoute() lo sobreescribirá
+  // solo si hay una nueva ruta, lo cual es el comportamiento correcto.
   AppRouter.captureInitialRoute();
 
-  // Creamos el AuthProvider y el GoRouter UNA SOLA VEZ, fuera del árbol de widgets.
-  // El router recibe el provider directamente (sin necesitar un BuildContext).
-  _authProvider = AuthProvider();
-  _router = AppRouter.createRouter(_authProvider);
+  // Inicialización idempotente: solo creamos las instancias la primera vez.
+  // En hot restart estas variables ya tienen valor → no las recreamos,
+  // evitando así duplicar el NavigatorKey y el GoRouter.
+  _authProvider ??= AuthProvider();
+  _router ??= AppRouter.createRouter(_authProvider!);
 
   runApp(const MyApp());
 }
@@ -53,10 +58,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // AuthProvider ya instanciado: lo inyectamos con .value para que
-        // el árbol lo encuentre con context.read<AuthProvider>() como siempre.
-        ChangeNotifierProvider<AuthProvider>.value(value: _authProvider),
-        // El resto de providers se crean normalmente desde AppProviders
+        // Inyectamos la instancia global con .value (no crea una nueva).
+        ChangeNotifierProvider<AuthProvider>.value(value: _authProvider!),
         ...AppProviders.providersExcludingAuth,
       ],
       child: MaterialApp.router(
@@ -69,7 +72,7 @@ class MyApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        routerConfig: _router,
+        routerConfig: _router!,
       ),
     );
   }
