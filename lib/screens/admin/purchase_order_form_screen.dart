@@ -238,6 +238,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             if (didPop) return;
 
             if (provider.items.isEmpty) {
+              provider.clearDraft();
               Navigator.pop(context, result);
               return;
             }
@@ -325,6 +326,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                       DropdownButtonFormField<String>(
                                         initialValue:
                                             provider.selectedSupplierId,
+                                        isExpanded: true,
                                         icon: const Icon(
                                           Icons.expand_more_rounded,
                                         ),
@@ -353,6 +355,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                       DropdownButtonFormField<String>(
                                         initialValue:
                                             provider.selectedWarehouseId,
+                                        isExpanded: true,
                                         icon: const Icon(
                                           Icons.expand_more_rounded,
                                         ),
@@ -412,6 +415,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                       const SizedBox(height: 12),
                                       DropdownButtonFormField<String>(
                                         initialValue: provider.paymentMode,
+                                        isExpanded: true,
                                         icon: const Icon(
                                           Icons.expand_more_rounded,
                                         ),
@@ -670,6 +674,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                             >(
                                               initialValue:
                                                   provider.documentType,
+                                              isExpanded: true,
                                               icon: const Icon(
                                                 Icons.expand_more_rounded,
                                               ),

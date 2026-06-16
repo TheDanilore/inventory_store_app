@@ -129,8 +129,21 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
   }
 
   // ── SETTERS ──
+  void _recalculateDueDate() {
+    if (_paymentMode == 'CREDITO' && _selectedSupplierId != null) {
+      final supplier = _suppliers.firstWhere((s) => s['id'] == _selectedSupplierId, orElse: () => {});
+      final creditData = getCreditData(supplier);
+      if (creditData != null && creditData['payment_terms_days'] != null) {
+        final days = creditData['payment_terms_days'] as int;
+        final baseDate = _documentDate ?? DateTime.now();
+        _dueDate = baseDate.add(Duration(days: days));
+      }
+    }
+  }
+
   void setSupplier(String? id) {
     _selectedSupplierId = id;
+    _recalculateDueDate();
     _saveDraft();
     notifyListeners();
   }
@@ -149,6 +162,7 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
   void setDocumentDate(DateTime? date) {
     _documentDate = date;
+    _recalculateDueDate();
     _saveDraft();
     notifyListeners();
   }
@@ -161,6 +175,7 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
   void setPaymentMode(String mode) {
     _paymentMode = mode;
+    _recalculateDueDate();
     _saveDraft();
     notifyListeners();
   }

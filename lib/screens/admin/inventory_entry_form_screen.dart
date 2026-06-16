@@ -217,6 +217,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         final provider = context.read<InventoryEntryFormProvider>();
         // Si no hay ítems o está guardando, permitimos salir directamente
         if (provider.items.isEmpty || provider.isSaving || widget.purchaseOrderId != null) {
+          if (provider.items.isEmpty) provider.clearDraft();
           Navigator.pop(context, result);
           return;
         }
