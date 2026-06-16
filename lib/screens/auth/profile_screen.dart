@@ -18,6 +18,7 @@ import 'package:inventory_store_app/screens/auth/widgets/profile_read_only_info_
 import 'package:inventory_store_app/screens/auth/widgets/profile_edit_form_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_action_buttons_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_shimmer.dart';
+import 'package:inventory_store_app/screens/auth/login_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -310,7 +311,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onSignOut: () {
                             provider.signOut().then((_) {
                               if (context.mounted) {
-                                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  (route) => false,
+                                );
                               }
                             });
                           },

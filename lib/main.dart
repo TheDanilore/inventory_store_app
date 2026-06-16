@@ -24,6 +24,7 @@ import 'package:inventory_store_app/providers/admin/warehouses_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
+import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/screens/splash_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_theme.dart';
@@ -53,6 +54,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppConfigProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => NetworkProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
