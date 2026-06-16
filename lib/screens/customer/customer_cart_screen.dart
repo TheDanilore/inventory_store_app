@@ -168,11 +168,12 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
 
     return CustomerLayout(
       onTabSelected: widget.onTabSelected,
-      title: 'Mi Carrito',
+      title: 'Danilore Store',
       showBackButton: false,
       showProfileIcon: false,
       showBottomNav: true,
       showCartIcon: false,
+      showWalletChip: true,
       currentIndex: 1,
       body:
           cart.items.isEmpty

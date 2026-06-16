@@ -38,6 +38,8 @@ class CartCheckoutFooter extends StatelessWidget {
     );
     final descuentoSoles = puntosUsados * pointsToSolesRatio;
 
+    final selectedCount = cart.selectedItems.length;
+
     return Container(
       padding: EdgeInsets.only(
         left: 20,
@@ -59,46 +61,73 @@ class CartCheckoutFooter extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildPriceRow('Subtotal', 'S/ ${subtotal.toStringAsFixed(2)}'),
-            const SizedBox(height: 4),
-            if (descuentoSoles > 0)
+            if (descuentoSoles > 0) ...[
+              _buildPriceRow('Subtotal', 'S/ ${subtotal.toStringAsFixed(2)}'),
+              const SizedBox(height: 4),
               _buildPriceRow(
                 'Descuento por Puntos',
                 '- S/ ${descuentoSoles.toStringAsFixed(2)}',
                 valueColor: Colors.orange,
               ),
-            const SizedBox(height: 10),
-            const Divider(height: 1, color: AppColors.border),
-            const SizedBox(height: 10),
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppColors.border),
+              const SizedBox(height: 10),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text(
-                  'Total a Pagar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total a pagar',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'S/ ${totalAPagar.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  'S/ ${totalAPagar.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$selectedCount prod.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton(
                 onPressed:
-                    (cart.selectedItems.isEmpty || isSending)
+                    (selectedCount == 0 || isSending)
                         ? null
                         : onProcessCheckout,
                 style: ElevatedButton.styleFrom(
@@ -107,7 +136,7 @@ class CartCheckoutFooter extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child:
@@ -123,14 +152,14 @@ class CartCheckoutFooter extends StatelessWidget {
                         : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.send_rounded, size: 18),
+                            Icon(Icons.send_rounded, size: 20),
                             SizedBox(width: 8),
                             Text(
                               'Enviar por WhatsApp',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 0.1,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ],

@@ -10,37 +10,59 @@ class CartActionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              Checkbox(
-                value: cart.isAllSelected,
-                activeColor: AppColors.primary,
-                onChanged: (val) {
-                  cart.toggleAllSelection(val ?? false);
-                },
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: cart.isAllSelected,
+                  activeColor: AppColors.textPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  side: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                  onChanged: (val) {
+                    cart.toggleAllSelection(val ?? false);
+                  },
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               const Text(
-                'Seleccionar Todos',
+                'Seleccionar todo',
                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
                   color: AppColors.textPrimary,
                 ),
               ),
             ],
           ),
           if (cart.selectedItems.isNotEmpty)
-            TextButton(
+            TextButton.icon(
               onPressed: () {
                 cart.removeSelectedItems();
               },
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: const Text('Eliminar seleccionados'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red.shade600,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                size: 18,
+                color: Colors.red.shade600,
+              ),
+              label: Text(
+                'Eliminar',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red.shade600,
+                ),
+              ),
             ),
         ],
       ),
