@@ -53,8 +53,7 @@ class CustomerLayout extends StatelessWidget {
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
-            onTap:
-                () => context.push('/customer/points'),
+            onTap: () => context.push('/customer/points'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -158,30 +157,33 @@ class CustomerLayout extends StatelessWidget {
   // ya que su headerSliverBuilder no se reconstruye con el padre.
   Widget _buildTitle(BuildContext context) {
     final bool noLeadingIcon = !showBackButton && !showProfileIcon;
-    // Leemos el businessName directamente del provider para que sea reactivo
-    // incluso dentro del SliverAppBar del NestedScrollView.
-    final liveTitle = context.watch<AppConfigProvider>().businessName;
-    final displayTitle =
-        liveTitle.isNotEmpty && liveTitle != 'Cargando...'
-            ? liveTitle
-            : title; // fallback al parámetro recibido
+
     return Padding(
       padding: EdgeInsets.only(left: noLeadingIcon ? 16.0 : 4.0),
-      child: Text(
-        displayTitle,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.3,
-        ),
+      child: Consumer<AppConfigProvider>(
+        builder: (context, config, child) {
+          final liveTitle = config.businessName;
+          final displayTitle =
+              liveTitle.isNotEmpty && liveTitle != 'Cargando...'
+                  ? liveTitle
+                  : title; // fallback al parámetro recibido
+          return Text(
+            displayTitle,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          );
+        },
       ),
     );
   }
 
   // ─── ACTIONS ─────────────────────────────────────────────────────────────
 
-  List<Widget> _buildActions(BuildContext context, CartProvider cart) {
+  List<Widget> _buildActions(BuildContext context) {
     return [
       if (showWalletChip) _buildWalletChip(context),
       const SizedBox(width: 8),
@@ -214,29 +216,33 @@ class CustomerLayout extends StatelessWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  if (cart.itemCount > 0)
-                    Positioned(
-                      right: 4,
-                      top: 4,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${cart.itemCount > 9 ? "9+" : cart.itemCount}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                  Consumer<CartProvider>(
+                    builder: (context, cart, _) {
+                      if (cart.itemCount == 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: 4,
+                        top: 4,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: const BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${cart.itemCount > 9 ? "9+" : cart.itemCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -248,7 +254,7 @@ class CustomerLayout extends StatelessWidget {
 
   // ─── APPBAR ──────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, CartProvider cart) {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.surface,
       foregroundColor: AppColors.textPrimary,
@@ -261,16 +267,13 @@ class CustomerLayout extends StatelessWidget {
       titleSpacing: 0,
       leading: _buildLeading(context),
       title: _buildTitle(context),
-      actions:
-          (showCartIcon || showWalletChip)
-              ? _buildActions(context, cart)
-              : null,
+      actions: (showCartIcon || showWalletChip) ? _buildActions(context) : null,
     );
   }
 
   // ─── BOTTOM NAV ──────────────────────────────────────────────────────────
 
-  Widget _buildBottomNav(BuildContext context, CartProvider cart) {
+  Widget _buildBottomNav(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -296,7 +299,7 @@ class CustomerLayout extends StatelessWidget {
                   }
                 },
               ),
-              _navItemCart(context, cart),
+              _navItemCart(context),
               _navItem(
                 context: context,
                 index: 2,
@@ -371,7 +374,7 @@ class CustomerLayout extends StatelessWidget {
     );
   }
 
-  Widget _navItemCart(BuildContext context, CartProvider cart) {
+  Widget _navItemCart(BuildContext context) {
     final isActive = currentIndex == 1;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -406,31 +409,35 @@ class CustomerLayout extends StatelessWidget {
                     color:
                         isActive ? AppColors.accent : AppColors.textSecondary,
                   ),
-                  if (cart.itemCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -4,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 15,
-                          minHeight: 15,
-                        ),
-                        child: Text(
-                          '${cart.itemCount}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w900,
+                  Consumer<CartProvider>(
+                    builder: (context, cart, _) {
+                      if (cart.itemCount == 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: -6,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 15,
+                            minHeight: 15,
+                          ),
+                          child: Text(
+                            '${cart.itemCount}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 3),
@@ -453,51 +460,53 @@ class CustomerLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cart = Provider.of<CartProvider>(context);
-    final isOnline = context.watch<NetworkProvider>().isOnline;
-
     // Banner de sin conexión + body
     Widget pageBody = Column(
       children: [
-        AnimatedSize(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          child:
-              isOnline
-                  ? const SizedBox.shrink() // No ocupa espacio si hay internet
-                  : AnimatedSlide(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    offset: isOnline ? const Offset(0, -1) : Offset.zero,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 250),
-                      opacity: isOnline ? 0 : 1,
-                      child: Container(
-                        width: double.infinity,
-                        color: Colors.red.shade500,
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.wifi_off_rounded,
-                              color: Colors.white,
-                              size: 16,
+        Consumer<NetworkProvider>(
+          builder: (context, network, child) {
+            final isOnline = network.isOnline;
+            return AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child:
+                  isOnline
+                      ? const SizedBox.shrink() // No ocupa espacio si hay internet
+                      : AnimatedSlide(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        offset: isOnline ? const Offset(0, -1) : Offset.zero,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 250),
+                          opacity: isOnline ? 0 : 1,
+                          child: Container(
+                            width: double.infinity,
+                            color: Colors.red.shade500,
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.wifi_off_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Sin conexión a internet',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Sin conexión a internet',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+            );
+          },
         ),
         Expanded(child: body),
       ],
@@ -524,7 +533,7 @@ class CustomerLayout extends StatelessWidget {
                 title: _buildTitle(context),
                 actions:
                     (showCartIcon || showWalletChip)
-                        ? _buildActions(context, cart)
+                        ? _buildActions(context)
                         : null,
               ),
             ],
@@ -535,13 +544,11 @@ class CustomerLayout extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar:
-          (showAppBar && !hideAppBarOnScroll)
-              ? _buildAppBar(context, cart)
-              : null,
+          (showAppBar && !hideAppBarOnScroll) ? _buildAppBar(context) : null,
       body: finalBody,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar:
-          showBottomNav ? _buildBottomNav(context, cart) : bottomNavigationBar,
+          showBottomNav ? _buildBottomNav(context) : bottomNavigationBar,
     );
   }
 }

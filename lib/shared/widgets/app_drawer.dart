@@ -84,11 +84,15 @@ class _AppDrawerState extends State<AppDrawer> {
   final Set<String> _expanded = {};
 
   Future<int> _loadPendingOrdersCount() async {
-    final response = await Supabase.instance.client
-        .from('orders')
-        .select('id')
-        .eq('status', 'PENDING');
-    return List<Map<String, dynamic>>.from(response).length;
+    try {
+      final count = await Supabase.instance.client
+          .from('orders')
+          .count(CountOption.exact)
+          .eq('status', 'PENDING');
+      return count;
+    } catch (_) {
+      return 0;
+    }
   }
 
   void _toggle(String title) {
