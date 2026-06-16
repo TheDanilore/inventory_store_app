@@ -26,6 +26,7 @@ import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/providers/customer/catalog_provider.dart';
+import 'package:inventory_store_app/providers/customer/cart_checkout_provider.dart';
 
 class AppProviders {
   static final List<SingleChildWidget> providers = [
@@ -41,6 +42,7 @@ class AppProviders {
     ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CustomerCreditsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => CustomerCatalogProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CartCheckoutProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => SupplierCreditsProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),

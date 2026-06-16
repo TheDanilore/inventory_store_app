@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/providers/customer/catalog_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/admin_add_to_cart_sheet.dart';
-import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/providers/cart_provider.dart';
+import 'package:inventory_store_app/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_search_bar.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_category_list.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_banners.dart';
@@ -62,13 +64,26 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   }
 
   Future<void> _handleAddToCart(ProductModel product) async {
-    // La logica de agregar al carrito con AdminAddToCartSheet (que es un componente generico compartido)
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AdminAddToCartSheet(product: product),
-    );
+    final cart = context.read<CartProvider>();
+
+    if (product.productVariants.isNotEmpty) {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder:
+            (context) => CartVariantPickerSheet(cart: cart, product: product),
+      );
+    } else {
+      cart.addItem(product, quantity: 1, variantId: null, variantLabel: null);
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: '${product.name} añadido al carrito',
+          backgroundColor: AppColors.success,
+        );
+      }
+    }
   }
 
   @override
