@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/services/admin/catalog_service.dart';
@@ -119,17 +118,13 @@ class _ProductLoaderState extends State<_ProductLoader> {
 
 class AppRouter {
   // ── Deep link preservation ───────────────────────────────────────────────
-  // Capturamos la URL inicial en memoria (no en la URL) para evitar
-  // que el browser recargue la página al cambiar la URL con query params.
   static String? _pendingDeepLink;
 
   /// Llamar desde main() ANTES de runApp() para capturar la ruta inicial.
   static void captureInitialRoute() {
     try {
-      // ignore: undefined_function
       final uri = Uri.base;
       final path = uri.path;
-      // Solo guardamos si es una ruta profunda (no la raíz ni el login)
       if (path.isNotEmpty && path != '/' && path != '/login') {
         _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
         debugPrint('AppRouter: deep link capturado → $_pendingDeepLink');
@@ -139,13 +134,50 @@ class AppRouter {
     }
   }
 
-  static GoRouter createRouter(BuildContext context) {
-    final authProvider = context.read<AuthProvider>();
-
+  /// Crea el GoRouter recibiendo el [AuthProvider] directamente.
+  ///
+  /// IMPORTANTE: Esta firma reemplaza la anterior `createRouter(BuildContext context)`.
+  /// El provider se pasa como parámetro para que el router pueda crearse
+  /// FUERA del árbol de widgets (en main(), antes de runApp()), eliminando
+  /// así el crash "DartError: Assertion failed" causado por la recreación
+  /// del GoRouter en rebuilds de MyApp.
+  static GoRouter createRouter(AuthProvider authProvider) {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
       initialLocation: '/',
       refreshListenable: authProvider,
+      errorBuilder:
+          (context, state) => Scaffold(
+            appBar: AppBar(title: const Text('Página no encontrada')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.link_off_rounded,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Esta página no existe',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.matchedLocation,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Volver al inicio'),
+                  ),
+                ],
+              ),
+            ),
+          ),
       redirect: (context, state) {
         final isSessionReady = authProvider.isSessionReady;
         final role = authProvider.currentUserRole;
@@ -155,9 +187,6 @@ class AppRouter {
         final isLogin = currentPath == '/login';
 
         // ── Paso 1: Sesión aún cargando → mostrar splash siempre ─────────
-        // IMPORTANTE: No permitimos entrar a NINGUNA ruta hasta que la sesión
-        // esté lista. Esto evita el crash por state.extra == null en rutas
-        // que requieren datos pasados por navegación (no sobreviven reload).
         if (!isSessionReady) {
           return isSplash ? null : '/';
         }
@@ -165,22 +194,25 @@ class AppRouter {
         // ── Paso 2: Sesión lista → restaurar deep link pendiente ──────────
         if (isSplash && _pendingDeepLink != null) {
           final target = _pendingDeepLink!;
-          _pendingDeepLink = null; // consumir para que no se repita
+          _pendingDeepLink = null;
 
           if (target.startsWith('/admin') && role == AppRoles.admin) {
             return target;
           }
-          if (target.startsWith('/customer') && role != null) {
+          if (target.startsWith('/customer')) {
             return target;
           }
-          // Si no tiene permisos, desechar el deep link y continuar normal
         }
+
+        // ── Rutas públicas de /customer ───────────────────────────────────
+        final isPublicCustomerRoute =
+            currentPath == '/customer' ||
+            currentPath.startsWith('/customer/product/');
 
         // ── Paso 3: Sin sesión ───────────────────────────────────────────
         if (role == null) {
           if (isLogin) return null;
-          // ELIMINADO: ya no permitimos /customer sin sesión para evitar
-          // que rutas que dependen de state.extra crasheen al recargar.
+          if (isPublicCustomerRoute) return null;
           return '/login';
         }
 
@@ -263,10 +295,7 @@ class AppRouter {
             GoRoute(
               path: 'customer-detail/:id',
               builder: (context, state) {
-                // state.extra es null al recargar/pegar la URL (no sobrevive
-                // a reloads). Pasamos null de forma segura; CustomerDetailScreen
-                // debe usar el pathParameter 'id' para recargar los datos.
-                final customer = state.extra; // puede ser null en deep link
+                final customer = state.extra;
                 final customerId = state.pathParameters['id'] ?? '';
                 if (customer == null && customerId.isEmpty) {
                   return Scaffold(
@@ -274,10 +303,7 @@ class AppRouter {
                     body: const Center(child: Text('Cliente no encontrado.')),
                   );
                 }
-                return CustomerDetailScreen(
-                  customer: customer as dynamic,
-                  // Pasa el id para que la pantalla pueda recargar si customer==null
-                );
+                return CustomerDetailScreen(customer: customer as dynamic);
               },
             ),
             GoRoute(
@@ -400,7 +426,10 @@ class AppRouter {
             GoRoute(
               path: 'user-form',
               builder: (context, state) {
-                final args = state.extra as Map<String, dynamic>? ?? {};
+                final args = state.extra as Map<String, dynamic>?;
+                if (args == null) {
+                  return const UsersManagementScreen();
+                }
                 return UserFormScreen(
                   initialRole: args['initialRole'],
                   existingUser: args['existingUser'] as dynamic,
@@ -542,9 +571,10 @@ class AppRouter {
           path: '/product/:id',
           builder: (context, state) {
             final productId = state.pathParameters['id'];
-            // state.extra es null al recargar/pegar URL: cast seguro con 'as?'
             final product = state.extra as ProductModel?;
-            final role = context.read<AuthProvider>().currentUserRole;
+            // Usamos el authProvider capturado en el closure (no context.read)
+            // para evitar dependencia del contexto en rutas compartidas.
+            final role = authProvider.currentUserRole;
             final isAdmin = role == AppRoles.admin;
 
             if (product != null) {
@@ -559,8 +589,6 @@ class AppRouter {
               );
             }
 
-            // Usamos _ProductLoader (StatefulWidget) para que el Future
-            // no se relance en cada rebuild del árbol de widgets.
             return _ProductLoader(productId: productId, isAdmin: isAdmin);
           },
         ),

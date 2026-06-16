@@ -30,14 +30,47 @@ import 'package:inventory_store_app/providers/customer/cart_checkout_provider.da
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
 
 class AppProviders {
+  // Lista COMPLETA (por compatibilidad, aunque ya no se usa en main.dart)
   static final List<SingleChildWidget> providers = [
-    // Providers Principales y de Configuración
     ChangeNotifierProvider(create: (_) => AppConfigProvider()),
     ChangeNotifierProvider(create: (_) => AuthProvider()),
     ChangeNotifierProvider(create: (_) => ProfileProvider()),
     ChangeNotifierProvider(create: (_) => NetworkProvider()),
-    
-    // Providers Secundarios y Operativos (Perezosos)
+    ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CustomerCreditsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CustomerCatalogProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CartCheckoutProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => PointsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => SupplierCreditsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => PurchaseOrdersProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => PurchaseOrderFormProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => InventoryEntryFormProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => InventoryEntriesProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => InventoryExitsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => InventoryExitFormProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => InventoryProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => FinancialAccountsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => AccountMovementsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CashShiftsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => CategoriesProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => AttributesProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => ActiveIngredientsProvider(), lazy: true),
+    ChangeNotifierProvider(create: (_) => WarehousesProvider(), lazy: true),
+  ];
+
+  /// Todos los providers EXCEPTO AuthProvider.
+  ///
+  /// Úsalo en main.dart junto con un ChangeNotifierProvider<AuthProvider>.value
+  /// que apunte a la instancia global creada antes de runApp(). Esto garantiza
+  /// que el GoRouter y el AuthProvider sean singletons verdaderos y nunca se
+  /// recreen durante rebuilds del árbol de widgets.
+  static final List<SingleChildWidget> providersExcludingAuth = [
+    ChangeNotifierProvider(create: (_) => AppConfigProvider()),
+    ChangeNotifierProvider(create: (_) => ProfileProvider()),
+    ChangeNotifierProvider(create: (_) => NetworkProvider()),
     ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
     ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),

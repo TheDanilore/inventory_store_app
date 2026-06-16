@@ -163,7 +163,14 @@ class _LoginScreenState extends State<LoginScreen>
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      onPressed: () => context.go('/customer'),
+                      onPressed: () {
+                        // Si hay historial, retrocede. Si no, va a /customer (modo invitado).
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/customer');
+                        }
+                      },
                     ),
                   ),
                 ),

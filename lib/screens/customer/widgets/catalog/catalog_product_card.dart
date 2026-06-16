@@ -58,7 +58,11 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
       onEnter: (_) => setState(() => _isCardHovered = true),
       onExit: (_) => setState(() => _isCardHovered = false),
       child: GestureDetector(
-        onTap: () => context.go('/customer/product/${product.id}', extra: product),
+        onTap:
+            () => context.push(
+              '/customer/product/\${product.id}',
+              extra: product,
+            ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
