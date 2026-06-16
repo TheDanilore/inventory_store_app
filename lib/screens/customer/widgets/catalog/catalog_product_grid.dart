@@ -21,7 +21,7 @@ class CatalogProductGrid extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.68,
+          childAspectRatio: 0.58,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
@@ -110,7 +110,7 @@ class CatalogProductGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.68,
+            childAspectRatio: 0.58,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),

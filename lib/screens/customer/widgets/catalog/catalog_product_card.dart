@@ -79,7 +79,7 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
             children: [
               // ── IMAGEN ──
               Expanded(
-                flex: 3,
+                flex: 5,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -146,16 +146,17 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
 
               // ── INFO ──
               Expanded(
-                flex: 2,
+                flex: 4,
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           Text(
                             product.name,
                             style: TextStyle(
@@ -181,7 +182,8 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
                                       : AppColors.primary,
                             ),
                           ),
-                        ],
+                          ],
+                        )
                       ),
                       Align(
                         alignment: Alignment.centerRight,
