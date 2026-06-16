@@ -61,7 +61,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       String? activeShiftId;
       final shiftResp =
           await Supabase.instance.client
-              .from('cash_register_shifts')
+              .from('cash_shifts')
               .select('id')
               .eq('status', 'OPEN')
               .maybeSingle();
@@ -136,7 +136,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     String activeShiftId = "";
     final shiftResp =
         await Supabase.instance.client
-            .from('cash_register_shifts')
+            .from('cash_shifts')
             .select('id')
             .eq('status', 'OPEN')
             .maybeSingle();
@@ -146,6 +146,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     }
 
     if (!provider.validate(activeShiftId)) {
+      AppSnackbar.show(context, message: provider.errorMessage, type: SnackbarType.error);
       return;
     }
 
@@ -160,6 +161,12 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
+    } else if (mounted && provider.errorMessage.isNotEmpty) {
+      AppSnackbar.show(
+        context,
+        message: provider.errorMessage,
+        type: SnackbarType.error,
+      );
     }
   }
 
@@ -202,35 +209,84 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<InventoryEntryFormProvider>(
-      builder: (context, provider, child) {
-        if (provider.errorMessage.isNotEmpty && !provider.isSaving) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            AppSnackbar.show(
-              context,
-              message: provider.errorMessage,
-              type: SnackbarType.error,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        final provider = context.read<InventoryEntryFormProvider>();
+        // Si no hay ítems o está guardando, permitimos salir directamente
+        if (provider.items.isEmpty || provider.isSaving || widget.purchaseOrderId != null) {
+          Navigator.pop(context, result);
+          return;
+        }
+
+        final action = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Cambios sin guardar'),
+            content: const Text(
+                'Tienes un registro en curso. ¿Qué deseas hacer al salir?'),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 'cancel'),
+                    child: const Text('Cancelar'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 'discard'),
+                    child: const Text('Descartar',
+                        style: TextStyle(color: AppColors.danger)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, 'draft'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: const Text('Borrador'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        if (!context.mounted) return;
+
+        if (action == 'discard') {
+          provider.clearDraft();
+          Navigator.pop(context, result);
+        } else if (action == 'draft') {
+          Navigator.pop(context, result);
+        }
+      },
+      child: Consumer<InventoryEntryFormProvider>(
+        builder: (context, provider, child) {
+
+
+          if (provider.isLoading) {
+            return const AdminLayout(
+              title: 'Entrada de Inventario',
+              showBackButton: true,
+              showDrawerButton: false,
+              body: Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
             );
-          });
-        }
+          }
 
-        if (provider.isLoading) {
-          return const AdminLayout(
-            title: 'Entrada de Inventario',
+          return AdminLayout(
+            title: widget.purchaseOrderId != null
+                ? 'Recepción de Orden'
+                : 'Nueva Entrada Manual',
             showBackButton: true,
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-          );
-        }
-
-        return AdminLayout(
-          title:
-              widget.purchaseOrderId != null
-                  ? 'Recepción de Orden'
-                  : 'Nueva Entrada Manual',
-          showBackButton: true,
-          body:
+            showDrawerButton: false,
+            body:
               provider.isSaving
                   ? const Center(
                     child: CircularProgressIndicator(color: AppColors.primary),
@@ -354,6 +410,16 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
                                                 color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'AJUSTE',
+                                            child: Text(
+                                              'Ajuste / Sin Costo',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textSecondary,
                                               ),
                                             ),
                                           ),
@@ -528,6 +594,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                             String
                                           >(
                                             initialValue: provider.documentType,
+                                            isExpanded: true,
                                             icon: const Icon(
                                               Icons.expand_more_rounded,
                                             ),
@@ -687,8 +754,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                   ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _mostrarDialogoCantidadItem(
     BuildContext context,

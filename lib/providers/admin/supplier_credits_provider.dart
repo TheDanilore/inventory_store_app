@@ -41,6 +41,9 @@ class SupplierCreditsProvider extends ChangeNotifier {
   int _maxedOutAccounts = 0;
   int get maxedOutAccounts => _maxedOutAccounts;
 
+  int _debtCount = 0;
+  int get debtCount => _debtCount;
+
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -76,6 +79,7 @@ class SupplierCreditsProvider extends ChangeNotifier {
       _activeAccounts = result.stats['activeAccounts'] as int;
       _suspendedAccounts = result.stats['suspendedAccounts'] as int;
       _maxedOutAccounts = result.stats['maxedOutAccounts'] as int;
+      _debtCount = result.stats['debtCount'] as int;
 
       _errorMessage = null;
     } catch (e) {

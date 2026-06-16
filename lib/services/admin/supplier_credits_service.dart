@@ -25,10 +25,14 @@ class SupplierCreditsService {
     int activeCount = 0;
     int suspendedCount = 0;
     int maxedOutCount = 0;
+    int debtCount = 0;
 
     for (final item in statsResponse as List) {
       final a = SupplierCreditModel.fromView(item);
       totalDebt += a.currentDebt;
+      if (a.currentDebt > 0 && a.isActive) {
+        debtCount++;
+      }
       if (a.isActive) {
         activeCount++;
         if (a.isMaxedOut) maxedOutCount++;
@@ -61,6 +65,7 @@ class SupplierCreditsService {
         'activeAccounts': activeCount,
         'suspendedAccounts': suspendedCount,
         'maxedOutAccounts': maxedOutCount,
+        'debtCount': debtCount,
       }
     );
   }

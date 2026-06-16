@@ -80,14 +80,15 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
           (_) => SupplierAccountOptionsSheet(
             account: account,
             onRefresh: () {
-              context.read<SupplierCreditsProvider>().fetchAccounts(showLoading: false);
+              context.read<SupplierCreditsProvider>().fetchAccounts(
+                showLoading: false,
+              );
             },
             onToggleStatus: (acc) async {
               try {
-                await context.read<SupplierCreditsProvider>().toggleAccountStatus(
-                  acc.creditId,
-                  acc.isActive,
-                );
+                await context
+                    .read<SupplierCreditsProvider>()
+                    .toggleAccountStatus(acc.creditId, acc.isActive);
                 if (context.mounted) {
                   AppSnackbar.show(
                     context,
@@ -201,9 +202,38 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                             ),
                             labelColor: Colors.white,
                             unselectedLabelColor: AppColors.textMuted,
-                            tabs: const [
-                              Tab(text: 'Todas'),
-                              Tab(text: 'Por Pagar'),
+                            tabs: [
+                              const Tab(text: 'Todas'),
+                              Tab(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text('Por Pagar'),
+                                    if (provider.debtCount > 0) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.danger,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          '${provider.debtCount}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -221,7 +251,11 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => const Padding(
                           padding: EdgeInsets.only(bottom: 12),
-                          child: AppShimmer(width: double.infinity, height: 120, borderRadius: 16),
+                          child: AppShimmer(
+                            width: double.infinity,
+                            height: 120,
+                            borderRadius: 16,
+                          ),
                         ),
                         childCount: 5,
                       ),
@@ -245,14 +279,16 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                             Text(
                               'Ocurrió un error: ${provider.errorMessage}',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
                               onPressed: provider.fetchAccounts,
                               icon: const Icon(Icons.refresh_rounded),
                               label: const Text('Reintentar'),
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -290,19 +326,16 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final account = provider.accounts[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: SupplierCreditCard(
-                              account: account,
-                              onTap: () => _openAccountOptions(context, account),
-                            ),
-                          );
-                        },
-                        childCount: provider.accounts.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final account = provider.accounts[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: SupplierCreditCard(
+                            account: account,
+                            onTap: () => _openAccountOptions(context, account),
+                          ),
+                        );
+                      }, childCount: provider.accounts.length),
                     ),
                   ),
 

@@ -12,6 +12,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InventoryEntriesScreen extends StatefulWidget {
   const InventoryEntriesScreen({super.key});
@@ -22,6 +23,7 @@ class InventoryEntriesScreen extends StatefulWidget {
 
 class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   final _searchCtrl = TextEditingController();
+  bool _hasDraft = false;
 
   @override
   void initState() {
@@ -31,6 +33,20 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       _searchCtrl.text = provider.searchQuery;
       provider.init();
     });
+    _checkDraft();
+  }
+
+  Future<void> _checkDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final itemsString = prefs.getString('inventory_entry_draft_items');
+    if (mounted) {
+      setState(() {
+        _hasDraft =
+            itemsString != null &&
+            itemsString.isNotEmpty &&
+            itemsString != '[]';
+      });
+    }
   }
 
   @override
@@ -39,69 +55,87 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     super.dispose();
   }
 
-  Future<void> _loadItemsAndShowDetail(BuildContext context, InventoryEntryModel entry) async {
+  Future<void> _loadItemsAndShowDetail(
+    BuildContext context,
+    InventoryEntryModel entry,
+  ) async {
     final service = InventoryEntriesService();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => InventoryEntryDetailSheet(
-        entry: entry,
-        loadItems: () async {
-          final itemsDynamic = await service.getEntryItems(entry.id);
-          return itemsDynamic.map((r) {
-            final prod = r['products'] as Map<String, dynamic>?;
-            final variantData = r['product_variants'] as Map<String, dynamic>?;
-            final variantId = r['variant_id'] as String?;
+      builder:
+          (_) => InventoryEntryDetailSheet(
+            entry: entry,
+            loadItems: () async {
+              final itemsDynamic = await service.getEntryItems(entry.id);
+              return itemsDynamic.map((r) {
+                final prod = r['products'] as Map<String, dynamic>?;
+                final variantData =
+                    r['product_variants'] as Map<String, dynamic>?;
+                final variantId = r['variant_id'] as String?;
 
-            final vavList = variantData?['variant_attribute_values'] as List<dynamic>? ?? [];
-            final List<String> attrValues = [];
+                final vavList =
+                    variantData?['variant_attribute_values']
+                        as List<dynamic>? ??
+                    [];
+                final List<String> attrValues = [];
 
-            for (var vav in vavList) {
-              final av = vav['attribute_values'] as Map<String, dynamic>?;
-              if (av != null && av['value'] != null) {
-                attrValues.add(av['value'].toString());
-              }
-            }
+                for (var vav in vavList) {
+                  final av = vav['attribute_values'] as Map<String, dynamic>?;
+                  if (av != null && av['value'] != null) {
+                    attrValues.add(av['value'].toString());
+                  }
+                }
 
-            final attrsText = attrValues.join(' · ');
-            final bool usesBatches = prod?['uses_batches'] == true;
+                final attrsText = attrValues.join(' · ');
+                final bool usesBatches = prod?['uses_batches'] == true;
 
-            String? finalImageUrl;
-            final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
-            if (imagesList.isNotEmpty) {
-              final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-                (img) => img['variant_id'] == variantId,
-                orElse: () => <String, dynamic>{},
-              );
-              if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
-                finalImageUrl = variantImage['image_url'] as String;
-              } else {
-                final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-                  (img) => img['is_main'] == true,
-                  orElse: () => imagesList.first as Map<String, dynamic>,
+                String? finalImageUrl;
+                final imagesList =
+                    prod?['product_images'] as List<dynamic>? ?? [];
+                if (imagesList.isNotEmpty) {
+                  final variantImage = imagesList
+                      .cast<Map<String, dynamic>>()
+                      .firstWhere(
+                        (img) => img['variant_id'] == variantId,
+                        orElse: () => <String, dynamic>{},
+                      );
+                  if (variantImage.isNotEmpty &&
+                      variantImage['image_url'] != null) {
+                    finalImageUrl = variantImage['image_url'] as String;
+                  } else {
+                    final mainImage = imagesList
+                        .cast<Map<String, dynamic>>()
+                        .firstWhere(
+                          (img) => img['is_main'] == true,
+                          orElse:
+                              () => imagesList.first as Map<String, dynamic>,
+                        );
+                    finalImageUrl = mainImage['image_url'] as String?;
+                  }
+                }
+
+                return InventoryEntryItemModel(
+                  id: r['id'] as String? ?? '',
+                  entryId: entry.id,
+                  productId: prod?['id'] as String? ?? '',
+                  variantId: variantId ?? '',
+                  productName: prod?['name'] as String? ?? '—',
+                  variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+                  quantity: (r['quantity'] as num).toDouble(),
+                  unitCost: (r['unit_cost'] as num).toDouble(),
+                  batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+                  expiryDate:
+                      r['expiry_date'] != null
+                          ? DateTime.tryParse(r['expiry_date'] as String)
+                          : null,
+                  usesBatches: usesBatches,
+                  imageUrl: finalImageUrl,
                 );
-                finalImageUrl = mainImage['image_url'] as String?;
-              }
-            }
-
-            return InventoryEntryItemModel(
-              id: r['id'] as String? ?? '',
-              entryId: entry.id,
-              productId: prod?['id'] as String? ?? '',
-              variantId: variantId ?? '',
-              productName: prod?['name'] as String? ?? '—',
-              variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
-              quantity: (r['quantity'] as num).toDouble(),
-              unitCost: (r['unit_cost'] as num).toDouble(),
-              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-              expiryDate: r['expiry_date'] != null ? DateTime.tryParse(r['expiry_date'] as String) : null,
-              usesBatches: usesBatches,
-              imageUrl: finalImageUrl,
-            );
-          }).toList();
-        },
-      ),
+              }).toList();
+            },
+          ),
     );
   }
 
@@ -109,14 +143,20 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   Widget build(BuildContext context) {
     return Consumer<InventoryEntriesProvider>(
       builder: (context, provider, child) {
-        
         if (provider.errorMessage.isNotEmpty && !provider.isLoading) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            AppSnackbar.show(context, message: provider.errorMessage, type: SnackbarType.error);
+            AppSnackbar.show(
+              context,
+              message: provider.errorMessage,
+              type: SnackbarType.error,
+            );
           });
         }
 
-        final double totalAmount = provider.entries.fold<double>(0, (s, e) => s + e.totalAmount);
+        final double totalAmount = provider.entries.fold<double>(
+          0,
+          (s, e) => s + e.totalAmount,
+        );
 
         return AdminLayout(
           title: 'Historial de Entradas',
@@ -176,24 +216,32 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: provider.availableWarehouses.map((w) {
-                          final sel = provider.warehouseFilter == w;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: FilterChip(
-                              label: Text(w),
-                              selected: sel,
-                              onSelected: (_) => provider.setWarehouseFilter(w),
-                              selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                              checkmarkColor: AppColors.primary,
-                              labelStyle: TextStyle(
-                                fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                                fontSize: 12,
-                                color: sel ? AppColors.primary : AppColors.textSecondary,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                        children:
+                            provider.availableWarehouses.map((w) {
+                              final sel = provider.warehouseFilter == w;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: FilterChip(
+                                  label: Text(w),
+                                  selected: sel,
+                                  onSelected:
+                                      (_) => provider.setWarehouseFilter(w),
+                                  selectedColor: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  checkmarkColor: AppColors.primary,
+                                  labelStyle: TextStyle(
+                                    fontWeight:
+                                        sel ? FontWeight.w700 : FontWeight.w500,
+                                    fontSize: 12,
+                                    color:
+                                        sel
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                       ),
                     ),
                   ],
@@ -204,62 +252,85 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
               // ── Lista ─────────────────────────────────────────────────────
               Expanded(
-                child: provider.isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      )
-                    : provider.entries.isEmpty
-                        ? _EmptyState(
-                            icon: Icons.inbox_outlined,
-                            message: provider.searchQuery.isEmpty && provider.dateRange == null && provider.warehouseFilter == 'Todos'
-                                ? 'No hay entradas registradas'
-                                : 'Sin resultados para los filtros aplicados',
-                          )
-                        : Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                                child: Row(
-                                  children: [
-                                    const Spacer(),
-                                    Text(
-                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child: RefreshIndicator(
-                                  color: AppColors.primary,
-                                  onRefresh: () => provider.loadEntries(page: 0),
-                                  child: ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                                    itemCount: provider.entries.length,
-                                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                    itemBuilder: (_, i) => _EntryCard(
-                                      entry: provider.entries[i],
-                                      onTap: () => _loadItemsAndShowDetail(context, provider.entries[i]),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (provider.totalPages > 1)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                                  child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: provider.goToPage,
-                                  ),
-                                ),
-                            ],
+                child:
+                    provider.isLoading
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
                           ),
+                        )
+                        : provider.entries.isEmpty
+                        ? _EmptyState(
+                          icon: Icons.inbox_outlined,
+                          message:
+                              provider.searchQuery.isEmpty &&
+                                      provider.dateRange == null &&
+                                      provider.warehouseFilter == 'Todos'
+                                  ? 'No hay entradas registradas'
+                                  : 'Sin resultados para los filtros aplicados',
+                        )
+                        : Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Row(
+                                children: [
+                                  const Spacer(),
+                                  Text(
+                                    'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: RefreshIndicator(
+                                color: AppColors.primary,
+                                onRefresh: () => provider.loadEntries(page: 0),
+                                child: ListView.separated(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    0,
+                                  ),
+                                  itemCount: provider.entries.length,
+                                  separatorBuilder:
+                                      (_, _) => const SizedBox(height: 10),
+                                  itemBuilder:
+                                      (_, i) => _EntryCard(
+                                        entry: provider.entries[i],
+                                        onTap:
+                                            () => _loadItemsAndShowDetail(
+                                              context,
+                                              provider.entries[i],
+                                            ),
+                                      ),
+                                ),
+                              ),
+                            ),
+                            if (provider.totalPages > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  8,
+                                ),
+                                child: AdminPageBlocks(
+                                  currentPage: provider.currentPage,
+                                  totalPages: provider.totalPages,
+                                  onPageChanged: provider.goToPage,
+                                ),
+                              ),
+                          ],
+                        ),
               ),
             ],
           ),
@@ -267,16 +338,20 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             onPressed: () async {
               final result = await Navigator.push<bool>(
                 context,
-                MaterialPageRoute(builder: (_) => const InventoryEntryFormScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const InventoryEntryFormScreen(),
+                ),
               );
               if (result == true) {
                 provider.loadEntries(page: 0); // Refrescar en la misma pantalla
               }
+              _checkDraft();
             },
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Nueva entrada'),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
+            label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
+            backgroundColor:
+                _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+            foregroundColor: _hasDraft ? Colors.white : Colors.white,
           ),
         );
       },
@@ -296,7 +371,10 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat('dd/MM/yyyy HH:mm');
-    final hasDoc = entry.documentType != 'NINGUNO' && entry.documentNumber != null && entry.documentNumber!.isNotEmpty;
+    final hasDoc =
+        entry.documentType != 'NINGUNO' &&
+        entry.documentNumber != null &&
+        entry.documentNumber!.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
@@ -347,7 +425,9 @@ class _EntryCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          entry.createdAt != null ? fmt.format(entry.createdAt!.toLocal()) : '',
+                          entry.createdAt != null
+                              ? fmt.format(entry.createdAt!.toLocal())
+                              : '',
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,
@@ -427,43 +507,43 @@ class _SummaryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        color: color,
-                      ),
-                    ),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: color.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: color,
+                  ),
                 ),
-              ),
-            ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: color.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _SearchField extends StatelessWidget {
@@ -482,30 +562,31 @@ class _SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextField(
-        controller: controller,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          prefixIcon: const Icon(Icons.search_rounded, size: 20),
-          suffixIcon: controller.text.isNotEmpty
+    controller: controller,
+    onChanged: onChanged,
+    onSubmitted: onSubmitted,
+    textInputAction: TextInputAction.search,
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+      prefixIcon: const Icon(Icons.search_rounded, size: 20),
+      suffixIcon:
+          controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 18),
-                  onPressed: onClear,
-                )
+                icon: const Icon(Icons.clear_rounded, size: 18),
+                onPressed: onClear,
+              )
               : null,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 11),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: AppColors.surface,
-        ),
-      );
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      filled: true,
+      fillColor: AppColors.surface,
+    ),
+  );
 }
 
 class _Pill extends StatelessWidget {
@@ -549,33 +630,33 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.textSecondary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 34,
-                color: AppColors.textSecondary.withValues(alpha: 0.45),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.textSecondary.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 34,
+            color: AppColors.textSecondary.withValues(alpha: 0.45),
+          ),
         ),
-      );
+        const SizedBox(height: 14),
+        Text(
+          message,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    ),
+  );
 }

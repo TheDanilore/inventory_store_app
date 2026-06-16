@@ -250,14 +250,7 @@ class InventoryEntryFormProvider extends ChangeNotifier {
     
     final itemsJson = _items.map((e) => {
       'product': e.product.toJson(),
-      'variant': {
-        'id': e.variant.id,
-        'product_id': e.variant.productId,
-        'sku': e.variant.sku,
-        'sale_price': e.variant.salePrice,
-        'unit_cost': e.variant.unitCost,
-        'attributes': e.variant.attributeMap,
-      },
+      'variant': e.variant.toJson(),
       'quantity': e.quantity,
       'unit_cost': e.unitCost,
       'batch_number': e.batchNumber,
@@ -280,13 +273,7 @@ class InventoryEntryFormProvider extends ChangeNotifier {
         for (final itemJson in itemsJson) {
           final p = ProductModel.fromJson(itemJson['product']);
           final vJson = itemJson['variant'];
-          final v = ProductVariantModel(
-            id: vJson['id'],
-            productId: vJson['product_id'] ?? p.id,
-            sku: vJson['sku'],
-            salePrice: (vJson['sale_price'] as num?)?.toDouble(),
-            unitCost: (vJson['unit_cost'] as num?)?.toDouble(),
-          ); // Se omite el parseo de attributes porque es ui local
+          final v = ProductVariantModel.fromJson(vJson);
 
           _items.add(EntryItemUI(
             product: p,

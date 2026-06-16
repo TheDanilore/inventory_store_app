@@ -16,6 +16,7 @@ class AdminLayout extends StatelessWidget {
   final bool showBackButton;
   final bool showProfileButton;
   final bool showSettingsButton;
+  final bool showDrawerButton;
   final List<PopupMenuEntry<String>>? settingsActions;
   final ValueChanged<String>? onSettingsSelected;
 
@@ -28,6 +29,7 @@ class AdminLayout extends StatelessWidget {
     this.showBackButton = false,
     this.showProfileButton = true,
     this.showSettingsButton = false,
+    this.showDrawerButton = true,
     this.settingsActions,
     this.onSettingsSelected,
   });
@@ -55,7 +57,7 @@ class AdminLayout extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
-      endDrawer: const AppDrawer(isAdmin: true),
+      endDrawer: showDrawerButton ? const AppDrawer(isAdmin: true) : null,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -109,13 +111,14 @@ class AdminLayout extends StatelessWidget {
             const SizedBox(width: 8),
           ],
 
-          Builder(
-            builder:
-                (context) => _AppBarIconButton(
-                  icon: Icons.menu_rounded,
-                  onTap: () => Scaffold.of(context).openEndDrawer(),
-                ),
-          ),
+          if (showDrawerButton)
+            Builder(
+              builder:
+                  (context) => _AppBarIconButton(
+                    icon: Icons.menu_rounded,
+                    onTap: () => Scaffold.of(context).openEndDrawer(),
+                  ),
+            ),
 
           const SizedBox(width: 12),
         ],
