@@ -8,8 +8,8 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart
 import 'package:inventory_store_app/providers/admin/supplier_credit_movements_provider.dart';
 
 // Widgets extraídos
-import 'widgets/supplier_credit_movements/summary_header.dart';
-import 'widgets/supplier_credit_movements/movement_card.dart';
+import 'package:inventory_store_app/screens/admin/widgets/supplier_credit_movements/summary_header.dart';
+import 'package:inventory_store_app/screens/admin/widgets/supplier_credit_movements/movement_card.dart';
 
 class SupplierCreditMovementsScreen extends StatelessWidget {
   final String creditId;
