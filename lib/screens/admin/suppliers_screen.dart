@@ -232,7 +232,7 @@ class _SuppliersSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       itemCount: 4,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, __) {
+      itemBuilder: (_, _) {
         return Container(
           height: 120,
           decoration: BoxDecoration(

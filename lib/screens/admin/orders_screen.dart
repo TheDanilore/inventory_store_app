@@ -496,8 +496,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           padding: const EdgeInsets.all(16),
                           itemCount: 5,
                           separatorBuilder:
-                              (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (_, __) => const AppShimmer(height: 140),
+                              (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (_, _) => const AppShimmer(height: 140),
                         );
                       }
 
@@ -543,7 +543,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                               itemCount: pageItems.length,
                               separatorBuilder:
-                                  (_, __) => const SizedBox(height: 12),
+                                  (_, _) => const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final order = pageItems[index];
                                 return AdminOrderCard(

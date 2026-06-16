@@ -458,8 +458,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (reward != null) {
       setState(() => _catcherPlaysToday += 1);
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 
@@ -480,8 +481,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (reward != null) {
       setState(() => _memoramaPlaysToday += 1);
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 
@@ -502,8 +504,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (reward != null) {
       setState(() => _pinataPlaysToday += 1);
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 
@@ -524,8 +527,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (pts != null) {
       setState(() => _superSaltoPlaysToday += 1);
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 
@@ -546,8 +550,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (r != null) {
       setState(() => _clawPlaysToday += 1);
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 
@@ -567,8 +572,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (!mounted) return;
     if (r != null) {
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 
@@ -588,8 +594,9 @@ class _PointsScreenState extends State<PointsScreen> {
     if (!mounted) return;
     if (r != null) {
       await _fetchPointsData();
-      if (mounted)
+      if (mounted) {
         Provider.of<WalletProvider>(context, listen: false).refresh(); // AVISO
+      }
     }
   }
 

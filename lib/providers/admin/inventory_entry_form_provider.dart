@@ -271,8 +271,9 @@ class InventoryEntryFormProvider extends ChangeNotifier {
 
   // ── SHARED PREFERENCES DRAFT ──
   Future<void> _saveDraft() async {
-    if (_purchaseOrderId != null)
+    if (_purchaseOrderId != null) {
       return; // No guardamos borrador si viene de una orden de compra prellenada
+    }
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -314,20 +315,27 @@ class InventoryEntryFormProvider extends ChangeNotifier {
       try {
         final draftData = jsonDecode(draftString) as Map<String, dynamic>;
 
-        if (draftData['warehouseId'] != null)
+        if (draftData['warehouseId'] != null) {
           _selectedWarehouseId = draftData['warehouseId'];
-        if (draftData['supplierId'] != null)
+        }
+        if (draftData['supplierId'] != null) {
           _selectedSupplierId = draftData['supplierId'];
-        if (draftData['documentType'] != null)
+        }
+        if (draftData['documentType'] != null) {
           _documentType = draftData['documentType'];
-        if (draftData['documentNumber'] != null)
+        }
+        if (draftData['documentNumber'] != null) {
           _documentNumber = draftData['documentNumber'];
-        if (draftData['documentDate'] != null)
+        }
+        if (draftData['documentDate'] != null) {
           _documentDate = DateTime.tryParse(draftData['documentDate']);
-        if (draftData['paymentMode'] != null)
+        }
+        if (draftData['paymentMode'] != null) {
           _paymentMode = draftData['paymentMode'];
-        if (draftData['accountId'] != null)
+        }
+        if (draftData['accountId'] != null) {
           _selectedAccountId = draftData['accountId'];
+        }
 
         final itemsJson = draftData['items'] as List<dynamic>? ?? [];
         _items.clear();

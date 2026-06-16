@@ -444,8 +444,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                                 )
                                                 .toList(),
                                         onChanged: (v) {
-                                          if (v != null)
+                                          if (v != null) {
                                             provider.selectReason(v);
+                                          }
                                         },
                                       ),
                                       const SizedBox(height: 12),

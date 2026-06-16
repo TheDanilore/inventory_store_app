@@ -227,18 +227,7 @@ class CustomerCreditsService {
     required double pointsToSolesRatio,
     required double pointsEarningRate,
   }) async {
-    // 1. Registro movimiento
-    await _supabase.from('customer_credit_movements').insert({
-      'credit_id': account.creditId,
-      if (selectedOrderId != null) 'order_id': selectedOrderId,
-      'movement_type': 'PAYMENT',
-      'amount': amount,
-      'payment_method': selectedAccount.paymentMethodLabel,
-      'notes': notes,
-      if (adminProfileId != null) 'created_by': adminProfileId,
-    });
-
-    // 2. Aplicar a órdenes FIFO
+    // 1. Aplicar a órdenes FIFO (o la orden seleccionada) y registrar movimientos
     final ordersToApply =
         selectedOrderId != null
             ? pendingOrders.where((o) => o['id'] == selectedOrderId).toList()
@@ -274,6 +263,19 @@ class CustomerCreditsService {
           })
           .eq('id', orderId);
 
+      // Insertar movimiento específico para esta orden
+      if (toApply > 0) {
+        await _supabase.from('customer_credit_movements').insert({
+          'credit_id': account.creditId,
+          'order_id': orderId,
+          'movement_type': 'PAYMENT',
+          'amount': toApply,
+          'payment_method': selectedAccount.paymentMethodLabel,
+          'notes': notes,
+          if (adminProfileId != null) 'created_by': adminProfileId,
+        });
+      }
+
       // Otorgar puntos si aplica
       if (pointsEarned > 0) {
         // Obtener billetera
@@ -301,6 +303,18 @@ class CustomerCreditsService {
           'description': 'Monedas ganadas al saldar pedido a crédito',
         });
       }
+    }
+
+    // Si sobra dinero (pago excede la suma de pedidos), registrarlo como abono global
+    if (remaining > 0) {
+      await _supabase.from('customer_credit_movements').insert({
+        'credit_id': account.creditId,
+        'movement_type': 'PAYMENT',
+        'amount': remaining,
+        'payment_method': selectedAccount.paymentMethodLabel,
+        'notes': notes,
+        if (adminProfileId != null) 'created_by': adminProfileId,
+      });
     }
 
     // 3. Reducir deuda
