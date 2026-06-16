@@ -68,6 +68,7 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
+          shadowColor: AppColors.primary.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -79,8 +80,9 @@ class AppTheme {
           ),
         ).copyWith(
           elevation: WidgetStateProperty.resolveWith<double>((states) {
-            if (states.contains(WidgetState.pressed)) return 2;
-            return 0;
+            if (states.contains(WidgetState.disabled)) return 0;
+            if (states.contains(WidgetState.pressed)) return 4;
+            return 2;
           }),
         ),
       ),
@@ -171,6 +173,34 @@ class AppTheme {
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,
+      ),
+
+      // =====================================
+      // 9. CARDS Y DIÁLOGOS
+      // =====================================
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titleTextStyle: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
+        contentTextStyle: const TextStyle(
+          fontSize: 15,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }
