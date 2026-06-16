@@ -20,6 +20,7 @@ import 'package:inventory_store_app/providers/admin/active_ingredients_provider.
 import 'package:inventory_store_app/providers/admin/attributes_provider.dart';
 import 'package:inventory_store_app/providers/admin/cash_shifts_provider.dart';
 import 'package:inventory_store_app/providers/admin/categories_provider.dart';
+import 'package:inventory_store_app/providers/admin/warehouses_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
@@ -101,6 +102,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CategoriesProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => AttributesProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => ActiveIngredientsProvider(), lazy: true),
+        ChangeNotifierProvider(create: (_) => WarehousesProvider(), lazy: true),
       ],
       child: MaterialApp(
         title: 'Inventario Store',
