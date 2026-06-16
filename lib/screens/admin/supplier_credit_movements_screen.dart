@@ -1,65 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
-import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/providers/admin/supplier_credit_movements_provider.dart';
 
-// ─── MODELO LOCAL ─────────────────────────────────────────────────────────────
-class SupplierCreditMovementModel {
-  final String id;
-  final String creditId;
-  final String? purchaseOrderId;
-  final String movementType;
-  final double amount;
-  final String? paymentMethod;
-  final String? notes;
-  final DateTime? createdAt;
-  final String? createdByName;
-  final double? orderTotalAmount;
+// Widgets extraídos
+import 'widgets/supplier_credit_movements/summary_header.dart';
+import 'widgets/supplier_credit_movements/movement_card.dart';
 
-  bool get isCharge => movementType == 'CHARGE';
-
-  SupplierCreditMovementModel({
-    required this.id,
-    required this.creditId,
-    this.purchaseOrderId,
-    required this.movementType,
-    required this.amount,
-    this.paymentMethod,
-    this.notes,
-    this.createdAt,
-    this.createdByName,
-    this.orderTotalAmount,
-  });
-
-  factory SupplierCreditMovementModel.fromJson(Map<String, dynamic> json) {
-    final profile = json['profiles'] as Map<String, dynamic>?;
-    final po = json['purchase_orders'] as Map<String, dynamic>?;
-
-    return SupplierCreditMovementModel(
-      id: json['id'] as String,
-      creditId: json['supplier_credit_id'] as String,
-      purchaseOrderId: json['purchase_order_id'] as String?,
-      movementType: json['movement_type'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      paymentMethod: json['payment_method'] as String?,
-      notes: json['notes'] as String?,
-      createdAt:
-          json['created_at'] != null
-              ? DateTime.parse(json['created_at'])
-              : null,
-      createdByName: profile?['full_name'] as String?,
-      orderTotalAmount:
-          po?['total_amount'] != null
-              ? (po!['total_amount'] as num).toDouble()
-              : null,
-    );
-  }
-}
-
-// ─── PANTALLA PRINCIPAL ───────────────────────────────────────────────────────
-class SupplierCreditMovementsScreen extends StatefulWidget {
+class SupplierCreditMovementsScreen extends StatelessWidget {
   final String creditId;
   final String supplierName;
   final double currentDebt;
@@ -74,412 +26,257 @@ class SupplierCreditMovementsScreen extends StatefulWidget {
   });
 
   @override
-  State<SupplierCreditMovementsScreen> createState() =>
-      _SupplierCreditMovementsScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<SupplierCreditMovementsProvider>(
+      create:
+          (_) => SupplierCreditMovementsProvider(
+            creditId: creditId,
+            supplierName: supplierName,
+          ),
+      child: _SupplierCreditMovementsView(
+        supplierName: supplierName,
+        currentDebt: currentDebt,
+        creditLimit: creditLimit,
+      ),
+    );
+  }
 }
 
-class _SupplierCreditMovementsScreenState
-    extends State<SupplierCreditMovementsScreen> {
-  final _supabase = Supabase.instance.client;
+class _SupplierCreditMovementsView extends StatefulWidget {
+  final String supplierName;
+  final double currentDebt;
+  final double creditLimit;
 
-  bool _isLoading = true;
-  List<SupplierCreditMovementModel> _movements = [];
+  const _SupplierCreditMovementsView({
+    required this.supplierName,
+    required this.currentDebt,
+    required this.creditLimit,
+  });
 
-  static const int _pageSize = 8;
-  int _currentPage = 0;
+  @override
+  State<_SupplierCreditMovementsView> createState() =>
+      _SupplierCreditMovementsViewState();
+}
 
-  double _totalCharged = 0.0;
-  double _totalPaid = 0.0;
-
+class _SupplierCreditMovementsViewState
+    extends State<_SupplierCreditMovementsView> {
   @override
   void initState() {
     super.initState();
-    _loadMovements();
-  }
-
-  Future<void> _loadMovements() async {
-    try {
-      final response = await _supabase
-          .from('supplier_credit_movements')
-          .select('*, profiles(full_name), purchase_orders(total_amount)')
-          .eq('supplier_credit_id', widget.creditId)
-          .order('created_at', ascending: false);
-
-      final list =
-          (response as List)
-              .map((e) => SupplierCreditMovementModel.fromJson(e))
-              .toList();
-
-      double charged = 0;
-      double paid = 0;
-
-      for (final m in list) {
-        if (m.isCharge) {
-          charged += m.amount;
-        } else {
-          paid += m.amount;
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _movements = list;
-          _totalCharged = charged;
-          _totalPaid = paid;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error cargando movimientos de proveedor: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SupplierCreditMovementsProvider>().addListener(
+        _onProviderChange,
+      );
+    });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final debtPercent =
-        widget.creditLimit > 0
-            ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
-            : 0.0;
+  void dispose() {
+    // We don't remove listener explicitly on dispose because the provider will be disposed too,
+    // but it's good practice if it wasn't provided locally.
+    super.dispose();
+  }
 
-    final totalPages =
-        _movements.isEmpty ? 1 : (_movements.length / _pageSize).ceil();
-    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
-    final pageStart = safePage * _pageSize;
-    final pageEnd = (pageStart + _pageSize).clamp(0, _movements.length);
-    final pageItems = _movements.sublist(pageStart, pageEnd);
-
-    return AdminLayout(
-      title: 'Historial de Cuentas por Pagar',
-      showBackButton: true,
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  Expanded(
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: _SummaryHeader(
-                            supplierName: widget.supplierName,
-                            currentDebt: widget.currentDebt,
-                            creditLimit: widget.creditLimit,
-                            debtPercent: debtPercent,
-                            totalCharged: _totalCharged,
-                            totalPaid: _totalPaid,
-                          ),
-                        ),
-                        if (_movements.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                              child: Text(
-                                'Mostrando ${pageStart + 1}–$pageEnd de ${_movements.length} movimientos',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textMuted,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (_movements.isEmpty)
-                          const SliverFillRemaining(
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.receipt_long_outlined,
-                                    size: 56,
-                                    color: Colors.grey,
-                                  ),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'Sin movimientos registrados',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
-                                final movement = pageItems[index];
-                                final globalIndex = pageStart + index;
-                                final showDateLabel =
-                                    globalIndex == 0 ||
-                                    index == 0 ||
-                                    !_sameDay(
-                                      movement.createdAt,
-                                      _movements[globalIndex - 1].createdAt,
-                                    );
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (showDateLabel) ...[
-                                      const SizedBox(height: 16),
-                                      _DateDivider(date: movement.createdAt),
-                                      const SizedBox(height: 8),
-                                    ],
-                                    _MovementCard(movement: movement),
-                                    const SizedBox(height: 8),
-                                  ],
-                                );
-                              }, childCount: pageItems.length),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (totalPages > 1)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                      child: AdminPageBlocks(
-                        currentPage: _currentPage,
-                        totalPages: totalPages,
-                        onPageChanged:
-                            (page) => setState(() => _currentPage = page),
-                      ),
-                    ),
-                ],
-              ),
-    );
+  void _onProviderChange() {
+    final provider = context.read<SupplierCreditMovementsProvider>();
+    if (provider.errorMessage != null && mounted) {
+      AppSnackbar.show(
+        context,
+        message: provider.errorMessage!,
+        type: SnackbarType.error,
+      );
+      provider.clearError();
+    }
   }
 
   bool _sameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
-}
 
-// ─── WIDGETS AUXILIARES ───────────────────────────────────────────────────────
-
-class _SummaryHeader extends StatelessWidget {
-  final String supplierName;
-  final double currentDebt;
-  final double creditLimit;
-  final double debtPercent;
-  final double totalCharged;
-  final double totalPaid;
-
-  const _SummaryHeader({
-    required this.supplierName,
-    required this.currentDebt,
-    required this.creditLimit,
-    required this.debtPercent,
-    required this.totalCharged,
-    required this.totalPaid,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isAtRisk = debtPercent >= 0.8;
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors:
-              isAtRisk
-                  ? [Colors.orange.shade700, Colors.orange.shade500]
-                  : [Colors.blue.shade700, Colors.blue.shade500],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: (isAtRisk ? Colors.orange : Colors.blue).withValues(
-              alpha: 0.3,
-            ),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+  void _showFilterSheet(
+    BuildContext context,
+    SupplierCreditMovementsProvider provider,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+              const Padding(
+                padding: EdgeInsets.all(16.0),
                 child: Text(
-                  supplierName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Filtrar por fecha',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      supplierName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Línea de crédito del proveedor',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+              ListTile(
+                leading: const Icon(Icons.date_range),
+                title: const Text('Este mes'),
+                trailing:
+                    provider.dateFilter == MovementDateFilter.thisMonth
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
+                onTap: () {
+                  provider.setDateFilter(MovementDateFilter.thisMonth);
+                  Navigator.pop(context);
+                },
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Deuda pendiente',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'S/ ${currentDebt.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: debtPercent,
-              backgroundColor: Colors.white.withValues(alpha: 0.25),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              minHeight: 6,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${(debtPercent * 100).toStringAsFixed(0)}% usado',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 11,
-                ),
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Mes pasado'),
+                trailing:
+                    provider.dateFilter == MovementDateFilter.lastMonth
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
+                onTap: () {
+                  provider.setDateFilter(MovementDateFilter.lastMonth);
+                  Navigator.pop(context);
+                },
               ),
-              Text(
-                'Límite: S/ ${creditLimit.toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 11,
-                ),
+              ListTile(
+                leading: const Icon(Icons.all_inclusive),
+                title: const Text('Todo el historial'),
+                trailing:
+                    provider.dateFilter == MovementDateFilter.allTime
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
+                onTap: () {
+                  provider.setDateFilter(MovementDateFilter.allTime);
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(color: Colors.white24),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatChip(
-                  label: 'Total Fiado',
-                  value: 'S/ ${totalCharged.toStringAsFixed(2)}',
-                  icon: Icons.arrow_upward_rounded,
-                  color: Colors.orange.shade200,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatChip(
-                  label: 'Total Pagado',
-                  value: 'S/ ${totalPaid.toStringAsFixed(2)}',
-                  icon: Icons.arrow_downward_rounded,
-                  color: Colors.green.shade200,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
-          Expanded(
+    return Consumer<SupplierCreditMovementsProvider>(
+      builder: (context, provider, _) {
+        final debtPercent =
+            widget.creditLimit > 0
+                ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
+                : 0.0;
+
+        return AdminLayout(
+          title: 'Historial de Cuenta',
+          showBackButton: true,
+          showProfileButton: false,
+          showDrawerButton: false,
+          showSettingsButton: true,
+          settingsActions: const [
+            PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
+            PopupMenuItem(value: 'filter', child: Text('Filtrar por fecha')),
+          ],
+          onSettingsSelected: (value) {
+            if (value == 'export') {
+              if (!provider.isExporting) provider.exportToPdf();
+            } else if (value == 'filter') {
+              _showFilterSheet(context, provider);
+            }
+          },
+          body: RefreshIndicator(
+            onRefresh: () => provider.refresh(),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 10,
+                Expanded(
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: SupplierCreditMovementsSummaryHeader(
+                          supplierName: widget.supplierName,
+                          currentDebt: widget.currentDebt,
+                          creditLimit: widget.creditLimit,
+                          debtPercent: debtPercent,
+                          totalCharged: provider.totalCharged,
+                          totalPaid: provider.totalPaid,
+                        ),
+                      ),
+
+                      if (provider.isLoading)
+                        const SliverFillRemaining(child: _MovementsSkeleton())
+                      else if (provider.movements.isEmpty)
+                        const SliverFillRemaining(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.receipt_long_outlined,
+                                  size: 56,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Sin movimientos registrados',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final movement = provider.movements[index];
+                              final showDateLabel =
+                                  index == 0 ||
+                                  !_sameDay(
+                                    movement.createdAt,
+                                    provider.movements[index - 1].createdAt,
+                                  );
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (showDateLabel) ...[
+                                    const SizedBox(height: 16),
+                                    _DateDivider(date: movement.createdAt),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  SupplierCreditMovementCard(
+                                    movement: movement,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                              );
+                            }, childCount: provider.movements.length),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+                if (provider.totalPages > 1)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                    child: AdminPageBlocks(
+                      currentPage: provider.currentPage,
+                      totalPages: provider.totalPages,
+                      onPageChanged: (page) => provider.setPage(page),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -526,161 +323,71 @@ class _DateDivider extends StatelessWidget {
   }
 }
 
-class _MovementCard extends StatelessWidget {
-  final SupplierCreditMovementModel movement;
-  const _MovementCard({required this.movement});
+class _MovementsSkeleton extends StatelessWidget {
+  const _MovementsSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    // Si es CHARGE (nos fiaron), la deuda aumenta (Rojo/Naranja). Si es PAYMENT (amortizamos), la deuda baja (Verde).
-    final isCharge = movement.isCharge;
-    final color = isCharge ? Colors.orange : Colors.green;
-    final bgColor = isCharge ? Colors.orange.shade50 : Colors.green.shade50;
-    final icon =
-        isCharge ? Icons.local_shipping_rounded : Icons.payments_rounded;
-    final sign = isCharge ? '+' : '-';
-    final timeStr =
-        movement.createdAt != null
-            ? DateFormat('HH:mm').format(movement.createdAt!.toLocal())
-            : '--:--';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 5,
+      physics: const NeverScrollableScrollPhysics(),
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isCharge ? 'Compra a crédito' : 'Amortización enviada',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (isCharge && movement.orderTotalAmount != null)
-                    Text(
-                      'Total de orden: S/ ${movement.orderTotalAmount!.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  if (movement.purchaseOrderId != null)
-                    Text(
-                      'Orden #${movement.purchaseOrderId!.substring(0, 8)}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textHint,
-                      ),
-                    ),
-                  if (!isCharge && movement.paymentMethod != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: _MethodChip(method: movement.paymentMethod!),
-                    ),
-                  if (movement.notes?.isNotEmpty == true)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        movement.notes!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.person_outline,
-                        size: 12,
-                        color: AppColors.textHint,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          movement.createdByName ?? 'Sistema',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textHint,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    timeStr,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textHint,
-                    ),
-                  ),
-                ],
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            Text(
-              '$sign S/ ${movement.amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: color,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 150,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 100,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MethodChip extends StatelessWidget {
-  final String method;
-  const _MethodChip({required this.method});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.green.shade200),
-      ),
-      child: Text(
-        method,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: Colors.green.shade700,
-        ),
-      ),
+              Container(
+                width: 60,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
