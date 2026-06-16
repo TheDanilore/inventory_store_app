@@ -1,31 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/screens/admin/active_ingredients_screen.dart';
-import 'package:inventory_store_app/screens/admin/attributes_management_screen.dart';
-import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_exits_screen.dart';
-import 'package:inventory_store_app/screens/admin/supplier_credits_screen.dart';
-import 'package:inventory_store_app/screens/admin/suppliers_screen.dart';
-import 'package:inventory_store_app/screens/admin/categories_management_screen.dart';
-import 'package:inventory_store_app/screens/admin/customers_screen.dart';
-import 'package:inventory_store_app/screens/admin/financial_accounts_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_entries_screen.dart';
-import 'package:inventory_store_app/screens/admin/inventory_screen.dart';
-import 'package:inventory_store_app/screens/admin/purchase_orders_screen.dart';
-import 'package:inventory_store_app/screens/admin/warehouses_management_screen.dart';
-import 'package:inventory_store_app/screens/admin/kardex_screen.dart';
-import 'package:inventory_store_app/screens/admin/users_management_screen.dart';
-import 'package:inventory_store_app/screens/admin/dashboard_screen.dart';
-import 'package:inventory_store_app/screens/admin/business_info_screen.dart';
-import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
-import 'package:inventory_store_app/screens/admin/orders_screen.dart';
-import 'package:inventory_store_app/screens/admin/points_settings_screen.dart';
-import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
-import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
-import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ---------------------------------------------------------------------------
@@ -38,7 +16,7 @@ class _DrawerItem {
   final VoidCallback? onTap;
   final Widget? trailing;
   final List<_DrawerSubItem> children;
-  final Type? screenType;
+  final String routePath;
 
   const _DrawerItem({
     required this.icon,
@@ -46,7 +24,7 @@ class _DrawerItem {
     this.onTap,
     this.trailing,
     this.children = const [],
-    this.screenType,
+    required this.routePath,
   });
 }
 
@@ -55,7 +33,7 @@ class _DrawerSubItem {
   final String title;
   final VoidCallback onTap;
   final Widget? trailing;
-  final Type? screenType;
+  final String routePath;
 
   const _DrawerSubItem({
     required this.icon,
@@ -63,7 +41,7 @@ class _DrawerSubItem {
     required this.onTap,
     // ignore: unused_element_parameter
     this.trailing,
-    this.screenType,
+    required this.routePath,
   });
 }
 
@@ -82,16 +60,29 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   // Rastreo de qué grupos expandibles están abiertos (por título)
   final Set<String> _expanded = {};
+  int? _pendingCount;
 
-  Future<int> _loadPendingOrdersCount() async {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isAdmin) {
+      _fetchPendingCount();
+    }
+  }
+
+  Future<void> _fetchPendingCount() async {
     try {
       final count = await Supabase.instance.client
           .from('orders')
           .count(CountOption.exact)
           .eq('status', 'PENDING');
-      return count;
+      if (mounted) {
+        setState(() => _pendingCount = count);
+      }
     } catch (_) {
-      return 0;
+      if (mounted) {
+        setState(() => _pendingCount = 0);
+      }
     }
   }
 
@@ -103,21 +94,6 @@ class _AppDrawerState extends State<AppDrawer> {
         _expanded.add(title);
       }
     });
-  }
-
-  /// Sube el árbol de widgets para detectar si la screen actual
-  /// es del tipo [screenType] — funciona sin named routes.
-  bool _checkAncestor(BuildContext context, Type? screenType) {
-    if (screenType == null) return false;
-    bool found = false;
-    context.visitAncestorElements((element) {
-      if (element.widget.runtimeType == screenType) {
-        found = true;
-        return false;
-      }
-      return true;
-    });
-    return found;
   }
 
   @override
@@ -145,10 +121,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
-                    screenType:
-                        widget.isAdmin
-                            ? AdminCatalogScreen
-                            : CustomerCatalogScreen,
+                    routePath: widget.isAdmin ? '/admin' : '/customer',
                     onTap: () {
                       Navigator.pop(context);
                       if (widget.isAdmin) {
@@ -164,7 +137,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.bar_chart_rounded,
                     title: 'Dashboard',
-                    screenType: DashboardScreen,
+                    routePath: '/admin/dashboard',
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/admin/dashboard');
@@ -177,7 +150,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.shopping_cart_outlined,
                       title: 'Mi Carrito',
-                      screenType: CustomerCartScreen,
+                      routePath: '/customer/cart',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/customer/cart');
@@ -191,24 +164,30 @@ class _AppDrawerState extends State<AppDrawer> {
                   _buildSectionTitle('ADMINISTRACIÓN'),
 
                   // Pedidos (con badge dinámico)
-                  FutureBuilder<int>(
-                    future: _loadPendingOrdersCount(),
-                    builder: (context, snapshot) {
-                      final count = snapshot.data ?? 0;
-                      return _buildItem(
-                        context,
-                        _DrawerItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Pedidos',
-                          screenType: OrdersScreen,
-                          trailing: count > 0 ? _buildBadge(count) : null,
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.push('/admin/orders');
-                          },
-                        ),
-                      );
-                    },
+                  _buildItem(
+                    context,
+                    _DrawerItem(
+                      icon: Icons.receipt_long_rounded,
+                      title: 'Pedidos',
+                      routePath: '/admin/orders',
+                      trailing:
+                          _pendingCount == null
+                              ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.error,
+                                ),
+                              )
+                              : (_pendingCount! > 0
+                                  ? _buildBadge(_pendingCount!)
+                                  : null),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/admin/orders');
+                      },
+                    ),
                   ),
 
                   // // ── Compras (con sub-ítems) ─────────────────────────
@@ -217,11 +196,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.shopping_bag_outlined,
                       title: 'Compras',
+                      routePath: '',
                       children: [
                         _DrawerSubItem(
                           icon: Icons.receipt_long_rounded,
                           title: 'Órdenes de compra',
-                          screenType: PurchaseOrdersScreen,
+                          routePath: '/admin/purchase-orders',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/purchase-orders');
@@ -230,7 +210,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.add_rounded,
                           title: 'Entradas de inventario',
-                          screenType: InventoryEntriesScreen,
+                          routePath: '/admin/inventory-entries',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/inventory-entries');
@@ -239,7 +219,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.credit_score_rounded,
                           title: 'Créditos de proveedores',
-                          screenType: SupplierCreditsScreen,
+                          routePath: '/admin/supplier-credits',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/supplier-credits');
@@ -248,7 +228,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.local_shipping_outlined,
                           title: 'Proveedores',
-                          screenType: SuppliersScreen,
+                          routePath: '/admin/suppliers',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/suppliers');
@@ -264,11 +244,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.inventory_2_outlined,
                       title: 'Inventario',
+                      routePath: '',
                       children: [
                         _DrawerSubItem(
                           icon: Icons.grid_view_rounded,
                           title: 'Inventario',
-                          screenType: InventoryScreen,
+                          routePath: '/admin/inventory',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/inventory');
@@ -277,7 +258,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.article_outlined,
                           title: 'Kardex',
-                          screenType: KardexScreen,
+                          routePath: '/admin/kardex',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/kardex');
@@ -287,7 +268,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.remove_rounded,
                           title: 'Registro Salida',
-                          screenType: InventoryExitsScreen,
+                          routePath: '/admin/inventory-exits',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/inventory-exits');
@@ -302,11 +283,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.people_outline_rounded,
                       title: 'Clientes y Créditos',
+                      routePath: '',
                       children: [
                         _DrawerSubItem(
                           icon: Icons.person_outline_rounded,
                           title: 'Clientes',
-                          screenType: CustomersScreen,
+                          routePath: '/admin/customers',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/customers');
@@ -315,7 +297,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         _DrawerSubItem(
                           icon: Icons.credit_score_rounded,
                           title: 'Créditos',
-                          screenType: CustomerCreditsScreen,
+                          routePath: '/admin/customer-credits',
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/admin/customer-credits');
@@ -330,7 +312,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.account_balance_wallet_outlined,
                       title: 'Cuentas',
-                      screenType: FinancialAccountsScreen,
+                      routePath: '/admin/financial-accounts',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/financial-accounts');
@@ -343,7 +325,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.category_outlined,
                       title: 'Categorías',
-                      screenType: CategoriesManagementScreen,
+                      routePath: '/admin/categories',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/categories');
@@ -356,7 +338,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.warehouse_outlined,
                       title: 'Almacenes',
-                      screenType: WarehousesManagementScreen,
+                      routePath: '/admin/warehouses',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/warehouses');
@@ -369,7 +351,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.tune_rounded,
                       title: 'Atributos y Valores',
-                      screenType: AttributesManagementScreen,
+                      routePath: '/admin/attributes',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/attributes');
@@ -382,7 +364,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.science_rounded,
                       title: 'Ingredientes Activos/Componentes Químicos',
-                      screenType: ActiveIngredientsScreen,
+                      routePath: '/admin/active-ingredients',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/active-ingredients');
@@ -395,7 +377,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.people_outline_rounded,
                       title: 'Usuarios',
-                      screenType: UsersManagementScreen,
+                      routePath: '/admin/users',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/users');
@@ -408,7 +390,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.storefront_rounded,
                       title: 'Negocio',
-                      screenType: BusinessInfoScreen,
+                      routePath: '/admin/business-info',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/business-info');
@@ -421,7 +403,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.stars_rounded,
                       title: 'Monedas',
-                      screenType: PointsSettingsScreen,
+                      routePath: '/admin/points-settings',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin/points-settings');
@@ -437,26 +419,7 @@ class _AppDrawerState extends State<AppDrawer> {
           // PIE (perfil siempre visible)
           // ─────────────────────────────────────────
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: _buildItem(
-              context,
-              _DrawerItem(
-                icon: Icons.account_circle_outlined,
-                title: 'Mi Perfil',
-                screenType: ProfileScreen,
-                onTap: () {
-                  Navigator.pop(context);
-                  if (widget.isAdmin) {
-                    context.push('/admin/profile');
-                  } else {
-                    context.push('/customer/profile');
-                  }
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+          _DrawerFooter(isAdmin: widget.isAdmin),
         ],
       ),
     );
@@ -467,7 +430,11 @@ class _AppDrawerState extends State<AppDrawer> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildItem(BuildContext context, _DrawerItem item) {
-    final active = _checkAncestor(context, item.screenType);
+    final currentPath = GoRouterState.of(context).uri.path;
+    final active =
+        (item.routePath == '/admin' || item.routePath == '/customer')
+            ? currentPath == item.routePath
+            : currentPath.startsWith(item.routePath);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: ListTile(
@@ -497,8 +464,9 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Widget _buildExpandableItem(BuildContext context, _DrawerItem item) {
     // Si algún sub-ítem es la pantalla activa, auto-expandir el grupo
+    final currentPath = GoRouterState.of(context).uri.path;
     final hasActiveChild = item.children.any(
-      (sub) => _checkAncestor(context, sub.screenType),
+      (sub) => currentPath.startsWith(sub.routePath),
     );
     if (hasActiveChild && !_expanded.contains(item.title)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -629,22 +597,10 @@ class _SubItemTile extends StatelessWidget {
   final _DrawerSubItem item;
   const _SubItemTile({required this.item});
 
-  bool _checkAncestor(BuildContext context, Type? screenType) {
-    if (screenType == null) return false;
-    bool found = false;
-    context.visitAncestorElements((element) {
-      if (element.widget.runtimeType == screenType) {
-        found = true;
-        return false;
-      }
-      return true;
-    });
-    return found;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final active = _checkAncestor(context, item.screenType);
+    final currentPath = GoRouterState.of(context).uri.path;
+    final active = currentPath.startsWith(item.routePath);
     return Padding(
       padding: const EdgeInsets.only(left: 8, right: 0, top: 2, bottom: 2),
       child: ListTile(
@@ -800,6 +756,133 @@ class _SectionDivider extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
       child: Divider(indent: 24, endIndent: 24),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Drawer Footer
+// ---------------------------------------------------------------------------
+
+class _DrawerFooter extends StatelessWidget {
+  final bool isAdmin;
+  const _DrawerFooter({required this.isAdmin});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Consumer<ProfileProvider>(
+          builder: (context, profile, _) {
+            return Column(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (isAdmin) {
+                      context.push('/admin/profile');
+                    } else {
+                      context.push('/customer/profile');
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          backgroundImage:
+                              profile.avatarUrl != null
+                                  ? NetworkImage(profile.avatarUrl!)
+                                  : null,
+                          child:
+                              profile.avatarUrl == null
+                                  ? const Icon(
+                                    Icons.person_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  )
+                                  : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                profile.fullName.isEmpty
+                                    ? 'Mi Perfil'
+                                    : profile.fullName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                isAdmin ? 'Administrador' : 'Cliente',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.logout_rounded,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
+                          tooltip: 'Cerrar Sesión',
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            try {
+                              await context.read<ProfileProvider>().signOut();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'v1.0.0',
+                      style: TextStyle(
+                        color: AppColors.textHint,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
