@@ -26,7 +26,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<CustomerCreditsProvider>();
       provider.init();
@@ -61,11 +61,12 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => CreditAccountModal(
-        onSaved: () {
-          if (mounted) context.read<CustomerCreditsProvider>().fetchPage();
-        },
-      ),
+      builder:
+          (ctx) => CreditAccountModal(
+            onSaved: () {
+              if (mounted) context.read<CustomerCreditsProvider>().fetchPage();
+            },
+          ),
     );
   }
 
@@ -84,10 +85,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Todas'),
-            Tab(text: 'Con Deuda'),
-          ],
+          tabs: const [Tab(text: 'Todas'), Tab(text: 'Con Deuda')],
         ),
       ),
       body: Consumer<CustomerCreditsProvider>(
@@ -97,13 +95,19 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
               // Barra de Búsqueda
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Buscar cliente, DNI o teléfono...',
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.textMuted,
+                    ),
                     filled: true,
                     fillColor: AppColors.bg,
                     border: OutlineInputBorder(
@@ -127,60 +131,83 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
 
               // Lista o Carga
               Expanded(
-                child: provider.isLoading && provider.accounts.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : provider.errorMessage.isNotEmpty && provider.accounts.isEmpty
+                child:
+                    provider.isLoading && provider.accounts.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : provider.errorMessage.isNotEmpty &&
+                            provider.accounts.isEmpty
                         ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                'Error: ${provider.errorMessage}',
-                                style: const TextStyle(color: AppColors.danger),
-                                textAlign: TextAlign.center,
-                              ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              'Error: ${provider.errorMessage}',
+                              style: const TextStyle(color: AppColors.danger),
+                              textAlign: TextAlign.center,
                             ),
-                          )
+                          ),
+                        )
                         : provider.accounts.isEmpty
-                            ? _buildEmptyState()
-                            : ListView.separated(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                itemCount: provider.accounts.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                                itemBuilder: (context, index) {
-                                  final account = provider.accounts[index];
-                                  return CreditAccountCard(
-                                    account: account,
-                                    onTap: () => _showAccountOptions(context, account, provider),
-                                  );
-                                },
-                              ),
+                        ? _buildEmptyState()
+                        : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: provider.accounts.length,
+                          separatorBuilder:
+                              (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final account = provider.accounts[index];
+                            return CreditAccountCard(
+                              account: account,
+                              onTap:
+                                  () => _showAccountOptions(
+                                    context,
+                                    account,
+                                    provider,
+                                  ),
+                            );
+                          },
+                        ),
               ),
 
               // Paginación
               if (provider.totalPages > 1)
                 Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Página ${provider.currentPage + 1} de ${provider.totalPages}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                       Row(
                         children: [
                           IconButton(
                             icon: const Icon(Icons.chevron_left_rounded),
-                            onPressed: provider.currentPage > 0
-                                ? () => provider.setPage(provider.currentPage - 1)
-                                : null,
+                            onPressed:
+                                provider.currentPage > 0
+                                    ? () => provider.setPage(
+                                      provider.currentPage - 1,
+                                    )
+                                    : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.chevron_right_rounded),
-                            onPressed: provider.currentPage < provider.totalPages - 1
-                                ? () => provider.setPage(provider.currentPage + 1)
-                                : null,
+                            onPressed:
+                                provider.currentPage < provider.totalPages - 1
+                                    ? () => provider.setPage(
+                                      provider.currentPage + 1,
+                                    )
+                                    : null,
                           ),
                         ],
                       ),
@@ -199,7 +226,11 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.credit_card_off_rounded, size: 64, color: AppColors.border),
+          Icon(
+            Icons.credit_card_off_rounded,
+            size: 64,
+            color: AppColors.border,
+          ),
           const SizedBox(height: 16),
           const Text(
             'No se encontraron cuentas',
@@ -221,7 +252,10 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
   }
 
   void _showAccountOptions(
-      BuildContext context, var account, CustomerCreditsProvider provider) {
+    BuildContext context,
+    var account,
+    CustomerCreditsProvider provider,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -250,7 +284,10 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.payments_rounded, color: AppColors.success),
+                leading: const Icon(
+                  Icons.payments_rounded,
+                  color: AppColors.success,
+                ),
                 title: const Text('Registrar Pago / Abono'),
                 enabled: account.isActive && account.currentDebt > 0,
                 onTap: () {
@@ -260,10 +297,11 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (ctx2) => RegisterPaymentModal(
-                        account: account,
-                        onPaymentSaved: () => provider.fetchPage(),
-                      ),
+                      builder:
+                          (ctx2) => RegisterPaymentModal(
+                            account: account,
+                            onPaymentSaved: () => provider.fetchPage(),
+                          ),
                     );
                   }
                 },
@@ -277,19 +315,25 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
-                    builder: (ctx3) => CreditAccountModal(
-                      accountToEdit: account,
-                      onSaved: () => provider.fetchPage(),
-                    ),
+                    builder:
+                        (ctx3) => CreditAccountModal(
+                          accountToEdit: account,
+                          onSaved: () => provider.fetchPage(),
+                        ),
                   );
                 },
               ),
               ListTile(
                 leading: Icon(
-                  account.isActive ? Icons.block_rounded : Icons.check_circle_rounded,
-                  color: account.isActive ? AppColors.danger : AppColors.success,
+                  account.isActive
+                      ? Icons.block_rounded
+                      : Icons.check_circle_rounded,
+                  color:
+                      account.isActive ? AppColors.danger : AppColors.success,
                 ),
-                title: Text(account.isActive ? 'Suspender Línea' : 'Reactivar Línea'),
+                title: Text(
+                  account.isActive ? 'Suspender Línea' : 'Reactivar Línea',
+                ),
                 onTap: () async {
                   Navigator.pop(ctx);
                   try {
@@ -297,9 +341,10 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                     if (mounted) {
                       AppSnackbar.show(
                         context,
-                        message: account.isActive
-                            ? 'Línea de crédito suspendida'
-                            : 'Línea de crédito reactivada',
+                        message:
+                            account.isActive
+                                ? 'Línea de crédito suspendida'
+                                : 'Línea de crédito reactivada',
                         type: SnackbarType.success,
                       );
                     }
