@@ -38,7 +38,7 @@ class ProductConfigSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: provider.productType,
+            initialValue: provider.productType,
             decoration: InputDecoration(
               labelText: 'Tipo de Producto',
               prefixIcon: const Icon(Icons.category_outlined),

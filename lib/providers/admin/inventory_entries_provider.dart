@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/inventory_entry_model.dart';
-import 'package:inventory_store_app/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/services/admin/inventory_entries_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

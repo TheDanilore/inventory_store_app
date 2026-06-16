@@ -1,87 +1,17 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
+import 'package:inventory_store_app/models/inventory_exit_model.dart';
+import 'package:inventory_store_app/providers/admin/inventory_exits_provider.dart';
 import 'package:inventory_store_app/screens/admin/inventory_exit_form_screen.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/screens/admin/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
-import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
-
-// ══════════════════════════════════════════════════════════════════════════════
-// MODELOS LOCALES
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _ExitModel {
-  final String id;
-  final DateTime createdAt;
-  final String? warehouseName;
-  final String? reason;
-  final String? notes;
-  final double totalCost;
-  final int itemCount;
-
-  const _ExitModel({
-    required this.id,
-    required this.createdAt,
-    this.warehouseName,
-    this.reason,
-    this.notes,
-    required this.totalCost,
-    required this.itemCount,
-  });
-
-  factory _ExitModel.fromMap(Map<String, dynamic> m) {
-    final wh = m['warehouses'] as Map<String, dynamic>?;
-    final items = m['inventory_exit_items'] as List? ?? [];
-
-    // Calculamos el costo total sumando (cantidad * costo unitario) de cada ítem
-    double calculatedTotal = 0.0;
-    for (var item in items) {
-      final qty = (item['quantity'] as num?)?.toDouble() ?? 0.0;
-      final cost = (item['unit_cost'] as num?)?.toDouble() ?? 0.0;
-      calculatedTotal += (qty * cost);
-    }
-
-    return _ExitModel(
-      id: m['id'] as String,
-      createdAt: DateTime.parse(m['created_at'] as String),
-      warehouseName: wh?['name'] as String?,
-      reason: m['reason'] as String? ?? 'NO ESPECIFICADO',
-      notes: m['notes'] as String?,
-      totalCost: calculatedTotal,
-      itemCount: items.length,
-    );
-  }
-}
-
-class _ExitItemModel {
-  final String? productName;
-  final String variantAttrs;
-  final String? sku;
-  final double quantity;
-  final double unitCost;
-  final String batchNumber;
-  final bool usesBatches; 
-  final String? imageUrl; 
-
-  const _ExitItemModel({
-    this.productName,
-    required this.variantAttrs,
-    this.sku,
-    required this.quantity,
-    required this.unitCost,
-    required this.batchNumber,
-    required this.usesBatches,
-    this.imageUrl,
-  });
-
-  double get subtotal => quantity * unitCost;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// PANTALLA PRINCIPAL
-// ══════════════════════════════════════════════════════════════════════════════
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/services/admin/inventory_exits_service.dart';
+import 'package:inventory_store_app/services/admin/inventory_exits_pdf_generator.dart';
 
 class InventoryExitsScreen extends StatefulWidget {
   const InventoryExitsScreen({super.key});
@@ -91,23 +21,16 @@ class InventoryExitsScreen extends StatefulWidget {
 }
 
 class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
-  final _supabase = Supabase.instance.client;
-
-  List<_ExitModel> _all = [];
-  List<_ExitModel> _filtered = [];
-  bool _loading = true;
-
   final _searchCtrl = TextEditingController();
-  String _searchText = '';
-  DateTimeRange? _dateRange;
-
-  static const int _pageSize = 20;
-  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<InventoryExitsProvider>();
+      _searchCtrl.text = provider.searchQuery;
+      provider.initLoad();
+    });
   }
 
   @override
@@ -116,321 +39,231 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    try {
-      final resp = await _supabase
-          .from('inventory_exits')
-          .select('''
-            id, created_at, reason, notes,
-            warehouses(name),
-            inventory_exit_items(id, quantity, unit_cost)
-          ''')
-          .order('created_at', ascending: false)
-          .limit(500);
-
-      final exits =
-          (resp as List)
-              .map(
-                (e) => _ExitModel.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
-
-      if (mounted) {
-        setState(() {
-          _all = exits;
-          _loading = false;
-        });
-        _applyFilters();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loading = false);
-        AppSnackbar.show(
-          context,
-          message: 'Error: $e',
-          type: SnackbarType.error,
-        );
-      }
-    }
-  }
-
-  void _applyFilters() {
-    var result =
-        _all.where((exit) {
-          final matchSearch =
-              _searchText.isEmpty ||
-              (exit.reason ?? '').toLowerCase().contains(
-                _searchText.toLowerCase(),
-              ) ||
-              (exit.notes ?? '').toLowerCase().contains(
-                _searchText.toLowerCase(),
-              ) ||
-              (exit.warehouseName ?? '').toLowerCase().contains(
-                _searchText.toLowerCase(),
-              );
-
-          final matchDate =
-              _dateRange == null ||
-              (!exit.createdAt.isBefore(_dateRange!.start) &&
-                  !exit.createdAt.isAfter(
-                    _dateRange!.end.add(const Duration(days: 1)),
-                  ));
-
-          return matchSearch && matchDate;
-        }).toList();
-
-    setState(() {
-      _filtered = result;
-      _currentPage = 0;
-    });
-  }
-
-  Future<List<_ExitItemModel>> _loadItems(String exitId) async {
-    final resp = await _supabase
-        .from('inventory_exit_items')
-        .select('''
-          quantity, unit_cost, batch_number, variant_id,
-          products(
-            name, 
-            uses_batches,
-            product_images(image_url, is_main, variant_id)
-          ),
-          product_variants(
-            sku,
-            variant_attribute_values(
-              attribute_values(value)
-            )
-          )
-        ''')
-        .eq('exit_id', exitId);
-
-    return (resp as List).map((r) {
-      final prod = r['products'] as Map<String, dynamic>?;
-      final variant = r['product_variants'] as Map<String, dynamic>?;
-      final variantId = r['variant_id'] as String?;
-
-      // Extraemos los atributos
-      final vavList =
-          variant?['variant_attribute_values'] as List<dynamic>? ?? [];
-      final List<String> attrValues = [];
-      for (var vav in vavList) {
-        final av = vav['attribute_values'] as Map<String, dynamic>?;
-        if (av != null && av['value'] != null) {
-          attrValues.add(av['value'].toString());
-        }
-      }
-      final attrsText = attrValues.join(' · ');
-
-      // Lógica de Lotes
-      final bool usesBatches = prod?['uses_batches'] == true;
-
-      // Lógica de Imágenes (Prioriza la variante, si no, busca la principal)
-      String? finalImageUrl;
-      final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
-      if (imagesList.isNotEmpty) {
-        final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-          (img) => img['variant_id'] == variantId,
-          orElse: () => <String, dynamic>{},
-        );
-        if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
-          finalImageUrl = variantImage['image_url'] as String;
-        } else {
-          final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-            (img) => img['is_main'] == true,
-            orElse: () => imagesList.first as Map<String, dynamic>,
-          );
-          finalImageUrl = mainImage['image_url'] as String?;
-        }
-      }
-
-      return _ExitItemModel(
-        productName: prod?['name'] as String?,
-        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
-        sku: variant?['sku'] as String?,
-        quantity: (r['quantity'] as num).toDouble(),
-        unitCost: (r['unit_cost'] as num?)?.toDouble() ?? 0.0,
-        batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-        usesBatches: usesBatches,
-        imageUrl: finalImageUrl,
-      );
-    }).toList();
-  }
-
-  void _showDetail(_ExitModel exitData) {
+  Future<void> _loadItemsAndShowDetail(BuildContext context, InventoryExitModel exitData) async {
+    final service = InventoryExitsService();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (_) => _ExitDetailSheet(
-            exitData: exitData,
-            loadItems: () => _loadItems(exitData.id),
-          ),
+      builder: (_) => InventoryExitDetailSheet(
+        exitData: exitData,
+        loadItems: () async {
+          final itemsList = await service.getExitItems(exitData.id);
+          return itemsList.map((r) {
+            final prod = r['products'] as Map<String, dynamic>?;
+            final variant = r['product_variants'] as Map<String, dynamic>?;
+            final variantId = r['variant_id'] as String?;
+
+            final vavList = variant?['variant_attribute_values'] as List<dynamic>? ?? [];
+            final List<String> attrValues = [];
+            for (var vav in vavList) {
+              final av = vav['attribute_values'] as Map<String, dynamic>?;
+              if (av != null && av['value'] != null) {
+                attrValues.add(av['value'].toString());
+              }
+            }
+            final attrsText = attrValues.join(' · ');
+
+            final bool usesBatches = prod?['uses_batches'] == true;
+
+            String? finalImageUrl;
+            final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+            if (imagesList.isNotEmpty) {
+              final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+                (img) => img['variant_id'] == variantId,
+                orElse: () => <String, dynamic>{},
+              );
+              if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+                finalImageUrl = variantImage['image_url'] as String;
+              } else {
+                final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+                  (img) => img['is_main'] == true,
+                  orElse: () => imagesList.first as Map<String, dynamic>,
+                );
+                finalImageUrl = mainImage['image_url'] as String?;
+              }
+            }
+
+            return InventoryExitItemModel(
+              id: r['id'] as String? ?? '',
+              exitId: exitData.id,
+              productId: prod?['id'] as String? ?? '',
+              variantId: variantId ?? '',
+              productName: prod?['name'] as String? ?? '—',
+              variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+              quantity: (r['quantity'] as num).toDouble(),
+              unitCost: (r['unit_cost'] as num).toDouble(),
+              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+              usesBatches: usesBatches,
+              imageUrl: finalImageUrl,
+              sku: variant?['sku'] as String?,
+            );
+          }).toList();
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalPages =
-        _filtered.isEmpty ? 1 : (_filtered.length / _pageSize).ceil();
-    final safePage = _currentPage >= totalPages ? 0 : _currentPage;
-    final start = safePage * _pageSize;
-    final end = (start + _pageSize).clamp(0, _filtered.length);
-    final pageItems = _filtered.sublist(start, end);
+    return Consumer<InventoryExitsProvider>(
+      builder: (context, provider, _) {
+        final totalCost = provider.exits.fold<double>(0, (s, e) => s + e.totalCost);
 
-    final totalCost = _filtered.fold<double>(0, (s, e) => s + e.totalCost);
-
-    return AdminLayout(
-      title: 'Salidas de Inventario',
-      showBackButton: true,
-      body: RefreshIndicator(
-        color: AppColors.danger,
-        onRefresh: _load,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // ── Resumen ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Row(
-                  children: [
-                    _SummaryTile(
-                      label: 'Salidas',
-                      value: '${_filtered.length}',
-                      icon: Icons.output_rounded,
-                      color: AppColors.danger,
-                    ),
-                    const SizedBox(width: 8),
-                    _SummaryTile(
-                      label: 'Costo Total',
-                      value: 'S/ ${totalCost.toStringAsFixed(2)}',
-                      icon: Icons.money_off_rounded,
-                      color: Colors.orange.shade700,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Filtros ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SearchField(
-                        controller: _searchCtrl,
-                        hint: 'Buscar motivo o almacén...',
-                        onChanged: (v) {
-                          _searchText = v;
-                          _applyFilters();
-                        },
-                        onClear: () {
-                          _searchCtrl.clear();
-                          _searchText = '';
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    DateFilterCalendar(
-                      dateRange: _dateRange,
-                      onDateRangeSelected: (picked) {
-                        setState(() => _dateRange = picked);
-                        _applyFilters();
-                      },
-                      onClear: () {
-                        setState(() => _dateRange = null);
-                        _applyFilters();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            if (!_loading && _filtered.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-                  child: Text(
-                    'Mostrando ${start + 1}–$end de ${_filtered.length}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
+        return AdminLayout(
+          title: 'Salidas de Inventario',
+          showBackButton: true,
+          showSettingsButton: true,
+          settingsActions: const [
+            PopupMenuItem(value: 'pdf', child: Text('Exportar a PDF (Historial)')),
+          ],
+          onSettingsSelected: (val) {
+            if (val == 'pdf' && provider.exits.isNotEmpty) {
+              InventoryExitsPdfGenerator.printReport(
+                exits: provider.exits,
+                dateRange: provider.dateRange,
+              );
+            } else if (val == 'pdf') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No hay datos para exportar')),
+              );
+            }
+          },
+          body: RefreshIndicator(
+            color: AppColors.danger,
+            onRefresh: () => provider.loadExits(isRefresh: true),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // ── Resumen ──
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Row(
+                      children: [
+                        _SummaryTile(
+                          label: 'Salidas',
+                          value: '${provider.exits.length}',
+                          icon: Icons.output_rounded,
+                          color: AppColors.danger,
+                        ),
+                        const SizedBox(width: 8),
+                        _SummaryTile(
+                          label: 'Costo Total',
+                          value: 'S/ ${totalCost.toStringAsFixed(2)}',
+                          icon: Icons.money_off_rounded,
+                          color: Colors.orange.shade700,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 6)),
-
-            // ── Lista ──
-            if (_loading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: AppColors.danger),
+                // ── Filtros ──
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _SearchField(
+                            controller: _searchCtrl,
+                            hint: 'Buscar motivo o notas...',
+                            onChanged: provider.updateSearch,
+                            onClear: () {
+                              _searchCtrl.clear();
+                              provider.updateSearch('');
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        DateFilterCalendar(
+                          dateRange: provider.dateRange,
+                          onDateRangeSelected: provider.updateDateRange,
+                          onClear: () => provider.updateDateRange(null),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              )
-            else if (_filtered.isEmpty)
-              SliverFillRemaining(
-                child: _EmptyState(
-                  icon: Icons.inventory_2_outlined,
-                  message:
-                      _all.isEmpty
+
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                // ── Lista ──
+                if (provider.isLoading && provider.exits.isEmpty)
+                  const SliverFillRemaining(
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.danger),
+                    ),
+                  )
+                else if (provider.errorMessage != null && provider.exits.isEmpty)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        provider.errorMessage!,
+                        style: const TextStyle(color: AppColors.danger),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                else if (provider.exits.isEmpty)
+                  SliverFillRemaining(
+                    child: _EmptyState(
+                      icon: Icons.inventory_2_outlined,
+                      message: provider.searchQuery.isEmpty && provider.dateRange == null
                           ? 'No hay salidas registradas'
                           : 'Sin resultados para los filtros',
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                sliver: SliverList.separated(
-                  itemCount: pageItems.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder:
-                      (_, i) => _ExitCard(
-                        exitData: pageItems[i],
-                        onTap: () => _showDetail(pageItems[i]),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    sliver: SliverList.separated(
+                      itemCount: provider.exits.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) => _ExitCard(
+                        exitData: provider.exits[i],
+                        onTap: () => _loadItemsAndShowDetail(context, provider.exits[i]),
                       ),
-                ),
-              ),
-
-            if (!_loading && totalPages > 1)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                  child: _SimplePaginator(
-                    currentPage: safePage,
-                    totalPages: totalPages,
-                    onChanged: (p) => setState(() => _currentPage = p),
+                    ),
                   ),
-                ),
-              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 90)),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(builder: (_) => const InventoryExitFormScreen()),
-          );
-          if (result == true) _load();
-        },
-        icon: const Icon(Icons.remove_circle_outline_rounded),
-        label: const Text(
-          'Nueva Salida',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.danger,
-        foregroundColor: Colors.white,
-      ),
+                if (!provider.isLoading && provider.totalPages > 1)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                      child: AdminPageBlocks(
+                        currentPage: provider.currentPage,
+                        totalPages: provider.totalPages,
+                        onPageChanged: provider.changePage,
+                      ),
+                    ),
+                  ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 90)),
+              ],
+            ),
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => const InventoryExitFormScreen()),
+              );
+              if (result == true) {
+                provider.loadExits(isRefresh: true);
+              }
+            },
+            icon: const Icon(Icons.remove_circle_outline_rounded),
+            label: const Text(
+              'Nueva Salida',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+          ),
+        );
+      },
     );
   }
 }
@@ -453,7 +286,7 @@ Color _reasonColor(String reason) {
 }
 
 class _ExitCard extends StatelessWidget {
-  final _ExitModel exitData;
+  final InventoryExitModel exitData;
   final VoidCallback onTap;
 
   const _ExitCard({required this.exitData, required this.onTap});
@@ -520,10 +353,9 @@ class _ExitCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      DateFormat(
-                        'dd MMM yyyy - HH:mm',
-                        'es',
-                      ).format(exitData.createdAt),
+                      exitData.createdAt != null 
+                        ? DateFormat('dd MMM yyyy - HH:mm', 'es').format(exitData.createdAt!.toLocal())
+                        : '—',
                       style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,
@@ -556,361 +388,6 @@ class _ExitCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ExitDetailSheet extends StatefulWidget {
-  final _ExitModel exitData;
-  final Future<List<_ExitItemModel>> Function() loadItems;
-
-  const _ExitDetailSheet({required this.exitData, required this.loadItems});
-
-  @override
-  State<_ExitDetailSheet> createState() => _ExitDetailSheetState();
-}
-
-class _ExitDetailSheetState extends State<_ExitDetailSheet> {
-  List<_ExitItemModel>? _items;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.loadItems().then((value) {
-      if (mounted) setState(() => _items = value);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      padding: const EdgeInsets.only(top: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Detalle de Salida',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                _Pill(
-                  icon: Icons.info_outline_rounded,
-                  label: widget.exitData.reason ?? 'Sin motivo',
-                  color: _reasonColor(widget.exitData.reason ?? ''),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'ALMACÉN ORIGEN',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textHint,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.exitData.warehouseName ?? 'Desconocido',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-
-                        if (widget.exitData.notes != null &&
-                            widget.exitData.notes!.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          const Text(
-                            'NOTAS / JUSTIFICACIÓN',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.exitData.notes!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-
-                        const Divider(height: 24, color: AppColors.border),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'COSTO TOTAL',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textHint,
-                                  ),
-                                ),
-                                Text(
-                                  'S/ ${widget.exitData.totalCost.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.danger,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text(
-                                  'FECHA',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textHint,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat(
-                                    'dd/MM/yyyy HH:mm',
-                                  ).format(widget.exitData.createdAt.toLocal()),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    'Productos Retirados',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (_items == null)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (_items!.isEmpty)
-                    const Text(
-                      'No hay productos',
-                      style: TextStyle(color: AppColors.textMuted),
-                    )
-                  else
-                    ..._items!.map(
-                      (item) => Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            // ── IMAGEN EN CACHÉ ──────────────────────────
-                            Container(
-                              width: 48,
-                              height: 48,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(7),
-                                child:
-                                    item.imageUrl != null &&
-                                            item.imageUrl!.isNotEmpty
-                                        ? CachedNetworkImage(
-                                          imageUrl: item.imageUrl!,
-                                          fit: BoxFit.cover,
-                                          placeholder:
-                                              (context, url) => Container(
-                                                color: Colors.grey.shade50,
-                                                child: const Center(
-                                                  child: SizedBox(
-                                                    width: 16,
-                                                    height: 16,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                          errorWidget:
-                                              (
-                                                context,
-                                                url,
-                                                error,
-                                              ) => Container(
-                                                color: Colors.grey.shade50,
-                                                child: Icon(
-                                                  Icons.broken_image_outlined,
-                                                  size: 20,
-                                                  color: Colors.grey.shade400,
-                                                ),
-                                              ),
-                                        )
-                                        : Container(
-                                          color: Colors.grey.shade50,
-                                          child: Icon(
-                                            Icons.inventory_2_outlined,
-                                            size: 22,
-                                            color: Colors.grey.shade400,
-                                          ),
-                                        ),
-                              ),
-                            ),
-                            // ── TEXTOS ───────────────────────────────────
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.productName ?? '—',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  if (item.variantAttrs != 'Única')
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        item.variantAttrs,
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                  if (item.sku != null && item.sku!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        'SKU: ${item.sku}',
-                                        style: const TextStyle(
-                                          color: AppColors.textHint,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ),
-                                  if (item
-                                      .usesBatches) // Solo mostrar si usa lotes
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.tag_rounded,
-                                            size: 10,
-                                            color: AppColors.textHint,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Lote: ${item.batchNumber}',
-                                            style: const TextStyle(
-                                              color: AppColors.textHint,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${item.quantity.toInt()} unidades x S/ ${item.unitCost.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // ── TOTAL ───────────────────────────────────
-                            Text(
-                              'S/ ${item.subtotal.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -987,13 +464,12 @@ class _SearchField extends StatelessWidget {
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
       prefixIcon: const Icon(Icons.search_rounded, size: 20),
-      suffixIcon:
-          controller.text.isNotEmpty
-              ? IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                onPressed: onClear,
-              )
-              : null,
+      suffixIcon: controller.text.isNotEmpty
+          ? IconButton(
+              icon: const Icon(Icons.clear_rounded, size: 18),
+              onPressed: onClear,
+            )
+          : null,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(vertical: 11),
       border: OutlineInputBorder(
@@ -1038,39 +514,6 @@ class _Pill extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SimplePaginator extends StatelessWidget {
-  final int currentPage;
-  final int totalPages;
-  final ValueChanged<int> onChanged;
-  const _SimplePaginator({
-    required this.currentPage,
-    required this.totalPages,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      IconButton(
-        onPressed: currentPage > 0 ? () => onChanged(currentPage - 1) : null,
-        icon: const Icon(Icons.chevron_left_rounded),
-      ),
-      Text(
-        'Pág. ${currentPage + 1} / $totalPages',
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-      ),
-      IconButton(
-        onPressed:
-            currentPage < totalPages - 1
-                ? () => onChanged(currentPage + 1)
-                : null,
-        icon: const Icon(Icons.chevron_right_rounded),
-      ),
-    ],
-  );
 }
 
 class _EmptyState extends StatelessWidget {

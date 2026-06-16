@@ -4,8 +4,18 @@ class InventoryExitItemModel {
   final String productId;
   final String variantId;
   final double quantity;
-  final String batchNumber; // 'DEFAULT' por defecto según tu SQL
+  final String batchNumber;
   final DateTime? createdAt;
+
+  // Extra fields from joins for UI display
+  final String productName;
+  final String variantAttrs;
+  final String? sku;
+  final double unitCost;
+  final bool usesBatches;
+  final String? imageUrl;
+
+  double get subtotal => quantity * unitCost;
 
   InventoryExitItemModel({
     required this.id,
@@ -15,6 +25,12 @@ class InventoryExitItemModel {
     required this.quantity,
     this.batchNumber = 'DEFAULT',
     this.createdAt,
+    this.productName = '',
+    this.variantAttrs = '',
+    this.sku,
+    this.unitCost = 0.0,
+    this.usesBatches = false,
+    this.imageUrl,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -31,6 +47,12 @@ class InventoryExitItemModel {
           json['created_at'] != null
               ? DateTime.parse(json['created_at'] as String)
               : null,
+      productName: json['product_name'] as String? ?? '',
+      variantAttrs: json['variant_attrs'] as String? ?? '',
+      sku: json['sku'] as String?,
+      unitCost: (json['unit_cost'] as num?)?.toDouble() ?? 0.0,
+      usesBatches: json['uses_batches'] as bool? ?? false,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -56,6 +78,12 @@ class InventoryExitItemModel {
     double? quantity,
     String? batchNumber,
     DateTime? createdAt,
+    String? productName,
+    String? variantAttrs,
+    String? sku,
+    double? unitCost,
+    bool? usesBatches,
+    String? imageUrl,
   }) {
     return InventoryExitItemModel(
       id: id ?? this.id,
@@ -65,6 +93,12 @@ class InventoryExitItemModel {
       quantity: quantity ?? this.quantity,
       batchNumber: batchNumber ?? this.batchNumber,
       createdAt: createdAt ?? this.createdAt,
+      productName: productName ?? this.productName,
+      variantAttrs: variantAttrs ?? this.variantAttrs,
+      sku: sku ?? this.sku,
+      unitCost: unitCost ?? this.unitCost,
+      usesBatches: usesBatches ?? this.usesBatches,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }

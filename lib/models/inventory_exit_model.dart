@@ -6,6 +6,11 @@ class InventoryExitModel {
   final String? createdBy;
   final DateTime? createdAt;
 
+  // Campos adicionales útiles al hacer JOIN con otras tablas
+  final String? warehouseName;
+  final double totalCost;
+  final int itemCount;
+
   InventoryExitModel({
     required this.id,
     required this.warehouseId,
@@ -13,6 +18,9 @@ class InventoryExitModel {
     this.notes,
     this.createdBy,
     this.createdAt,
+    this.warehouseName,
+    this.totalCost = 0.0,
+    this.itemCount = 0,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -27,6 +35,10 @@ class InventoryExitModel {
           json['created_at'] != null
               ? DateTime.parse(json['created_at'] as String)
               : null,
+      warehouseName: json['warehouses']?['name'] as String?,
+      totalCost: (json['total_cost'] as num?)?.toDouble() ?? 0.0,
+      itemCount: (json['inventory_exit_items'] as List?)?.length ?? 
+                 (json['item_count'] as int? ?? 0),
     );
   }
 
@@ -50,6 +62,9 @@ class InventoryExitModel {
     String? notes,
     String? createdBy,
     DateTime? createdAt,
+    String? warehouseName,
+    double? totalCost,
+    int? itemCount,
   }) {
     return InventoryExitModel(
       id: id ?? this.id,
@@ -58,6 +73,9 @@ class InventoryExitModel {
       notes: notes ?? this.notes,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
+      warehouseName: warehouseName ?? this.warehouseName,
+      totalCost: totalCost ?? this.totalCost,
+      itemCount: itemCount ?? this.itemCount,
     );
   }
 }

@@ -254,7 +254,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     DropdownButtonFormField<String>(
-                                      value: provider.selectedWarehouseId,
+                                      initialValue: provider.selectedWarehouseId,
                                       icon: const Icon(
                                         Icons.expand_more_rounded,
                                       ),
@@ -281,7 +281,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     DropdownButtonFormField<String>(
-                                      value: provider.selectedSupplierId,
+                                      initialValue: provider.selectedSupplierId,
                                       icon: const Icon(
                                         Icons.expand_more_rounded,
                                       ),
@@ -328,7 +328,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                       ),
                                       const SizedBox(height: 12),
                                       DropdownButtonFormField<String>(
-                                        value: provider.paymentMode,
+                                        initialValue: provider.paymentMode,
                                         icon: const Icon(
                                           Icons.expand_more_rounded,
                                         ),
@@ -358,15 +358,16 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                           ),
                                         ],
                                         onChanged: (v) {
-                                          if (v != null)
+                                          if (v != null) {
                                             provider.setPaymentMode(v);
+                                          }
                                         },
                                       ),
                                       if (provider.paymentMode ==
                                           'CONTADO') ...[
                                         const SizedBox(height: 12),
                                         DropdownButtonFormField<String>(
-                                          value: provider.selectedAccountId,
+                                          initialValue: provider.selectedAccountId,
                                           isExpanded: true,
                                           icon: const Icon(
                                             Icons.expand_more_rounded,
@@ -524,7 +525,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                           child: DropdownButtonFormField<
                                             String
                                           >(
-                                            value: provider.documentType,
+                                            initialValue: provider.documentType,
                                             icon: const Icon(
                                               Icons.expand_more_rounded,
                                             ),
@@ -552,8 +553,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                                     )
                                                     .toList(),
                                             onChanged: (v) {
-                                              if (v != null)
+                                              if (v != null) {
                                                 provider.setDocumentType(v);
+                                              }
                                             },
                                           ),
                                         ),
