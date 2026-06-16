@@ -8,7 +8,7 @@ class PurchaseOrdersService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   /// Fetches a paginated list of purchase orders with optional filters.
-  Future<List<PurchaseOrderModel>> fetchOrders({
+  Future<Map<String, dynamic>> fetchOrders({
     required int page,
     required int pageSize,
     String searchText = '',
@@ -49,12 +49,17 @@ class PurchaseOrdersService {
     }
 
     // Sort and Paginate
-    final finalQuery = query.order('created_at', ascending: false).range(start, end);
+    final finalQuery = query.order('created_at', ascending: false).range(start, end).count(CountOption.exact);
 
     final response = await finalQuery;
-    return (response as List)
+    final List<PurchaseOrderModel> dataList = (response.data as List)
         .map((e) => PurchaseOrderModel.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
+        
+    return {
+      'data': dataList,
+      'count': response.count,
+    };
   }
 
   /// Fetches the items for a specific purchase order.

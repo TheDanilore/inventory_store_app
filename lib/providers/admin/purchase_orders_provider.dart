@@ -21,7 +21,10 @@ class PurchaseOrdersProvider extends ChangeNotifier {
   // Pagination & Filters
   static const int pageSize = 20;
   int _currentPage = 0;
+  int _totalRecords = 0;
+  
   int get currentPage => _currentPage;
+  int get totalPages => (_totalRecords / pageSize).ceil();
 
   String _searchText = '';
   String get searchText => _searchText;
@@ -33,8 +36,6 @@ class PurchaseOrdersProvider extends ChangeNotifier {
   DateTimeRange? get dateRange => _dateRange;
 
   // Calculated properties
-  int get totalPages => _orders.isEmpty && !_hasMore ? 1 : (_currentPage + (_hasMore ? 2 : 1)); // This is an approximation since we don't fetch total count, but we are keeping classic pagination. We will just enable "Next" if items == pageSize.
-  
   double get totalAmountFiltered => _orders.fold(0, (sum, po) => sum + po.totalAmount);
   int get pendingCountFiltered => _orders.where((po) => po.status == 'PENDING').length;
 
@@ -50,7 +51,7 @@ class PurchaseOrdersProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final fetched = await _service.fetchOrders(
+      final result = await _service.fetchOrders(
         page: _currentPage,
         pageSize: pageSize,
         searchText: _searchText,
@@ -58,9 +59,10 @@ class PurchaseOrdersProvider extends ChangeNotifier {
         dateRange: _dateRange,
       );
 
-      _orders = fetched;
-      // Classic pagination assumption: if we got exactly pageSize, there MIGHT be more.
-      _hasMore = fetched.length == pageSize;
+      _orders = result['data'] as List<PurchaseOrderModel>;
+      _totalRecords = result['count'] as int;
+      _hasMore = false; // Ya no usamos _hasMore de forma clasica, pero lo dejo por retrocompatibilidad si es necesario, o _currentPage < totalPages - 1
+      
       
     } catch (e) {
       _errorMessage = 'Error al cargar órdenes de compra: $e';
@@ -71,7 +73,7 @@ class PurchaseOrdersProvider extends ChangeNotifier {
   }
 
   Future<void> nextPage() async {
-    if (_hasMore && !_isLoading) {
+    if (_currentPage < totalPages - 1 && !_isLoading) {
       _currentPage++;
       await loadOrders();
     }
@@ -82,6 +84,12 @@ class PurchaseOrdersProvider extends ChangeNotifier {
       _currentPage--;
       await loadOrders();
     }
+  }
+
+  void goToPage(int page) {
+    if (page < 0 || page >= totalPages || page == _currentPage) return;
+    _currentPage = page;
+    loadOrders();
   }
 
   void setSearchText(String text) {

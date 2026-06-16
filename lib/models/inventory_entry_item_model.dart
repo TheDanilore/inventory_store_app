@@ -9,6 +9,14 @@ class InventoryEntryItemModel {
   final DateTime? expiryDate;
   final DateTime? createdAt;
 
+  // Extra fields from joins for UI display
+  final String productName;
+  final String variantAttrs;
+  final bool usesBatches;
+  final String? imageUrl;
+
+  double get subtotal => quantity * unitCost;
+
   InventoryEntryItemModel({
     required this.id,
     required this.entryId,
@@ -19,6 +27,10 @@ class InventoryEntryItemModel {
     this.batchNumber = 'DEFAULT',
     this.expiryDate,
     this.createdAt,
+    this.productName = '',
+    this.variantAttrs = '',
+    this.usesBatches = false,
+    this.imageUrl,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -40,6 +52,10 @@ class InventoryEntryItemModel {
           json['created_at'] != null
               ? DateTime.parse(json['created_at'] as String)
               : null,
+      productName: json['product_name'] as String? ?? '',
+      variantAttrs: json['variant_attrs'] as String? ?? '',
+      usesBatches: json['uses_batches'] as bool? ?? false,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
@@ -70,6 +86,10 @@ class InventoryEntryItemModel {
     String? batchNumber,
     DateTime? expiryDate,
     DateTime? createdAt,
+    String? productName,
+    String? variantAttrs,
+    bool? usesBatches,
+    String? imageUrl,
   }) {
     return InventoryEntryItemModel(
       id: id ?? this.id,
@@ -81,6 +101,10 @@ class InventoryEntryItemModel {
       batchNumber: batchNumber ?? this.batchNumber,
       expiryDate: expiryDate ?? this.expiryDate,
       createdAt: createdAt ?? this.createdAt,
+      productName: productName ?? this.productName,
+      variantAttrs: variantAttrs ?? this.variantAttrs,
+      usesBatches: usesBatches ?? this.usesBatches,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }

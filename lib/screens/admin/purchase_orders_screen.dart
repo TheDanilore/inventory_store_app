@@ -13,6 +13,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   const PurchaseOrdersScreen({super.key});
@@ -364,20 +365,18 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     ),
                   ),
 
-                if (!provider.isLoading &&
-                    (provider.currentPage > 0 || provider.hasMore))
+                if (!provider.isLoading && provider.totalPages > 1)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                      child: _SimplePaginator(
+                      child: AdminPageBlocks(
                         currentPage: provider.currentPage,
                         totalPages: provider.totalPages,
-                        onChanged: (p) {
-                          if (p > provider.currentPage) {
-                            provider.nextPage();
-                          } else {
-                            provider.previousPage();
-                          }
+                        onPageChanged: (p) {
+                          // The provider expects a direction or specific page, wait, purchase orders provider might only have nextPage/previousPage. Let's see. 
+                          // If it only has nextPage/previousPage, AdminPageBlocks gives `p` which is the new page index.
+                          // I'll update PurchaseOrdersProvider to support goToPage(int page).
+                          provider.goToPage(p);
                         },
                       ),
                     ),
@@ -558,37 +557,7 @@ class _DateRangeButton extends StatelessWidget {
   }
 }
 
-class _SimplePaginator extends StatelessWidget {
-  final int currentPage;
-  final int totalPages;
-  final ValueChanged<int> onChanged;
-  const _SimplePaginator({
-    required this.currentPage,
-    required this.totalPages,
-    required this.onChanged,
-  });
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      IconButton(
-        onPressed: currentPage > 0 ? () => onChanged(currentPage - 1) : null,
-        icon: const Icon(Icons.chevron_left_rounded),
-      ),
-      Text(
-        'Pág. ${currentPage + 1} / $totalPages',
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-      ),
-      IconButton(
-        onPressed:
-            currentPage < totalPages - 1
-                ? () => onChanged(currentPage + 1)
-                : null,
-        icon: const Icon(Icons.chevron_right_rounded),
-      ),
-    ],
-  );
-}
+
 
 class _EmptyState extends StatelessWidget {
   final IconData icon;
