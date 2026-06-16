@@ -11,6 +11,7 @@ import 'package:inventory_store_app/screens/admin/widgets/customer_credits/regis
 import 'package:inventory_store_app/screens/admin/customer_credit_movements_screen.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class CustomerCreditsScreen extends StatefulWidget {
   const CustomerCreditsScreen({super.key});
@@ -188,7 +189,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
               Expanded(
                 child:
                     provider.isLoading && provider.accounts.isEmpty
-                        ? const Center(child: CircularProgressIndicator())
+                        ? const _CustomerCreditsSkeleton()
                         : provider.errorMessage.isNotEmpty &&
                             provider.accounts.isEmpty
                         ? Center(
@@ -401,6 +402,64 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                     }
                   }
                 },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CustomerCreditsSkeleton extends StatelessWidget {
+  const _CustomerCreditsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 6,
+      physics: const NeverScrollableScrollPhysics(),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (_, __) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  AppShimmer(width: 140, height: 16, borderRadius: 4),
+                  AppShimmer(width: 60, height: 12, borderRadius: 4),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppShimmer(width: 50, height: 10, borderRadius: 2),
+                      SizedBox(height: 4),
+                      AppShimmer(width: 80, height: 18, borderRadius: 4),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      AppShimmer(width: 50, height: 10, borderRadius: 2),
+                      SizedBox(height: 4),
+                      AppShimmer(width: 60, height: 18, borderRadius: 4),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
