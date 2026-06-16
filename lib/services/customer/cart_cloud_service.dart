@@ -74,13 +74,13 @@ class CartCloudService {
             products (
               id, name, description, unit_cost, sale_price,
               wholesale_price, wholesale_min_quantity, is_active,
-              product_images (id, image_url, is_main, display_order)
+              product_images (id, product_id, image_url, is_main, display_order)
             ),
             product_variants (
               id, product_id, sku, barcode,
               unit_cost, sale_price, wholesale_price,
               wholesale_min_quantity, is_active, reorder_point,
-              product_images (id, image_url, is_main, display_order),
+              product_images (id, product_id, variant_id, image_url, is_main, display_order),
               variant_attribute_values (
                 attribute_value_id,
                 attribute_values (

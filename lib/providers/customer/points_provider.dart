@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/services/customer/points_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -245,7 +246,7 @@ class PointsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> claimDailyCheckin() async {
+  Future<void> claimDailyCheckin([WalletProvider? wallet]) async {
     if (_profileId == null || _hasTodayCheckin || _isClaimingCheckin) return;
 
     _isClaimingCheckin = true;
@@ -263,15 +264,19 @@ class PointsProvider extends ChangeNotifier {
     final rewardForToday = rewardForStreakDay(nextStreakDay);
 
     try {
+      final newBalance = _currentBalance + rewardForToday;
       await _service.claimDailyCheckin(
         profileId: _profileId!,
         todayDate: todayDate,
         reward: rewardForToday,
+        newBalance: newBalance,
         streakDay: nextStreakDay,
         description: 'Check-in diario del $todayDate',
       );
 
-      _currentBalance += rewardForToday;
+      _currentBalance = newBalance;
+      wallet?.addLocalBalance(rewardForToday);
+
       _hasTodayCheckin = true;
       _currentStreak = nextStreakDay;
       _lastCheckinDate = currentDay;
@@ -321,7 +326,11 @@ class PointsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> playBoxMiniGame(int boxIndex, AppConfigProvider config) async {
+  Future<void> playBoxMiniGame(
+    int boxIndex,
+    AppConfigProvider config, [
+    WalletProvider? wallet,
+  ]) async {
     final boxesLimit = config.getDouble('boxes_daily_limit', 1).round();
     if (_profileId == null ||
         _boxesPlaysToday >= boxesLimit ||
@@ -339,14 +348,18 @@ class PointsProvider extends ChangeNotifier {
     final reward = _miniGameBoxes[boxIndex];
 
     try {
+      final newBalance = _currentBalance + reward;
       await _service.recordMiniGamePlay(
         profileId: _profileId!,
         reward: reward,
+        newBalance: newBalance,
         movementType: 'MINI_GAME_BOXES',
         description: 'Juego de cajas del $todayDate',
       );
 
-      _currentBalance += reward;
+      _currentBalance = newBalance;
+      wallet?.addLocalBalance(reward);
+
       _boxesPlaysToday += 1;
       _lastBoxesReward = reward;
       _miniGameBoxes = _buildMiniGameBoxes(config);

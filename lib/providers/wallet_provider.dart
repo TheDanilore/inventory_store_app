@@ -69,6 +69,15 @@ class WalletProvider extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  /// Permite incrementar o decrementar el saldo localmente (ej. tras ganar un minijuego)
+  /// para no hacer peticiones extras a la base de datos de inmediato.
+  void addLocalBalance(int amount) {
+    if (_balance != null) {
+      _balance = _balance! + amount;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
   Future<void> refresh() async {
     if (_disposed) return;
     final user = _supabase.auth.currentUser;

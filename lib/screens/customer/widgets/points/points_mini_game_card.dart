@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_design_tokens.dart';
 import 'package:provider/provider.dart';
 
@@ -189,7 +190,11 @@ class PointsMiniGameCard extends StatelessWidget {
                               ? null
                               : () => context
                                   .read<PointsProvider>()
-                                  .playBoxMiniGame(index, config),
+                                  .playBoxMiniGame(
+                                    index,
+                                    config,
+                                    context.read<WalletProvider>(),
+                                  ),
                       child: Transform.translate(
                         offset: Offset(0, vertShift),
                         child: Transform.rotate(

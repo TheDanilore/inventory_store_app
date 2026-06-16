@@ -68,11 +68,11 @@ class PointsService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  /// Registra el checkin diario usando funciones de tiempo del servidor donde es posible
   Future<void> claimDailyCheckin({
     required String profileId,
     required String todayDate,
     required int reward,
+    required int newBalance,
     required int streakDay,
     required String description,
   }) async {
@@ -92,12 +92,18 @@ class PointsService {
       'movement_type': 'DAILY_CHECKIN',
       'description': description,
     });
+
+    // Actualizar el saldo en el perfil
+    await _supabase
+        .from('profiles')
+        .update({'wallet_balance': newBalance})
+        .eq('id', profileId);
   }
 
-  /// Registra un mini juego
   Future<void> recordMiniGamePlay({
     required String profileId,
     required int reward,
+    required int newBalance,
     required String movementType,
     required String description,
   }) async {
@@ -107,5 +113,11 @@ class PointsService {
       'movement_type': movementType,
       'description': description,
     });
+
+    // Actualizar el saldo en el perfil
+    await _supabase
+        .from('profiles')
+        .update({'wallet_balance': newBalance})
+        .eq('id', profileId);
   }
 }

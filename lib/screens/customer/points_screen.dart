@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_balance_hero_card.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_daily_checkin_card.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_design_tokens.dart';
@@ -103,7 +104,10 @@ class _PointsScreenState extends State<PointsScreen> {
                             nextCheckinReward: provider.nextCheckinReward,
                             hasTodayCheckin: provider.hasTodayCheckin,
                             isClaimingCheckin: provider.isClaimingCheckin,
-                            onClaim: () => provider.claimDailyCheckin(),
+                            onClaim:
+                                () => provider.claimDailyCheckin(
+                                  context.read<WalletProvider>(),
+                                ),
                           ),
                           const SizedBox(height: 16),
 
