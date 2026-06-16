@@ -8,6 +8,9 @@ import 'package:inventory_store_app/screens/admin/widgets/customer_credits/globa
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/credit_account_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/credit_account_modal.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/register_payment_modal.dart';
+import 'package:inventory_store_app/screens/admin/customer_credit_movements_screen.dart';
+import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 
 class CustomerCreditsScreen extends StatefulWidget {
   const CustomerCreditsScreen({super.key});
@@ -72,62 +75,110 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        title: const Text('Créditos de Clientes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            tooltip: 'Nueva línea de crédito',
-            onPressed: _openCreateAccountModal,
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [Tab(text: 'Todas'), Tab(text: 'Con Deuda')],
+    return AdminLayout(
+      title: 'Créditos de Clientes',
+      showBackButton: true,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCreateAccountModal,
+        backgroundColor: AppColors.teal,
+        icon: const Icon(Icons.domain_add_rounded, color: Colors.white),
+        label: const Text(
+          'Nuevo Crédito',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: Consumer<CustomerCreditsProvider>(
         builder: (context, provider, _) {
           return Column(
             children: [
-              // Barra de Búsqueda
+              // Métricas Globales
+              if (!provider.isLoading)
+                GlobalStatsBar(
+                  totalDebt: provider.totalDebt,
+                  activeAccounts: provider.activeAccounts,
+                  suspendedAccounts: provider.suspendedAccounts,
+                  maxedOutAccounts: provider.maxedOutAccounts,
+                ),
+
+              // Barra de Búsqueda y Tabs
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar cliente, DNI o teléfono...',
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.textMuted,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchCtrl,
+                      onChanged: _onSearchChanged,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar cliente, DNI o teléfono...',
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: AppColors.textMuted,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.bg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
-                    filled: true,
-                    fillColor: AppColors.bg,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: AppColors.textMuted,
+                        indicator: BoxDecoration(
+                          color: AppColors.teal,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        padding: const EdgeInsets.all(4),
+                        tabs: [
+                          const Tab(text: 'Todas'),
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('Con Deuda'),
+                                if (provider.accounts.any((a) => a.currentDebt > 0 && a.isActive)) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.danger,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${provider.accounts.where((a) => a.currentDebt > 0 && a.isActive).length}',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
+                    const SizedBox(height: 4),
+                  ],
                 ),
               ),
-
-              // Métricas Globales
-              GlobalStatsBar(
-                totalDebt: provider.totalDebt,
-                activeAccounts: provider.activeAccounts,
-                suspendedAccounts: provider.suspendedAccounts,
-                maxedOutAccounts: provider.maxedOutAccounts,
-              ),
-
-              const SizedBox(height: 16),
 
               // Lista o Carga
               Expanded(
@@ -171,47 +222,13 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                         ),
               ),
 
-              // Paginación
-              if (provider.totalPages > 1)
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Página ${provider.currentPage + 1} de ${provider.totalPages}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded),
-                            onPressed:
-                                provider.currentPage > 0
-                                    ? () => provider.setPage(
-                                      provider.currentPage - 1,
-                                    )
-                                    : null,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded),
-                            onPressed:
-                                provider.currentPage < provider.totalPages - 1
-                                    ? () => provider.setPage(
-                                      provider.currentPage + 1,
-                                    )
-                                    : null,
-                          ),
-                        ],
-                      ),
-                    ],
+              if (!provider.isLoading && provider.totalPages > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: AdminPageBlocks(
+                    currentPage: provider.currentPage,
+                    totalPages: provider.totalPages,
+                    onPageChanged: (page) => provider.setPage(page),
                   ),
                 ),
             ],
@@ -283,6 +300,28 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                 subtitle: const Text('Opciones de cuenta'),
               ),
               const Divider(),
+              ListTile(
+                leading: const Icon(
+                  Icons.history_rounded,
+                  color: AppColors.teal,
+                ),
+                title: const Text('Ver historial de movimientos'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => CustomerCreditMovementsScreen(
+                            creditId: account.creditId,
+                            customerName: account.partnerName,
+                            currentDebt: account.currentDebt,
+                            creditLimit: account.creditLimit,
+                          ),
+                    ),
+                  ).then((_) => provider.fetchPage());
+                },
+              ),
               ListTile(
                 leading: const Icon(
                   Icons.payments_rounded,
