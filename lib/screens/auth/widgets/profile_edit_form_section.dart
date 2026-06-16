@@ -55,6 +55,7 @@ class ProfileEditFormSection extends StatelessWidget {
               Expanded(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue:
                       ['DNI', 'RUC', 'CE', 'PASAPORTE'].contains(docType)
                           ? docType
@@ -62,6 +63,7 @@ class ProfileEditFormSection extends StatelessWidget {
                   decoration: const InputDecoration(
                     labelText: 'Tipo Doc',
                     prefixIcon: Icon(Icons.badge_outlined),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   ),
                   items:
                       ['DNI', 'RUC', 'CE', 'PASAPORTE']
