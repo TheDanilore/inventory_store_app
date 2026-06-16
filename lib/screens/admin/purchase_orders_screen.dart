@@ -206,185 +206,173 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         return AdminLayout(
           title: 'Órdenes de Compra',
           showBackButton: true,
-          body: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () => provider.loadOrders(reset: true),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                // ── Resumen ───────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Row(
+          body: Column(
+            children: [
+              // ── Resumen ───────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Row(
+                  children: [
+                    _SummaryTile(
+                      label: 'Órdenes',
+                      value: '${filtered.length}',
+                      icon: Icons.shopping_cart_rounded,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    _SummaryTile(
+                      label: 'Total Pág.',
+                      value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+                      icon: Icons.payments_rounded,
+                      color: AppColors.teal,
+                    ),
+                    const SizedBox(width: 8),
+                    _SummaryTile(
+                      label: 'Pendientes',
+                      value: '$pendingCount',
+                      icon: Icons.pending_actions_rounded,
+                      color:
+                          pendingCount > 0
+                              ? AppColors.warning
+                              : AppColors.success,
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Filtros ───────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        _SummaryTile(
-                          label: 'Órdenes',
-                          value: '${filtered.length}',
-                          icon: Icons.shopping_cart_rounded,
-                          color: AppColors.primary,
+                        Expanded(
+                          child: _SearchField(
+                            controller: _searchCtrl,
+                            hint: 'Buscar proveedor, documento...',
+                            onSubmitted: (v) => provider.setSearchText(v),
+                            onClear: () {
+                              _searchCtrl.clear();
+                              provider.setSearchText('');
+                            },
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        _SummaryTile(
-                          label: 'Total Pág.',
-                          value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-                          icon: Icons.payments_rounded,
-                          color: AppColors.teal,
-                        ),
-                        const SizedBox(width: 8),
-                        _SummaryTile(
-                          label: 'Pendientes',
-                          value: '$pendingCount',
-                          icon: Icons.pending_actions_rounded,
-                          color:
-                              pendingCount > 0
-                                  ? AppColors.warning
-                                  : AppColors.success,
+                        _DateRangeButton(
+                          dateRange: provider.dateRange,
+                          onTap: () => _pickDateRange(context),
+                          onClear: () => provider.setDateRange(null),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            _statusLabels.entries.map((e) {
+                              final sel = provider.statusFilter == e.key;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: FilterChip(
+                                  label: Text(e.value),
+                                  selected: sel,
+                                  onSelected:
+                                      (_) =>
+                                          provider.setStatusFilter(e.key),
+                                  selectedColor: _statusColor(
+                                    e.key,
+                                  ).withValues(alpha: 0.15),
+                                  checkmarkColor: _statusColor(e.key),
+                                  labelStyle: TextStyle(
+                                    fontWeight:
+                                        sel
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                    fontSize: 12,
+                                    color:
+                                        sel
+                                            ? _statusColor(e.key)
+                                            : AppColors.textSecondary,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 6),
 
-                // ── Filtros ───────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _SearchField(
-                                controller: _searchCtrl,
-                                hint: 'Buscar proveedor, documento...',
-                                onSubmitted: (v) => provider.setSearchText(v),
-                                onClear: () {
-                                  _searchCtrl.clear();
-                                  provider.setSearchText('');
-                                },
-                              ),
+              // ── Lista ─────────────────────────────────────────────────────
+              Expanded(
+                child: provider.isLoading
+                    ? ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                        itemCount: 5,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder:
+                            (_, _) => AppShimmer(
+                              width: double.infinity,
+                              height: 90,
+                              borderRadius: 14,
                             ),
-                            const SizedBox(width: 8),
-                            _DateRangeButton(
-                              dateRange: provider.dateRange,
-                              onTap: () => _pickDateRange(context),
-                              onClear: () => provider.setDateRange(null),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children:
-                                _statusLabels.entries.map((e) {
-                                  final sel = provider.statusFilter == e.key;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 6),
-                                    child: FilterChip(
-                                      label: Text(e.value),
-                                      selected: sel,
-                                      onSelected:
-                                          (_) =>
-                                              provider.setStatusFilter(e.key),
-                                      selectedColor: _statusColor(
-                                        e.key,
-                                      ).withValues(alpha: 0.15),
-                                      checkmarkColor: _statusColor(e.key),
-                                      labelStyle: TextStyle(
-                                        fontWeight:
-                                            sel
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
+                      )
+                    : filtered.isEmpty
+                        ? const _EmptyState(
+                            icon: Icons.shopping_cart_outlined,
+                            message: 'Sin resultados para los filtros aplicados',
+                          )
+                        : Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                                child: Row(
+                                  children: [
+                                    const Spacer(),
+                                    Text(
+                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
                                         fontSize: 12,
-                                        color:
-                                            sel
-                                                ? _statusColor(e.key)
-                                                : AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  );
-                                }).toList(),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: RefreshIndicator(
+                                  color: AppColors.primary,
+                                  onRefresh: () => provider.loadOrders(reset: true),
+                                  child: ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                                    itemCount: filtered.length,
+                                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                    itemBuilder:
+                                        (_, i) => POCard(
+                                          po: filtered[i],
+                                          onTap: () => _showDetail(context, filtered[i]),
+                                        ),
+                                  ),
+                                ),
+                              ),
+                              if (provider.totalPages > 1)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                                  child: AdminPageBlocks(
+                                    currentPage: provider.currentPage,
+                                    totalPages: provider.totalPages,
+                                    onPageChanged: (p) => provider.goToPage(p),
+                                  ),
+                                ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                if (!provider.isLoading && filtered.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-                      child: Text(
-                        'Página ${provider.currentPage + 1}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 6)),
-
-                // ── Lista ─────────────────────────────────────────────────────
-                if (provider.isLoading)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                    sliver: SliverList.separated(
-                      itemCount: 5,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder:
-                          (_, _) => AppShimmer(
-                            width: double.infinity,
-                            height: 90,
-                            borderRadius: 14,
-                          ),
-                    ),
-                  )
-                else if (filtered.isEmpty)
-                  SliverFillRemaining(
-                    child: _EmptyState(
-                      icon: Icons.shopping_cart_outlined,
-                      message: 'Sin resultados para los filtros aplicados',
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                    sliver: SliverList.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder:
-                          (_, i) => POCard(
-                            po: filtered[i],
-                            onTap: () => _showDetail(context, filtered[i]),
-                          ),
-                    ),
-                  ),
-
-                if (!provider.isLoading && provider.totalPages > 1)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                      child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: (p) {
-                          // The provider expects a direction or specific page, wait, purchase orders provider might only have nextPage/previousPage. Let's see. 
-                          // If it only has nextPage/previousPage, AdminPageBlocks gives `p` which is the new page index.
-                          // I'll update PurchaseOrdersProvider to support goToPage(int page).
-                          provider.goToPage(p);
-                        },
-                      ),
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 90)),
-              ],
-            ),
+              ),
+            ],
           ),
 
           // ── FAB NUEVA ORDEN ──

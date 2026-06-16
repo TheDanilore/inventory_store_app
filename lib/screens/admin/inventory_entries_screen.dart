@@ -121,141 +121,147 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         return AdminLayout(
           title: 'Historial de Entradas',
           showBackButton: true,
-          body: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () => provider.loadEntries(page: 0),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                // ── Resumen ──────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Row(
-                      children: [
-                        _SummaryChip(
-                          label: 'Página actual',
-                          value: '${provider.entries.length}',
-                          icon: Icons.move_to_inbox_rounded,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 10),
-                        _SummaryChip(
-                          label: 'Inversión (pág)',
-                          value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-                          icon: Icons.payments_rounded,
-                          color: AppColors.teal,
-                        ),
-                      ],
+          body: Column(
+            children: [
+              // ── Resumen ──────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Row(
+                  children: [
+                    _SummaryChip(
+                      label: 'Página actual',
+                      value: '${provider.entries.length}',
+                      icon: Icons.move_to_inbox_rounded,
+                      color: AppColors.primary,
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    _SummaryChip(
+                      label: 'Inversión (pág)',
+                      value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+                      icon: Icons.payments_rounded,
+                      color: AppColors.teal,
+                    ),
+                  ],
                 ),
+              ),
 
-                // ── Filtros ───────────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Column(
+              // ── Filtros ───────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _SearchField(
-                                controller: _searchCtrl,
-                                hint: 'Buscar proveedor o comprobante...',
-                                onChanged: (v) {
-                                  // Debounce podría implementarse aquí, por ahora que sea onSubmitted o on edit manual si se prefiere.
-                                  // En general, para backend, se recomienda un botón "Buscar" o onSubmitted.
-                                },
-                                onSubmitted: (v) => provider.setSearchQuery(v),
-                                onClear: () {
-                                  _searchCtrl.clear();
-                                  provider.setSearchQuery('');
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            DateFilterCalendar(
-                              dateRange: provider.dateRange,
-                              onDateRangeSelected: provider.setDateRange,
-                              onClear: () => provider.setDateRange(null),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: provider.availableWarehouses.map((w) {
-                              final sel = provider.warehouseFilter == w;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: FilterChip(
-                                  label: Text(w),
-                                  selected: sel,
-                                  onSelected: (_) => provider.setWarehouseFilter(w),
-                                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                                  checkmarkColor: AppColors.primary,
-                                  labelStyle: TextStyle(
-                                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                                    fontSize: 12,
-                                    color: sel ? AppColors.primary : AppColors.textSecondary,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                        Expanded(
+                          child: _SearchField(
+                            controller: _searchCtrl,
+                            hint: 'Buscar proveedor o comprobante...',
+                            onChanged: (v) {},
+                            onSubmitted: (v) => provider.setSearchQuery(v),
+                            onClear: () {
+                              _searchCtrl.clear();
+                              provider.setSearchQuery('');
+                            },
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        DateFilterCalendar(
+                          dateRange: provider.dateRange,
+                          onDateRangeSelected: provider.setDateRange,
+                          onClear: () => provider.setDateRange(null),
+                        ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: provider.availableWarehouses.map((w) {
+                          final sel = provider.warehouseFilter == w;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: FilterChip(
+                              label: Text(w),
+                              selected: sel,
+                              onSelected: (_) => provider.setWarehouseFilter(w),
+                              selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                              checkmarkColor: AppColors.primary,
+                              labelStyle: TextStyle(
+                                fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                                fontSize: 12,
+                                color: sel ? AppColors.primary : AppColors.textSecondary,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
 
-                // ── Lista ─────────────────────────────────────────────────────
-                if (provider.isLoading)
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
-                    ),
-                  )
-                else if (provider.entries.isEmpty)
-                  SliverFillRemaining(
-                    child: _EmptyState(
-                      icon: Icons.inbox_outlined,
-                      message: provider.searchQuery.isEmpty && provider.dateRange == null && provider.warehouseFilter == 'Todos'
-                          ? 'No hay entradas registradas'
-                          : 'Sin resultados para los filtros aplicados',
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    sliver: SliverList.separated(
-                      itemCount: provider.entries.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) => _EntryCard(
-                        entry: provider.entries[i],
-                        onTap: () => _loadItemsAndShowDetail(context, provider.entries[i]),
-                      ),
-                    ),
-                  ),
+              const SizedBox(height: 6),
 
-                // ── Paginación con Botones ─────────────────────────────────────
-                if (!provider.isLoading && provider.totalPages > 1)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                      child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: provider.goToPage,
-                      ),
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              ],
-            ),
+              // ── Lista ─────────────────────────────────────────────────────
+              Expanded(
+                child: provider.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      )
+                    : provider.entries.isEmpty
+                        ? _EmptyState(
+                            icon: Icons.inbox_outlined,
+                            message: provider.searchQuery.isEmpty && provider.dateRange == null && provider.warehouseFilter == 'Todos'
+                                ? 'No hay entradas registradas'
+                                : 'Sin resultados para los filtros aplicados',
+                          )
+                        : Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                                child: Row(
+                                  children: [
+                                    const Spacer(),
+                                    Text(
+                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: RefreshIndicator(
+                                  color: AppColors.primary,
+                                  onRefresh: () => provider.loadEntries(page: 0),
+                                  child: ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                                    itemCount: provider.entries.length,
+                                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                    itemBuilder: (_, i) => _EntryCard(
+                                      entry: provider.entries[i],
+                                      onTap: () => _loadItemsAndShowDetail(context, provider.entries[i]),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (provider.totalPages > 1)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                                  child: AdminPageBlocks(
+                                    currentPage: provider.currentPage,
+                                    totalPages: provider.totalPages,
+                                    onPageChanged: provider.goToPage,
+                                  ),
+                                ),
+                            ],
+                          ),
+              ),
+            ],
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {

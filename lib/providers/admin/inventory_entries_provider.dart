@@ -31,7 +31,7 @@ class InventoryEntriesProvider extends ChangeNotifier {
   List<String> get availableWarehouses => _availableWarehouses;
 
   // ── PAGINACIÓN CON BOTONES ──
-  static const int pageSize = 20;
+  static const int pageSize = 8;
   int _currentPage = 0; // 0-indexed
   int _totalRecords = 0;
 
@@ -46,7 +46,10 @@ class InventoryEntriesProvider extends ChangeNotifier {
 
   Future<void> _loadWarehouses() async {
     try {
-      final resp = await _supabase.from('warehouses').select('name').eq('is_active', true);
+      final resp = await _supabase
+          .from('warehouses')
+          .select('name')
+          .eq('is_active', true);
       final whs = (resp as List).map((w) => w['name'] as String).toList();
       _availableWarehouses = ['Todos', ...whs];
     } catch (e) {
@@ -73,9 +76,13 @@ class InventoryEntriesProvider extends ChangeNotifier {
       );
 
       final dataList = response['data'] as List;
-      _entries = dataList.map((e) => InventoryEntryModel.fromJson(e as Map<String, dynamic>)).toList();
+      _entries =
+          dataList
+              .map(
+                (e) => InventoryEntryModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList();
       _totalRecords = response['count'] as int;
-
     } catch (e) {
       _errorMessage = 'Error al cargar entradas: $e';
     } finally {

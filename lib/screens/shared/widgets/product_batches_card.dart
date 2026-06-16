@@ -12,7 +12,10 @@ class ProductBatchesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<ProductDetailProvider>();
     final isLoading = provider.isLoadingExtra;
-    final batches = provider.batchesList;
+    
+    final filteredBatches = provider.batchesList
+        .where((row) => row['variant_id'] == provider.selectedVariantId)
+        .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -34,13 +37,13 @@ class ProductBatchesCard extends StatelessWidget {
                 strokeWidth: 2,
               ),
             )
-          else if (batches.isEmpty)
+          else if (filteredBatches.isEmpty)
             const Text(
               'No hay lotes con stock para esta variante.',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             )
           else
-            ...batches.map((row) {
+            ...filteredBatches.map((row) {
               final batchNum = row['batch_number']?.toString() ?? 'Sin Lote';
               final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
               final whName =

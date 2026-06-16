@@ -423,4 +423,24 @@ class OrdersService {
       }
     }
   }
+
+  /// Recupera los ítems de un pedido para la generación de tickets PDF
+  /// trayendo estrictamente los datos necesarios (Directiva 3: Columnas específicas y !inner).
+  /// Se remueven imágenes u otros datos pesados.
+  Future<List<Map<String, dynamic>>> fetchOrderItemsForPdf(String orderId) async {
+    final resp = await _supabase
+        .from('order_items')
+        .select('''
+          id, order_id, product_id, variant_id, quantity, unit_cost,
+          applied_price, net_profit, created_at,
+          products!inner ( name ),
+          product_variants (
+            sku,
+            variant_attribute_values(attribute_values(value))
+          )
+        ''')
+        .eq('order_id', orderId);
+
+    return List<Map<String, dynamic>>.from(resp);
+  }
 }

@@ -5,6 +5,7 @@ import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/providers/admin/purchase_order_form_provider.dart';
+import 'package:inventory_store_app/providers/admin/orders_provider.dart';
 import 'package:inventory_store_app/providers/admin/purchase_orders_provider.dart';
 import 'package:inventory_store_app/providers/admin/inventory_entries_provider.dart';
 import 'package:inventory_store_app/providers/admin/inventory_exits_provider.dart';
@@ -47,7 +48,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => WalletProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => CustomerCreditsProvider(), lazy: true),
+        ChangeNotifierProvider(
+          create: (_) => CustomerCreditsProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(create: (_) => OrdersProvider(), lazy: true),
         ChangeNotifierProvider(
           create: (_) => PurchaseOrdersProvider(),
           lazy: true,

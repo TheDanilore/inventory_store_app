@@ -11,7 +11,7 @@ class InventoryExitsService {
     DateTimeRange? dateRange,
   }) async {
     var query = _supabase.from('inventory_exits').select('''
-          id, created_at, reason, notes,
+          id, created_at, reason, notes, warehouse_id,
           warehouses(name),
           inventory_exit_items(quantity, unit_cost)
         ''');

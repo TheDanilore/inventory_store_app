@@ -6,7 +6,7 @@ class CustomerCreditsProvider extends ChangeNotifier {
   final _service = CustomerCreditsService();
 
   static const int pageSize = 8;
-  
+
   List<CreditAccountModel> _accounts = [];
   int _totalAccounts = 0;
   bool _isLoading = false;
@@ -29,7 +29,8 @@ class CustomerCreditsProvider extends ChangeNotifier {
   String get errorMessage => _errorMessage;
 
   int get currentPage => _currentPage;
-  int get totalPages => _totalAccounts == 0 ? 1 : (_totalAccounts / pageSize).ceil();
+  int get totalPages =>
+      _totalAccounts == 0 ? 1 : (_totalAccounts / pageSize).ceil();
 
   String get searchQuery => _searchQuery;
   bool get withDebtOnly => _withDebtOnly;
@@ -58,15 +59,14 @@ class CustomerCreditsProvider extends ChangeNotifier {
         searchQuery: _searchQuery,
         withDebtOnly: _withDebtOnly,
       );
-      
+
       _accounts = res.accounts;
       _totalAccounts = res.count;
-      
+
       _totalDebt = res.stats['totalDebt'] as double;
       _activeAccounts = res.stats['activeAccounts'] as int;
       _suspendedAccounts = res.stats['suspendedAccounts'] as int;
       _maxedOutAccounts = res.stats['maxedOutAccounts'] as int;
-
     } catch (e) {
       _errorMessage = e.toString();
     } finally {

@@ -19,10 +19,10 @@ class PurchaseOrdersProvider extends ChangeNotifier {
   String get errorMessage => _errorMessage;
 
   // Pagination & Filters
-  static const int pageSize = 20;
+  static const int pageSize = 8;
   int _currentPage = 0;
   int _totalRecords = 0;
-  
+
   int get currentPage => _currentPage;
   int get totalPages => (_totalRecords / pageSize).ceil();
 
@@ -36,8 +36,10 @@ class PurchaseOrdersProvider extends ChangeNotifier {
   DateTimeRange? get dateRange => _dateRange;
 
   // Calculated properties
-  double get totalAmountFiltered => _orders.fold(0, (sum, po) => sum + po.totalAmount);
-  int get pendingCountFiltered => _orders.where((po) => po.status == 'PENDING').length;
+  double get totalAmountFiltered =>
+      _orders.fold(0, (sum, po) => sum + po.totalAmount);
+  int get pendingCountFiltered =>
+      _orders.where((po) => po.status == 'PENDING').length;
 
   Future<void> loadOrders({bool reset = false}) async {
     if (reset) {
@@ -61,9 +63,8 @@ class PurchaseOrdersProvider extends ChangeNotifier {
 
       _orders = result['data'] as List<PurchaseOrderModel>;
       _totalRecords = result['count'] as int;
-      _hasMore = false; // Ya no usamos _hasMore de forma clasica, pero lo dejo por retrocompatibilidad si es necesario, o _currentPage < totalPages - 1
-      
-      
+      _hasMore =
+          false; // Ya no usamos _hasMore de forma clasica, pero lo dejo por retrocompatibilidad si es necesario, o _currentPage < totalPages - 1
     } catch (e) {
       _errorMessage = 'Error al cargar órdenes de compra: $e';
     } finally {

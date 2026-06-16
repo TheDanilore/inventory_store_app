@@ -14,6 +14,10 @@ class ProductAvailabilityCard extends StatelessWidget {
     final provider = context.watch<ProductDetailProvider>();
     if (!provider.isAdmin) return const SizedBox.shrink();
 
+    final filteredStocks = provider.warehouseStocks
+        .where((row) => row['variant_id'] == provider.selectedVariantId)
+        .toList();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppColors.card(),
@@ -34,13 +38,13 @@ class ProductAvailabilityCard extends StatelessWidget {
                 strokeWidth: 2,
               ),
             )
-          else if (provider.warehouseStocks.isEmpty)
+          else if (filteredStocks.isEmpty)
             const Text(
               'Sin registros.',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             )
           else
-            ...provider.warehouseStocks.map((row) {
+            ...filteredStocks.map((row) {
               final name = row['warehouses']?['name'] ?? 'Almacén';
               final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
               final ok = stock > 0;

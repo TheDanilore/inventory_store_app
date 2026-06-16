@@ -18,10 +18,11 @@ class InventoryExitsProvider extends ChangeNotifier {
   // ── PAGINACIÓN ──
   int _currentPage = 0;
   int _totalRecords = 0;
-  final int pageSize = 20;
+  final int pageSize = 8;
 
   int get currentPage => _currentPage;
-  int get totalPages => _totalRecords == 0 ? 1 : (_totalRecords / pageSize).ceil();
+  int get totalPages =>
+      _totalRecords == 0 ? 1 : (_totalRecords / pageSize).ceil();
 
   // ── FILTROS ──
   String _searchQuery = '';
@@ -39,7 +40,7 @@ class InventoryExitsProvider extends ChangeNotifier {
     if (isRefresh) {
       _currentPage = 0;
     }
-    
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -56,9 +57,13 @@ class InventoryExitsProvider extends ChangeNotifier {
       );
 
       final dataList = response['data'] as List;
-      _exits = dataList.map((e) => InventoryExitModel.fromJson(e as Map<String, dynamic>)).toList();
+      _exits =
+          dataList
+              .map(
+                (e) => InventoryExitModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList();
       _totalRecords = response['count'] as int;
-
     } catch (e) {
       _errorMessage = 'Error al cargar salidas: $e';
     } finally {

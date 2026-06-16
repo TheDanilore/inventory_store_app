@@ -710,6 +710,14 @@ class _ProductDetailScreenContentState
                 const SizedBox(height: 20),
               ],
 
+              if (isAdmin) ProductAvailabilityCard(),
+              if (isAdmin) const SizedBox(height: 16),
+
+              if (isAdmin && product.usesBatches) ...[
+                const ProductBatchesCard(),
+                const SizedBox(height: 16),
+              ],
+
               if (isAdmin) ...[
                 ProductAdminInfoCard(),
                 const SizedBox(height: 16),
@@ -729,14 +737,6 @@ class _ProductDetailScreenContentState
               ProductDescriptionCard(description: product.description ?? ''),
               if ((product.description ?? '').trim().isNotEmpty)
                 const SizedBox(height: 16),
-
-              if (isAdmin) ProductAvailabilityCard(),
-              if (isAdmin) const SizedBox(height: 16),
-
-              if (isAdmin && product.usesBatches) ...[
-                const ProductBatchesCard(),
-                const SizedBox(height: 16),
-              ],
 
               ProductReviewsCard(
                 averageRating: _averageRating,

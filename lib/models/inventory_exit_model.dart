@@ -27,7 +27,7 @@ class InventoryExitModel {
   factory InventoryExitModel.fromJson(Map<String, dynamic> json) {
     return InventoryExitModel(
       id: json['id'] as String,
-      warehouseId: json['warehouse_id'] as String,
+      warehouseId: json['warehouse_id'] as String? ?? '',
       reason: json['reason'] as String?,
       notes: json['notes'] as String?,
       createdBy: json['created_by'] as String?,
@@ -36,7 +36,18 @@ class InventoryExitModel {
               ? DateTime.parse(json['created_at'] as String)
               : null,
       warehouseName: json['warehouses']?['name'] as String?,
-      totalCost: (json['total_cost'] as num?)?.toDouble() ?? 0.0,
+      totalCost: json['total_cost'] != null 
+          ? (json['total_cost'] as num).toDouble() 
+          : (() {
+              double t = 0;
+              final items = json['inventory_exit_items'] as List?;
+              if (items != null) {
+                for (var item in items) {
+                  t += ((item['quantity'] as num?)?.toDouble() ?? 0) * ((item['unit_cost'] as num?)?.toDouble() ?? 0);
+                }
+              }
+              return t;
+            })(),
       itemCount: (json['inventory_exit_items'] as List?)?.length ?? 
                  (json['item_count'] as int? ?? 0),
     );
