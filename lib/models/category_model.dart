@@ -4,6 +4,7 @@ class CategoryModel {
   final String? description;
   final bool isActive;
   final DateTime? createdAt;
+  final int? productsCount;
 
   const CategoryModel({
     this.id,
@@ -11,6 +12,7 @@ class CategoryModel {
     this.description,
     this.isActive = true,
     this.createdAt,
+    this.productsCount,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
@@ -23,7 +25,18 @@ class CategoryModel {
           json['created_at'] != null
               ? DateTime.parse(json['created_at'])
               : null,
+      productsCount: _parseProductsCount(json['products']),
     );
+  }
+
+  static int? _parseProductsCount(dynamic productsData) {
+    if (productsData == null) return null;
+    if (productsData is List) {
+      if (productsData.isNotEmpty && productsData.first is Map) {
+        return productsData.first['count'] as int?;
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {
