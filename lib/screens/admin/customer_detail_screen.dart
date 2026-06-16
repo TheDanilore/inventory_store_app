@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/customers_screen.dart';
+import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_form_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
