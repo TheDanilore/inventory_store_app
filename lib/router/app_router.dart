@@ -96,21 +96,49 @@ class _ProductLoaderState extends State<_ProductLoader> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         if (snapshot.hasError || snapshot.data == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Producto no encontrado')),
-            body: const Center(child: Text('El producto no existe o fue eliminado.')),
+            body: const Center(
+              child: Text('El producto no existe o fue eliminado.'),
+            ),
           );
         }
-        return ProductDetailScreen(product: snapshot.data!, isAdmin: widget.isAdmin);
+        return ProductDetailScreen(
+          product: snapshot.data!,
+          isAdmin: widget.isAdmin,
+        );
       },
     );
   }
 }
 
 class AppRouter {
+  // ── Deep link preservation ───────────────────────────────────────────────
+  // Capturamos la URL inicial en memoria (no en la URL) para evitar
+  // que el browser recargue la página al cambiar la URL con query params.
+  static String? _pendingDeepLink;
+
+  /// Llamar desde main() ANTES de runApp() para capturar la ruta inicial.
+  static void captureInitialRoute() {
+    try {
+      // ignore: undefined_function
+      final uri = Uri.base;
+      final path = uri.path;
+      // Solo guardamos si es una ruta profunda (no la raíz ni el login)
+      if (path.isNotEmpty && path != '/' && path != '/login') {
+        _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
+        debugPrint('AppRouter: deep link capturado → $_pendingDeepLink');
+      }
+    } catch (_) {
+      // En móvil Uri.base no existe; simplemente ignoramos
+    }
+  }
+
   static GoRouter createRouter(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
 
@@ -126,38 +154,30 @@ class AppRouter {
         final isSplash = currentPath == '/';
         final isLogin = currentPath == '/login';
 
-        // ── Paso 1: Sesión aún cargando ─────────────────────────────────
+        // ── Paso 1: Sesión aún cargando → mostrar splash ─────────────────
         if (!isSessionReady) {
-          // Si ya estamos en splash, no redirigir (evita loop)
-          if (isSplash) return null;
-          // Guardamos la ruta deseada en el parámetro redirect
-          final encoded = Uri.encodeComponent(state.uri.toString());
-          return '/?redirect=$encoded';
+          // Redirigir al splash sin tocar la URL del browser
+          return isSplash ? null : '/';
         }
 
-        // ── Paso 2: Sesión lista → recuperar redirect pendiente ──────────
-        final redirectParam = state.uri.queryParameters['redirect'];
-        final pendingRoute = redirectParam != null
-            ? Uri.decodeComponent(redirectParam)
-            : null;
+        // ── Paso 2: Sesión lista → restaurar deep link pendiente ──────────
+        if (isSplash && _pendingDeepLink != null) {
+          final target = _pendingDeepLink!;
+          _pendingDeepLink = null; // consumir para que no se repita
 
-        // Si venimos del splash con un redirect válido y la sesión ya cargó
-        if (isSplash && pendingRoute != null && pendingRoute != '/') {
-          // Solo si tiene el rol correcto para esa ruta
-          if (pendingRoute.startsWith('/admin') && role == AppRoles.admin) {
-            return pendingRoute;
+          if (target.startsWith('/admin') && role == AppRoles.admin) {
+            return target;
           }
-          if (pendingRoute.startsWith('/customer') && role != null) {
-            return pendingRoute;
+          if (target.startsWith('/customer') && role != null) {
+            return target;
           }
+          // Si no tiene permisos, desechar el deep link y continuar normal
         }
 
         // ── Paso 3: Sin sesión ───────────────────────────────────────────
         if (role == null) {
           if (isLogin) return null;
-          // Rutas públicas de cliente
           if (currentPath.startsWith('/customer')) return null;
-          // Resto → login
           return '/login';
         }
 
@@ -388,7 +408,9 @@ class AppRouter {
                 if (product != null) {
                   return ProductDetailScreen(product: product, isAdmin: true);
                 }
-                if (productId == null) return const Scaffold(body: Center(child: Text('Error')));
+                if (productId == null) {
+                  return const Scaffold(body: Center(child: Text('Error')));
+                }
                 return _ProductLoader(productId: productId, isAdmin: true);
               },
             ),
@@ -491,7 +513,9 @@ class AppRouter {
                 if (product != null) {
                   return ProductDetailScreen(product: product, isAdmin: false);
                 }
-                if (productId == null) return const Scaffold(body: Center(child: Text('Error')));
+                if (productId == null) {
+                  return const Scaffold(body: Center(child: Text('Error')));
+                }
                 return _ProductLoader(productId: productId, isAdmin: false);
               },
             ),

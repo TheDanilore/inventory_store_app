@@ -28,6 +28,10 @@ Future<void> main() async {
     debugPrint('Error crítico inicializando la app: $e');
   }
 
+  // Captura la URL inicial ANTES de que el router haga cualquier redirección
+  // Esto preserva el deep link (ej: /admin/product/123) para restaurarlo tras el login
+  AppRouter.captureInitialRoute();
+
   // Finalmente corremos la app
   runApp(const MyApp());
 }
