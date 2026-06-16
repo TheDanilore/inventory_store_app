@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:intl/intl.dart';
 
 class CustomerSummary {
   final String id;
@@ -49,6 +53,9 @@ class CustomersProvider extends ChangeNotifier {
 
   bool _isSearching = false;
   bool get isSearching => _isSearching;
+
+  bool _isExporting = false;
+  bool get isExporting => _isExporting;
 
   // Listas
   final List<CustomerSummary> _customers = [];
@@ -132,7 +139,8 @@ class CustomersProvider extends ChangeNotifier {
           .eq('role', 'customer');
 
       _totalCustomersCount = profilesRes.length;
-      _activeCustomersCount = profilesRes.where((p) => p['is_active'] == true).length;
+      _activeCustomersCount =
+          profilesRes.where((p) => p['is_active'] == true).length;
 
       // 2. Traer órdenes ligeras para sumar ingresos y encontrar Top 5
       final ordersRes = await _supabase
@@ -162,33 +170,40 @@ class CustomersProvider extends ChangeNotifier {
       _totalDebt = debt;
 
       // 4. Calcular Top 5 Global y obtener sus perfiles completos
-      final sortedEntries = spentByCustomer.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+      final sortedEntries =
+          spentByCustomer.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
       final top5Ids = sortedEntries.take(5).map((e) => e.key).toList();
 
       if (top5Ids.isNotEmpty) {
         final topProfilesRes = await _supabase
             .from('profiles')
-            .select('id, full_name, avatar_url, is_active, wallet_balance, created_at')
+            .select(
+              'id, full_name, avatar_url, is_active, wallet_balance, created_at',
+            )
             .inFilter('id', top5Ids);
-            
+
         final Map<String, dynamic> topProfilesMap = {
-          for (var p in topProfilesRes) p['id'] as String: p
+          for (var p in topProfilesRes) p['id'] as String: p,
         };
 
-        _topCustomers = top5Ids.map((id) {
-          final p = topProfilesMap[id];
-          if (p == null) return null;
-          return CustomerSummary(
-            id: p['id'],
-            fullName: p['full_name'],
-            avatarUrl: p['avatar_url'],
-            isActive: p['is_active'] ?? true,
-            walletBalance: p['wallet_balance'] ?? 0,
-            createdAt: DateTime.parse(p['created_at']),
-            totalSpent: spentByCustomer[id] ?? 0,
-          );
-        }).whereType<CustomerSummary>().toList();
+        _topCustomers =
+            top5Ids
+                .map((id) {
+                  final p = topProfilesMap[id];
+                  if (p == null) return null;
+                  return CustomerSummary(
+                    id: p['id'],
+                    fullName: p['full_name'],
+                    avatarUrl: p['avatar_url'],
+                    isActive: p['is_active'] ?? true,
+                    walletBalance: p['wallet_balance'] ?? 0,
+                    createdAt: DateTime.parse(p['created_at']),
+                    totalSpent: spentByCustomer[id] ?? 0,
+                  );
+                })
+                .whereType<CustomerSummary>()
+                .toList();
       } else {
         _topCustomers = [];
       }
@@ -212,11 +227,15 @@ class CustomersProvider extends ChangeNotifier {
 
       var query = _supabase
           .from('profiles')
-          .select('id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at')
+          .select(
+            'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at',
+          )
           .eq('role', 'customer');
 
       if (_searchQuery.isNotEmpty) {
-        query = query.or('full_name.ilike.%$_searchQuery%,document_number.ilike.%$_searchQuery%');
+        query = query.or(
+          'full_name.ilike.%$_searchQuery%,document_number.ilike.%$_searchQuery%',
+        );
       }
 
       // Si queremos solo con deuda, deberíamos cruzar con customer_credits
@@ -224,12 +243,16 @@ class CustomersProvider extends ChangeNotifier {
       if (_showOnlyWithDebt) {
         query = _supabase
             .from('profiles')
-            .select('id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits!inner(current_debt)')
+            .select(
+              'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits!inner(current_debt)',
+            )
             .eq('role', 'customer')
             .gt('customer_credits.current_debt', 0);
-            
+
         if (_searchQuery.isNotEmpty) {
-          query = query.or('full_name.ilike.%$_searchQuery%,document_number.ilike.%$_searchQuery%');
+          query = query.or(
+            'full_name.ilike.%$_searchQuery%,document_number.ilike.%$_searchQuery%',
+          );
         }
       }
 
@@ -262,36 +285,40 @@ class CustomersProvider extends ChangeNotifier {
         if (!aggMap.containsKey(cid)) aggMap[cid] = _OrderAgg();
         aggMap[cid]!.total += amount;
         aggMap[cid]!.count++;
-        if (aggMap[cid]!.lastDate == null || date.isAfter(aggMap[cid]!.lastDate!)) {
+        if (aggMap[cid]!.lastDate == null ||
+            date.isAfter(aggMap[cid]!.lastDate!)) {
           aggMap[cid]!.lastDate = date;
         }
       }
 
       final Map<String, dynamic> creditMap = {
-        for (var c in creditsRes) c['profile_id'] as String: c
+        for (var c in creditsRes) c['profile_id'] as String: c,
       };
 
-      final newCustomers = res.map((p) {
-        final a = aggMap[p['id']];
-        final cr = creditMap[p['id']];
-        return CustomerSummary(
-          id: p['id'],
-          fullName: p['full_name'],
-          phone: p['phone'],
-          documentNumber: p['document_number'],
-          documentType: p['document_type'],
-          avatarUrl: p['avatar_url'],
-          isActive: p['is_active'] ?? false,
-          walletBalance: p['wallet_balance'] ?? 0,
-          createdAt: DateTime.parse(p['created_at']),
-          totalSpent: a?.total ?? 0,
-          orderCount: a?.count ?? 0,
-          lastOrderAt: a?.lastDate,
-          currentDebt: cr != null ? (cr['current_debt'] as num).toDouble() : 0,
-          creditLimit: cr != null ? (cr['credit_limit'] as num).toDouble() : 0,
-          hasActiveCredit: cr != null ? cr['is_active'] as bool : false,
-        );
-      }).toList();
+      final newCustomers =
+          res.map((p) {
+            final a = aggMap[p['id']];
+            final cr = creditMap[p['id']];
+            return CustomerSummary(
+              id: p['id'],
+              fullName: p['full_name'],
+              phone: p['phone'],
+              documentNumber: p['document_number'],
+              documentType: p['document_type'],
+              avatarUrl: p['avatar_url'],
+              isActive: p['is_active'] ?? false,
+              walletBalance: p['wallet_balance'] ?? 0,
+              createdAt: DateTime.parse(p['created_at']),
+              totalSpent: a?.total ?? 0,
+              orderCount: a?.count ?? 0,
+              lastOrderAt: a?.lastDate,
+              currentDebt:
+                  cr != null ? (cr['current_debt'] as num).toDouble() : 0,
+              creditLimit:
+                  cr != null ? (cr['credit_limit'] as num).toDouble() : 0,
+              hasActiveCredit: cr != null ? cr['is_active'] as bool : false,
+            );
+          }).toList();
 
       _customers.addAll(newCustomers);
       _currentPage++;
@@ -313,7 +340,7 @@ class CustomersProvider extends ChangeNotifier {
         _searchQuery = query;
         _isSearching = true;
         notifyListeners();
-        
+
         fetchCustomers(reset: true).then((_) {
           _isSearching = false;
           notifyListeners();
@@ -327,11 +354,131 @@ class CustomersProvider extends ChangeNotifier {
       _showOnlyWithDebt = showDebt;
       _isLoading = true;
       notifyListeners();
-      
+
       fetchCustomers(reset: true).then((_) {
         _isLoading = false;
         notifyListeners();
       });
+    }
+  }
+
+  Future<void> exportToPdf() async {
+    if (_isExporting) return;
+
+    _isExporting = true;
+    notifyListeners();
+
+    try {
+      var query = _supabase
+          .from('profiles')
+          .select(
+            'id, full_name, phone, document_number, document_type, is_active, created_at',
+          )
+          .eq('role', 'customer');
+
+      if (_searchQuery.isNotEmpty) {
+        query = query.or(
+          'full_name.ilike.%$_searchQuery%,document_number.ilike.%$_searchQuery%',
+        );
+      }
+
+      if (_showOnlyWithDebt) {
+        query = _supabase
+            .from('profiles')
+            .select(
+              'id, full_name, phone, document_number, document_type, is_active, created_at, customer_credits!inner(current_debt)',
+            )
+            .eq('role', 'customer')
+            .gt('customer_credits.current_debt', 0);
+
+        if (_searchQuery.isNotEmpty) {
+          query = query.or(
+            'full_name.ilike.%$_searchQuery%,document_number.ilike.%$_searchQuery%',
+          );
+        }
+      }
+
+      final response = await query.order('full_name');
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) {
+            return [
+              pw.Header(
+                level: 0,
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Directorio de Clientes',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 10),
+
+              if (_searchQuery.isNotEmpty) pw.Text('Búsqueda: "$_searchQuery"'),
+              if (_showOnlyWithDebt)
+                pw.Text('Filtro: Solo clientes con deuda activa'),
+
+              pw.SizedBox(height: 20),
+
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 10,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headers: [
+                  'Nombre Completo',
+                  'Documento',
+                  'Teléfono',
+                  'Estado',
+                  'Registrado el',
+                ],
+                data:
+                    (response as List).map((c) {
+                      return [
+                        c['full_name']?.toString() ?? '',
+                        '${c['document_type'] ?? ''} ${c['document_number'] ?? ''}'
+                            .trim(),
+                        c['phone']?.toString() ?? '-',
+                        (c['is_active'] == true) ? 'Activo' : 'Inactivo',
+                        c['created_at'] != null
+                            ? DateFormat(
+                              'dd/MM/yy',
+                            ).format(DateTime.parse(c['created_at']).toLocal())
+                            : '',
+                      ];
+                    }).toList(),
+              ),
+            ];
+          },
+        ),
+      );
+
+      final bytes = await pdf.save();
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename:
+            'Clientes_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
+      );
+    } catch (e) {
+      debugPrint('Error al exportar PDF: $e');
+    } finally {
+      _isExporting = false;
+      notifyListeners();
     }
   }
 }

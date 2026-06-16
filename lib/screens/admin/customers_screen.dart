@@ -25,7 +25,8 @@ class _CustomersScreenContent extends StatefulWidget {
   const _CustomersScreenContent();
 
   @override
-  State<_CustomersScreenContent> createState() => _CustomersScreenContentState();
+  State<_CustomersScreenContent> createState() =>
+      _CustomersScreenContentState();
 }
 
 class _CustomersScreenContentState extends State<_CustomersScreenContent>
@@ -38,7 +39,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 2, vsync: this);
-    
+
     // Escuchar el tab para cambiar filtro de deuda
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) {
@@ -49,7 +50,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
     // Paginación con el Scroll
     _scrollCtrl.addListener(() {
-      if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
+      if (_scrollCtrl.position.pixels >=
+          _scrollCtrl.position.maxScrollExtent - 200) {
         final provider = context.read<CustomersProvider>();
         if (!provider.isLoading && provider.hasMore) {
           provider.fetchCustomers();
@@ -91,10 +93,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       ],
       onSettingsSelected: (value) {
         if (value == 'export') {
-          // TODO: Implementar PDF
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Generación de PDF en desarrollo')),
-          );
+          if (!provider.isExporting) provider.exportToPdf();
         }
       },
       floatingActionButton: FloatingActionButton.extended(
@@ -114,10 +113,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
         label: const Text(
           'Nuevo Cliente',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: RefreshIndicator(
@@ -134,23 +130,26 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   decoration: InputDecoration(
                     hintText: 'Buscar por nombre, documento o teléfono...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: provider.isSearching
-                        ? const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : _searchCtrl.text.isNotEmpty
+                    suffixIcon:
+                        provider.isSearching
+                            ? const Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                            : _searchCtrl.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  provider.search('');
-                                },
-                              )
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                provider.search('');
+                              },
+                            )
                             : null,
                     filled: true,
                     fillColor: Colors.white,
@@ -165,12 +164,12 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             ),
 
             // ESTADÍSTICAS GLOBALES
-            SliverToBoxAdapter(
-              child: CustomersStatsHeader(provider: provider),
-            ),
+            SliverToBoxAdapter(child: CustomersStatsHeader(provider: provider)),
 
             // TOP 5
-            if (provider.topCustomers.isNotEmpty && _searchCtrl.text.isEmpty && !provider.showOnlyWithDebt)
+            if (provider.topCustomers.isNotEmpty &&
+                _searchCtrl.text.isEmpty &&
+                !provider.showOnlyWithDebt)
               SliverToBoxAdapter(
                 child: TopCustomersSection(
                   top: provider.topCustomers,
@@ -181,7 +180,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             // TABS
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Container(
                   height: 44,
                   decoration: BoxDecoration(
@@ -205,7 +207,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                     ),
                     labelColor: AppColors.primary,
                     unselectedLabelColor: AppColors.textSecondary,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                     tabs: const [
                       Tab(text: 'Todos los clientes'),
                       Tab(text: 'Con deuda activa'),
@@ -226,13 +231,20 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey.shade300),
+                      Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: Colors.grey.shade300,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         provider.showOnlyWithDebt
                             ? 'No hay clientes con deuda activa'
                             : 'No hay clientes registrados',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -240,7 +252,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -248,25 +263,32 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                         return Center(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: provider.isLoading
-                                ? const CircularProgressIndicator()
-                                : const Text('No hay más clientes', style: TextStyle(color: Colors.grey)),
+                            child:
+                                provider.isLoading
+                                    ? const CircularProgressIndicator()
+                                    : const Text(
+                                      'No hay más clientes',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
                           ),
                         );
                       }
-                      
+
                       final c = provider.customers[index];
                       return CustomerListCard(
                         customer: c,
                         onTap: () => _openDetail(c),
                       );
                     },
-                    childCount: provider.customers.length + (provider.hasMore ? 1 : 0),
+                    childCount:
+                        provider.customers.length + (provider.hasMore ? 1 : 0),
                   ),
                 ),
               ),
-              
-            const SliverToBoxAdapter(child: SizedBox(height: 80)), // Padding FAB
+
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 80),
+            ), // Padding FAB
           ],
         ),
       ),
