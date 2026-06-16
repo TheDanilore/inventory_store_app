@@ -2,19 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_design_tokens.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PointsGameActionsSection extends StatelessWidget {
   const PointsGameActionsSection({super.key});
 
   Future<void> _playGame(BuildContext context, String path) async {
     final provider = context.read<PointsProvider>();
+    final wallet = context.read<WalletProvider>();
     if (provider.profileId == null) return;
 
     final r = await context.push<int>('$path/${provider.profileId}');
     if (r != null && context.mounted) {
+      if (r > 0) {
+        final newBalance = (wallet.balance ?? 0) + r;
+        try {
+          await Supabase.instance.client.from('profiles').update({
+            'wallet_balance': newBalance,
+          }).eq('id', provider.profileId!);
+          wallet.addLocalBalance(r);
+        } catch (e) {
+          debugPrint('Error actualizando balance tras juego: $e');
+        }
+      }
+
       // Refresh points data after playing
       await context.read<PointsProvider>().fetchPointsData(
         context.read<AppConfigProvider>(),
