@@ -17,9 +17,11 @@ class AppConfigProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isLoaded = false;
   bool _businessInfoLoaded = false;
+  bool _isSavingBusinessInfo = false;
 
   Map<String, double> get values => Map.unmodifiable(_values);
   bool get isLoaded => _isLoaded;
+  bool get isSavingBusinessInfo => _isSavingBusinessInfo;
   String get businessName => _businessName;
   String get businessTaxId => _businessTaxId;
   String get businessAddress => _businessAddress;
@@ -142,64 +144,78 @@ class AppConfigProvider extends ChangeNotifier {
     _businessLogoUrl = data['logo_url']?.toString() ?? '';
   }
 
-  Future<void> saveBusinessInfo({
+  Future<bool> saveBusinessInfo({
     required String businessName,
     String? taxId,
     String? address,
     String? phone,
     String? logoUrl,
   }) async {
-    final payload = <String, dynamic>{
-      'business_name': businessName.trim(),
-      'tax_id': taxId?.trim().isNotEmpty == true ? taxId!.trim() : null,
-      'address': address?.trim().isNotEmpty == true ? address!.trim() : null,
-      'phone': phone?.trim().isNotEmpty == true ? phone!.trim() : null,
-      'logo_url': logoUrl?.trim().isNotEmpty == true ? logoUrl!.trim() : null,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    };
-    payload.removeWhere((_, value) => value == null);
+    if (_isSavingBusinessInfo) return false;
+    _isSavingBusinessInfo = true;
+    _safeNotify();
 
-    // CORRECCIÓN MEDIDA DE SEGURIDAD: Si el ID local está vacío, verificamos si existe alguna fila en la BD
-    // antes de arriesgarnos a un insert() para mitigar la creación de registros múltiples redundantes.
-    if (_businessInfoId == null) {
-      try {
-        final checkDb =
+    try {
+      final payload = <String, dynamic>{
+        'business_name': businessName.trim(),
+        'tax_id': taxId?.trim().isNotEmpty == true ? taxId!.trim() : null,
+        'address': address?.trim().isNotEmpty == true ? address!.trim() : null,
+        'phone': phone?.trim().isNotEmpty == true ? phone!.trim() : null,
+        'logo_url': logoUrl?.trim().isNotEmpty == true ? logoUrl!.trim() : null,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      payload.removeWhere((_, value) => value == null);
+
+      // CORRECCIÓN MEDIDA DE SEGURIDAD: Si el ID local está vacío, verificamos si existe alguna fila en la BD
+      // antes de arriesgarnos a un insert() para mitigar la creación de registros múltiples redundantes.
+      if (_businessInfoId == null) {
+        try {
+          final checkDb =
+              await _supabase
+                  .from('business_info')
+                  .select('id')
+                  .order('updated_at', ascending: false)
+                  .limit(1)
+                  .maybeSingle();
+          if (checkDb != null) {
+            _businessInfoId = checkDb['id']?.toString();
+          }
+        } catch (_) {}
+      }
+
+      if (_businessInfoId != null) {
+        await _supabase
+            .from('business_info')
+            .update(payload)
+            .eq('id', _businessInfoId!);
+      } else {
+        final inserted =
             await _supabase
                 .from('business_info')
+                .insert(payload)
                 .select('id')
-                .order('updated_at', ascending: false)
-                .limit(1)
                 .maybeSingle();
-        if (checkDb != null) {
-          _businessInfoId = checkDb['id']?.toString();
-        }
-      } catch (_) {}
+        _businessInfoId = inserted?['id']?.toString();
+      }
+
+      _businessName =
+          businessName.trim().isNotEmpty
+              ? businessName.trim()
+              : 'Sin configurar';
+      _businessTaxId = taxId?.trim() ?? '';
+      _businessAddress = address?.trim() ?? '';
+      _businessPhone = phone?.trim() ?? '';
+      _businessLogoUrl = logoUrl?.trim() ?? '';
+
+      await loadBusinessInfo(force: true);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving BusinessInfo: $e');
+      return false;
+    } finally {
+      _isSavingBusinessInfo = false;
+      _safeNotify();
     }
-
-    if (_businessInfoId != null) {
-      await _supabase
-          .from('business_info')
-          .update(payload)
-          .eq('id', _businessInfoId!);
-    } else {
-      final inserted =
-          await _supabase
-              .from('business_info')
-              .insert(payload)
-              .select('id')
-              .maybeSingle();
-      _businessInfoId = inserted?['id']?.toString();
-    }
-
-    _businessName =
-        businessName.trim().isNotEmpty ? businessName.trim() : 'Sin configurar';
-    _businessTaxId = taxId?.trim() ?? '';
-    _businessAddress = address?.trim() ?? '';
-    _businessPhone = phone?.trim() ?? '';
-    _businessLogoUrl = logoUrl?.trim() ?? '';
-
-    _safeNotify();
-    await loadBusinessInfo(force: true);
   }
 
   Future<void> saveValue(
