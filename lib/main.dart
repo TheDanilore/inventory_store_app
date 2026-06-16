@@ -23,6 +23,7 @@ import 'package:inventory_store_app/providers/admin/categories_provider.dart';
 import 'package:inventory_store_app/providers/admin/warehouses_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/screens/splash_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_theme.dart';
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppConfigProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => NetworkProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => PosProvider(), lazy: true),
@@ -101,7 +103,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CashShiftsProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => CategoriesProvider(), lazy: true),
         ChangeNotifierProvider(create: (_) => AttributesProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => ActiveIngredientsProvider(), lazy: true),
+        ChangeNotifierProvider(
+          create: (_) => ActiveIngredientsProvider(),
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => WarehousesProvider(), lazy: true),
       ],
       child: MaterialApp(
