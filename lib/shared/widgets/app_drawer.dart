@@ -770,117 +770,123 @@ class _DrawerFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Consumer<ProfileProvider>(
-          builder: (context, profile, _) {
-            return Column(
-              children: [
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    Navigator.pop(context);
-                    if (isAdmin) {
-                      context.push('/admin/profile');
-                    } else {
-                      context.push('/customer/profile');
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
+    return Container(
+      color: AppColors.background,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Consumer<ProfileProvider>(
+            builder: (context, profile, _) {
+              return Column(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (isAdmin) {
+                        context.push('/admin/profile');
+                      } else {
+                        context.push('/customer/profile');
+                      }
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            backgroundImage:
+                                profile.avatarUrl != null
+                                    ? NetworkImage(profile.avatarUrl!)
+                                    : null,
+                            child:
+                                profile.avatarUrl == null
+                                    ? const Icon(
+                                      Icons.person_rounded,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    )
+                                    : null,
                           ),
-                          backgroundImage:
-                              profile.avatarUrl != null
-                                  ? NetworkImage(profile.avatarUrl!)
-                                  : null,
-                          child:
-                              profile.avatarUrl == null
-                                  ? const Icon(
-                                    Icons.person_rounded,
-                                    color: AppColors.primary,
-                                    size: 20,
-                                  )
-                                  : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                profile.fullName.isEmpty
-                                    ? 'Mi Perfil'
-                                    : profile.fullName,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile.fullName.isEmpty
+                                      ? 'Mi Perfil'
+                                      : profile.fullName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                isAdmin ? 'Administrador' : 'Cliente',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
+                                Text(
+                                  isAdmin ? 'Administrador' : 'Cliente',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.logout_rounded,
-                            color: AppColors.error,
-                            size: 20,
-                          ),
-                          tooltip: 'Cerrar Sesión',
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            try {
-                              await context.read<ProfileProvider>().signOut();
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error: $e')),
-                                );
+                          IconButton(
+                            icon: const Icon(
+                              Icons.logout_rounded,
+                              color: AppColors.error,
+                              size: 20,
+                            ),
+                            tooltip: 'Cerrar Sesión',
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              try {
+                                await context.read<ProfileProvider>().signOut();
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
                               }
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'v1.0.0',
-                      style: TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                  const SizedBox(height: 8),
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'v1.0.0',
+                        style: TextStyle(
+                          color: AppColors.textHint,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
