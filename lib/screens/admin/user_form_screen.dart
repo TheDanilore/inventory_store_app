@@ -1,66 +1,59 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/admin/user_form_provider.dart';
 import 'package:inventory_store_app/shared/constants/app_roles.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 
-class UserFormScreen extends StatefulWidget {
+class UserFormScreen extends StatelessWidget {
   final String? initialRole;
-
-  /// Si se pasa [existingUser], el formulario opera en modo EDICIÓN.
   final Map<String, dynamic>? existingUser;
 
   const UserFormScreen({super.key, this.initialRole, this.existingUser});
 
-  /// Modo edición
-  bool get isEditing => existingUser != null;
-
   @override
-  State<UserFormScreen> createState() => _UserFormScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create:
+          (_) => UserFormProvider(
+            existingUser: existingUser,
+            initialRole: initialRole,
+          ),
+      child: const _UserFormContent(),
+    );
+  }
 }
 
-class _UserFormScreenState extends State<UserFormScreen> {
-  final _supabase = Supabase.instance.client;
+class _UserFormContent extends StatefulWidget {
+  const _UserFormContent();
+
+  @override
+  State<_UserFormContent> createState() => _UserFormContentState();
+}
+
+class _UserFormContentState extends State<_UserFormContent> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _docCtrl = TextEditingController();
-
-  String _docType = 'DNI';
-  late String _role;
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  bool _isActive = true;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isEditing) {
-      // Modo edición: pre-llenamos los campos
-      final u = widget.existingUser!;
-      _nameCtrl.text = u['full_name'] ?? '';
-      _emailCtrl.text = u['email'] ?? '';
-      _phoneCtrl.text = u['phone'] ?? '';
-      _docCtrl.text = u['document_number'] ?? '';
-      _docType = u['document_type'] ?? 'DNI';
-      _role = u['role'] ?? AppRoles.customer;
-      _isActive = u['is_active'] ?? true;
-    } else {
-      _role = widget.initialRole ?? AppRoles.customer;
+  void _handleProviderMessages(
+    BuildContext context,
+    UserFormProvider provider,
+  ) {
+    if (provider.errorMessage != null) {
+      AppSnackbar.show(
+        context,
+        message: provider.errorMessage!,
+        type: SnackbarType.error,
+      );
+      provider.clearMessages();
+    } else if (provider.successMessage != null) {
+      AppSnackbar.show(
+        context,
+        message: provider.successMessage!,
+        type: SnackbarType.success,
+      );
+      provider.clearMessages();
     }
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    _phoneCtrl.dispose();
-    _docCtrl.dispose();
-    super.dispose();
   }
 
   String? _required(String? value, String fieldName) {
@@ -68,461 +61,398 @@ class _UserFormScreenState extends State<UserFormScreen> {
     return null;
   }
 
-  // ─── CREAR USUARIO ──────────────────────────────────────────────────────────
-  Future<void> _createUser() async {
+  Future<void> _onSave(UserFormProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final response = await _supabase.functions.invoke(
-        'crear-usuario-admin',
-        body: {
-          'email': _emailCtrl.text.trim(),
-          'password': _passwordCtrl.text,
-          'role': _role,
-          'name': _nameCtrl.text.trim(),
-          'phone':
-              _phoneCtrl.text.trim().isNotEmpty ? _phoneCtrl.text.trim() : null,
-          'document_type': _docType,
-          'document_number':
-              _docCtrl.text.trim().isNotEmpty ? _docCtrl.text.trim() : null,
-        },
-      );
-
-      if (response.status != 200) {
-        throw Exception('Error al crear usuario: ${response.data}');
-      }
-
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Usuario creado exitosamente',
-          type: SnackbarType.success,
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        String mensajeError = 'Ocurrió un error inesperado.';
-        if (e.toString().contains('already been registered')) {
-          mensajeError = 'Este correo ya está registrado en el sistema.';
-        } else {
-          mensajeError = 'Error: $e';
-        }
-        AppSnackbar.show(
-          context,
-          message: mensajeError,
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  // ─── EDITAR USUARIO ─────────────────────────────────────────────────────────
-  Future<void> _updateUser() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final profileId = widget.existingUser!['id'];
-
-      // 1. Actualizar datos del perfil en la tabla profiles
-      await _supabase
-          .from('profiles')
-          .update({
-            'full_name': _nameCtrl.text.trim(),
-            'phone':
-                _phoneCtrl.text.trim().isNotEmpty
-                    ? _phoneCtrl.text.trim()
-                    : null,
-            'document_type': _docType,
-            'document_number':
-                _docCtrl.text.trim().isNotEmpty ? _docCtrl.text.trim() : null,
-            'role': _role,
-            'is_active': _isActive,
-          })
-          .eq('id', profileId);
-
-      // 2. Si cambió la contraseña, actualizarla vía Edge Function
-      if (_passwordCtrl.text.trim().isNotEmpty) {
-        final pwResponse = await _supabase.functions.invoke(
-          'actualizar-password-admin',
-          body: {
-            'auth_user_id': widget.existingUser!['auth_user_id'],
-            'new_password': _passwordCtrl.text,
-          },
-        );
-        if (pwResponse.status != 200) {
-          throw Exception(
-            'Perfil guardado, pero error al cambiar contraseña: ${pwResponse.data}',
-          );
-        }
-      }
-
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Usuario actualizado correctamente',
-          type: SnackbarType.success,
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error al actualizar: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    final success = await provider.saveUser();
+    if (success && mounted) {
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.isEditing;
+    return Consumer<UserFormProvider>(
+      builder: (context, provider, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _handleProviderMessages(context, provider);
+        });
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ─── SELECTOR DE ROL ─────────────────────────────────────
-                    const Text(
-                      'Tipo de cuenta',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+        final isEditing = provider.isEditing;
+
+        return AdminLayout(
+          title: isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
+          showBackButton: true,
+          showProfileButton: false,
+          showDrawerButton: false,
+          body: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: 100,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ─── SELECTOR DE ROL ─────────────────────────────────────
+                      const Text(
+                        'Tipo de cuenta',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _RoleCard(
-                            title: 'Cliente',
-                            icon: Icons.people_alt_rounded,
-                            isSelected: _role == AppRoles.customer,
-                            color: AppColors.primary,
-                            onTap:
-                                () => setState(() => _role = AppRoles.customer),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _RoleCard(
-                            title: 'Administrador',
-                            icon: Icons.admin_panel_settings_rounded,
-                            isSelected: _role == AppRoles.admin,
-                            color: Colors.indigo,
-                            onTap: () => setState(() => _role = AppRoles.admin),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ─── ESTADO ACTIVO (solo en modo edición) ────────────────
-                    if (isEditing) ...[
-                      _SectionCard(
-                        title: 'Estado de la cuenta',
-                        icon: Icons.toggle_on_rounded,
+                      const SizedBox(height: 10),
+                      Row(
                         children: [
+                          Expanded(
+                            child: _RoleCard(
+                              title: 'Cliente',
+                              icon: Icons.people_alt_rounded,
+                              isSelected: provider.role == AppRoles.customer,
+                              color: AppColors.primary,
+                              onTap: () => provider.setRole(AppRoles.customer),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _RoleCard(
+                              title: 'Administrador',
+                              icon: Icons.admin_panel_settings_rounded,
+                              isSelected: provider.role == AppRoles.admin,
+                              color: Colors.indigo,
+                              onTap: () => provider.setRole(AppRoles.admin),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ─── ESTADO ACTIVO (solo en modo edición) ────────────────
+                      if (isEditing) ...[
+                        _SectionCard(
+                          title: 'Estado de la cuenta',
+                          icon: Icons.toggle_on_rounded,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Usuario activo',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      provider.isActive
+                                          ? 'Puede iniciar sesión'
+                                          : 'Acceso bloqueado',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            provider.isActive
+                                                ? Colors.green.shade600
+                                                : Colors.red.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Switch(
+                                  value: provider.isActive,
+                                  activeThumbColor: AppColors.primary,
+                                  onChanged: provider.toggleActive,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // ─── CREDENCIALES ────────────────────────────────────────
+                      _SectionCard(
+                        title: 'Credenciales de Acceso',
+                        icon: Icons.lock_person_rounded,
+                        children: [
+                          _CustomTextField(
+                            controller: provider.emailCtrl,
+                            label: 'Correo Electrónico',
+                            hint: 'ejemplo@correo.com',
+                            icon: Icons.email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            readOnly: isEditing,
+                            validator:
+                                isEditing
+                                    ? null
+                                    : (v) =>
+                                        _required(v, 'el correo electrónico'),
+                          ),
+                          const SizedBox(height: 16),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Usuario activo',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
+                              Expanded(
+                                child: _CustomTextField(
+                                  controller: provider.passwordCtrl,
+                                  label:
+                                      isEditing
+                                          ? 'Nueva contraseña (opcional)'
+                                          : 'Contraseña temporal',
+                                  hint:
+                                      isEditing
+                                          ? 'Dejar vacío para no cambiar'
+                                          : 'Mínimo 6 caracteres',
+                                  icon: Icons.vpn_key_rounded,
+                                  obscureText: provider.obscurePassword,
+                                  validator: (v) {
+                                    if (isEditing) {
+                                      if (v != null &&
+                                          v.isNotEmpty &&
+                                          v.length < 6)
+                                        return 'Mínimo 6 caracteres';
+                                      return null;
+                                    }
+                                    if (v == null || v.isEmpty)
+                                      return 'Ingresa una contraseña';
+                                    if (v.length < 6)
+                                      return 'Mínimo 6 caracteres';
+                                    return null;
+                                  },
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      provider.obscurePassword
+                                          ? Icons.visibility_rounded
+                                          : Icons.visibility_off_rounded,
+                                      color: Colors.grey.shade500,
+                                      size: 20,
+                                    ),
+                                    onPressed:
+                                        provider.togglePasswordVisibility,
+                                  ),
+                                ),
+                              ),
+                              if (!isEditing) ...[
+                                const SizedBox(width: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 24,
+                                  ), // Alinear con el input (debajo del label)
+                                  child: Tooltip(
+                                    message: 'Generar y copiar',
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          () => provider.generatePassword(
+                                            context,
+                                          ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.surface,
+                                        foregroundColor: AppColors.primary,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          side: BorderSide(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.password_rounded,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    _isActive
-                                        ? 'Puede iniciar sesión'
-                                        : 'Acceso bloqueado',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color:
-                                          _isActive
-                                              ? Colors.green.shade600
-                                              : Colors.red.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Switch(
-                                value: _isActive,
-                                activeThumbColor: AppColors.primary,
-                                onChanged:
-                                    (val) => setState(() => _isActive = val),
-                              ),
+                                ),
+                              ],
                             ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
-                    ],
 
-                    // ─── CREDENCIALES ────────────────────────────────────────
-                    _SectionCard(
-                      title: 'Credenciales de Acceso',
-                      icon: Icons.lock_person_rounded,
-                      children: [
-                        _CustomTextField(
-                          controller: _emailCtrl,
-                          label: 'Correo Electrónico',
-                          hint: 'ejemplo@correo.com',
-                          icon: Icons.email_rounded,
-                          keyboardType: TextInputType.emailAddress,
-                          // En edición el email es solo lectura
-                          readOnly: isEditing,
-                          validator:
-                              isEditing
-                                  ? null
-                                  : (v) =>
-                                      _required(v, 'el correo electrónico'),
-                        ),
-                        const SizedBox(height: 16),
-                        _CustomTextField(
-                          controller: _passwordCtrl,
-                          label:
-                              isEditing
-                                  ? 'Nueva contraseña (opcional)'
-                                  : 'Contraseña temporal',
-                          hint:
-                              isEditing
-                                  ? 'Dejar vacío para no cambiar'
-                                  : 'Mínimo 6 caracteres',
-                          icon: Icons.vpn_key_rounded,
-                          obscureText: _obscurePassword,
-                          validator: (v) {
-                            if (isEditing) {
-                              // Solo validar si se ingresó algo
-                              if (v != null && v.isNotEmpty && v.length < 6) {
-                                return 'Mínimo 6 caracteres';
-                              }
-                              return null;
-                            }
-                            if (v == null || v.isEmpty) {
-                              return 'Ingresa una contraseña';
-                            }
-                            if (v.length < 6) return 'Mínimo 6 caracteres';
-                            return null;
-                          },
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_rounded
-                                  : Icons.visibility_off_rounded,
-                              color: Colors.grey.shade500,
-                              size: 20,
+                      // ─── DATOS PERSONALES ────────────────────────────────────
+                      _SectionCard(
+                        title: 'Datos Personales',
+                        icon: Icons.person_rounded,
+                        children: [
+                          _CustomTextField(
+                            controller: provider.nameCtrl,
+                            label: 'Nombre completo',
+                            hint: 'Nombres y Apellidos',
+                            icon: Icons.badge_rounded,
+                            textCapitalization: TextCapitalization.words,
+                            validator: (v) => _required(v, 'el nombre'),
+                          ),
+                          const SizedBox(height: 16),
+                          _CustomTextField(
+                            controller: provider.phoneCtrl,
+                            label: 'Teléfono (Opcional)',
+                            hint: 'Ej. 987654321',
+                            icon: Icons.phone_rounded,
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Documento de Identidad (Opcional)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
                             ),
-                            onPressed:
-                                () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 100,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
                                 ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ─── DATOS PERSONALES ────────────────────────────────────
-                    _SectionCard(
-                      title: 'Datos Personales',
-                      icon: Icons.person_rounded,
-                      children: [
-                        _CustomTextField(
-                          controller: _nameCtrl,
-                          label: 'Nombre completo',
-                          hint: 'Nombres y Apellidos',
-                          icon: Icons.badge_rounded,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (v) => _required(v, 'el nombre'),
-                        ),
-                        const SizedBox(height: 16),
-                        _CustomTextField(
-                          controller: _phoneCtrl,
-                          label: 'Teléfono (Opcional)',
-                          hint: 'Ej. 987654321',
-                          icon: Icons.phone_rounded,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 16),
-
-                        const Text(
-                          'Documento de Identidad (Opcional)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 100,
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _docType,
-                                  isExpanded: true,
-                                  icon: const Icon(
-                                    Icons.arrow_drop_down_rounded,
-                                    color: Colors.grey,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  items:
-                                      ['DNI', 'CE', 'RUC', 'PASAPORTE']
-                                          .map(
-                                            (type) => DropdownMenuItem(
-                                              value: type,
-                                              child: Text(
-                                                type,
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: provider.docType,
+                                    isExpanded: true,
+                                    icon: const Icon(
+                                      Icons.arrow_drop_down_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    items:
+                                        ['DNI', 'CE', 'RUC', 'PASAPORTE']
+                                            .map(
+                                              (type) => DropdownMenuItem(
+                                                value: type,
+                                                child: Text(
+                                                  type,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setState(() => _docType = val);
-                                    }
-                                  },
+                                            )
+                                            .toList(),
+                                    onChanged: (val) {
+                                      if (val != null) provider.setDocType(val);
+                                    },
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _CustomTextField(
-                                controller: _docCtrl,
-                                hint: 'Número de documento',
-                                keyboardType: TextInputType.number,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _CustomTextField(
+                                  controller: provider.docCtrl,
+                                  hint: 'Número de documento',
+                                  keyboardType: TextInputType.number,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // ─── BOTÓN FIJO INFERIOR ─────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: SizedBox(
-              height: 54,
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed:
-                    _isLoading ? null : (isEditing ? _updateUser : _createUser),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isEditing ? Colors.indigo : AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                child:
-                    _isLoading
-                        ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                        : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              isEditing
-                                  ? Icons.save_rounded
-                                  : Icons.person_add_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isEditing
-                                  ? 'Guardar cambios'
-                                  : (_role == AppRoles.admin
-                                      ? 'Crear Administrador'
-                                      : 'Crear Cliente'),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
               ),
-            ),
+
+              // ─── BOTÓN FIJO INFERIOR ─────────────────────────────────────────
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    height: 54,
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          provider.isLoading ? null : () => _onSave(provider),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isEditing ? Colors.indigo : AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child:
+                          provider.isLoading
+                              ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                              : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isEditing
+                                        ? Icons.save_rounded
+                                        : Icons.person_add_rounded,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isEditing
+                                        ? 'Guardar cambios'
+                                        : (provider.role == AppRoles.admin
+                                            ? 'Crear Administrador'
+                                            : 'Crear Cliente'),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

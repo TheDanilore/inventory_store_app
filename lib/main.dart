@@ -86,8 +86,14 @@ class MyApp extends StatelessWidget {
           lazy: true,
         ),
         ChangeNotifierProvider(create: (_) => InventoryProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => FinancialAccountsProvider(), lazy: true),
-        ChangeNotifierProvider(create: (_) => AccountMovementsProvider(), lazy: true),
+        ChangeNotifierProvider(
+          create: (_) => FinancialAccountsProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AccountMovementsProvider(),
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => CashShiftsProvider(), lazy: true),
       ],
       child: MaterialApp(
