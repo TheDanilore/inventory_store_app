@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/admin/widgets/accounts_tab.dart';
-import 'package:inventory_store_app/screens/admin/widgets/movements_tab.dart';
-import 'package:inventory_store_app/screens/admin/widgets/shifts_tab.dart';
+import 'package:inventory_store_app/screens/admin/widgets/financial/accounts_tab.dart';
+import 'package:inventory_store_app/screens/admin/widgets/financial/movements_tab.dart';
+import 'package:inventory_store_app/screens/admin/widgets/financial/shifts_tab.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
