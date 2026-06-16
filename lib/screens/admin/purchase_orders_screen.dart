@@ -231,6 +231,61 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           showBackButton: true,
           body: Column(
             children: [
+              // ── Borrador ──────────────────────────────────────────────────
+              if (_hasDraft)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: InkWell(
+                    onTap: () async {
+                      final result = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PurchaseOrderFormScreen(),
+                        ),
+                      );
+                      if (result == true && context.mounted) {
+                        context.read<PurchaseOrdersProvider>().loadOrders();
+                      }
+                      _checkDraft();
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit_note_rounded,
+                              color: Color(0xFFD97706)),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Tienes una orden en progreso.',
+                              style: TextStyle(
+                                color: Color(0xFFD97706),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Continuar',
+                            style: TextStyle(
+                              color: const Color(0xFFD97706),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
               // ── Resumen ───────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -426,13 +481,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               if (result == true && context.mounted) {
                 context.read<PurchaseOrdersProvider>().loadOrders();
               }
+              _checkDraft();
             },
-            icon: const Icon(Icons.add_rounded),
-            label: const Text(
-              'Nueva orden',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
+            label: Text(
+              _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            backgroundColor: AppColors.primary,
+            backgroundColor: _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
             foregroundColor: Colors.white,
           ),
         );

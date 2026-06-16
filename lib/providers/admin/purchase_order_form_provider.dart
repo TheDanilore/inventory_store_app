@@ -338,21 +338,21 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
     
     // We only save the items list to keep it simple, since products are hard to lose.
     // If we want to save everything, we serialize to JSON.
-    final itemsJson = _items.map((e) => {
-      'product': e.product.toJson(),
-      'variant': {
-        'id': e.variant.id,
-        'product_id': e.variant.productId,
-        'sku': e.variant.sku,
-        'sale_price': e.variant.salePrice,
-        'unit_cost': e.variant.unitCost,
-        'attributes': e.variant.attributeMap,
-        // ignoring images to avoid huge JSON, it will load fine without images in form
-      },
-      'quantity': e.quantity,
-      'unit_cost': e.unitCost,
-      'batch_number': e.batchNumber,
-      'expiry_date': e.expiryDate?.toIso8601String(),
+    final itemsJson = _items.map((e) {
+      final pJson = e.product.toJson();
+      pJson.remove('images');
+      
+      final vJson = e.variant.toJson();
+      vJson.remove('product_images');
+
+      return {
+        'product': pJson,
+        'variant': vJson,
+        'quantity': e.quantity,
+        'unit_cost': e.unitCost,
+        'batch_number': e.batchNumber,
+        'expiry_date': e.expiryDate?.toIso8601String(),
+      };
     }).toList();
 
     final data = {

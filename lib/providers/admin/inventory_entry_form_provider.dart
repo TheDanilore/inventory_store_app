@@ -248,13 +248,17 @@ class InventoryEntryFormProvider extends ChangeNotifier {
     
     final prefs = await SharedPreferences.getInstance();
     
-    final itemsJson = _items.map((e) => {
-      'product': e.product.toJson(),
-      'variant': e.variant.toJson(),
-      'quantity': e.quantity,
-      'unit_cost': e.unitCost,
-      'batch_number': e.batchNumber,
-      'expiry_date': e.expiryDate?.toIso8601String(),
+    final itemsJson = _items.map((e) {
+      final pJson = e.product.toJson()..remove('images');
+      final vJson = e.variant.toJson()..remove('product_images');
+      return {
+        'product': pJson,
+        'variant': vJson,
+        'quantity': e.quantity,
+        'unit_cost': e.unitCost,
+        'batch_number': e.batchNumber,
+        'expiry_date': e.expiryDate?.toIso8601String(),
+      };
     }).toList();
 
     await prefs.setString('inventory_entry_draft_items', jsonEncode(itemsJson));

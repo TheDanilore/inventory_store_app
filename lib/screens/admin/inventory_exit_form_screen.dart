@@ -270,6 +270,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           return const AdminLayout(
             title: 'Nueva Salida',
             showBackButton: true,
+            showProfileButton: false,
+            showDrawerButton: false,
             body: Center(
               child: CircularProgressIndicator(color: AppColors.danger),
             ),
@@ -279,6 +281,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         return AdminLayout(
           title: 'Registrar Salida',
           showBackButton: true,
+          showProfileButton: false,
+          showDrawerButton: false,
           body:
               provider.isSaving
                   ? const Center(

@@ -226,6 +226,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           return const AdminLayout(
             title: 'Nueva Orden',
             showBackButton: true,
+            showProfileButton: false,
+            showDrawerButton: false,
             body: Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             ),
@@ -296,6 +298,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           child: AdminLayout(
             title: 'Nueva Orden de Compra',
             showBackButton: true,
+            showProfileButton: false,
             showDrawerButton: false,
             body:
                 provider.isSaving

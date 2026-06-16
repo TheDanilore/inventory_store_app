@@ -104,6 +104,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         title: isEdit ? 'Editar Producto' : 'Nuevo Producto',
         showBackButton: true,
         showProfileButton: false,
+        showDrawerButton: false,
         body:
             provider.isInitializingData
                 ? const _ProductFormSkeleton()
