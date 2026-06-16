@@ -69,6 +69,47 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget auxiliar: carga el producto por ID sin relanzar el Future en rebuilds
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProductLoader extends StatefulWidget {
+  final String productId;
+  final bool isAdmin;
+  const _ProductLoader({required this.productId, required this.isAdmin});
+
+  @override
+  State<_ProductLoader> createState() => _ProductLoaderState();
+}
+
+class _ProductLoaderState extends State<_ProductLoader> {
+  late final Future<ProductModel?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = CatalogService().getProductById(widget.productId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ProductModel?>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError || snapshot.data == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Producto no encontrado')),
+            body: const Center(child: Text('El producto no existe o fue eliminado.')),
+          );
+        }
+        return ProductDetailScreen(product: snapshot.data!, isAdmin: widget.isAdmin);
+      },
+    );
+  }
+}
+
 class AppRouter {
   static GoRouter createRouter(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
@@ -348,14 +389,7 @@ class AppRouter {
                   return ProductDetailScreen(product: product, isAdmin: true);
                 }
                 if (productId == null) return const Scaffold(body: Center(child: Text('Error')));
-                return FutureBuilder<ProductModel?>(
-                  future: CatalogService().getProductById(productId),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                    if (snapshot.hasError || snapshot.data == null) return Scaffold(appBar: AppBar(title: const Text('Error')), body: const Center(child: Text('El producto no existe')));
-                    return ProductDetailScreen(product: snapshot.data!, isAdmin: true);
-                  },
-                );
+                return _ProductLoader(productId: productId, isAdmin: true);
               },
             ),
           ],
@@ -458,14 +492,7 @@ class AppRouter {
                   return ProductDetailScreen(product: product, isAdmin: false);
                 }
                 if (productId == null) return const Scaffold(body: Center(child: Text('Error')));
-                return FutureBuilder<ProductModel?>(
-                  future: CatalogService().getProductById(productId),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                    if (snapshot.hasError || snapshot.data == null) return Scaffold(appBar: AppBar(title: const Text('Error')), body: const Center(child: Text('El producto no existe')));
-                    return ProductDetailScreen(product: snapshot.data!, isAdmin: false);
-                  },
-                );
+                return _ProductLoader(productId: productId, isAdmin: false);
               },
             ),
           ],
