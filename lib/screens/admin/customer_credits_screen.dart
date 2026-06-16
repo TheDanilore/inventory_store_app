@@ -380,24 +380,22 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                   Navigator.pop(ctx);
                   try {
                     await provider.toggleAccountStatus(account);
-                    if (mounted) {
-                      AppSnackbar.show(
-                        context,
-                        message:
-                            account.isActive
-                                ? 'Línea de crédito suspendida'
-                                : 'Línea de crédito reactivada',
-                        type: SnackbarType.success,
-                      );
-                    }
+                    if (!context.mounted) return;
+                    AppSnackbar.show(
+                      context,
+                      message:
+                          account.isActive
+                              ? 'Línea de crédito suspendida'
+                              : 'Línea de crédito reactivada',
+                      type: SnackbarType.success,
+                    );
                   } catch (e) {
-                    if (mounted) {
-                      AppSnackbar.show(
-                        context,
-                        message: 'Error al cambiar estado: $e',
-                        type: SnackbarType.error,
-                      );
-                    }
+                    if (!context.mounted) return;
+                    AppSnackbar.show(
+                      context,
+                      message: 'Error al cambiar estado: $e',
+                      type: SnackbarType.error,
+                    );
                   }
                 },
               ),

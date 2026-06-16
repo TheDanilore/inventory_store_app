@@ -145,6 +145,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       provider.setActiveShiftId(activeShiftId);
     }
 
+    if (!context.mounted) return;
     if (!provider.validate(activeShiftId)) {
       AppSnackbar.show(
         context,
@@ -155,7 +156,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     }
 
     final success = await provider.saveEntry(_notesCtrl.text.trim());
-    if (success && mounted) {
+    if (!context.mounted) return;
+
+    if (success) {
       AppSnackbar.show(
         context,
         message:
@@ -165,7 +168,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
-    } else if (mounted && provider.errorMessage.isNotEmpty) {
+    } else if (provider.errorMessage.isNotEmpty) {
       AppSnackbar.show(
         context,
         message: provider.errorMessage,
