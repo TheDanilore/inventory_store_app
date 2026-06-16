@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/purchase_order_form_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/add_entry_product_sheet.dart';
+import 'package:inventory_store_app/screens/admin/widgets/inventory_entries/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_form_summary_card.dart';
 import 'package:inventory_store_app/models/entry_item_ui.dart';
