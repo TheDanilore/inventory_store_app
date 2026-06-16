@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/shared/data/peru_data.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/shared/widgets/app_text_field.dart';
 
 class AddressConfigScreen extends StatefulWidget {
   final String? initialAddress;
@@ -14,6 +14,8 @@ class AddressConfigScreen extends StatefulWidget {
 }
 
 class _AddressConfigScreenState extends State<AddressConfigScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _streetCtrl = TextEditingController();
   final _referenceCtrl = TextEditingController();
 
   String? _selectedDepartment;
@@ -29,6 +31,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
 
   @override
   void dispose() {
+    _streetCtrl.dispose();
     _referenceCtrl.dispose();
     super.dispose();
   }
@@ -36,34 +39,57 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
   void _loadInitialAddress() {
     final initial = widget.initialAddress?.trim();
     if (initial == null || initial.isEmpty) return;
+
+    // Parseo mejorado: 'Dep / Prov / Dist - Calle/Av 123 - Ref: Frente al parque'
+    // Opcionalmente la referencia podría no estar
     final parts = initial.split(' - ');
     final locationPieces = parts.first.trim().split(' / ');
+
     if (locationPieces.length >= 3) {
       _selectedDepartment = locationPieces[0].trim();
       _selectedProvince = locationPieces[1].trim();
       _selectedDistrict = locationPieces[2].trim();
     }
+
     if (parts.length > 1) {
-      _referenceCtrl.text =
-          parts.sublist(1).join(' - ').replaceFirst('Ref: ', '').trim();
+      // El segundo elemento podría ser la calle o la referencia (si es antiguo)
+      final p1 = parts[1].trim();
+      if (p1.startsWith('Ref:')) {
+        _referenceCtrl.text = p1.replaceFirst('Ref: ', '').trim();
+      } else {
+        _streetCtrl.text = p1;
+        if (parts.length > 2) {
+          _referenceCtrl.text =
+              parts.sublist(2).join(' - ').replaceFirst('Ref: ', '').trim();
+        }
+      }
     }
   }
 
   String? _buildAddressPreview() {
     if (_selectedDepartment == null ||
         _selectedProvince == null ||
-        _selectedDistrict == null) {
+        _selectedDistrict == null ||
+        _streetCtrl.text.trim().isEmpty) {
       return null;
     }
     final base =
         '$_selectedDepartment / $_selectedProvince / $_selectedDistrict';
+    final street = _streetCtrl.text.trim();
     final ref = _referenceCtrl.text.trim();
-    return ref.isEmpty ? base : '$base - Ref: $ref';
+
+    final streetLine = '$base - $street';
+    return ref.isEmpty ? streetLine : '$streetLine - Ref: $ref';
   }
 
   Future<void> _saveAddress() async {
-    final preview = _buildAddressPreview();
-    if (preview == null) {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_selectedDepartment == null ||
+        _selectedProvince == null ||
+        _selectedDistrict == null) {
       AppSnackbar.show(
         context,
         message: 'Selecciona departamento, provincia y distrito.',
@@ -71,6 +97,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
       );
       return;
     }
+
     if (!PeruData.isCoveredDistrict(_selectedDistrict)) {
       AppSnackbar.show(
         context,
@@ -79,10 +106,36 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
       );
       return;
     }
+
+    final preview = _buildAddressPreview();
+    if (preview == null) return;
+
     setState(() => _isSaving = true);
+
     try {
+      // Simulamos latencia de guardado para la animacion si se requiere
+      await Future.delayed(const Duration(milliseconds: 300));
+
       if (!mounted) return;
-      Navigator.pop(context, preview);
+
+      final result = {
+        'department': _selectedDepartment,
+        'province': _selectedProvince,
+        'district': _selectedDistrict,
+        'reference':
+            _referenceCtrl.text.trim().isEmpty
+                ? null
+                : _referenceCtrl.text.trim(),
+        'address_line': preview,
+      };
+
+      Navigator.pop(context, result);
+    } catch (e) {
+      AppSnackbar.show(
+        context,
+        message: 'Error procesando formulario',
+        type: SnackbarType.error,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -97,7 +150,8 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
     final isComplete =
         _selectedDepartment != null &&
         _selectedProvince != null &&
-        _selectedDistrict != null;
+        _selectedDistrict != null &&
+        _streetCtrl.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -109,15 +163,13 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
         scrolledUnderElevation: 2,
         titleSpacing: 0,
         leading: Padding(
-          padding: const EdgeInsets.all(
-            8.0,
-          ), // Ajusta el padding para encajar en el AppBar
+          padding: const EdgeInsets.all(8.0),
           child: Material(
             color: AppColors.background,
             borderRadius: BorderRadius.circular(10),
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
-              onTap: () => Navigator.pop(context),
+              onTap: _isSaving ? null : () => Navigator.pop(context),
               child: const SizedBox(
                 width: 36,
                 height: 36,
@@ -144,207 +196,228 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header banner ─────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, Color(0xFF0F3460)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Tu dirección sin errores',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.4,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Elige desde listas para evitar errores de escritura.',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              fontSize: 12,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+        child: Form(
+          key: _formKey,
+          child: IgnorePointer(
+            ignoring: _isSaving,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Header banner ─────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF0F3460)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.map_outlined,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Selects + referencia ──────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.06),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Departamento
-                    _buildDropdownField(
-                      label: 'Departamento',
-                      icon: Icons.location_city_outlined,
-                      value: _selectedDepartment,
-                      items: PeruData.departments,
-                      onChanged:
-                          (v) => setState(() {
-                            _selectedDepartment = v;
-                            _selectedProvince = null;
-                            _selectedDistrict = null;
-                          }),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Provincia
-                    _buildDropdownField(
-                      label: 'Provincia',
-                      icon: Icons.apartment_outlined,
-                      value: _selectedProvince,
-                      items: PeruData.provincesOf(_selectedDepartment),
-                      enabled: _selectedDepartment != null,
-                      onChanged:
-                          (v) => setState(() {
-                            _selectedProvince = v;
-                            _selectedDistrict = null;
-                          }),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Distrito
-                    _buildDropdownField(
-                      label: 'Distrito',
-                      icon: Icons.place_outlined,
-                      value: _selectedDistrict,
-                      items: PeruData.districtsOf(_selectedProvince),
-                      enabled: _selectedProvince != null,
-                      onChanged: (v) => setState(() => _selectedDistrict = v),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Referencia
-                    AppTextField(
-                      controller: _referenceCtrl,
-                      label: 'Referencia (opcional)',
-                      icon: Icons.signpost_outlined,
-                      helperText: 'Ej: Frente al parque, cerca al mercado.',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── Cobertura + preview ───────────────────────────────
-              if (_selectedDistrict != null) ...[
-                _buildCoverageChip(isCovered),
-                const SizedBox(height: 10),
-              ],
-
-              if (preview != null) ...[
-                _buildPreviewCard(preview),
-                const SizedBox(height: 10),
-              ],
-
-              const SizedBox(height: 4),
-
-              // ── Botón guardar ─────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed:
-                      (_isSaving || !isComplete || !isCovered)
-                          ? null
-                          : _saveAddress,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    disabledBackgroundColor: AppColors.background,
-                    disabledForegroundColor: AppColors.textHint,
-                  ),
-                  child:
-                      _isSaving
-                          ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: Colors.white,
-                            ),
-                          )
-                          : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.check_rounded, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Guardar dirección',
+                              const Text(
+                                'Tu dirección sin errores',
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Proporciona la calle y número para un delivery exitoso.',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                  height: 1.4,
                                 ),
                               ),
                             ],
                           ),
-                ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.map_outlined,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Selects + referencia ──────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.06),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Departamento
+                        _buildDropdownField(
+                          label: 'Departamento',
+                          icon: Icons.location_city_outlined,
+                          value: _selectedDepartment,
+                          items: PeruData.departments,
+                          onChanged:
+                              (v) => setState(() {
+                                _selectedDepartment = v;
+                                _selectedProvince = null;
+                                _selectedDistrict = null;
+                              }),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Provincia
+                        _buildDropdownField(
+                          label: 'Provincia',
+                          icon: Icons.apartment_outlined,
+                          value: _selectedProvince,
+                          items: PeruData.provincesOf(_selectedDepartment),
+                          enabled: _selectedDepartment != null,
+                          onChanged:
+                              (v) => setState(() {
+                                _selectedProvince = v;
+                                _selectedDistrict = null;
+                              }),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Distrito
+                        _buildDropdownField(
+                          label: 'Distrito',
+                          icon: Icons.place_outlined,
+                          value: _selectedDistrict,
+                          items: PeruData.districtsOf(_selectedProvince),
+                          enabled: _selectedProvince != null,
+                          onChanged:
+                              (v) => setState(() => _selectedDistrict = v),
+                        ),
+
+                        const SizedBox(height: 24),
+                        const Divider(height: 1, color: AppColors.border),
+                        const SizedBox(height: 18),
+
+                        // Dirección exacta
+                        _buildTextField(
+                          controller: _streetCtrl,
+                          label: 'Dirección exacta (Calle/Av/Jr + Número) *',
+                          icon: Icons.add_road_outlined,
+                          hint: 'Ej: Av. Larco 123',
+                          requiredField: true,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Referencia
+                        _buildTextField(
+                          controller: _referenceCtrl,
+                          label: 'Referencia (opcional)',
+                          icon: Icons.signpost_outlined,
+                          hint: 'Ej: Frente al parque, puerta azul',
+                          requiredField: false,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ── Cobertura + preview ───────────────────────────────
+                  if (_selectedDistrict != null) ...[
+                    _buildCoverageChip(isCovered),
+                    const SizedBox(height: 10),
+                  ],
+
+                  if (preview != null) ...[
+                    _buildPreviewCard(preview),
+                    const SizedBox(height: 10),
+                  ],
+
+                  const SizedBox(height: 4),
+
+                  // ── Botón guardar ─────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed:
+                          (_isSaving || !isComplete || !isCovered)
+                              ? null
+                              : _saveAddress,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        disabledBackgroundColor: AppColors.background,
+                        disabledForegroundColor: AppColors.textHint,
+                      ),
+                      child:
+                          _isSaving
+                              ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check_rounded, size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Guardar dirección',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -362,8 +435,14 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
     bool enabled = true,
   }) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      value: items.contains(value) ? value : null,
       onChanged: enabled ? onChanged : null,
+      validator: (val) {
+        if (val == null || val.isEmpty) {
+          return 'Este campo es obligatorio';
+        }
+        return null;
+      },
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(
@@ -371,6 +450,16 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
           size: 18,
           color: enabled ? AppColors.textSecondary : AppColors.textHint,
         ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        filled: true,
+        fillColor: enabled ? Colors.transparent : AppColors.background,
       ),
       items:
           items
@@ -381,6 +470,49 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
         color: AppColors.textPrimary,
         fontSize: 14,
         fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required bool requiredField,
+  }) {
+    return TextFormField(
+      controller: controller,
+      inputFormatters: [
+        // Evitar solo espacios
+        FilteringTextInputFormatter.deny(RegExp(r'^\s+')),
+      ],
+      validator:
+          requiredField
+              ? (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Este campo es obligatorio';
+                }
+                if (val.trim().length < 4) {
+                  return 'Ingresa una dirección válida';
+                }
+                return null;
+              }
+              : null,
+      onChanged: (_) => setState(() {}),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 13),
+        prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
       ),
     );
   }

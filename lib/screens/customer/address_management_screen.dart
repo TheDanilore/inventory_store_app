@@ -37,27 +37,17 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             ? ''
             : '?initialAddress=${Uri.encodeComponent(existingAddress.addressLine)}';
 
-    final result = await context.push<String>(
+    final result = await context.push<Map<String, String?>>(
       '/customer/address/config$queryParam',
     );
 
     if (!mounted || result == null) return;
 
-    final parsed = _parseAddressPreview(result);
-    if (parsed == null) {
-      AppSnackbar.show(
-        context,
-        message: 'No se pudo leer la dirección guardada.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-
     try {
       await provider.saveAddress(
         existingAddress:
             existingAddress != null ? {'id': existingAddress.id} : null,
-        parsedResult: parsed,
+        parsedResult: result,
       );
       if (!mounted) return;
       AppSnackbar.show(
@@ -76,25 +66,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         type: SnackbarType.error,
       );
     }
-  }
-
-  Map<String, String?>? _parseAddressPreview(String preview) {
-    final clean = preview.trim();
-    if (clean.isEmpty) return null;
-    final parts = clean.split(' - ');
-    final locationPieces = parts.first.trim().split(' / ');
-    if (locationPieces.length < 3) return null;
-    final reference =
-        parts.length > 1
-            ? parts.sublist(1).join(' - ').replaceFirst('Ref: ', '').trim()
-            : null;
-    return {
-      'department': locationPieces[0].trim(),
-      'province': locationPieces[1].trim(),
-      'district': locationPieces[2].trim(),
-      'reference': (reference == null || reference.isEmpty) ? null : reference,
-      'address_line': clean,
-    };
   }
 
   Future<void> _deleteAddress(

@@ -52,7 +52,7 @@ class CustomerAddressesProvider extends ChangeNotifier {
       final response = await _supabase
           .from('user_addresses')
           .select(
-            'id, department, province, district, reference, is_default, created_at',
+            'id, department, province, district, reference, address_line, is_default, created_at',
           )
           .eq('profile_id', _profileId!)
           .order('is_default', ascending: false)
@@ -161,6 +161,9 @@ class CustomerAddressesProvider extends ChangeNotifier {
   }
 
   String _buildAddressLine(Map<String, dynamic> address) {
+    if (address['address_line'] != null && address['address_line'].toString().trim().isNotEmpty) {
+      return address['address_line'].toString().trim();
+    }
     final department = (address['department'] ?? '').toString().trim();
     final province = (address['province'] ?? '').toString().trim();
     final district = (address['district'] ?? '').toString().trim();
