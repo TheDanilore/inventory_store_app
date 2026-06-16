@@ -98,6 +98,11 @@ class PurchaseOrdersProvider extends ChangeNotifier {
     loadOrders(reset: true);
   }
 
+  void clearError() {
+    _errorMessage = '';
+    notifyListeners();
+  }
+
   void setStatusFilter(String status) {
     _statusFilter = status;
     loadOrders(reset: true);

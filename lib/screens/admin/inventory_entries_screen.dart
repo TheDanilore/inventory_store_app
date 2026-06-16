@@ -150,6 +150,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               message: provider.errorMessage,
               type: SnackbarType.error,
             );
+            provider.clearError();
           });
         }
 
@@ -163,6 +164,55 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           showBackButton: true,
           body: Column(
             children: [
+              // ── Borrador ──────────────────────────────────────────────────
+              if (_hasDraft)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_document, color: AppColors.warning),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Tienes un borrador de entrada en progreso.',
+                          style: TextStyle(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final result = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const InventoryEntryFormScreen(),
+                            ),
+                          );
+                          _checkDraft();
+                          if (result == true && context.mounted) {
+                            context.read<InventoryEntriesProvider>().init();
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.warning,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Continuar', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+
               // ── Resumen ──────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

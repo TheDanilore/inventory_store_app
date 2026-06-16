@@ -98,6 +98,11 @@ class InventoryEntriesProvider extends ChangeNotifier {
     loadEntries(page: 0);
   }
 
+  void clearError() {
+    _errorMessage = '';
+    notifyListeners();
+  }
+
   void setWarehouseFilter(String warehouse) {
     if (_warehouseFilter == warehouse) return;
     _warehouseFilter = warehouse;

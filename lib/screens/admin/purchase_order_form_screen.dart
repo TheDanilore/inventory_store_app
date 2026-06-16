@@ -172,6 +172,12 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
+    } else if (mounted && provider.errorMessage.isNotEmpty) {
+      AppSnackbar.show(
+        context,
+        message: provider.errorMessage,
+        type: SnackbarType.error,
+      );
     }
   }
 
@@ -216,16 +222,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Widget build(BuildContext context) {
     return Consumer<PurchaseOrderFormProvider>(
       builder: (context, provider, child) {
-        if (provider.errorMessage.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            AppSnackbar.show(
-              context,
-              message: provider.errorMessage,
-              type: SnackbarType.error,
-            );
-          });
-        }
-
         if (provider.isLoading) {
           return const AdminLayout(
             title: 'Nueva Orden',
@@ -236,523 +232,609 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           );
         }
 
-        return AdminLayout(
-          title: 'Nueva Orden de Compra',
-          showBackButton: true,
-          body:
-              provider.isSaving
-                  ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  )
-                  : Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ── Datos de la Orden ──────────────────────────────
-                              _SectionCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const _SectionTitle(
-                                      icon: Icons.storefront_rounded,
-                                      title: 'Datos de la Orden',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    DropdownButtonFormField<String>(
-                                      initialValue: provider.selectedSupplierId,
-                                      icon: const Icon(
-                                        Icons.expand_more_rounded,
-                                      ),
-                                      decoration: _dropdownDecoration(
-                                        'Proveedor (Obligatorio)',
-                                        icon: Icons.local_shipping_rounded,
-                                      ),
-                                      items:
-                                          provider.suppliers
-                                              .map(
-                                                (s) => DropdownMenuItem(
-                                                  value: s['id'] as String,
-                                                  child: Text(
-                                                    s['name'] as String,
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(),
-                                      onChanged: provider.setSupplier,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    DropdownButtonFormField<String>(
-                                      initialValue:
-                                          provider.selectedWarehouseId,
-                                      icon: const Icon(
-                                        Icons.expand_more_rounded,
-                                      ),
-                                      decoration: _dropdownDecoration(
-                                        'Almacén Destino (Obligatorio)',
-                                        icon: Icons.warehouse_rounded,
-                                      ),
-                                      items:
-                                          provider.warehouses
-                                              .map(
-                                                (w) => DropdownMenuItem(
-                                                  value: w.id,
-                                                  child: Text(
-                                                    w.name,
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(),
-                                      onChanged: provider.setWarehouse,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _DatePickerField(
-                                            label: 'Fecha Vencimiento',
-                                            value: provider.dueDate,
-                                            onPick: () => _pickDueDate(context),
-                                            onClear:
-                                                () => provider.setDueDate(null),
-                                            icon: Icons.event_rounded,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
 
-                              // ── Finanzas ──────────────────────────────
-                              _SectionCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const _SectionTitle(
-                                      icon: Icons.payments_rounded,
-                                      title: 'Condiciones de Pago',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    DropdownButtonFormField<String>(
-                                      initialValue: provider.paymentMode,
-                                      icon: const Icon(
-                                        Icons.expand_more_rounded,
+            if (provider.items.isEmpty) {
+              Navigator.pop(context, result);
+              return;
+            }
+
+            final action = await showDialog<String>(
+              context: context,
+              builder:
+                  (ctx) => AlertDialog(
+                    title: const Text('Órden en progreso'),
+                    content: const Text(
+                      'Tienes productos en la órden actual. ¿Qué deseas hacer al salir?',
+                    ),
+                    actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    actions: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, 'cancel'),
+                            child: const Text('Cancelar'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, 'discard'),
+                            child: const Text(
+                              'Descartar',
+                              style: TextStyle(color: AppColors.danger),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, 'draft'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                            ),
+                            child: const Text('Borrador'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+            );
+
+            if (!context.mounted) return;
+
+            if (action == 'discard') {
+              provider.clearDraft();
+              Navigator.pop(context, result);
+            } else if (action == 'draft') {
+              Navigator.pop(context, result);
+            }
+          },
+          child: AdminLayout(
+            title: 'Nueva Orden de Compra',
+            showBackButton: true,
+            showDrawerButton: false,
+            body:
+                provider.isSaving
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
+                    : Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // ── Datos de la Orden ──────────────────────────────
+                                _SectionCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const _SectionTitle(
+                                        icon: Icons.storefront_rounded,
+                                        title: 'Datos de la Orden',
                                       ),
-                                      decoration: _dropdownDecoration(
-                                        'Modo de Pago',
-                                        icon: Icons.money_rounded,
-                                      ),
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'EFECTIVO',
-                                          child: Text(
-                                            'Efectivo',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'TARJETA',
-                                          child: Text(
-                                            'Tarjeta / Transferencia',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'CREDITO',
-                                          child: Text(
-                                            'Línea de Crédito',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      onChanged: (v) {
-                                        if (v != null) {
-                                          provider.setPaymentMode(v);
-                                          if (v == 'CREDITO') {
-                                            provider.setPaymentStatus(
-                                              'PENDING',
-                                            );
-                                            provider.setAccount(null);
-                                          }
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (provider.paymentMode != 'CREDITO') ...[
+                                      const SizedBox(height: 12),
                                       DropdownButtonFormField<String>(
-                                        initialValue: provider.paymentStatus,
+                                        initialValue:
+                                            provider.selectedSupplierId,
                                         icon: const Icon(
                                           Icons.expand_more_rounded,
                                         ),
                                         decoration: _dropdownDecoration(
-                                          'Estado del Pago',
-                                          icon: Icons.hourglass_top_rounded,
+                                          'Proveedor (Obligatorio)',
+                                          icon: Icons.local_shipping_rounded,
+                                        ),
+                                        items:
+                                            provider.suppliers
+                                                .map(
+                                                  (s) => DropdownMenuItem(
+                                                    value: s['id'] as String,
+                                                    child: Text(
+                                                      s['name'] as String,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
+                                                .toList(),
+                                        onChanged: provider.setSupplier,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      DropdownButtonFormField<String>(
+                                        initialValue:
+                                            provider.selectedWarehouseId,
+                                        icon: const Icon(
+                                          Icons.expand_more_rounded,
+                                        ),
+                                        decoration: _dropdownDecoration(
+                                          'Almacén Destino (Obligatorio)',
+                                          icon: Icons.warehouse_rounded,
+                                        ),
+                                        items:
+                                            provider.warehouses
+                                                .map(
+                                                  (w) => DropdownMenuItem(
+                                                    value: w.id,
+                                                    child: Text(
+                                                      w.name,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
+                                                .toList(),
+                                        onChanged: provider.setWarehouse,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _DatePickerField(
+                                              label: 'Fecha Vencimiento',
+                                              value: provider.dueDate,
+                                              onPick:
+                                                  () => _pickDueDate(context),
+                                              onClear:
+                                                  () =>
+                                                      provider.setDueDate(null),
+                                              icon: Icons.event_rounded,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // ── Finanzas ──────────────────────────────
+                                _SectionCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const _SectionTitle(
+                                        icon: Icons.payments_rounded,
+                                        title: 'Condiciones de Pago',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      DropdownButtonFormField<String>(
+                                        initialValue: provider.paymentMode,
+                                        icon: const Icon(
+                                          Icons.expand_more_rounded,
+                                        ),
+                                        decoration: _dropdownDecoration(
+                                          'Modo de Pago',
+                                          icon: Icons.money_rounded,
                                         ),
                                         items: const [
                                           DropdownMenuItem(
-                                            value: 'PENDING',
+                                            value: 'EFECTIVO',
                                             child: Text(
-                                              'Pago Pendiente',
+                                              'Efectivo',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ),
                                           DropdownMenuItem(
-                                            value: 'PAID',
+                                            value: 'TARJETA',
                                             child: Text(
-                                              'Pago Realizado / Adelantado',
+                                              'Tarjeta / Transferencia',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
-                                                color: AppColors.success,
+                                              ),
+                                            ),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'CREDITO',
+                                            child: Text(
+                                              'Línea de Crédito',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.primary,
                                               ),
                                             ),
                                           ),
                                         ],
                                         onChanged: (v) {
                                           if (v != null) {
-                                            provider.setPaymentStatus(v);
+                                            provider.setPaymentMode(v);
+                                            if (v == 'CREDITO') {
+                                              provider.setPaymentStatus(
+                                                'PENDING',
+                                              );
+                                              provider.setAccount(null);
+                                            }
                                           }
                                         },
                                       ),
-                                      if (provider.paymentStatus == 'PAID') ...[
-                                        const SizedBox(height: 12),
+                                      const SizedBox(height: 12),
+                                      if (provider.paymentMode !=
+                                          'CREDITO') ...[
                                         DropdownButtonFormField<String>(
-                                          initialValue:
-                                              provider.selectedAccountId,
-                                          isExpanded: true,
+                                          initialValue: provider.paymentStatus,
                                           icon: const Icon(
                                             Icons.expand_more_rounded,
                                           ),
                                           decoration: _dropdownDecoration(
-                                            'Cuenta Origen',
-                                            icon:
-                                                Icons
-                                                    .account_balance_wallet_rounded,
+                                            'Estado del Pago',
+                                            icon: Icons.hourglass_top_rounded,
                                           ),
-                                          items:
-                                              provider.accounts.map((acc) {
-                                                return DropdownMenuItem(
-                                                  value: acc.id,
-                                                  child: Text(
-                                                    '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                );
-                                              }).toList(),
-                                          onChanged: provider.setAccount,
-                                        ),
-                                      ],
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // ── Productos ──────────────────────────────
-                              _SectionCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const _SectionTitle(
-                                          icon: Icons.inventory_2_rounded,
-                                          title: 'Productos a Pedir',
-                                        ),
-                                        Row(
-                                          children: [
-                                            if (provider.items.isNotEmpty)
-                                              IconButton(
-                                                icon: const Icon(
-                                                  Icons.delete_sweep_rounded,
-                                                  color: AppColors.danger,
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'PENDING',
+                                              child: Text(
+                                                'Pago Pendiente',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
                                                 ),
-                                                tooltip: 'Descartar borrador',
-                                                onPressed: _handleClearDraft,
                                               ),
-                                            TextButton.icon(
-                                              onPressed:
-                                                  () => _showAddProductSheet(
-                                                    context,
-                                                  ),
-                                              icon: const Icon(
-                                                Icons
-                                                    .add_circle_outline_rounded,
-                                                size: 18,
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'PAID',
+                                              child: Text(
+                                                'Pago Realizado / Adelantado',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.success,
+                                                ),
                                               ),
-                                              label: const Text('Agregar'),
                                             ),
                                           ],
+                                          onChanged: (v) {
+                                            if (v != null) {
+                                              provider.setPaymentStatus(v);
+                                            }
+                                          },
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (provider.items.isEmpty)
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.all(24),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.background,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          border: Border.all(
-                                            color: AppColors.border,
-                                            style: BorderStyle.solid,
-                                          ),
-                                        ),
-                                        child: const Column(
-                                          children: [
-                                            Icon(
-                                              Icons.shopping_basket_outlined,
-                                              size: 48,
-                                              color: AppColors.textHint,
-                                            ),
-                                            SizedBox(height: 12),
-                                            Text(
-                                              'Agrega productos a la orden de compra.',
-                                              style: TextStyle(
-                                                color: AppColors.textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    else
-                                      ListView.builder(
-                                        shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        itemCount: provider.items.length,
-                                        itemBuilder: (context, index) {
-                                          return POFormItemTile(
-                                            item: provider.items[index],
-                                            onEditQuantity:
-                                                () =>
-                                                    _mostrarDialogoCantidadItem(
-                                                      context,
-                                                      index,
-                                                      provider
-                                                          .items[index]
-                                                          .quantity,
-                                                    ),
-                                            onRemove:
-                                                () =>
-                                                    provider.removeItem(index),
-                                          );
-                                        },
-                                      ),
-                                    if (provider.items.isNotEmpty) ...[
-                                      const SizedBox(height: 16),
-                                      POFormSummaryCard(items: provider.items),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // ── Documento y Notas ───────────────────────
-                              _SectionCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const _SectionTitle(
-                                      icon: Icons.receipt_long_rounded,
-                                      title: 'Documento (Opcional)',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: DropdownButtonFormField<
-                                            String
-                                          >(
-                                            initialValue: provider.documentType,
+                                        if (provider.paymentStatus ==
+                                            'PAID') ...[
+                                          const SizedBox(height: 12),
+                                          DropdownButtonFormField<String>(
+                                            initialValue:
+                                                provider.selectedAccountId,
+                                            isExpanded: true,
                                             icon: const Icon(
                                               Icons.expand_more_rounded,
                                             ),
                                             decoration: _dropdownDecoration(
-                                              'Tipo Doc.',
+                                              'Cuenta Origen',
+                                              icon:
+                                                  Icons
+                                                      .account_balance_wallet_rounded,
                                             ),
                                             items:
-                                                _docTypes
-                                                    .map(
-                                                      (
-                                                        type,
-                                                      ) => DropdownMenuItem(
-                                                        value: type,
-                                                        child: Text(
-                                                          type,
-                                                          style:
-                                                              const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                fontSize: 13,
-                                                              ),
-                                                        ),
+                                                provider.accounts.map((acc) {
+                                                  return DropdownMenuItem(
+                                                    value: acc.id,
+                                                    child: Text(
+                                                      '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 13,
                                                       ),
-                                                    )
-                                                    .toList(),
-                                            onChanged: (v) {
-                                              if (v != null) {
-                                                provider.setDocumentType(v);
-                                              }
-                                            },
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                            onChanged: provider.setAccount,
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          flex: 2,
-                                          child: TextFormField(
-                                            controller: _documentNumberCtrl,
-                                            decoration: InputDecoration(
-                                              labelText: 'Número / Serie',
-                                              filled: true,
-                                              fillColor: AppColors.background,
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                                borderSide: const BorderSide(
-                                                  color: AppColors.border,
+                                        ],
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // ── Productos ──────────────────────────────
+                                _SectionCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const _SectionTitle(
+                                            icon: Icons.inventory_2_rounded,
+                                            title: 'Productos a Pedir',
+                                          ),
+                                          Row(
+                                            children: [
+                                              if (provider.items.isNotEmpty)
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    Icons.delete_sweep_rounded,
+                                                    color: AppColors.danger,
+                                                  ),
+                                                  tooltip: 'Descartar borrador',
+                                                  onPressed: _handleClearDraft,
                                                 ),
+                                              TextButton.icon(
+                                                onPressed:
+                                                    () => _showAddProductSheet(
+                                                      context,
+                                                    ),
+                                                icon: const Icon(
+                                                  Icons
+                                                      .add_circle_outline_rounded,
+                                                  size: 18,
+                                                ),
+                                                label: const Text('Agregar'),
                                               ),
-                                              enabledBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                                borderSide: const BorderSide(
-                                                  color: AppColors.border,
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (provider.items.isEmpty)
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.background,
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.border,
+                                              style: BorderStyle.solid,
+                                            ),
+                                          ),
+                                          child: const Column(
+                                            children: [
+                                              Icon(
+                                                Icons.shopping_basket_outlined,
+                                                size: 48,
+                                                color: AppColors.textHint,
+                                              ),
+                                              SizedBox(height: 12),
+                                              Text(
+                                                'Agrega productos a la orden de compra.',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        ListView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          itemCount: provider.items.length,
+                                          itemBuilder: (context, index) {
+                                            return POFormItemTile(
+                                              item: provider.items[index],
+                                              onEditQuantity:
+                                                  () =>
+                                                      _mostrarDialogoCantidadItem(
+                                                        context,
+                                                        index,
+                                                        provider
+                                                            .items[index]
+                                                            .quantity,
+                                                      ),
+                                              onRemove:
+                                                  () => provider.removeItem(
+                                                    index,
+                                                  ),
+                                            );
+                                          },
+                                        ),
+                                      if (provider.items.isNotEmpty) ...[
+                                        const SizedBox(height: 16),
+                                        POFormSummaryCard(
+                                          items: provider.items,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // ── Documento y Notas ───────────────────────
+                                _SectionCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const _SectionTitle(
+                                        icon: Icons.receipt_long_rounded,
+                                        title: 'Documento (Opcional)',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: DropdownButtonFormField<
+                                              String
+                                            >(
+                                              initialValue:
+                                                  provider.documentType,
+                                              icon: const Icon(
+                                                Icons.expand_more_rounded,
+                                              ),
+                                              decoration: _dropdownDecoration(
+                                                'Tipo Doc.',
+                                              ),
+                                              items:
+                                                  _docTypes
+                                                      .map(
+                                                        (
+                                                          type,
+                                                        ) => DropdownMenuItem(
+                                                          value: type,
+                                                          child: Text(
+                                                            type,
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  fontSize: 13,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                      .toList(),
+                                              onChanged: (v) {
+                                                if (v != null) {
+                                                  provider.setDocumentType(v);
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            flex: 2,
+                                            child: TextFormField(
+                                              controller: _documentNumberCtrl,
+                                              decoration: InputDecoration(
+                                                labelText: 'Número / Serie',
+                                                filled: true,
+                                                fillColor: AppColors.background,
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  borderSide: const BorderSide(
+                                                    color: AppColors.border,
+                                                  ),
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            14,
+                                                          ),
+                                                      borderSide:
+                                                          const BorderSide(
+                                                            color:
+                                                                AppColors
+                                                                    .border,
+                                                          ),
+                                                    ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _DatePickerField(
-                                      label: 'Fecha Emisión Físico',
-                                      value: provider.documentDate,
-                                      onPick: () => _pickDocumentDate(context),
-                                      onClear:
-                                          () => provider.setDocumentDate(null),
-                                      icon: Icons.edit_calendar_rounded,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    TextFormField(
-                                      controller: _notesCtrl,
-                                      maxLines: 3,
-                                      decoration: InputDecoration(
-                                        labelText: 'Notas adicionales',
-                                        filled: true,
-                                        fillColor: AppColors.background,
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _DatePickerField(
+                                        label: 'Fecha Emisión Físico',
+                                        value: provider.documentDate,
+                                        onPick:
+                                            () => _pickDocumentDate(context),
+                                        onClear:
+                                            () =>
+                                                provider.setDocumentDate(null),
+                                        icon: Icons.edit_calendar_rounded,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: _notesCtrl,
+                                        maxLines: 3,
+                                        decoration: InputDecoration(
+                                          labelText: 'Notas adicionales',
+                                          filled: true,
+                                          fillColor: AppColors.background,
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            borderSide: const BorderSide(
+                                              color: AppColors.border,
+                                            ),
                                           ),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.border,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: AppColors.border,
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            borderSide: const BorderSide(
+                                              color: AppColors.border,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 100), // padding inferior
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // ── BOTÓN FIJO ──────────────────────────────
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, -4),
+                                const SizedBox(height: 100), // padding inferior
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                        child: SafeArea(
-                          top: false,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed:
-                                      provider.items.isEmpty
-                                          ? null
-                                          : _handleSave,
-                                  icon: const Icon(
-                                    Icons.check_circle_outline_rounded,
-                                  ),
-                                  label: const Text(
-                                    'Generar Orden',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                ),
+
+                        // ── BOTÓN FIJO ──────────────────────────────
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, -4),
                               ),
                             ],
                           ),
+                          child: SafeArea(
+                            top: false,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed:
+                                        provider.items.isEmpty
+                                            ? null
+                                            : _handleSave,
+                                    icon: const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                    ),
+                                    label: const Text(
+                                      'Generar Orden',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+          ),
         );
       },
     );

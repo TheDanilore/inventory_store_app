@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/models/entry_item_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -24,6 +26,7 @@ class PurchaseOrdersScreen extends StatefulWidget {
 
 class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   final _searchCtrl = TextEditingController();
+  bool _hasDraft = false;
 
   static const _statusLabels = {
     'Todos': 'Todos',
@@ -37,11 +40,30 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   @override
   void initState() {
     super.initState();
+    _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<PurchaseOrdersProvider>();
       provider.loadOrders(reset: true);
       _searchCtrl.text = provider.searchText;
     });
+  }
+
+  Future<void> _checkDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString('po_form_draft_v1');
+    if (str != null) {
+      try {
+        final data = jsonDecode(str) as Map<String, dynamic>;
+        final items = data['items'] as List?;
+        setState(() {
+          _hasDraft = items != null && items.isNotEmpty;
+        });
+      } catch (_) {
+        if (mounted) setState(() => _hasDraft = false);
+      }
+    } else {
+      if (mounted) setState(() => _hasDraft = false);
+    }
   }
 
   @override
@@ -196,6 +218,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               message: provider.errorMessage,
               type: SnackbarType.error,
             );
+            provider.clearError();
           });
         }
 
@@ -279,17 +302,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   label: Text(e.value),
                                   selected: sel,
                                   onSelected:
-                                      (_) =>
-                                          provider.setStatusFilter(e.key),
+                                      (_) => provider.setStatusFilter(e.key),
                                   selectedColor: _statusColor(
                                     e.key,
                                   ).withValues(alpha: 0.15),
                                   checkmarkColor: _statusColor(e.key),
                                   labelStyle: TextStyle(
                                     fontWeight:
-                                        sel
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
+                                        sel ? FontWeight.w700 : FontWeight.w500,
                                     fontSize: 12,
                                     color:
                                         sel
@@ -308,69 +328,88 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
               // ── Lista ─────────────────────────────────────────────────────
               Expanded(
-                child: provider.isLoading
-                    ? ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                        itemCount: 5,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder:
-                            (_, _) => AppShimmer(
-                              width: double.infinity,
-                              height: 90,
-                              borderRadius: 14,
-                            ),
-                      )
-                    : filtered.isEmpty
+                child:
+                    provider.isLoading
+                        ? ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                          itemCount: 5,
+                          separatorBuilder:
+                              (_, _) => const SizedBox(height: 10),
+                          itemBuilder:
+                              (_, _) => AppShimmer(
+                                width: double.infinity,
+                                height: 90,
+                                borderRadius: 14,
+                              ),
+                        )
+                        : filtered.isEmpty
                         ? const _EmptyState(
-                            icon: Icons.shopping_cart_outlined,
-                            message: 'Sin resultados para los filtros aplicados',
-                          )
+                          icon: Icons.shopping_cart_outlined,
+                          message: 'Sin resultados para los filtros aplicados',
+                        )
                         : Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                                child: Row(
-                                  children: [
-                                    const Spacer(),
-                                    Text(
-                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Row(
+                                children: [
+                                  const Spacer(),
+                                  Text(
+                                    'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: RefreshIndicator(
+                                color: AppColors.primary,
+                                onRefresh:
+                                    () => provider.loadOrders(reset: true),
+                                child: ListView.separated(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    0,
+                                  ),
+                                  itemCount: filtered.length,
+                                  separatorBuilder:
+                                      (_, _) => const SizedBox(height: 10),
+                                  itemBuilder:
+                                      (_, i) => POCard(
+                                        po: filtered[i],
+                                        onTap:
+                                            () => _showDetail(
+                                              context,
+                                              filtered[i],
+                                            ),
+                                      ),
                                 ),
                               ),
-                              Expanded(
-                                child: RefreshIndicator(
-                                  color: AppColors.primary,
-                                  onRefresh: () => provider.loadOrders(reset: true),
-                                  child: ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                                    itemCount: filtered.length,
-                                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                    itemBuilder:
-                                        (_, i) => POCard(
-                                          po: filtered[i],
-                                          onTap: () => _showDetail(context, filtered[i]),
-                                        ),
-                                  ),
+                            ),
+                            if (provider.totalPages > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  8,
+                                ),
+                                child: AdminPageBlocks(
+                                  currentPage: provider.currentPage,
+                                  totalPages: provider.totalPages,
+                                  onPageChanged: (p) => provider.goToPage(p),
                                 ),
                               ),
-                              if (provider.totalPages > 1)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                                  child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: (p) => provider.goToPage(p),
-                                  ),
-                                ),
-                            ],
-                          ),
+                          ],
+                        ),
               ),
             ],
           ),
@@ -544,8 +583,6 @@ class _DateRangeButton extends StatelessWidget {
     );
   }
 }
-
-
 
 class _EmptyState extends StatelessWidget {
   final IconData icon;
