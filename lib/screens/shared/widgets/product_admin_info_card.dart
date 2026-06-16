@@ -3,26 +3,27 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
-class ProductAdminInfoCard extends StatelessWidget {
-  final double unitCost;
-  final double profit;
-  final double margin;
-  final double? wholesalePrice;
-  final int wholesaleMinQuantity;
-  final int reorderPoint;
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/shared/product_detail_provider.dart';
 
-  const ProductAdminInfoCard({
-    super.key,
-    required this.unitCost,
-    required this.profit,
-    required this.margin,
-    required this.wholesalePrice,
-    required this.wholesaleMinQuantity,
-    required this.reorderPoint,
-  });
+class ProductAdminInfoCard extends StatelessWidget {
+  const ProductAdminInfoCard({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ProductDetailProvider>();
+    if (!provider.isAdmin) return const SizedBox.shrink();
+
+    final cost =
+        provider.selectedVariant?.unitCost ?? provider.product.unitCost;
+    final wPrice = provider.baseWholesalePrice;
+    final wMinQty = provider.baseWholesaleMinQty;
+    final rPoint = provider.selectedVariant?.reorderPoint ?? 0;
+    final profit = provider.effectivePrice - cost;
+    final margin =
+        (provider.effectivePrice > 0)
+            ? (profit / provider.effectivePrice) * 100
+            : 0.0;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -66,7 +67,7 @@ class ProductAdminInfoCard extends StatelessWidget {
             Icons.receipt_long_rounded,
             const Color(0xFFF59E0B),
             'Costo unitario',
-            'S/ ${unitCost.toStringAsFixed(2)}',
+            'S/ ${cost.toStringAsFixed(2)}',
           ),
           const SizedBox(height: 8),
           _AdminRow(
@@ -77,14 +78,14 @@ class ProductAdminInfoCard extends StatelessWidget {
             badge: '${margin.toStringAsFixed(1)}%',
             valueColor: AppColors.success,
           ),
-          if (wholesalePrice != null) ...[
+          if (wPrice != null) ...[
             const SizedBox(height: 8),
             _AdminRow(
               Icons.people_rounded,
               AppColors.amber,
               'Precio mayor',
-              'S/ ${wholesalePrice!.toStringAsFixed(2)}',
-              badge: 'x$wholesaleMinQuantity',
+              'S/ ${wPrice.toStringAsFixed(2)}',
+              badge: 'x$wMinQty',
             ),
           ],
           const SizedBox(height: 8),
@@ -92,7 +93,7 @@ class ProductAdminInfoCard extends StatelessWidget {
             Icons.warning_amber_rounded,
             AppColors.danger,
             'Pto. reorden',
-            '$reorderPoint unds.',
+            '$rPoint unds.',
           ),
         ],
       ),
@@ -133,7 +134,10 @@ class _AdminRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
         ),
         Text(

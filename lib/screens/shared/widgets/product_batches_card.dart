@@ -1,21 +1,19 @@
 // ─── PRODUCT BATCHES CARD ──────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/shared/product_detail_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
-
 class ProductBatchesCard extends StatelessWidget {
-  final bool isLoading;
-  final List<Map<String, dynamic>> batches;
-
-  const ProductBatchesCard({
-    super.key,
-    required this.isLoading,
-    required this.batches,
-  });
+  const ProductBatchesCard({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ProductDetailProvider>();
+    final isLoading = provider.isLoadingExtra;
+    final batches = provider.batchesList;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppColors.card(),

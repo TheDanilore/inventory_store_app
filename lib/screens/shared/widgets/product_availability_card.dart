@@ -3,35 +3,16 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
-class ProductAvailabilityCard extends StatelessWidget {
-  final bool isActive;
-  final bool isAdmin;
-  final bool isLoadingExtra;
-  final List<Map<String, dynamic>> warehouseStocks;
-  final int effectiveStock;
-  final String stockLabel;
-  final bool showQuantitySelector;
-  final int selectedQty;
-  final VoidCallback? onDecrement;
-  final VoidCallback? onIncrement;
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/shared/product_detail_provider.dart';
 
-  const ProductAvailabilityCard({
-    super.key,
-    required this.isActive,
-    required this.isAdmin,
-    required this.isLoadingExtra,
-    required this.warehouseStocks,
-    required this.effectiveStock,
-    required this.stockLabel,
-    required this.showQuantitySelector,
-    required this.selectedQty,
-    required this.onDecrement,
-    required this.onIncrement,
-  });
+class ProductAvailabilityCard extends StatelessWidget {
+  const ProductAvailabilityCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (!isAdmin) return const SizedBox.shrink();
+    final provider = context.watch<ProductDetailProvider>();
+    if (!provider.isAdmin) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -46,20 +27,20 @@ class ProductAvailabilityCard extends StatelessWidget {
             title: 'Stock por almacén',
           ),
           const SizedBox(height: 14),
-          if (isLoadingExtra)
+          if (provider.isLoadingExtra)
             const Center(
               child: CircularProgressIndicator(
                 color: AppColors.primary,
                 strokeWidth: 2,
               ),
             )
-          else if (warehouseStocks.isEmpty)
+          else if (provider.warehouseStocks.isEmpty)
             const Text(
               'Sin registros.',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             )
           else
-            ...warehouseStocks.map((row) {
+            ...provider.warehouseStocks.map((row) {
               final name = row['warehouses']?['name'] ?? 'Almacén';
               final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
               final ok = stock > 0;

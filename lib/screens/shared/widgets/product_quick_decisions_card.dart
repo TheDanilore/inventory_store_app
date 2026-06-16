@@ -1,27 +1,25 @@
 // ─── COMPONENTE: DECISIONES RÁPIDAS ──────────────────────────────────────────
 
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/shared/product_detail_provider.dart';
+import 'package:inventory_store_app/models/product_financial_summary.dart';
 
 class ProductQuickDecisionsCard extends StatelessWidget {
-  final int totalSold;
-  final double reinvestmentNeeded;
-  final double inventoryValue;
-  final double totalRevenue;
-  final List<VariantFinancialSummary> variantSummaries;
-
-  const ProductQuickDecisionsCard({
-    super.key,
-    required this.totalSold,
-    required this.reinvestmentNeeded,
-    required this.inventoryValue,
-    required this.totalRevenue,
-    required this.variantSummaries,
-  });
+  const ProductQuickDecisionsCard({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ProductDetailProvider>();
+    if (!provider.isAdmin) return const SizedBox.shrink();
+
+    final totalSold = provider.totalSold;
+    final inventoryValue = provider.inventoryValue;
+    final totalRevenue = provider.totalRevenue;
+    final reinvestmentNeeded = provider.reinvestmentNeeded;
+    final variantSummaries = provider.variantSummaries;
+
     final hasData = totalSold > 0 || inventoryValue > 0;
     if (!hasData) return const SizedBox.shrink();
 

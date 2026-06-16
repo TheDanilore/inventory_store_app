@@ -18,9 +18,10 @@ import 'package:inventory_store_app/models/product_image_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
+import 'package:inventory_store_app/providers/shared/product_detail_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
-class ProductDetailScreen extends StatefulWidget {
+class ProductDetailScreen extends StatelessWidget {
   final ProductModel product;
   final bool isAdmin;
 
@@ -31,44 +32,36 @@ class ProductDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ProductDetailProvider(product: product, isAdmin: isAdmin),
+      child: const _ProductDetailScreenContent(),
+    );
+  }
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  final _supabase = Supabase.instance.client;
+class _ProductDetailScreenContent extends StatefulWidget {
+  const _ProductDetailScreenContent({super.key});
 
-  bool _isLoadingExtra = true;
-  bool _isWishlistLoading = true;
-  bool _isWishlisted = false;
-  bool _showVariantImage = false;
+  @override
+  State<_ProductDetailScreenContent> createState() =>
+      _ProductDetailScreenContentState();
+}
 
-  List<dynamic> _warehouseStocks = [];
-  List<Map<String, dynamic>> _batchesList = [];
-  List<ProductImageModel> _images = [];
-  List<ProductVariantModel> _variants = [];
-  List<Map<String, dynamic>> _reviewsList = [];
-  List<Map<String, dynamic>> _activeIngredients = [];
-
-  // Para Decisiones Rápidas
-  int _totalSold = 0;
-  double _reinvestmentNeeded = 0.0;
-  double _inventoryValue = 0.0;
-  double _totalRevenue = 0.0;
-  List<VariantFinancialSummary> _variantSummaries = [];
-
-  double _averageRating = 0.0;
-
-  int _selectedQty = 1;
-  int _selectedImageIndex = 0;
-  String? _selectedVariantId;
-  final Map<String, String> _selectedAttributes = {};
+class _ProductDetailScreenContentState
+    extends State<_ProductDetailScreenContent> {
   final PageController _pageController = PageController();
+
+  ProductDetailProvider get provider => context.read<ProductDetailProvider>();
+  ProductDetailProvider get providerWatch =>
+      context.watch<ProductDetailProvider>();
+
+  ProductModel get product => providerWatch.product;
+  bool get isAdmin => providerWatch.isAdmin;
 
   @override
   void initState() {
     super.initState();
-    _fetchWishlistState();
-    _fetchExtraData();
   }
 
   @override
@@ -77,442 +70,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.dispose();
   }
 
-  // ─── DATA ─────────────────────────────────────────────────────────────────
-
-  Future<void> _fetchWishlistState() async {
-    if (widget.isAdmin) {
-      if (mounted) setState(() => _isWishlistLoading = false);
-      return;
-    }
-    final user = _supabase.auth.currentUser;
-    if (user == null) {
-      if (mounted) setState(() => _isWishlistLoading = false);
-      return;
-    }
-    try {
-      final profile =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', user.id)
-              .maybeSingle();
-      final pid = profile?['id'] as String?;
-      if (pid == null) {
-        if (mounted) setState(() => _isWishlistLoading = false);
-        return;
-      }
-      final wish =
-          await _supabase
-              .from('wishlist')
-              .select('id')
-              .eq('profile_id', pid)
-              .eq('product_id', widget.product.id)
-              .maybeSingle();
-      if (!mounted) return;
-      setState(() {
-        _isWishlisted = wish != null;
-        _isWishlistLoading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _isWishlistLoading = false);
-    }
-  }
-
-  Future<void> _toggleWishlist() async {
-    if (widget.isAdmin) return;
-    final user = _supabase.auth.currentUser;
-    if (user == null) {
-      _showSnack('Inicia sesión para usar favoritos.');
-      return;
-    }
-    try {
-      final profile =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', user.id)
-              .maybeSingle();
-      final pid = profile?['id'] as String?;
-      if (pid == null) return;
-      if (_isWishlisted) {
-        await _supabase
-            .from('wishlist')
-            .delete()
-            .eq('profile_id', pid)
-            .eq('product_id', widget.product.id);
-      } else {
-        await _supabase.from('wishlist').insert({
-          'profile_id': pid,
-          'product_id': widget.product.id,
-        });
-      }
-      if (!mounted) return;
-      setState(() => _isWishlisted = !_isWishlisted);
-      _showSnack(
-        _isWishlisted ? '❤️ Guardado en favoritos' : 'Eliminado de favoritos',
-        isSuccess: _isWishlisted,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      _showSnack('Error: $e');
-    }
-  }
-
-  Future<void> _fetchExtraData() async {
-    try {
-      // Configuramos las consultas base
-      final queries = <Future<dynamic>>[
-        _supabase
-            .from('warehouse_stock_batches')
-            .select(
-              'id, available_quantity, variant_id, warehouse_id, batch_number, expiry_date, warehouses(name)',
-            )
-            .eq('product_id', widget.product.id)
-            .gt('available_quantity', 0)
-            .order('expiry_date', ascending: true, nullsFirst: false),
-        _supabase
-            .from('product_images')
-            .select(
-              'id, product_id, variant_id, image_url, display_order, is_main',
-            )
-            .eq('product_id', widget.product.id)
-            .order('display_order', ascending: true),
-        // ACTUALIZACIÓN DE QUERY (Relacional: attributes -> attribute_values -> variant_attribute_values)
-        _supabase
-            .from('product_variants')
-            .select(
-              'id, product_id, sku, variant_attribute_values(attribute_values(id, value, attributes(name))), product_images(*), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost',
-            )
-            .eq('product_id', widget.product.id)
-            .eq('is_active', true)
-            .order('created_at', ascending: true),
-        _supabase
-            .from('product_reviews')
-            .select('rating, comment, user_name, created_at')
-            .eq('product_id', widget.product.id)
-            .order('created_at', ascending: false),
-        _supabase
-            .from('product_active_ingredients')
-            .select(
-              'concentration, unit, active_ingredients(id, name, description)',
-            )
-            .eq('product_id', widget.product.id),
-      ];
-
-      if (widget.isAdmin) {
-        queries.add(
-          _supabase
-              .from('order_items')
-              .select(
-                'quantity, unit_cost, applied_price, variant_id, orders!inner(status)',
-              )
-              .eq('product_id', widget.product.id)
-              .eq('orders.status', 'COMPLETED'),
-        );
-      }
-
-      final results = await Future.wait(queries);
-
-      if (!mounted) return;
-
-      final rawStocks = results[0] as List<dynamic>;
-
-      final aggregatedStocks = <String, Map<String, dynamic>>{};
-      final validBatches = <Map<String, dynamic>>[];
-
-      for (final row in rawStocks) {
-        final wId = row['warehouse_id']?.toString() ?? 'unknown';
-        final vId = row['variant_id']?.toString() ?? 'none';
-        final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-
-        if (stock > 0) {
-          validBatches.add(Map<String, dynamic>.from(row as Map));
-        }
-
-        final key = '${wId}_$vId';
-        if (aggregatedStocks.containsKey(key)) {
-          aggregatedStocks[key]!['available_quantity'] =
-              (aggregatedStocks[key]!['available_quantity'] as int) + stock;
-        } else {
-          aggregatedStocks[key] = {
-            'warehouse_id': row['warehouse_id'],
-            'variant_id': row['variant_id'],
-            'warehouses': row['warehouses'],
-            'available_quantity': stock,
-          };
-        }
-      }
-      final fetchedStocks = aggregatedStocks.values.toList();
-
-      final fetchedImages =
-          (results[1] as List)
-              .map(
-                (e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e)),
-              )
-              .toList();
-      final fetchedVariants =
-          (results[2] as List)
-              .map(
-                (e) =>
-                    ProductVariantModel.fromJson(Map<String, dynamic>.from(e)),
-              )
-              .toList();
-      final fetchedReviews = List<Map<String, dynamic>>.from(
-        results[3] as List,
-      );
-      final fetchedIngredients = List<Map<String, dynamic>>.from(
-        results[4] as List,
-      );
-
-      double totalRating = 0;
-      for (final r in fetchedReviews) {
-        totalRating += (r['rating'] as num).toDouble();
-      }
-
-      int soldUnits = 0;
-      double reinvestment = 0.0;
-      double revenue = 0.0;
-
-      if (widget.isAdmin && results.length > 5) {
-        final orderItemsData = results[5] as List<dynamic>;
-        for (final row in orderItemsData) {
-          final q = (row['quantity'] as num?)?.toInt() ?? 0;
-          final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-          final ap = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
-
-          soldUnits += q;
-          reinvestment += (q * uc);
-          revenue += (q * ap);
-        }
-      }
-
-      setState(() {
-        _warehouseStocks = fetchedStocks;
-        _batchesList = validBatches;
-        _images = fetchedImages;
-        _variants = fetchedVariants;
-        _reviewsList = fetchedReviews;
-        _activeIngredients = fetchedIngredients;
-        _averageRating =
-            fetchedReviews.isEmpty ? 0.0 : totalRating / fetchedReviews.length;
-
-        _totalSold = soldUnits;
-        _reinvestmentNeeded = reinvestment;
-        _totalRevenue = revenue;
-
-        final Map<String, Map<String, double>> variantSales = {};
-        if (widget.isAdmin && results.length > 5) {
-          for (final row in results[5] as List<dynamic>) {
-            final vid = row['variant_id']?.toString() ?? '';
-            if (vid.isEmpty) continue;
-            final q = (row['quantity'] as num?)?.toDouble() ?? 0;
-            final uc = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
-            final ap = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
-            variantSales.putIfAbsent(
-              vid,
-              () => {'qty': 0, 'cost': 0, 'revenue': 0},
-            );
-            variantSales[vid]!['qty'] = variantSales[vid]!['qty']! + q;
-            variantSales[vid]!['cost'] = variantSales[vid]!['cost']! + (q * uc);
-            variantSales[vid]!['revenue'] =
-                variantSales[vid]!['revenue']! + (q * ap);
-          }
-        }
-
-        double invValue = 0.0;
-        final summaries = <VariantFinancialSummary>[];
-        for (final v in fetchedVariants) {
-          final cost =
-              ((v.unitCost ?? 0) > 0) ? v.unitCost! : widget.product.unitCost;
-          int variantStock = 0;
-          for (final row in fetchedStocks) {
-            if (row['variant_id'] == v.id) {
-              variantStock += (row['available_quantity'] as num?)?.toInt() ?? 0;
-            }
-          }
-          final vInv = variantStock * cost;
-          invValue += vInv;
-          final sales = variantSales[v.id];
-          summaries.add(
-            VariantFinancialSummary(
-              variant: v,
-              unitCost: cost,
-              stockQuantity: variantStock,
-              inventoryValue: vInv,
-              soldQuantity: sales?['qty']?.toInt() ?? 0,
-              soldCost: sales?['cost'] ?? 0.0,
-              soldRevenue: sales?['revenue'] ?? 0.0,
-            ),
-          );
-        }
-        _inventoryValue = invValue;
-        _variantSummaries = summaries;
-
-        _isLoadingExtra = false;
-
-        if (_variants.isNotEmpty && _selectedVariantId == null) {
-          ProductVariantModel? firstWithStock;
-          for (final v in _variants) {
-            int stock = 0;
-            for (final row in _warehouseStocks) {
-              if (row['variant_id'] == v.id) {
-                stock += ((row['available_quantity'] as num?)?.toInt() ?? 0);
-              }
-            }
-            if (stock > 0) {
-              firstWithStock = v;
-              break;
-            }
-          }
-          firstWithStock ??= _variants.first;
-
-          _selectedVariantId = firstWithStock.id;
-          _selectedAttributes.clear();
-          firstWithStock.attributeMap.forEach((k, val) {
-            _selectedAttributes[k] = val;
-          });
-        }
-      });
-    } catch (e) {
-      debugPrint('Error loading extra: $e');
-      if (mounted) setState(() => _isLoadingExtra = false);
-    }
-  }
-
   // ─── DERIVED GETTERS ─────────────────────────────────────────────────────
 
-  String? get _selectedVariantIdSafe =>
-      (_selectedVariantId != null &&
-              _variants.any((v) => v.id == _selectedVariantId))
-          ? _selectedVariantId
-          : null;
+  bool get _isWishlistLoading => providerWatch.isWishlistLoading;
+  bool get _isWishlisted => providerWatch.isWishlisted;
+  bool get _showVariantImage => providerWatch.showVariantImage;
+  List<ProductVariantModel> get _variants => providerWatch.variants;
+  List<Map<String, dynamic>> get _warehouseStocks =>
+      providerWatch.warehouseStocks;
+  List<Map<String, dynamic>> get _reviewsList => providerWatch.reviewsList;
+  List<Map<String, dynamic>> get _activeIngredients =>
+      providerWatch.activeIngredients;
+  double get _averageRating => providerWatch.averageRating;
 
-  ProductVariantModel? get _selectedVariant {
-    final id = _selectedVariantIdSafe;
-    if (id == null) return null;
-    try {
-      return _variants.firstWhere((v) => v.id == id);
-    } catch (_) {
-      return null;
-    }
-  }
+  int get _selectedQty => providerWatch.selectedQty;
+  int get _selectedImageIndex => providerWatch.selectedImageIndex;
+  String? get _selectedVariantId => providerWatch.selectedVariantId;
+  Map<String, String> get _selectedAttributes =>
+      providerWatch.selectedAttributes;
 
-  double get _baseSalePrice =>
-      _selectedVariant?.salePrice ?? widget.product.salePrice;
-  double? get _baseWholesalePrice =>
-      _selectedVariant?.wholesalePrice ?? widget.product.wholesalePrice;
-  int get _baseWholesaleMinQty =>
-      _selectedVariant?.wholesaleMinQuantity ??
-      widget.product.wholesaleMinQuantity;
-
-  double get _effectivePrice {
-    final wp = _baseWholesalePrice;
-    if (wp != null && _selectedQty >= _baseWholesaleMinQty) return wp;
-    return _baseSalePrice;
-  }
-
-  int get _effectiveStock {
-    final vid = _selectedVariantIdSafe;
-    if (vid == null) return widget.product.totalStock;
-    return _warehouseStocks.fold<int>(0, (t, row) {
-      if ((row['variant_id'] as String?) != vid) return t;
-      return t + ((row['available_quantity'] as num?)?.toInt() ?? 0);
-    });
-  }
-
-  bool get _isActive => widget.product.isActive;
-  bool get _canBuy => _isActive && _effectiveStock > 0;
-  double get _effectiveUnitCost =>
-      ((_selectedVariant?.unitCost ?? 0) > 0)
-          ? _selectedVariant!.unitCost!
-          : widget.product.unitCost;
-
-  double get _profit => _effectivePrice - _effectiveUnitCost;
-  double get _margin =>
-      _effectiveUnitCost > 0 ? (_profit / _effectiveUnitCost) * 100 : 0.0;
-
-  List<Map<String, dynamic>> get _selectedVariantStockRows {
-    final vid = _selectedVariantIdSafe;
-    if (vid == null) return List<Map<String, dynamic>>.from(_warehouseStocks);
-    return _warehouseStocks
-        .where((row) => (row['variant_id'] as String?) == vid)
-        .map((row) => Map<String, dynamic>.from(row as Map))
-        .toList();
-  }
-
-  // Filtra los lotes específicos de la variante seleccionada
-  List<Map<String, dynamic>> get _selectedVariantBatchesRows {
-    final vid = _selectedVariantIdSafe;
-    if (vid == null) return _batchesList;
-    return _batchesList.where((row) => row['variant_id'] == vid).toList();
-  }
-
-  List<String> get _attributeKeys {
-    final keys = <String>[];
-    for (final v in _variants) {
-      for (final k in v.attributeMap.keys) {
-        if (!keys.contains(k)) keys.add(k);
-      }
-    }
-    return keys;
-  }
-
-  Map<String, List<String>> get _attributeOptions {
-    final opts = <String, List<String>>{};
-    for (final v in _variants) {
-      v.attributeMap.forEach((k, val) {
-        opts.putIfAbsent(k, () => []);
-        if (!opts[k]!.contains(val)) opts[k]!.add(val);
-      });
-    }
-    return opts;
-  }
-
-  List<ProductImageModel> get _galleryImages {
-    final productImgs = _images.where((img) => img.variantId == null).toList();
-    productImgs.sort((a, b) {
-      if (a.isMain && !b.isMain) return -1;
-      if (!a.isMain && b.isMain) return 1;
-      return (a.displayOrder).compareTo(b.displayOrder);
-    });
-    return productImgs;
-  }
-
-  String? get _selectedVariantImageUrl {
-    final variant = _selectedVariant;
-    if (variant == null) return null;
-
-    final variantImg = _images
-        .where((img) => img.variantId == variant.id)
-        .cast<ProductImageModel?>()
-        .firstWhere((_) => true, orElse: () => null);
-    if (variantImg != null) return variantImg.imageUrl;
-
-    if (variant.images.isNotEmpty) return variant.images.first.imageUrl;
-    return null;
-  }
-
-  String? _variantImageUrl(ProductVariantModel variant) {
-    final variantImg = _images
-        .where((img) => img.variantId == variant.id)
-        .cast<ProductImageModel?>()
-        .firstWhere((_) => true, orElse: () => null);
-    if (variantImg != null) return variantImg.imageUrl;
-    if (variant.images.isNotEmpty) return variant.images.first.imageUrl;
-    return null;
-  }
-
-  String? get _effectiveImageUrl {
-    final varImg = _selectedVariantImageUrl;
-    if (varImg != null && _selectedVariant != null) return varImg;
-
-    final imgs = _galleryImages;
-    if (imgs.isNotEmpty && _selectedImageIndex < imgs.length) {
-      return imgs[_selectedImageIndex].imageUrl;
-    }
-    return widget.product.primaryImageUrl;
-  }
-
+  String? get _selectedVariantIdSafe => providerWatch.selectedVariantId;
+  ProductVariantModel? get _selectedVariant => providerWatch.selectedVariant;
+  double get _baseSalePrice => providerWatch.baseSalePrice;
+  double? get _baseWholesalePrice => providerWatch.baseWholesalePrice;
+  int get _baseWholesaleMinQty => providerWatch.baseWholesaleMinQty;
+  double get _effectivePrice => providerWatch.effectivePrice;
+  int get _effectiveStock => providerWatch.effectiveStock;
+  bool get _isActive => providerWatch.isActive;
+  bool get _canBuy => providerWatch.canBuy;
+  List<String> get _attributeKeys => providerWatch.attributeKeys;
+  Map<String, List<String>> get _attributeOptions =>
+      providerWatch.attributeOptions;
+  String? get _selectedVariantImageUrl => providerWatch.selectedVariantImageUrl;
+  bool _isOptionEnabled(String key, String value) =>
+      providerWatch.isOptionEnabled(key, value);
+  List<ProductImageModel> get _galleryImages => providerWatch.images;
+  String? _variantImageUrl(ProductVariantModel variant) =>
+      providerWatch.variantImageUrl(variant);
+  String? get _effectiveImageUrl =>
+      providerWatch.selectedVariantImageUrl ??
+      (providerWatch.images.isNotEmpty
+          ? providerWatch.images[0].imageUrl
+          : product.primaryImageUrl);
   String _fmt(String value) {
     final n = value.replaceAll('_', ' ').trim();
     if (n.isEmpty) return value;
@@ -525,21 +124,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         .join(' ');
   }
 
-  bool _isOptionEnabled(String key, String value) =>
-      _variants.any((v) => v.attributeMap[key] == value);
-
-  ProductVariantModel? _findMatchingVariant(Map<String, String> sel) {
-    for (final v in _variants) {
-      bool ok = true;
-      for (final e in sel.entries) {
-        if (v.attributeMap[e.key] != e.value) {
-          ok = false;
-          break;
-        }
-      }
-      if (ok) return v;
+  Future<void> _toggleWishlist() async {
+    try {
+      await provider.toggleWishlist();
+      _showSnack(
+        providerWatch.isWishlisted
+            ? '❤️ Guardado en favoritos'
+            : 'Eliminado de favoritos',
+        isSuccess: providerWatch.isWishlisted,
+      );
+    } catch (e) {
+      _showSnack('Error: $e');
     }
-    return null;
   }
 
   void _selectVariant(
@@ -547,38 +143,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     bool resetQuantity = true,
     bool animateGallery = true,
   }) {
-    if (!mounted) return;
-    setState(() {
-      _showVariantImage = true;
-      _selectedVariantId = variant.id;
-      _selectedAttributes
-        ..clear()
-        ..addAll(variant.attributeMap);
-      if (animateGallery) {
-        _selectedImageIndex = 0;
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(0);
-        }
+    provider.selectVariant(variant);
+    if (animateGallery) {
+      provider.setPage(0);
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
       }
-      if (resetQuantity) _selectedQty = 1;
-    });
+    }
   }
 
   void _onGalleryChanged(int index) {
-    setState(() => _selectedImageIndex = index);
+    provider.setPage(index);
   }
 
   void _selectAttribute(String key, String value) {
-    final next = Map<String, String>.from(_selectedAttributes)..[key] = value;
-    var match = _findMatchingVariant(next);
-    if (match == null) {
-      try {
-        match = _variants.firstWhere((v) => v.attributeMap[key] == value);
-      } catch (_) {
-        return;
-      }
-    }
-    _selectVariant(match);
+    provider.selectAttribute(key, value);
   }
 
   // ─── CART & REVIEWS ───────────────────────────────────────────────────────
@@ -597,7 +176,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
     Provider.of<CartProvider>(context, listen: false).addItem(
-      widget.product,
+      product,
       quantity: _selectedQty,
       variantId: _selectedVariant?.id,
       variantLabel: _selectedVariant?.label,
@@ -646,124 +225,130 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _showQtyDialog() async {
     final ctrl = TextEditingController(text: '$_selectedQty');
-    await showDialog<void>(
-      context: context,
-      builder:
-          (ctx) => Dialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radiusXl),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Cantidad',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    'Máx. $_effectiveStock',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
+    try {
+      await showDialog<void>(
+        context: context,
+        builder:
+            (ctx) => Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Cantidad',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.bg,
-                      borderRadius: BorderRadius.circular(AppColors.radius),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: TextField(
-                      controller: ctrl,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      textAlign: TextAlign.center,
+                    Text(
+                      'Máx. $_effectiveStock',
                       style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
-                      ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 16),
+                        fontSize: 12,
+                        color: AppColors.textMuted,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text(
-                            'Cancelar',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
+                    const SizedBox(height: 20),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(AppColors.radius),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: TextField(
+                        controller: ctrl,
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text(
+                              'Cancelar',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final n = int.tryParse(ctrl.text.trim());
-                            if (n != null && n > 0) {
-                              setState(
-                                () =>
-                                    _selectedQty = n.clamp(1, _effectiveStock),
-                              );
-                            }
-                            Navigator.pop(ctx);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text(
-                            'OK',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final n = int.tryParse(ctrl.text.trim());
+                              if (n != null && n > 0) {
+                                provider.setSelectedQty(
+                                  n.clamp(1, _effectiveStock),
+                                );
+                              }
+                              Navigator.pop(ctx);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text(
+                              'OK',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-    );
+      );
+    } finally {
+      ctrl.dispose();
+    }
   }
 
   // ─── REVIEWS ─────────────────────────────────────────────────────────────
 
   Future<void> _onAddReviewTapped() async {
-    if (widget.isAdmin) {
+    if (isAdmin) {
       _showReviewDialog(isAdmin: true);
       return;
     }
-    final user = _supabase.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
       _showSnack('Inicia sesión para opinar.');
       return;
     }
     try {
       final profile =
-          await _supabase
+          await Supabase.instance.client
               .from('profiles')
               .select('id, full_name')
               .eq('auth_user_id', user.id)
               .single();
       final profileId = profile['id'];
       final fullName = profile['full_name'] ?? 'Usuario';
-      final purchases = await _supabase
+      final purchases = await Supabase.instance.client
           .from('order_items')
           .select('id, orders!inner(customer_id)')
-          .eq('product_id', widget.product.id)
+          .eq('product_id', product.id)
           .eq('orders.customer_id', profileId)
           .limit(1);
       if (purchases.isEmpty) {
@@ -931,11 +516,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           }
                                           setS(() => isSubmitting = true);
                                           try {
-                                            await _supabase
+                                            await Supabase.instance.client
                                                 .from('product_reviews')
                                                 .insert({
-                                                  'product_id':
-                                                      widget.product.id,
+                                                  'product_id': product.id,
                                                   'profile_id': profileId,
                                                   'user_name': name,
                                                   'rating': selectedRating,
@@ -947,13 +531,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                                           : commentCtrl.text
                                                               .trim(),
                                                 });
-                                            if (!mounted) return;
+                                            if (!context.mounted) return;
                                             Navigator.pop(dialogCtx);
                                             _showSnack(
                                               '¡Reseña publicada!',
                                               isSuccess: true,
                                             );
-                                            _fetchExtraData();
+                                            provider.loadData();
                                           } catch (e) {
                                             setS(() => isSubmitting = false);
                                             _showSnack('Error: $e');
@@ -999,7 +583,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                 ),
           ),
-    );
+    ).then((_) {
+      commentCtrl.dispose();
+      nameCtrl.dispose();
+    });
   }
 
   Map<String, int> get _stockByVariant {
@@ -1037,11 +624,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final gallery = _galleryImages;
 
-    final Map<String, dynamic> mergedDetails = Map.from(widget.product.details);
-    mergedDetails['Control de Stock'] =
-        widget.product.stockControl ? 'Sí' : 'No';
-    mergedDetails['Usa Lotes'] = widget.product.usesBatches ? 'Sí' : 'No';
-    mergedDetails['Tipo de Producto'] = _fmt(widget.product.productType);
+    final Map<String, dynamic> mergedDetails = Map.from(product.details);
+    mergedDetails['Control de Stock'] = product.stockControl ? 'Sí' : 'No';
+    mergedDetails['Usa Lotes'] = product.usesBatches ? 'Sí' : 'No';
+    mergedDetails['Tipo de Producto'] = _fmt(product.productType);
 
     final content = CustomScrollView(
       slivers: [
@@ -1058,7 +644,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               pageController: _pageController,
               selectedIndex: _selectedImageIndex,
               onPageChanged: _onGalleryChanged,
-              wishlistWidget: widget.isAdmin ? null : _buildWishlistButton(),
+              wishlistWidget: isAdmin ? null : _buildWishlistButton(),
               variantImageOverrideUrl:
                   (_showVariantImage && _selectedVariant != null)
                       ? _selectedVariantImageUrl
@@ -1067,7 +653,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   (_showVariantImage && _selectedVariant != null)
                       ? _selectedVariant!.attributeMap.values.join(' - ')
                       : null,
-              fallbackImageUrl: widget.product.primaryImageUrl,
+              fallbackImageUrl: product.primaryImageUrl,
             ),
           ),
         ),
@@ -1083,7 +669,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ],
 
               _ProductTopSection(
-                name: widget.product.name,
+                name: product.name,
                 sku: _selectedVariant?.sku,
                 isActive: _isActive,
                 effectiveStock: _effectiveStock,
@@ -1116,28 +702,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 const SizedBox(height: 20),
               ],
 
-              if (widget.isAdmin) ...[
-                ProductAdminInfoCard(
-                  unitCost: _effectiveUnitCost,
-                  profit: _profit,
-                  margin: _margin,
-                  wholesalePrice:
-                      _selectedVariant?.wholesalePrice ??
-                      widget.product.wholesalePrice,
-                  wholesaleMinQuantity:
-                      _selectedVariant?.wholesaleMinQuantity ??
-                      widget.product.wholesaleMinQuantity,
-                  reorderPoint: _selectedVariant?.reorderPoint ?? 3,
-                ),
+              if (isAdmin) ...[
+                ProductAdminInfoCard(),
                 const SizedBox(height: 16),
 
-                ProductQuickDecisionsCard(
-                  totalSold: _totalSold,
-                  reinvestmentNeeded: _reinvestmentNeeded,
-                  inventoryValue: _inventoryValue,
-                  totalRevenue: _totalRevenue,
-                  variantSummaries: _variantSummaries,
-                ),
+                ProductQuickDecisionsCard(),
                 const SizedBox(height: 16),
               ],
 
@@ -1149,32 +718,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 const SizedBox(height: 16),
               ],
 
-              ProductDescriptionCard(
-                description: widget.product.description ?? '',
-              ),
-              if ((widget.product.description ?? '').trim().isNotEmpty)
+              ProductDescriptionCard(description: product.description ?? ''),
+              if ((product.description ?? '').trim().isNotEmpty)
                 const SizedBox(height: 16),
 
-              if (widget.isAdmin)
-                ProductAvailabilityCard(
-                  isActive: _isActive,
-                  isAdmin: true,
-                  isLoadingExtra: _isLoadingExtra,
-                  warehouseStocks: _selectedVariantStockRows,
-                  effectiveStock: _effectiveStock,
-                  stockLabel: _variants.isNotEmpty ? 'Variante' : 'Total',
-                  showQuantitySelector: false,
-                  selectedQty: _selectedQty,
-                  onDecrement: null,
-                  onIncrement: null,
-                ),
-              if (widget.isAdmin) const SizedBox(height: 16),
+              if (isAdmin) ProductAvailabilityCard(),
+              if (isAdmin) const SizedBox(height: 16),
 
-              if (widget.isAdmin && widget.product.usesBatches) ...[
-                ProductBatchesCard(
-                  isLoading: _isLoadingExtra,
-                  batches: _selectedVariantBatchesRows,
-                ),
+              if (isAdmin && product.usesBatches) ...[
+                const ProductBatchesCard(),
                 const SizedBox(height: 16),
               ],
 
@@ -1190,9 +742,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ],
     );
 
-    if (widget.isAdmin) {
+    if (isAdmin) {
       return AdminLayout(
-        title: widget.product.name,
+        title: product.name,
         showBackButton: true,
         showSettingsButton: true,
         settingsActions: [
@@ -1202,7 +754,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           switch (value) {
             case 'export':
               ProductPdfGenerator.shareProduct(
-                widget.product,
+                product,
                 variants: _variants,
                 stockByVariant: _stockByVariant,
               );
@@ -1214,7 +766,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     return CustomerLayout(
-      title: widget.product.name,
+      title: product.name,
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
@@ -1225,14 +777,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         effectiveStock: _effectiveStock,
         effectivePrice: _effectivePrice,
         selectedQty: _selectedQty,
-        onDecrement:
-            () => setState(() {
-              if (_selectedQty > 1) _selectedQty--;
-            }),
-        onIncrement:
-            () => setState(() {
-              if (_selectedQty < _effectiveStock) _selectedQty++;
-            }),
+        onDecrement: () => provider.setSelectedQty(_selectedQty - 1),
+        onIncrement: () => provider.setSelectedQty(_selectedQty + 1),
         onQtyTap: _showQtyDialog,
         onAddToCart: _addToCart,
       ),
@@ -1243,7 +789,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final firstImg =
         _galleryImages.isNotEmpty
             ? _galleryImages.first.imageUrl
-            : widget.product.primaryImageUrl;
+            : product.primaryImageUrl;
 
     return SizedBox(
       height: 64,
@@ -1252,7 +798,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         padding: EdgeInsets.zero,
         children: [
           GestureDetector(
-            onTap: () => setState(() => _showVariantImage = false),
+            onTap: () => provider.setShowVariantImage(false),
             child: Container(
               width: 64,
               height: 64,
@@ -1295,8 +841,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
 
           ...thumbs.map((v) {
-            final imgUrl =
-                _variantImageUrl(v) ?? widget.product.primaryImageUrl;
+            final imgUrl = _variantImageUrl(v) ?? product.primaryImageUrl;
             final isSelected =
                 _showVariantImage &&
                 (_attributeKeys.length == 1
@@ -2774,27 +2319,4 @@ class _ActiveIngredientsCard extends StatelessWidget {
       ),
     );
   }
-}
-
-// ─── Modelo de resumen financiero por variante ────────────────────────────────
-class VariantFinancialSummary {
-  final ProductVariantModel variant;
-  final double unitCost;
-  final int stockQuantity;
-  final double inventoryValue;
-  final int soldQuantity;
-  final double soldCost;
-  final double soldRevenue;
-
-  const VariantFinancialSummary({
-    required this.variant,
-    required this.unitCost,
-    required this.stockQuantity,
-    required this.inventoryValue,
-    required this.soldQuantity,
-    required this.soldCost,
-    required this.soldRevenue,
-  });
-
-  double get soldProfit => soldRevenue - soldCost;
 }
