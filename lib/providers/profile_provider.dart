@@ -7,6 +7,32 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class ProfileProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
 
+  ProfileProvider() {
+    _init();
+  }
+
+  void _init() {
+    _supabase.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedIn ||
+          event == AuthChangeEvent.initialSession) {
+        if (_supabase.auth.currentUser != null) {
+          fetchUserProfile();
+        }
+      } else if (event == AuthChangeEvent.signedOut) {
+        _profileId = null;
+        _userRole = 'Cargando...';
+        _fullName = '';
+        _phone = '';
+        _documentNumber = '';
+        _avatarUrl = null;
+        _imageBytes = null;
+        _isLoading = true;
+        _safeNotify();
+      }
+    });
+  }
+
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isUpdatingPassword = false;
@@ -64,22 +90,27 @@ class ProfileProvider extends ChangeNotifier {
     final user = _supabase.auth.currentUser;
     if (user != null) {
       try {
-        final data = await _supabase
-            .from('profiles')
-            .select('id, role, full_name, phone, document_type, document_number, avatar_url')
-            .eq('auth_user_id', user.id)
-            .maybeSingle();
+        final data =
+            await _supabase
+                .from('profiles')
+                .select(
+                  'id, role, full_name, phone, document_type, document_number, avatar_url',
+                )
+                .eq('auth_user_id', user.id)
+                .maybeSingle();
 
         if (data != null) {
           _profileId = data['id']?.toString();
-          _userRole = data['role'] == AppRoles.admin ? 'Administrador' : 'Cliente';
+          _userRole =
+              data['role'] == AppRoles.admin ? 'Administrador' : 'Cliente';
           _fullName = data['full_name'] ?? '';
           _phone = data['phone'] ?? '';
           _documentNumber = data['document_number'] ?? '';
           _avatarUrl = data['avatar_url'];
-          _documentType = ['DNI', 'RUC', 'CE', 'PASAPORTE'].contains(data['document_type'])
-              ? data['document_type']
-              : 'DNI';
+          _documentType =
+              ['DNI', 'RUC', 'CE', 'PASAPORTE'].contains(data['document_type'])
+                  ? data['document_type']
+                  : 'DNI';
         } else {
           _userRole = 'Cliente';
         }
@@ -88,7 +119,7 @@ class ProfileProvider extends ChangeNotifier {
         _userRole = 'Cliente';
       }
     }
-    
+
     _isLoading = false;
     _safeNotify();
   }
@@ -111,15 +142,23 @@ class ProfileProvider extends ChangeNotifier {
 
       if (_imageBytes != null) {
         oldAvatarUrl = _avatarUrl;
-        final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        
-        await _supabase.storage.from('avatars').uploadBinary(
-          fileName,
-          _imageBytes!,
-          fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
-        );
-        
-        finalAvatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
+        final fileName =
+            '${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        await _supabase.storage
+            .from('avatars')
+            .uploadBinary(
+              fileName,
+              _imageBytes!,
+              fileOptions: const FileOptions(
+                contentType: 'image/jpeg',
+                upsert: true,
+              ),
+            );
+
+        finalAvatarUrl = _supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
       }
 
       await _supabase
@@ -134,7 +173,9 @@ class ProfileProvider extends ChangeNotifier {
           .eq('auth_user_id', user.id);
 
       // Borrar foto vieja
-      if (_imageBytes != null && oldAvatarUrl != null && oldAvatarUrl.contains('/public/avatars/')) {
+      if (_imageBytes != null &&
+          oldAvatarUrl != null &&
+          oldAvatarUrl.contains('/public/avatars/')) {
         final oldPath = oldAvatarUrl.split('/public/avatars/').last;
         if (oldPath.isNotEmpty) {
           try {
@@ -199,7 +240,8 @@ class ProfileProvider extends ChangeNotifier {
         format: CompressFormat.jpeg,
       );
 
-      if (bytesComprimidos.isNotEmpty && bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
+      if (bytesComprimidos.isNotEmpty &&
+          bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
         return bytesComprimidos;
       }
     } catch (e) {
@@ -209,14 +251,16 @@ class ProfileProvider extends ChangeNotifier {
     return bytesOriginales;
   }
 
-  // TODO: Add delete account method (requires API call or Edge Function to bypass RLS)
+  // Add delete account method (requires API call or Edge Function to bypass RLS)
   // Or if RLS allows self-deletion from profiles, we can do that, but to delete the actual
   // auth.users row, it requires a backend function (Supabase Edge Function or custom Postgres function).
-  // I will implement a Postgres RPC call 'delete_user_account' assuming it exists or could be created, 
+  // I will implement a Postgres RPC call 'delete_user_account' assuming it exists or could be created,
   // or I can call an Edge Function. For now, calling RPC `delete_user_account`.
   Future<String?> deleteAccount(String password) async {
     final user = _supabase.auth.currentUser;
-    if (user == null || user.email == null) return 'No hay usuario autenticado.';
+    if (user == null || user.email == null) {
+      return 'No hay usuario autenticado.';
+    }
 
     _isDeletingAccount = true;
     _safeNotify();
