@@ -11,6 +11,7 @@ import 'package:inventory_store_app/screens/admin/widgets/customer_detail/custom
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_addresses_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_top_products_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_recent_orders_section.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class CustomerDetailScreen extends StatelessWidget {
   final CustomerSummary customer;
@@ -66,9 +67,7 @@ class _CustomerDetailContent extends StatelessWidget {
               ),
             ),
             if (provider.isLoading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              )
+              const SliverFillRemaining(child: _CustomerDetailSkeleton())
             else if (provider.errorMessage != null)
               SliverFillRemaining(
                 child: Center(
@@ -110,6 +109,41 @@ class _CustomerDetailContent extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CustomerDetailSkeleton extends StatelessWidget {
+  const _CustomerDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+              SizedBox(width: 12),
+              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+              SizedBox(width: 12),
+              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const AppShimmer(width: 150, height: 24, borderRadius: 4),
+          const SizedBox(height: 16),
+          const AppShimmer(height: 120, borderRadius: 16),
+          const SizedBox(height: 24),
+          const AppShimmer(width: 180, height: 24, borderRadius: 4),
+          const SizedBox(height: 16),
+          const AppShimmer(height: 200, borderRadius: 16),
+        ],
       ),
     );
   }

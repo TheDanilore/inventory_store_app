@@ -228,9 +228,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
             // LISTA PRINCIPAL
             if (provider.isLoading && provider.customers.isEmpty)
-              const SliverFillRemaining(
-                child: _CustomersSkeleton(),
-              )
+              const SliverFillRemaining(child: _CustomersSkeleton())
             else if (provider.customers.isEmpty)
               SliverFillRemaining(
                 child: Center(

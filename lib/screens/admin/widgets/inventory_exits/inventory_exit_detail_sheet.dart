@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/inventory_exit_model.dart';
 import 'package:inventory_store_app/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class InventoryExitDetailSheet extends StatefulWidget {
   final InventoryExitModel exitData;
@@ -236,11 +237,9 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
                   const SizedBox(height: 12),
 
                   if (_items == null)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(),
-                      ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: _ItemsSkeleton(),
                     )
                   else if (_items!.isEmpty)
                     const Text(
@@ -404,6 +403,44 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ItemsSkeleton extends StatelessWidget {
+  const _ItemsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(3, (index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              const AppShimmer(width: 48, height: 48, borderRadius: 8),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    AppShimmer(width: 120, height: 14, borderRadius: 4),
+                    SizedBox(height: 6),
+                    AppShimmer(width: 80, height: 10, borderRadius: 4),
+                  ],
+                ),
+              ),
+              const AppShimmer(width: 60, height: 16, borderRadius: 4),
+            ],
+          ),
+        );
+      }),
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:inventory_store_app/services/admin/inventory_entries_service.dar
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -312,11 +313,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               Expanded(
                 child:
                     provider.isLoading
-                        ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        )
+                        ? const _EntriesSkeleton()
                         : provider.entries.isEmpty
                         ? _EmptyState(
                           icon: Icons.inbox_outlined,
@@ -717,4 +714,65 @@ class _EmptyState extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _EntriesSkeleton extends StatelessWidget {
+  const _EntriesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const AppShimmer(width: 40, height: 40, borderRadius: 10),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AppShimmer(width: 120, height: 14, borderRadius: 4),
+                        SizedBox(height: 6),
+                        AppShimmer(width: 80, height: 10, borderRadius: 4),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: const [
+                      AppShimmer(width: 60, height: 16, borderRadius: 4),
+                      SizedBox(height: 6),
+                      AppShimmer(width: 40, height: 10, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: const [
+                  AppShimmer(width: 80, height: 20, borderRadius: 8),
+                  SizedBox(width: 6),
+                  AppShimmer(width: 100, height: 20, borderRadius: 8),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
