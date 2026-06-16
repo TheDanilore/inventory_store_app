@@ -33,8 +33,7 @@ class _CustomerDetailContent extends StatelessWidget {
     final customer = context.read<CustomerDetailProvider>().customer;
     await CustomerFormSheet.show(context, customer: customer);
     if (context.mounted) {
-      // Refresh the list of customers and the details
-      context.read<CustomersProvider>().fetchCustomers();
+      // Refresh the details
       context.read<CustomerDetailProvider>().loadAllData();
     }
   }

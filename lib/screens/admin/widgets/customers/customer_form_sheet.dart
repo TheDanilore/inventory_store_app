@@ -410,6 +410,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
+                                isExpanded: true,
                                 value: _docType,
                                 style: const TextStyle(
                                   color: AppColors.textPrimary,
@@ -430,7 +431,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                                   ),
                                   DropdownMenuItem(
                                     value: 'Pasaporte',
-                                    child: Text('Pasaporte'),
+                                    child: Text('Pasaporte', overflow: TextOverflow.ellipsis),
                                   ),
                                 ],
                                 onChanged:
