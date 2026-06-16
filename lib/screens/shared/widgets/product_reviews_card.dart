@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
-
 class ProductReviewsCard extends StatelessWidget {
   final double averageRating;
   final int totalReviews;
