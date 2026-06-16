@@ -157,33 +157,33 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                          Text(
-                            product.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  isAgotado
-                                      ? Colors.grey.shade500
-                                      : Colors.grey.shade800,
+                            Text(
+                              product.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isAgotado
+                                        ? Colors.grey.shade500
+                                        : Colors.grey.shade800,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'S/ ${product.salePrice.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color:
-                                  isAgotado
-                                      ? Colors.grey.shade400
-                                      : AppColors.primary,
+                            const SizedBox(height: 6),
+                            Text(
+                              'S/ ${product.salePrice.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color:
+                                    isAgotado
+                                        ? Colors.grey.shade400
+                                        : AppColors.primary,
+                              ),
                             ),
-                          ),
                           ],
-                        )
+                        ),
                       ),
                       Align(
                         alignment: Alignment.centerRight,
@@ -251,12 +251,18 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
                                               if (_isButtonHovered &&
                                                   !isAgotado) ...[
                                                 const SizedBox(width: 6),
-                                                const Text(
-                                                  'Añadir',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
+                                                const Flexible(
+                                                  child: Text(
+                                                    'Añadir',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 13,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.clip,
+                                                    softWrap: false,
                                                   ),
                                                 ),
                                               ],

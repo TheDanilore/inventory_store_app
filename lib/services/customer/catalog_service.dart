@@ -90,7 +90,7 @@ class CatalogService {
         .from('product_variants')
         .select('''
           *,
-          product_images(id, image_url, is_main, display_order),
+          product_images(*)
           variant_attribute_values(
             attribute_values(id, value, attributes(id, name))
           )
