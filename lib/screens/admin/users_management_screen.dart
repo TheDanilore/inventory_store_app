@@ -14,10 +14,12 @@ class UsersManagementScreen extends StatefulWidget {
   State<UsersManagementScreen> createState() => _UsersManagementScreenState();
 }
 
-class _UsersManagementScreenState extends State<UsersManagementScreen> {
+class _UsersManagementScreenState extends State<UsersManagementScreen>
+    with SingleTickerProviderStateMixin {
   final _searchCtrl = TextEditingController();
+  late TabController _tabController;
   bool _onlyActive = false;
-  
+
   // Para los conteos globales mostrados en los tabs
   int _customerTotal = 0;
   int _adminTotal = 0;
@@ -25,11 +27,13 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchGlobalCounts();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -37,9 +41,17 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   Future<void> _fetchGlobalCounts() async {
     try {
       final supabase = Supabase.instance.client;
-      final customerRes = await supabase.from('profiles_with_email').select('id').eq('role', AppRoles.customer).count(CountOption.exact);
-      final adminRes = await supabase.from('profiles_with_email').select('id').eq('role', AppRoles.admin).count(CountOption.exact);
-      
+      final customerRes = await supabase
+          .from('profiles_with_email')
+          .select('id')
+          .eq('role', AppRoles.customer)
+          .count(CountOption.exact);
+      final adminRes = await supabase
+          .from('profiles_with_email')
+          .select('id')
+          .eq('role', AppRoles.admin)
+          .count(CountOption.exact);
+
       if (mounted) {
         setState(() {
           _customerTotal = customerRes.count;
@@ -59,179 +71,199 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: AdminLayout(
-        title: 'Usuarios',
-        showBackButton: true,
-        body: Column(
-          children: [
-            // ─── BUSCADOR Y FILTROS ──────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              color: Colors.white,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchCtrl,
-                          onSubmitted: (_) => setState(() {}),
-                          textInputAction: TextInputAction.search,
-                          decoration: InputDecoration(
-                            hintText: 'Buscar por nombre, correo, teléfono o DNI...',
-                            hintStyle: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontSize: 14,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search_rounded,
-                              color: Colors.grey.shade400,
-                            ),
-                            suffixIcon: _searchCtrl.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear_rounded, color: Colors.grey),
+    return AdminLayout(
+      title: 'Usuarios',
+      showBackButton: true,
+      body: Column(
+        children: [
+          // ─── BUSCADOR Y FILTROS ──────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            color: Colors.white,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        onSubmitted: (_) => setState(() {}),
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Buscar por nombre, correo, teléfono o DNI...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            color: Colors.grey.shade400,
+                          ),
+                          suffixIcon:
+                              _searchCtrl.text.isNotEmpty
+                                  ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear_rounded,
+                                      color: Colors.grey,
+                                    ),
                                     onPressed: () {
                                       _searchCtrl.clear();
                                       setState(() {});
                                     },
                                   )
-                                : null,
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: Colors.grey.shade200),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: Colors.grey.shade200),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                                  : null,
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 0,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: AppColors.primary,
+                              width: 1.5,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Botón de exportar
-                      Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.green.shade200),
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.file_download_outlined, color: Colors.green.shade700),
-                          tooltip: 'Exportar a Excel/CSV',
-                          onPressed: () => _exportToCsv(context),
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Botón de exportar
+                    Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.green.shade200),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Mostrar solo usuarios activos',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.file_download_outlined,
+                          color: Colors.green.shade700,
                         ),
+                        tooltip: 'Exportar a Excel/CSV',
+                        onPressed: () => _exportToCsv(context),
                       ),
-                      Switch(
-                        value: _onlyActive,
-                        activeThumbColor: AppColors.primary,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        onChanged: (val) {
-                          setState(() {
-                            _onlyActive = val;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ─── TABS ────────────────────────────────────────────────────────
-            Material(
-              color: AppColors.primary,
-              child: TabBar(
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
-                indicatorWeight: 3.5,
-                labelStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+                    ),
+                  ],
                 ),
-                unselectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Mostrar solo usuarios activos',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Switch(
+                      value: _onlyActive,
+                      activeThumbColor: AppColors.primary,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onChanged: (val) {
+                        setState(() {
+                          _onlyActive = val;
+                        });
+                      },
+                    ),
+                  ],
                 ),
-                tabs: [
-                  Tab(
-                    iconMargin: const EdgeInsets.only(bottom: 6),
-                    icon: const Icon(Icons.people_outline_rounded, size: 20),
-                    text: 'Clientes ($_customerTotal)',
-                  ),
-                  Tab(
-                    iconMargin: const EdgeInsets.only(bottom: 6),
-                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 20),
-                    text: 'Admins ($_adminTotal)',
-                  ),
-                ],
-              ),
+              ],
             ),
-
-            // ─── LISTAS ──────────────────────────────────────────────────────
-            Expanded(
-              child: TabBarView(
-                children: [
-                  UsersTab(
-                    role: AppRoles.customer,
-                    searchQuery: _searchCtrl.text,
-                    onlyActive: _onlyActive,
-                  ),
-                  UsersTab(
-                    role: AppRoles.admin,
-                    searchQuery: _searchCtrl.text,
-                    onlyActive: _onlyActive,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: AppColors.primary,
-          onPressed: () async {
-            final changed = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const UserFormScreen()),
-            );
-            if (changed == true) {
-              _fetchGlobalCounts();
-              // To trigger refresh in tabs we could use an event bus or a key,
-              // but normally if we add a user, changing the tab or searching reloads.
-              // For a simple reload we could just do a setState which rebuilds Tabs.
-              setState(() {}); 
-            }
-          },
-          icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-          label: const Text(
-            'Nuevo',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
+
+          // ─── TABS ────────────────────────────────────────────────────────
+          Material(
+            color: AppColors.primary,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3.5,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              tabs: [
+                Tab(
+                  iconMargin: const EdgeInsets.only(bottom: 6),
+                  icon: const Icon(Icons.people_outline_rounded, size: 20),
+                  text: 'Clientes ($_customerTotal)',
+                ),
+                Tab(
+                  iconMargin: const EdgeInsets.only(bottom: 6),
+                  icon: const Icon(
+                    Icons.admin_panel_settings_outlined,
+                    size: 20,
+                  ),
+                  text: 'Admins ($_adminTotal)',
+                ),
+              ],
+            ),
+          ),
+
+          // ─── LISTAS ──────────────────────────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                UsersTab(
+                  role: AppRoles.customer,
+                  searchQuery: _searchCtrl.text,
+                  onlyActive: _onlyActive,
+                ),
+                UsersTab(
+                  role: AppRoles.admin,
+                  searchQuery: _searchCtrl.text,
+                  onlyActive: _onlyActive,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        onPressed: () async {
+          final initialRole =
+              _tabController.index == 0 ? AppRoles.customer : AppRoles.admin;
+          final changed = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => UserFormScreen(initialRole: initialRole),
+            ),
+          );
+          if (changed == true) {
+            _fetchGlobalCounts();
+            // To trigger refresh in tabs we could use an event bus or a key,
+            // but normally if we add a user, changing the tab or searching reloads.
+            // For a simple reload we could just do a setState which rebuilds Tabs.
+            setState(() {});
+          }
+        },
+        icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+        label: const Text(
+          'Nuevo',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
