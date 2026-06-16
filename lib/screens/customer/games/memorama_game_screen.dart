@@ -15,7 +15,8 @@ class _MemoryCard {
   final String symbol;
   _CardMatchState state;
 
-  _MemoryCard({required this.id, required this.symbol}) : state = _CardMatchState.hidden;
+  _MemoryCard({required this.id, required this.symbol})
+    : state = _CardMatchState.hidden;
 }
 
 class MemoramaGameScreen extends StatefulWidget {
@@ -136,7 +137,8 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     final firstCard = _cards[firstIndex];
     final secondCard = _cards[index];
     final isMatch = firstCard.id == secondCard.id;
-    final matchReward = _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
+    final matchReward =
+        _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
 
     setState(() {
       if (isMatch) {
@@ -151,7 +153,9 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
       _isResolving = false;
     });
 
-    final completed = _cards.every((card) => card.state == _CardMatchState.matched);
+    final completed = _cards.every(
+      (card) => card.state == _CardMatchState.matched,
+    );
     if (completed) {
       await _endGame(completed: true);
     }
@@ -194,7 +198,8 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
   @override
   Widget build(BuildContext context) {
     final canTapBoard = _isPlaying && !_isResolving;
-    final matchReward = _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
+    final matchReward =
+        _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
     final matchedPairs = matchReward <= 0 ? 0 : (_score ~/ matchReward);
 
     return Scaffold(
@@ -210,8 +215,18 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildHudCard(Icons.grid_view_rounded, 'Parejas', Colors.amber, value: '$matchedPairs/8'),
-                        _buildHudCard(Icons.timer_rounded, 'Tiempo', Colors.white, value: '00:${_timeLeft.toString().padLeft(2, '0')}'),
+                        _buildHudCard(
+                          Icons.grid_view_rounded,
+                          'Parejas',
+                          Colors.amber,
+                          value: '$matchedPairs/8',
+                        ),
+                        _buildHudCard(
+                          Icons.timer_rounded,
+                          'Tiempo',
+                          Colors.white,
+                          value: '00:${_timeLeft.toString().padLeft(2, '0')}',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 18),
@@ -219,34 +234,46 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                       child: GridView.builder(
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _cards.length,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                            ),
                         itemBuilder: (context, index) {
                           final card = _cards[index];
-                          final isVisible = card.state != _CardMatchState.hidden;
+                          final isVisible =
+                              card.state != _CardMatchState.hidden;
 
                           return GestureDetector(
                             onTap: canTapBoard ? () => _handleTap(index) : null,
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 220),
                               decoration: BoxDecoration(
-                                gradient: isVisible
-                                    ? const LinearGradient(
-                                        colors: [Color(0xFFFFE7B3), Color(0xFFFFC85C)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                    : const LinearGradient(
-                                        colors: [Color(0xFFEAF7F5), Color(0xFFD8F1EE)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
+                                gradient:
+                                    isVisible
+                                        ? const LinearGradient(
+                                          colors: [
+                                            Color(0xFFFFE7B3),
+                                            Color(0xFFFFC85C),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                        : const LinearGradient(
+                                          colors: [
+                                            Color(0xFFEAF7F5),
+                                            Color(0xFFD8F1EE),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
                                 borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: card.state == _CardMatchState.matched ? const Color(0xFF0F9D8F) : Colors.white,
+                                  color:
+                                      card.state == _CardMatchState.matched
+                                          ? const Color(0xFF0F9D8F)
+                                          : Colors.white,
                                   width: 2,
                                 ),
                                 boxShadow: [
@@ -258,27 +285,34 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                                 ],
                               ),
                               child: Center(
-                                child: isVisible
-                                    ? Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text(card.symbol, style: const TextStyle(fontSize: 24)),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            card.id,
-                                            style: const TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              color: Color(0xFF5B3400),
+                                child:
+                                    isVisible
+                                        ? Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              card.symbol,
+                                              style: const TextStyle(
+                                                fontSize: 24,
+                                              ),
                                             ),
-                                          ),
-                                        ],
-                                      )
-                                    : const Icon(
-                                        Icons.question_mark_rounded,
-                                        color: Color(0xFF0F9D8F),
-                                        size: 22,
-                                      ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              card.id,
+                                              style: const TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF5B3400),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                        : const Icon(
+                                          Icons.question_mark_rounded,
+                                          color: Color(0xFF0F9D8F),
+                                          size: 22,
+                                        ),
                               ),
                             ),
                           );
@@ -296,7 +330,11 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.grid_view_rounded, size: 86, color: Colors.amber),
+                      const Icon(
+                        Icons.grid_view_rounded,
+                        size: 86,
+                        color: Colors.amber,
+                      ),
                       const SizedBox(height: 20),
                       const Text(
                         'Memorama contra reloj',
@@ -311,7 +349,11 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                       const Text(
                         'Encuentra las 8 parejas en 30 segundos. Cada pareja correcta suma monedas.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.35),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                          height: 1.35,
+                        ),
                       ),
                       const SizedBox(height: 40),
                       AppPrimaryButton(
@@ -323,7 +365,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Volver', style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          'Volver',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -360,7 +405,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                         Text(
                           completedMessage,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white70, height: 1.35),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            height: 1.35,
+                          ),
                         ),
                         const SizedBox(height: 40),
                         if (_isSaving)
@@ -390,7 +438,12 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     return 'No ganaste monedas esta vez, pero puedes intentarlo otra vez.';
   }
 
-  Widget _buildHudCard(IconData icon, String label, Color color, {required String value}) {
+  Widget _buildHudCard(
+    IconData icon,
+    String label,
+    Color color, {
+    required String value,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -404,8 +457,22 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.w700)),
-              Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w900)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color.withValues(alpha: 0.8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ],
           ),
         ],

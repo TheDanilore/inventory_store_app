@@ -19,7 +19,8 @@ class SupplierCreditAccountModal extends StatefulWidget {
       _SupplierCreditAccountModalState();
 }
 
-class _SupplierCreditAccountModalState extends State<SupplierCreditAccountModal> {
+class _SupplierCreditAccountModalState
+    extends State<SupplierCreditAccountModal> {
   final _service = SupplierCreditsService();
   final _searchCtrl = TextEditingController();
   final _limitCtrl = TextEditingController();
@@ -76,7 +77,7 @@ class _SupplierCreditAccountModalState extends State<SupplierCreditAccountModal>
     setState(() => _isSearching = true);
     try {
       final existingIds = await _service.getExistingCreditSupplierIds(
-        excludeSupplierId: _isEditing ? widget.accountToEdit!.supplierId : null
+        excludeSupplierId: _isEditing ? widget.accountToEdit!.supplierId : null,
       );
       final filtered = await _service.searchSuppliers(text, existingIds);
 

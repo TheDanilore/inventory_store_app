@@ -61,7 +61,8 @@ class KardexMovementModel {
     final sku = variantJson?['sku']?.toString();
 
     // Extracción de atributos relacionales
-    final vavList = variantJson?['variant_attribute_values'] as List<dynamic>? ?? [];
+    final vavList =
+        variantJson?['variant_attribute_values'] as List<dynamic>? ?? [];
     final List<String> attrValues = [];
     for (var vav in vavList) {
       final av = vav['attribute_values'] as Map<String, dynamic>?;
@@ -73,19 +74,18 @@ class KardexMovementModel {
 
     // Extracción de la imagen (Prioridad: Variante -> Producto)
     String? finalImageUrl;
-    final variantImages = variantJson?['product_images'] as List<dynamic>? ?? [];
+    final variantImages =
+        variantJson?['product_images'] as List<dynamic>? ?? [];
     final prodImages = prodJson?['product_images'] as List<dynamic>? ?? [];
 
     if (variantImages.isNotEmpty) {
       finalImageUrl = variantImages.first['image_url'] as String?;
     } else if (prodImages.isNotEmpty) {
       try {
-        final mainImage = prodImages
-            .cast<Map<String, dynamic>>()
-            .firstWhere(
-              (img) => img['is_main'] == true,
-              orElse: () => prodImages.first as Map<String, dynamic>,
-            );
+        final mainImage = prodImages.cast<Map<String, dynamic>>().firstWhere(
+          (img) => img['is_main'] == true,
+          orElse: () => prodImages.first as Map<String, dynamic>,
+        );
         finalImageUrl = mainImage['image_url'] as String?;
       } catch (_) {
         // En caso de que prodImages esté vacío a pesar de la validación

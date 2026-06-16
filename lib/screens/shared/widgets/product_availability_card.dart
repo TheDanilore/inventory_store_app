@@ -14,9 +14,10 @@ class ProductAvailabilityCard extends StatelessWidget {
     final provider = context.watch<ProductDetailProvider>();
     if (!provider.isAdmin) return const SizedBox.shrink();
 
-    final filteredStocks = provider.warehouseStocks
-        .where((row) => row['variant_id'] == provider.selectedVariantId)
-        .toList();
+    final filteredStocks =
+        provider.warehouseStocks
+            .where((row) => row['variant_id'] == provider.selectedVariantId)
+            .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),

@@ -65,11 +65,8 @@ class KardexCard extends StatelessWidget {
     final movementType = item.movementType;
 
     final iconColor =
-        item.isEntry
-            ? Colors.green
-            : (item.isSale ? Colors.blue : Colors.red);
-    final iconData =
-        item.isEntry ? Icons.arrow_downward : Icons.arrow_upward;
+        item.isEntry ? Colors.green : (item.isSale ? Colors.blue : Colors.red);
+    final iconData = item.isEntry ? Icons.arrow_downward : Icons.arrow_upward;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),

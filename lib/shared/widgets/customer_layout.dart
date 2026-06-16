@@ -338,8 +338,7 @@ class CustomerLayout extends StatelessWidget {
                     Navigator.pushReplacement(
                       context,
                       PageRouteBuilder(
-                        pageBuilder:
-                            (_, _, _) => const CustomerCatalogScreen(),
+                        pageBuilder: (_, _, _) => const CustomerCatalogScreen(),
                         transitionDuration: Duration.zero,
                       ),
                     );

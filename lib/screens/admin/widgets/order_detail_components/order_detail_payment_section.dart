@@ -46,7 +46,8 @@ class OrderDetailPaymentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isCrediToLocked = isCompleted && currentPaymentMethod == 'CRÉDITO';
+    final bool isCrediToLocked =
+        isCompleted && currentPaymentMethod == 'CRÉDITO';
 
     final List<Map<String, dynamic>> fixedOptions = [
       {'id': 'POR_ACORDAR', 'name': 'POR ACORDAR', 'type': 'FIXED'},
@@ -54,8 +55,11 @@ class OrderDetailPaymentSection extends StatelessWidget {
     ];
 
     final allOptions = [...fixedOptions, ...accounts];
-    final String safeValue = currentPaymentMethod.isNotEmpty ? currentPaymentMethod : 'POR ACORDAR';
-    final bool valueInList = allOptions.any((o) => o['name'] as String == safeValue);
+    final String safeValue =
+        currentPaymentMethod.isNotEmpty ? currentPaymentMethod : 'POR ACORDAR';
+    final bool valueInList = allOptions.any(
+      (o) => o['name'] as String == safeValue,
+    );
 
     return OrderDetailSectionCard(
       title: 'Método de Pago / Cuenta',
@@ -70,7 +74,9 @@ class OrderDetailPaymentSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF3C7),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                ),
               ),
               child: const Row(
                 children: [
@@ -93,22 +99,30 @@ class OrderDetailPaymentSection extends StatelessWidget {
           if (!isEditing || isCrediToLocked) ...[
             _PaymentMethodBadge(
               label: safeValue,
-              icon: accounts.any((a) => a['name'] == safeValue)
-                  ? _iconForType(
-                      accounts.firstWhere(
-                        (a) => a['name'] == safeValue,
-                        orElse: () => {'type': 'OTRO'},
-                      )['type'] as String,
-                    )
-                  : (safeValue == 'CRÉDITO' ? Icons.handshake_rounded : Icons.help_outline_rounded),
-              color: accounts.any((a) => a['name'] == safeValue)
-                  ? _colorForType(
-                      accounts.firstWhere(
-                        (a) => a['name'] == safeValue,
-                        orElse: () => {'type': 'OTRO'},
-                      )['type'] as String,
-                    )
-                  : (safeValue == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted),
+              icon:
+                  accounts.any((a) => a['name'] == safeValue)
+                      ? _iconForType(
+                        accounts.firstWhere(
+                              (a) => a['name'] == safeValue,
+                              orElse: () => {'type': 'OTRO'},
+                            )['type']
+                            as String,
+                      )
+                      : (safeValue == 'CRÉDITO'
+                          ? Icons.handshake_rounded
+                          : Icons.help_outline_rounded),
+              color:
+                  accounts.any((a) => a['name'] == safeValue)
+                      ? _colorForType(
+                        accounts.firstWhere(
+                              (a) => a['name'] == safeValue,
+                              orElse: () => {'type': 'OTRO'},
+                            )['type']
+                            as String,
+                      )
+                      : (safeValue == 'CRÉDITO'
+                          ? AppColors.teal
+                          : AppColors.textMuted),
             ),
           ] else ...[
             SizedBox(
@@ -135,7 +149,8 @@ class OrderDetailPaymentSection extends StatelessWidget {
                   final name = option['name'] as String;
                   final type = option['type'] as String;
                   final isFixed = type == 'FIXED';
-                  final balance = isFixed ? null : (option['balance'] as num?)?.toDouble();
+                  final balance =
+                      isFixed ? null : (option['balance'] as num?)?.toDouble();
                   final isSelected = name == safeValue;
 
                   return _buildChip(
@@ -163,12 +178,16 @@ class OrderDetailPaymentSection extends StatelessWidget {
     required bool isFixed,
     required VoidCallback onTap,
   }) {
-    final Color typeColor = isFixed
-        ? (name == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted)
-        : _colorForType(type);
-    final IconData icon = isFixed
-        ? (name == 'CRÉDITO' ? Icons.handshake_rounded : Icons.pending_actions_rounded)
-        : _iconForType(type);
+    final Color typeColor =
+        isFixed
+            ? (name == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted)
+            : _colorForType(type);
+    final IconData icon =
+        isFixed
+            ? (name == 'CRÉDITO'
+                ? Icons.handshake_rounded
+                : Icons.pending_actions_rounded)
+            : _iconForType(type);
 
     return GestureDetector(
       onTap: onTap,
@@ -182,15 +201,16 @@ class OrderDetailPaymentSection extends StatelessWidget {
             color: isSelected ? AppColors.teal : AppColors.border,
             width: isSelected ? 1.5 : 1,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.teal.withValues(alpha: 0.18),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: AppColors.teal.withValues(alpha: 0.18),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -199,7 +219,11 @@ class OrderDetailPaymentSection extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 13, color: isSelected ? Colors.white : typeColor),
+                Icon(
+                  icon,
+                  size: 13,
+                  color: isSelected ? Colors.white : typeColor,
+                ),
                 const SizedBox(width: 5),
                 Text(
                   name,
@@ -217,11 +241,15 @@ class OrderDetailPaymentSection extends StatelessWidget {
               children: [
                 if (!isFixed) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : typeColor.withValues(alpha: 0.1),
+                      color:
+                          isSelected
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : typeColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -240,12 +268,15 @@ class OrderDetailPaymentSection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white70 : AppColors.textMuted,
+                        color:
+                            isSelected ? Colors.white70 : AppColors.textMuted,
                       ),
                     ),
                 ] else
                   Text(
-                    name == 'CRÉDITO' ? 'A cuenta del cliente' : 'Definir luego',
+                    name == 'CRÉDITO'
+                        ? 'A cuenta del cliente'
+                        : 'Definir luego',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,

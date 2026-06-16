@@ -7,7 +7,11 @@ class TopCustomersSection extends StatelessWidget {
   final List<CustomerSummary> top;
   final void Function(CustomerSummary) onTap;
 
-  const TopCustomersSection({super.key, required this.top, required this.onTap});
+  const TopCustomersSection({
+    super.key,
+    required this.top,
+    required this.onTap,
+  });
 
   static const _medals = ['🥇', '🥈', '🥉', '4°', '5°'];
 
@@ -40,7 +44,8 @@ class TopCustomersSection extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: 125, // Incrementado de 110 a 125 para evitar el RenderFlex overflow
+          height:
+              125, // Incrementado de 110 a 125 para evitar el RenderFlex overflow
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -124,7 +129,7 @@ class _MiniAvatar extends StatelessWidget {
         backgroundImage: CachedNetworkImageProvider(avatarUrl!),
       );
     }
-    
+
     return CircleAvatar(
       radius: 12,
       backgroundColor: Colors.primaries[name.length % Colors.primaries.length],

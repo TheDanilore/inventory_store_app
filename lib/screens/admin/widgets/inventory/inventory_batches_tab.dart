@@ -13,7 +13,8 @@ class InventoryBatchesTab extends StatefulWidget {
   State<InventoryBatchesTab> createState() => _InventoryBatchesTabState();
 }
 
-class _InventoryBatchesTabState extends State<InventoryBatchesTab> with AutomaticKeepAliveClientMixin {
+class _InventoryBatchesTabState extends State<InventoryBatchesTab>
+    with AutomaticKeepAliveClientMixin {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
@@ -59,8 +60,12 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab> with Automati
                     count: provider.countVencido,
                     color: AppColors.danger,
                     selected: provider.batchStatusFilter == 'Vencido',
-                    onTap: () => provider.setBatchStatus(
-                        provider.batchStatusFilter == 'Vencido' ? 'Todos' : 'Vencido'),
+                    onTap:
+                        () => provider.setBatchStatus(
+                          provider.batchStatusFilter == 'Vencido'
+                              ? 'Todos'
+                              : 'Vencido',
+                        ),
                   ),
                   const SizedBox(width: 6),
                   _StatusChip(
@@ -68,8 +73,12 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab> with Automati
                     count: provider.countCritico,
                     color: AppColors.warning,
                     selected: provider.batchStatusFilter == 'Crítico',
-                    onTap: () => provider.setBatchStatus(
-                        provider.batchStatusFilter == 'Crítico' ? 'Todos' : 'Crítico'),
+                    onTap:
+                        () => provider.setBatchStatus(
+                          provider.batchStatusFilter == 'Crítico'
+                              ? 'Todos'
+                              : 'Crítico',
+                        ),
                   ),
                   const SizedBox(width: 6),
                   _StatusChip(
@@ -77,8 +86,12 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab> with Automati
                     count: provider.countProximo,
                     color: Colors.orange.shade400,
                     selected: provider.batchStatusFilter == 'Próximo',
-                    onTap: () => provider.setBatchStatus(
-                        provider.batchStatusFilter == 'Próximo' ? 'Todos' : 'Próximo'),
+                    onTap:
+                        () => provider.setBatchStatus(
+                          provider.batchStatusFilter == 'Próximo'
+                              ? 'Todos'
+                              : 'Próximo',
+                        ),
                   ),
                   const SizedBox(width: 6),
                   _StatusChip(
@@ -86,8 +99,12 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab> with Automati
                     count: provider.countNormal,
                     color: AppColors.success,
                     selected: provider.batchStatusFilter == 'Normal',
-                    onTap: () => provider.setBatchStatus(
-                        provider.batchStatusFilter == 'Normal' ? 'Todos' : 'Normal'),
+                    onTap:
+                        () => provider.setBatchStatus(
+                          provider.batchStatusFilter == 'Normal'
+                              ? 'Todos'
+                              : 'Normal',
+                        ),
                   ),
                 ],
               ),
@@ -118,18 +135,22 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab> with Automati
                       size: 20,
                       color: AppColors.textSecondary,
                     ),
-                    suffixIcon: _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            color: AppColors.textSecondary,
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              provider.setBatchSearch('');
-                            },
-                          )
-                        : null,
+                    suffixIcon:
+                        _searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              color: AppColors.textSecondary,
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                provider.setBatchSearch('');
+                              },
+                            )
+                            : null,
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
@@ -152,30 +173,35 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab> with Automati
               ),
 
             Expanded(
-              child: provider.isLoadingBatches
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                      ),
-                    )
-                  : provider.errorMessageBatches.isNotEmpty
+              child:
+                  provider.isLoadingBatches
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                        ),
+                      )
+                      : provider.errorMessageBatches.isNotEmpty
                       ? Center(child: Text(provider.errorMessageBatches))
                       : provider.batchItems.isEmpty
-                          ? const _EmptyState(
-                              icon: Icons.event_available_rounded,
-                              message: 'No hay lotes con stock disponible',
-                            )
-                          : RefreshIndicator(
-                              color: AppColors.primary,
-                              onRefresh: () async => provider.fetchBatchPage(),
-                              child: ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                itemCount: provider.batchItems.length,
-                                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                itemBuilder: (_, i) => InventoryBatchCard(batch: provider.batchItems[i]),
+                      ? const _EmptyState(
+                        icon: Icons.event_available_rounded,
+                        message: 'No hay lotes con stock disponible',
+                      )
+                      : RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () async => provider.fetchBatchPage(),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: provider.batchItems.length,
+                          separatorBuilder:
+                              (_, _) => const SizedBox(height: 10),
+                          itemBuilder:
+                              (_, i) => InventoryBatchCard(
+                                batch: provider.batchItems[i],
                               ),
-                            ),
+                        ),
+                      ),
             ),
 
             if (!provider.isLoadingBatches && provider.totalBatchPages > 1)
@@ -224,15 +250,16 @@ class _StatusChip extends StatelessWidget {
               color: selected ? color : AppColors.border,
               width: selected ? 1.5 : 1,
             ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : null,
+            boxShadow:
+                selected
+                    ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : null,
           ),
           child: Column(
             children: [
@@ -250,7 +277,10 @@ class _StatusChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? Colors.white.withValues(alpha: 0.9) : AppColors.textSecondary,
+                  color:
+                      selected
+                          ? Colors.white.withValues(alpha: 0.9)
+                          : AppColors.textSecondary,
                 ),
               ),
             ],
@@ -265,10 +295,7 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
 
-  const _EmptyState({
-    required this.icon,
-    required this.message,
-  });
+  const _EmptyState({required this.icon, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -282,11 +309,7 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 40,
-              color: AppColors.primary,
-            ),
+            child: Icon(icon, size: 40, color: AppColors.primary),
           ),
           const SizedBox(height: 16),
           Text(

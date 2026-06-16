@@ -14,7 +14,7 @@ class InventoryBatchItem {
   final String? sku;
   final bool usesBatches;
   final String? imageUrl;
-  
+
   // Computados
   String status;
   int? daysRemaining;

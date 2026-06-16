@@ -25,7 +25,7 @@ class SupplierCreditsProvider extends ChangeNotifier {
 
   int _totalPages = 1;
   int get totalPages => _totalPages;
-  
+
   static const int _pageSize = 8;
 
   // Stats

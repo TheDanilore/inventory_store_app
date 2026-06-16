@@ -207,7 +207,9 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
                     ),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.1,
+                        ),
                         child: const Icon(
                           Icons.science_rounded,
                           color: AppColors.primary,

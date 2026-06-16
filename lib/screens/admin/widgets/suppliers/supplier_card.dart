@@ -64,7 +64,9 @@ class SupplierCard extends StatelessWidget {
                           ? AppColors.tealLight
                           : Colors.grey.shade200,
                   child: Text(
-                    supplier.name.isNotEmpty ? supplier.name.substring(0, 1).toUpperCase() : '?',
+                    supplier.name.isNotEmpty
+                        ? supplier.name.substring(0, 1).toUpperCase()
+                        : '?',
                     style: TextStyle(
                       color:
                           supplier.isActive ? AppColors.tealDark : Colors.grey,
@@ -149,13 +151,14 @@ class SupplierCard extends StatelessWidget {
                         icon: Icons.person_rounded,
                         text: supplier.contactName!,
                       ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Fila de acciones rápidas para contacto
                     Row(
                       children: [
-                        if (supplier.phone != null && supplier.phone!.isNotEmpty) ...[
+                        if (supplier.phone != null &&
+                            supplier.phone!.isNotEmpty) ...[
                           Expanded(
                             child: _ContactActionChip(
                               icon: Icons.phone_rounded,
@@ -166,15 +169,21 @@ class SupplierCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           _ContactActionChip(
-                            icon: Icons.message_rounded, // Usaremos este icono como genérico para WA
+                            icon:
+                                Icons
+                                    .message_rounded, // Usaremos este icono como genérico para WA
                             label: 'WA',
                             onTap: _openWhatsApp,
                             color: Colors.green,
                           ),
                         ],
-                        if (supplier.phone != null && supplier.email != null && supplier.phone!.isNotEmpty && supplier.email!.isNotEmpty)
+                        if (supplier.phone != null &&
+                            supplier.email != null &&
+                            supplier.phone!.isNotEmpty &&
+                            supplier.email!.isNotEmpty)
                           const SizedBox(width: 8),
-                        if (supplier.email != null && supplier.email!.isNotEmpty)
+                        if (supplier.email != null &&
+                            supplier.email!.isNotEmpty)
                           Expanded(
                             child: _ContactActionChip(
                               icon: Icons.email_rounded,

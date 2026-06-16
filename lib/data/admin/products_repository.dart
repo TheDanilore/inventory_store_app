@@ -64,9 +64,11 @@ class ProductsRepository {
     String? searchTerm,
     bool isAdmin = false,
   }) async {
-    var query = _supabase.from('products').select(
-      'id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*)',
-    );
+    var query = _supabase
+        .from('products')
+        .select(
+          'id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*)',
+        );
 
     if (!isAdmin) {
       query = query.eq('is_active', true);

@@ -51,7 +51,8 @@ class OrderDetailCreditSection extends StatelessWidget {
                   color: isActive ? Colors.green.shade50 : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isActive ? Colors.green.shade200 : Colors.red.shade200,
+                    color:
+                        isActive ? Colors.green.shade200 : Colors.red.shade200,
                   ),
                 ),
                 child: Text(
@@ -59,7 +60,8 @@ class OrderDetailCreditSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                    color:
+                        isActive ? Colors.green.shade700 : Colors.red.shade700,
                   ),
                 ),
               ),

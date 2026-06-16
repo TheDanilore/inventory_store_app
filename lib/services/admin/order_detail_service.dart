@@ -41,11 +41,12 @@ class OrderDetailService {
   Future<String?> getCurrentProfileId() async {
     final authUserId = _supabase.auth.currentUser?.id;
     if (authUserId == null) return null;
-    final resp = await _supabase
-        .from('profiles')
-        .select('id')
-        .eq('auth_user_id', authUserId)
-        .maybeSingle();
+    final resp =
+        await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', authUserId)
+            .maybeSingle();
     return resp?['id'] as String?;
   }
 
@@ -97,9 +98,7 @@ class OrderDetailService {
           currentProfileId: currentProfileId,
         );
         if (!result.success) return result;
-      }
-
-      else if (wasCompleted && isNowCancelled) {
+      } else if (wasCompleted && isNowCancelled) {
         await _revertCompletedOrder(
           orderId: orderId,
           items: items,
@@ -199,11 +198,12 @@ class OrderDetailService {
     required Map<String, List<BatchAssignmentModel>> batchOverrides,
     required String? currentProfileId,
   }) async {
-    final orderData = await _supabase
-        .from('orders')
-        .select('warehouse_id')
-        .eq('id', orderId)
-        .single();
+    final orderData =
+        await _supabase
+            .from('orders')
+            .select('warehouse_id')
+            .eq('id', orderId)
+            .single();
     final warehouseId = orderData['warehouse_id'] as String?;
     if (warehouseId == null) {
       return SaveOrderResult.error('El pedido no tiene almacén asignado.');
@@ -216,11 +216,12 @@ class OrderDetailService {
           'No hay cliente asignado para validar el crédito.',
         );
       }
-      final creditInfo = await _supabase
-          .from('customer_credits')
-          .select('id, credit_limit, current_debt, is_active')
-          .eq('profile_id', selectedCustomerId)
-          .maybeSingle();
+      final creditInfo =
+          await _supabase
+              .from('customer_credits')
+              .select('id, credit_limit, current_debt, is_active')
+              .eq('profile_id', selectedCustomerId)
+              .maybeSingle();
 
       if (creditInfo == null || creditInfo['is_active'] != true) {
         return SaveOrderResult.error(
@@ -315,7 +316,8 @@ class OrderDetailService {
           'new_stock': seg.available - seg.take,
           'unit_cost': item.unitCost,
           'reason': 'SALE',
-          'notes': 'Pedido completado desde detalles · Lote: ${seg.batchNumber}',
+          'notes':
+              'Pedido completado desde detalles · Lote: ${seg.batchNumber}',
           if (currentProfileId != null) 'created_by': currentProfileId,
         });
       }
@@ -366,11 +368,12 @@ class OrderDetailService {
     required String? currentProfileId,
     String? notesOverride,
   }) async {
-    final orderData = await _supabase
-        .from('orders')
-        .select('warehouse_id, total_amount, payment_method, customer_id')
-        .eq('id', orderId)
-        .single();
+    final orderData =
+        await _supabase
+            .from('orders')
+            .select('warehouse_id, total_amount, payment_method, customer_id')
+            .eq('id', orderId)
+            .single();
 
     final warehouseId = orderData['warehouse_id'] as String?;
     final origAmount = (orderData['total_amount'] as num).toDouble();
@@ -410,10 +413,7 @@ class OrderDetailService {
 
     // Revertir monedas de fidelidad
     if (origCustomerId != null) {
-      await _revertLoyaltyPoints(
-        orderId: orderId,
-        customerId: origCustomerId,
-      );
+      await _revertLoyaltyPoints(orderId: orderId, customerId: origCustomerId);
     }
   }
 
@@ -429,11 +429,12 @@ class OrderDetailService {
     try {
       final currentProfileId = await getCurrentProfileId();
 
-      final orderData = await _supabase
-          .from('orders')
-          .select('warehouse_id, total_amount, payment_method, customer_id')
-          .eq('id', orderId)
-          .single();
+      final orderData =
+          await _supabase
+              .from('orders')
+              .select('warehouse_id, total_amount, payment_method, customer_id')
+              .eq('id', orderId)
+              .single();
 
       final origPaymentMethod = orderData['payment_method'] as String;
       final origAmount = (orderData['total_amount'] as num).toDouble();
@@ -467,7 +468,8 @@ class OrderDetailService {
           orderId: orderId,
           origAmount: origAmount,
           currentProfileId: currentProfileId,
-          notesOverride: notesOverride ?? 'Reembolso por devolución · Pedido #$orderId',
+          notesOverride:
+              notesOverride ?? 'Reembolso por devolución · Pedido #$orderId',
         );
       }
 
@@ -516,15 +518,15 @@ class OrderDetailService {
     final insertions = <Future>[];
     for (final mov in (movs as List)) {
       final batchId = mov['stock_batch_id'] as String?;
-      final qtyDeducted =
-          ((mov['quantity'] as num).toDouble()).abs().toInt();
+      final qtyDeducted = ((mov['quantity'] as num).toDouble()).abs().toInt();
       if (batchId == null || qtyDeducted <= 0) continue;
 
-      final batchResp = await _supabase
-          .from('warehouse_stock_batches')
-          .select('available_quantity')
-          .eq('id', batchId)
-          .maybeSingle();
+      final batchResp =
+          await _supabase
+              .from('warehouse_stock_batches')
+              .select('available_quantity')
+              .eq('id', batchId)
+              .maybeSingle();
 
       if (batchResp == null) continue;
       final currentStock = (batchResp['available_quantity'] as num).toInt();
@@ -547,7 +549,8 @@ class OrderDetailService {
           'new_stock': newStock,
           'unit_cost': item.unitCost,
           'reason': 'RETURN',
-          'notes': notesOverride ?? 'Devolución de inventario — Pedido #$orderId',
+          'notes':
+              notesOverride ?? 'Devolución de inventario — Pedido #$orderId',
           if (currentProfileId != null) 'created_by': currentProfileId,
         }),
       );
@@ -561,11 +564,12 @@ class OrderDetailService {
     required double totalAmount,
     required String? currentProfileId,
   }) async {
-    final creditResp = await _supabase
-        .from('customer_credits')
-        .select('id, current_debt')
-        .eq('profile_id', customerId)
-        .single();
+    final creditResp =
+        await _supabase
+            .from('customer_credits')
+            .select('id, current_debt')
+            .eq('profile_id', customerId)
+            .single();
     final creditId = creditResp['id'] as String;
     final newDebt =
         (creditResp['current_debt'] as num).toDouble() + totalAmount;
@@ -596,16 +600,18 @@ class OrderDetailService {
     required String? currentProfileId,
     String? notesOverride,
   }) async {
-    final creditResp = await _supabase
-        .from('customer_credits')
-        .select('id, current_debt')
-        .eq('profile_id', customerId)
-        .maybeSingle();
+    final creditResp =
+        await _supabase
+            .from('customer_credits')
+            .select('id, current_debt')
+            .eq('profile_id', customerId)
+            .maybeSingle();
     if (creditResp == null) return;
 
     final creditId = creditResp['id'] as String;
     final currentDebt = (creditResp['current_debt'] as num).toDouble();
-    final newDebt = (currentDebt - origAmount) < 0 ? 0.0 : currentDebt - origAmount;
+    final newDebt =
+        (currentDebt - origAmount) < 0 ? 0.0 : currentDebt - origAmount;
 
     await Future.wait([
       _supabase
@@ -620,7 +626,8 @@ class OrderDetailService {
         'order_id': orderId,
         'movement_type': 'PAYMENT',
         'amount': origAmount,
-        'notes': notesOverride ?? 'Reembolso por cancelación/devolución de pedido',
+        'notes':
+            notesOverride ?? 'Reembolso por cancelación/devolución de pedido',
         if (currentProfileId != null) 'created_by': currentProfileId,
       }),
     ]);
@@ -661,12 +668,13 @@ class OrderDetailService {
 
     String? shiftId;
     if (targetAccount['type'] == 'CAJA') {
-      final shiftResp = await _supabase
-          .from('cash_shifts')
-          .select('id')
-          .eq('account_id', targetAccount['id'] as String)
-          .eq('status', 'OPEN')
-          .maybeSingle();
+      final shiftResp =
+          await _supabase
+              .from('cash_shifts')
+              .select('id')
+              .eq('account_id', targetAccount['id'] as String)
+              .eq('status', 'OPEN')
+              .maybeSingle();
       shiftId = shiftResp?['id'] as String?;
     }
 
@@ -697,33 +705,36 @@ class OrderDetailService {
     required String? currentProfileId,
     String? notesOverride,
   }) async {
-    final origMovResp = await _supabase
-        .from('account_movements')
-        .select('account_id, amount')
-        .eq('reference_id', orderId)
-        .eq('reference_type', 'orders')
-        .eq('movement_type', 'INCOME')
-        .maybeSingle();
+    final origMovResp =
+        await _supabase
+            .from('account_movements')
+            .select('account_id, amount')
+            .eq('reference_id', orderId)
+            .eq('reference_type', 'orders')
+            .eq('movement_type', 'INCOME')
+            .maybeSingle();
 
     if (origMovResp == null) return;
 
     final accountId = origMovResp['account_id'] as String;
     final origMovAmount = (origMovResp['amount'] as num).toDouble();
 
-    final acctResp = await _supabase
-        .from('financial_accounts')
-        .select('type, balance')
-        .eq('id', accountId)
-        .maybeSingle();
+    final acctResp =
+        await _supabase
+            .from('financial_accounts')
+            .select('type, balance')
+            .eq('id', accountId)
+            .maybeSingle();
 
     String? shiftId;
     if (acctResp != null && acctResp['type'] == 'CAJA') {
-      final shiftResp = await _supabase
-          .from('cash_shifts')
-          .select('id')
-          .eq('account_id', accountId)
-          .eq('status', 'OPEN')
-          .maybeSingle();
+      final shiftResp =
+          await _supabase
+              .from('cash_shifts')
+              .select('id')
+              .eq('account_id', accountId)
+              .eq('status', 'OPEN')
+              .maybeSingle();
       shiftId = shiftResp?['id'] as String?;
     }
 
@@ -731,8 +742,8 @@ class OrderDetailService {
       'account_id': accountId,
       'movement_type': 'EXPENSE',
       'amount': origMovAmount,
-      'description': notesOverride ??
-          'Reversión por cancelación — Pedido #$orderId',
+      'description':
+          notesOverride ?? 'Reversión por cancelación — Pedido #$orderId',
       'reference_type': 'orders',
       'reference_id': orderId,
       if (shiftId != null) 'shift_id': shiftId,
@@ -769,23 +780,24 @@ class OrderDetailService {
 
     // Puntos ganados (crédito no genera al activar, solo al pagar)
     if (!isCredito && pointsEarned > 0) {
-      final earnedExists = await _supabase
-          .from('wallet_movements')
-          .select('id')
-          .eq('order_id', orderId)
-          .eq('movement_type', 'EARNED')
-          .maybeSingle();
+      final earnedExists =
+          await _supabase
+              .from('wallet_movements')
+              .select('id')
+              .eq('order_id', orderId)
+              .eq('movement_type', 'EARNED')
+              .maybeSingle();
 
       if (earnedExists == null) {
-        final profileData = await _supabase
-            .from('profiles')
-            .select('wallet_balance')
-            .eq('id', customerId)
-            .maybeSingle();
+        final profileData =
+            await _supabase
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', customerId)
+                .maybeSingle();
 
         if (profileData != null) {
-          final curBal =
-              (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+          final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
           await Future.wait([
             _supabase
                 .from('profiles')
@@ -805,23 +817,24 @@ class OrderDetailService {
 
     // Puntos canjeados (REDEEMED)
     if (pointsUsed > 0) {
-      final redeemedExists = await _supabase
-          .from('wallet_movements')
-          .select('id')
-          .eq('order_id', orderId)
-          .eq('movement_type', 'REDEEMED')
-          .maybeSingle();
+      final redeemedExists =
+          await _supabase
+              .from('wallet_movements')
+              .select('id')
+              .eq('order_id', orderId)
+              .eq('movement_type', 'REDEEMED')
+              .maybeSingle();
 
       if (redeemedExists == null) {
-        final profileData = await _supabase
-            .from('profiles')
-            .select('wallet_balance')
-            .eq('id', customerId)
-            .maybeSingle();
+        final profileData =
+            await _supabase
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', customerId)
+                .maybeSingle();
 
         if (profileData != null) {
-          final curBal =
-              (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+          final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
           await Future.wait([
             _supabase
                 .from('profiles')
@@ -847,20 +860,22 @@ class OrderDetailService {
     required String customerId,
   }) async {
     // Revertir monedas EARNED
-    final earnedMov = await _supabase
-        .from('wallet_movements')
-        .select('id, points')
-        .eq('order_id', orderId)
-        .eq('movement_type', 'EARNED')
-        .maybeSingle();
+    final earnedMov =
+        await _supabase
+            .from('wallet_movements')
+            .select('id, points')
+            .eq('order_id', orderId)
+            .eq('movement_type', 'EARNED')
+            .maybeSingle();
 
     if (earnedMov != null) {
       final ptsGanados = (earnedMov['points'] as num).toInt();
-      final profileData = await _supabase
-          .from('profiles')
-          .select('wallet_balance')
-          .eq('id', customerId)
-          .single();
+      final profileData =
+          await _supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('id', customerId)
+              .single();
       final currentBal = (profileData['wallet_balance'] as num).toInt();
       final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
       await Future.wait([
@@ -879,21 +894,23 @@ class OrderDetailService {
     }
 
     // Devolver monedas canjeadas REDEEMED
-    final redeemedMov = await _supabase
-        .from('wallet_movements')
-        .select('id, points')
-        .eq('order_id', orderId)
-        .eq('movement_type', 'REDEEMED')
-        .maybeSingle();
+    final redeemedMov =
+        await _supabase
+            .from('wallet_movements')
+            .select('id, points')
+            .eq('order_id', orderId)
+            .eq('movement_type', 'REDEEMED')
+            .maybeSingle();
 
     if (redeemedMov != null) {
       final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
       if (ptsCanjeados > 0) {
-        final profileData = await _supabase
-            .from('profiles')
-            .select('wallet_balance')
-            .eq('id', customerId)
-            .single();
+        final profileData =
+            await _supabase
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', customerId)
+                .single();
         final currentBal = (profileData['wallet_balance'] as num).toInt();
         await Future.wait([
           _supabase
@@ -917,12 +934,13 @@ class OrderDetailService {
     required String? newCustomerId,
   }) async {
     // Obtener el wallet_movement EARNED original de la orden
-    final earnedMov = await _supabase
-        .from('wallet_movements')
-        .select('id, points, profile_id')
-        .eq('order_id', orderId)
-        .eq('movement_type', 'EARNED')
-        .maybeSingle();
+    final earnedMov =
+        await _supabase
+            .from('wallet_movements')
+            .select('id, points, profile_id')
+            .eq('order_id', orderId)
+            .eq('movement_type', 'EARNED')
+            .maybeSingle();
 
     if (earnedMov == null) return;
 
@@ -934,11 +952,12 @@ class OrderDetailService {
 
     // Quitar monedas al cliente anterior
     if (fromProfileId != null && pts > 0) {
-      final oldProfile = await _supabase
-          .from('profiles')
-          .select('wallet_balance')
-          .eq('id', fromProfileId)
-          .maybeSingle();
+      final oldProfile =
+          await _supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('id', fromProfileId)
+              .maybeSingle();
       if (oldProfile != null) {
         final oldBal = (oldProfile['wallet_balance'] as num).toInt();
         await Future.wait([
@@ -960,11 +979,12 @@ class OrderDetailService {
 
     // Dar monedas al nuevo cliente
     if (newCustomerId != null && pts > 0) {
-      final newProfile = await _supabase
-          .from('profiles')
-          .select('wallet_balance')
-          .eq('id', newCustomerId)
-          .maybeSingle();
+      final newProfile =
+          await _supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('id', newCustomerId)
+              .maybeSingle();
       if (newProfile != null) {
         final newBal = (newProfile['wallet_balance'] as num).toInt();
         await Future.wait([

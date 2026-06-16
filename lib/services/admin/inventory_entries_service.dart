@@ -290,7 +290,11 @@ class InventoryEntriesService {
   }
 
   Future<List<Map<String, dynamic>>> getActiveAccounts() async {
-    return await _supabase.from('financial_accounts').select('id, name, type, balance').eq('is_active', true).order('name');
+    return await _supabase
+        .from('financial_accounts')
+        .select('id, name, type, balance')
+        .eq('is_active', true)
+        .order('name');
   }
 
   Future<Map<String, dynamic>> getEntries({
@@ -300,9 +304,7 @@ class InventoryEntriesService {
     String? warehouseFilter,
     DateTimeRange? dateRange,
   }) async {
-    var query = _supabase
-        .from('inventory_entries')
-        .select('''
+    var query = _supabase.from('inventory_entries').select('''
           id, created_at, notes, total_amount,
           document_type, document_number, document_date, purchase_order_id,
           warehouses!inner(name),
@@ -315,7 +317,9 @@ class InventoryEntriesService {
       // Nota: Si queremos buscar en la tabla relacionada suppliers, supabase postgrest tiene limitaciones con or en relaciones
       // Pero si usamos .ilike('suppliers.name') requiere inner join con !inner, lo cual descarta las entradas sin proveedor.
       // Si la búsqueda incluye el número de documento:
-      query = query.or('document_number.ilike.%$searchQuery%,notes.ilike.%$searchQuery%');
+      query = query.or(
+        'document_number.ilike.%$searchQuery%,notes.ilike.%$searchQuery%',
+      );
     }
 
     if (warehouseFilter != null && warehouseFilter != 'Todos') {
@@ -325,15 +329,18 @@ class InventoryEntriesService {
     if (dateRange != null) {
       query = query
           .gte('created_at', dateRange.start.toIso8601String())
-          .lte('created_at', dateRange.end.add(const Duration(days: 1)).toIso8601String());
+          .lte(
+            'created_at',
+            dateRange.end.add(const Duration(days: 1)).toIso8601String(),
+          );
     }
 
-    final resp = await query.order('created_at', ascending: false).range(start, end).count(CountOption.exact);
+    final resp = await query
+        .order('created_at', ascending: false)
+        .range(start, end)
+        .count(CountOption.exact);
 
-    return {
-      'data': resp.data as List<dynamic>,
-      'count': resp.count,
-    };
+    return {'data': resp.data as List<dynamic>, 'count': resp.count};
   }
 
   Future<List<dynamic>> getEntryItems(String entryId) async {

@@ -50,9 +50,10 @@ class OrderDetailItemCard extends StatelessWidget {
 
     final bool canEditBatches = onEditBatches != null && usesBatches;
     final bool hasBatchOverride = canEditBatches && batchAssignments != null;
-    final activeBatches = hasBatchOverride
-        ? batchAssignments!.where((b) => b.assigned > 0).toList()
-        : <BatchAssignmentModel>[];
+    final activeBatches =
+        hasBatchOverride
+            ? batchAssignments!.where((b) => b.assigned > 0).toList()
+            : <BatchAssignmentModel>[];
 
     return Card(
       elevation: 0,
@@ -68,30 +69,32 @@ class OrderDetailItemCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: imageUrl != null && imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: 52,
-                      height: 52,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
+              child:
+                  imageUrl != null && imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                        imageUrl: imageUrl,
                         width: 52,
                         height: 52,
-                        color: Colors.teal.withValues(alpha: 0.1),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.teal,
+                        fit: BoxFit.cover,
+                        placeholder:
+                            (context, url) => Container(
+                              width: 52,
+                              height: 52,
+                              color: Colors.teal.withValues(alpha: 0.1),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.teal,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                      errorWidget: (_, _, _) => _placeholderIcon(),
-                    )
-                  : _placeholderIcon(),
+                        errorWidget: (_, _, _) => _placeholderIcon(),
+                      )
+                      : _placeholderIcon(),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -126,16 +129,21 @@ class OrderDetailItemCard extends StatelessWidget {
                     GestureDetector(
                       onTap: onEditBatches,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: hasBatchOverride && activeBatches.isNotEmpty
-                              ? AppColors.teal.withValues(alpha: 0.08)
-                              : AppColors.amberLight.withValues(alpha: 0.5),
+                          color:
+                              hasBatchOverride && activeBatches.isNotEmpty
+                                  ? AppColors.teal.withValues(alpha: 0.08)
+                                  : AppColors.amberLight.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: hasBatchOverride && activeBatches.isNotEmpty
-                                ? AppColors.teal.withValues(alpha: 0.3)
-                                : AppColors.amber.withValues(alpha: 0.5),
+                            color:
+                                hasBatchOverride && activeBatches.isNotEmpty
+                                    ? AppColors.teal.withValues(alpha: 0.3)
+                                    : AppColors.amber.withValues(alpha: 0.5),
                           ),
                         ),
                         child: Row(
@@ -146,17 +154,20 @@ class OrderDetailItemCard extends StatelessWidget {
                                   ? Icons.inventory_2_rounded
                                   : Icons.edit_note_rounded,
                               size: 11,
-                              color: hasBatchOverride && activeBatches.isNotEmpty
-                                  ? AppColors.teal
-                                  : AppColors.amber,
+                              color:
+                                  hasBatchOverride && activeBatches.isNotEmpty
+                                      ? AppColors.teal
+                                      : AppColors.amber,
                             ),
                             const SizedBox(width: 4),
                             if (hasBatchOverride && activeBatches.isNotEmpty)
                               Flexible(
                                 child: Text(
                                   activeBatches
-                                      .map((b) =>
-                                          '${b.assigned}u · ${b.batchNumber}${b.expiryDate != null ? ' (vto ${b.expiryLabel})' : ''}')
+                                      .map(
+                                        (b) =>
+                                            '${b.assigned}u · ${b.batchNumber}${b.expiryDate != null ? ' (vto ${b.expiryLabel})' : ''}',
+                                      )
                                       .join(' + '),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -180,9 +191,10 @@ class OrderDetailItemCard extends StatelessWidget {
                             Icon(
                               Icons.edit_rounded,
                               size: 10,
-                              color: hasBatchOverride && activeBatches.isNotEmpty
-                                  ? AppColors.teal
-                                  : AppColors.amber,
+                              color:
+                                  hasBatchOverride && activeBatches.isNotEmpty
+                                      ? AppColors.teal
+                                      : AppColors.amber,
                             ),
                           ],
                         ),
@@ -193,37 +205,49 @@ class OrderDetailItemCard extends StatelessWidget {
                     Wrap(
                       spacing: 4,
                       runSpacing: 4,
-                      children: batches.map((b) {
-                        final batchNumber = b['batch_number'] as String? ?? '';
-                        final qty = b['quantity'] as int? ?? 0;
-                        final expiry = _formatExpiry(b['expiry_date']);
-                        final label = expiry.isNotEmpty
-                            ? '${qty}u · $batchNumber (vto $expiry)'
-                            : '${qty}u · $batchNumber';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.teal.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.teal.withValues(alpha: 0.25)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.inventory_2_rounded, size: 10, color: Colors.teal.shade700),
-                              const SizedBox(width: 4),
-                              Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.teal.shade800,
+                      children:
+                          batches.map((b) {
+                            final batchNumber =
+                                b['batch_number'] as String? ?? '';
+                            final qty = b['quantity'] as int? ?? 0;
+                            final expiry = _formatExpiry(b['expiry_date']);
+                            final label =
+                                expiry.isNotEmpty
+                                    ? '${qty}u · $batchNumber (vto $expiry)'
+                                    : '${qty}u · $batchNumber';
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.teal.withValues(alpha: 0.25),
                                 ),
                               ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_rounded,
+                                    size: 10,
+                                    color: Colors.teal.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.teal.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                     ),
                   ],
                 ],
@@ -341,40 +365,49 @@ class OrderDetailItemsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return OrderDetailSectionCard(
       title: 'Items (${items.length})',
-      child: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
+      child:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : items.isEmpty
               ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'Sin items registrados.',
-                    style: TextStyle(color: Colors.grey.shade500),
-                  ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final batches = batchesByVariant[item.variantId ?? ''] ?? [];
-                    final usesBatches = usesBatchesMap[item.variantId ?? ''] ?? false;
-
-                    return OrderDetailItemCard(
-                      item: item,
-                      isEditing: isEditing && !isLocked,
-                      usesBatches: usesBatches,
-                      batches: batches,
-                      batchAssignments: batchOverrides[item.id ?? ''],
-                      quantityController: quantityControllers[index],
-                      onDecrease: () => onDecrease(index),
-                      onIncrease: () => onIncrease(index),
-                      onQuantityChanged: (value) => onQuantityChanged(index, value),
-                      onQuantityTap: onQuantityTap != null ? () => onQuantityTap!(index) : null,
-                      onEditBatches: onEditBatches != null ? () => onEditBatches!(item) : null,
-                    );
-                  },
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Sin items registrados.',
+                  style: TextStyle(color: Colors.grey.shade500),
                 ),
+              )
+              : ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final batches = batchesByVariant[item.variantId ?? ''] ?? [];
+                  final usesBatches =
+                      usesBatchesMap[item.variantId ?? ''] ?? false;
+
+                  return OrderDetailItemCard(
+                    item: item,
+                    isEditing: isEditing && !isLocked,
+                    usesBatches: usesBatches,
+                    batches: batches,
+                    batchAssignments: batchOverrides[item.id ?? ''],
+                    quantityController: quantityControllers[index],
+                    onDecrease: () => onDecrease(index),
+                    onIncrease: () => onIncrease(index),
+                    onQuantityChanged:
+                        (value) => onQuantityChanged(index, value),
+                    onQuantityTap:
+                        onQuantityTap != null
+                            ? () => onQuantityTap!(index)
+                            : null,
+                    onEditBatches:
+                        onEditBatches != null
+                            ? () => onEditBatches!(item)
+                            : null,
+                  );
+                },
+              ),
     );
   }
 }

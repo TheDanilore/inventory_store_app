@@ -8,7 +8,7 @@ class ProductInputField extends StatelessWidget {
   final String hint;
   final String label;
   final int maxLines;
-  
+
   const ProductInputField({
     super.key,
     required this.controller,

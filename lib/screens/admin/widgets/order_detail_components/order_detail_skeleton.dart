@@ -31,7 +31,7 @@ class OrderDetailSkeleton extends StatelessWidget {
           ],
         ),
         const Divider(height: 32),
-        
+
         // Cards
         for (int i = 0; i < 3; i++) ...[
           Container(
@@ -52,12 +52,12 @@ class OrderDetailSkeleton extends StatelessWidget {
             ),
           ),
         ],
-        
+
         const SizedBox(height: 16),
         // Items section header
         const AppShimmer(width: double.infinity, height: 20),
         const SizedBox(height: 12),
-        
+
         // Item row
         Row(
           children: [

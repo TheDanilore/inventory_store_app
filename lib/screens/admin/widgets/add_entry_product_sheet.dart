@@ -16,10 +16,7 @@ import 'package:inventory_store_app/services/admin/purchase_orders_service.dart'
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
 
-  const AddEntryProductSheet({
-    super.key,
-    this.warehouseId,
-  });
+  const AddEntryProductSheet({super.key, this.warehouseId});
 
   @override
   State<AddEntryProductSheet> createState() => _AddEntryProductSheetState();
@@ -98,24 +95,26 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
         final variantsData = await _service.getProductVariants(val.id);
         if (mounted) {
           setState(() {
-            _availableVariants = variantsData.map((v) {
-              if (v['variant_attribute_values'] is List) {
-                final Map<String, dynamic> flatAttributes = {};
-                for (final vav in v['variant_attribute_values'] as List) {
-                  if (vav is Map && vav['attribute_values'] is Map) {
-                    final av = vav['attribute_values'] as Map;
-                    if (av['attributes'] is Map) {
-                      final attr = av['attributes'] as Map;
-                      if (attr['name'] != null) {
-                        flatAttributes[attr['name'].toString()] = av['value']?.toString() ?? '';
+            _availableVariants =
+                variantsData.map((v) {
+                  if (v['variant_attribute_values'] is List) {
+                    final Map<String, dynamic> flatAttributes = {};
+                    for (final vav in v['variant_attribute_values'] as List) {
+                      if (vav is Map && vav['attribute_values'] is Map) {
+                        final av = vav['attribute_values'] as Map;
+                        if (av['attributes'] is Map) {
+                          final attr = av['attributes'] as Map;
+                          if (attr['name'] != null) {
+                            flatAttributes[attr['name'].toString()] =
+                                av['value']?.toString() ?? '';
+                          }
+                        }
                       }
                     }
+                    v['attributes'] = flatAttributes;
                   }
-                }
-                v['attributes'] = flatAttributes;
-              }
-              return ProductVariantModel.fromJson(v);
-            }).toList();
+                  return ProductVariantModel.fromJson(v);
+                }).toList();
           });
         }
       } catch (e) {
@@ -335,7 +334,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                     return const Iterable<ProductModel>.empty();
                   }
                   try {
-                    final res = await _service.searchProducts(textEditingValue.text);
+                    final res = await _service.searchProducts(
+                      textEditingValue.text,
+                    );
                     return res.map((p) => ProductModel.fromJson(p));
                   } catch (e) {
                     debugPrint('Error en autocomplete: $e');

@@ -13,7 +13,8 @@ class InventoryStockTab extends StatefulWidget {
   State<InventoryStockTab> createState() => _InventoryStockTabState();
 }
 
-class _InventoryStockTabState extends State<InventoryStockTab> with AutomaticKeepAliveClientMixin {
+class _InventoryStockTabState extends State<InventoryStockTab>
+    with AutomaticKeepAliveClientMixin {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
@@ -72,9 +73,10 @@ class _InventoryStockTabState extends State<InventoryStockTab> with AutomaticKee
                     label: 'Bajo stock',
                     value: '${provider.globalLowStockCount}',
                     icon: Icons.warning_amber_rounded,
-                    color: provider.globalLowStockCount > 0
-                        ? AppColors.warning
-                        : AppColors.success,
+                    color:
+                        provider.globalLowStockCount > 0
+                            ? AppColors.warning
+                            : AppColors.success,
                     highlight: provider.globalLowStockCount > 0,
                   ),
                 ],
@@ -126,30 +128,35 @@ class _InventoryStockTabState extends State<InventoryStockTab> with AutomaticKee
               ),
 
             Expanded(
-              child: provider.isLoadingStock
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                      ),
-                    )
-                  : provider.errorMessageStock.isNotEmpty
+              child:
+                  provider.isLoadingStock
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                        ),
+                      )
+                      : provider.errorMessageStock.isNotEmpty
                       ? Center(child: Text(provider.errorMessageStock))
                       : provider.stockItems.isEmpty
-                          ? const _EmptyState(
-                              icon: Icons.inventory_2_outlined,
-                              message: 'No hay productos con stock disponible',
-                            )
-                          : RefreshIndicator(
-                              color: AppColors.primary,
-                              onRefresh: () async => provider.fetchStockPage(),
-                              child: ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                itemCount: provider.stockItems.length,
-                                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                itemBuilder: (_, i) => InventoryStockCard(item: provider.stockItems[i]),
+                      ? const _EmptyState(
+                        icon: Icons.inventory_2_outlined,
+                        message: 'No hay productos con stock disponible',
+                      )
+                      : RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () async => provider.fetchStockPage(),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: provider.stockItems.length,
+                          separatorBuilder:
+                              (_, _) => const SizedBox(height: 10),
+                          itemBuilder:
+                              (_, i) => InventoryStockCard(
+                                item: provider.stockItems[i],
                               ),
-                            ),
+                        ),
+                      ),
             ),
 
             if (!provider.isLoadingStock && provider.totalStockPages > 1)
@@ -191,27 +198,24 @@ class _MetricCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: highlight ? color : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: highlight ? color : AppColors.border,
-          ),
+          border: Border.all(color: highlight ? color : AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: highlight ? Colors.white : color,
-                ),
+                Icon(icon, size: 16, color: highlight ? Colors.white : color),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     label,
                     style: TextStyle(
                       fontSize: 11,
-                      color: highlight ? Colors.white.withValues(alpha: 0.9) : AppColors.textSecondary,
+                      color:
+                          highlight
+                              ? Colors.white.withValues(alpha: 0.9)
+                              : AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
@@ -274,15 +278,19 @@ class _SearchField extends StatelessWidget {
             size: 20,
             color: AppColors.textSecondary,
           ),
-          suffixIcon: controller.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  color: AppColors.textSecondary,
-                  onPressed: onClear,
-                )
-              : null,
+          suffixIcon:
+              controller.text.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: AppColors.textSecondary,
+                    onPressed: onClear,
+                  )
+                  : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -313,19 +321,20 @@ class _CategoryDropdown extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: categories.contains(selected) ? selected : categories.first,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.textSecondary,
+          ),
           style: const TextStyle(
             fontSize: 13,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
           onChanged: onChanged,
-          items: categories.map((cat) {
-            return DropdownMenuItem<String>(
-              value: cat,
-              child: Text(cat),
-            );
-          }).toList(),
+          items:
+              categories.map((cat) {
+                return DropdownMenuItem<String>(value: cat, child: Text(cat));
+              }).toList(),
         ),
       ),
     );
@@ -336,10 +345,7 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
 
-  const _EmptyState({
-    required this.icon,
-    required this.message,
-  });
+  const _EmptyState({required this.icon, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -353,11 +359,7 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 40,
-              color: AppColors.primary,
-            ),
+            child: Icon(icon, size: 40, color: AppColors.primary),
           ),
           const SizedBox(height: 16),
           Text(

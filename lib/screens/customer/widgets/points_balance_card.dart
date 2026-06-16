@@ -41,7 +41,10 @@ class PointsBalanceCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              Icon(Icons.account_balance_wallet_rounded, color: Colors.white.withValues(alpha: 0.5)),
+              Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
             ],
           ),
           const SizedBox(height: 8),

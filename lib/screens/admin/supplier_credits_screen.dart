@@ -219,7 +219,9 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                                         ),
                                         decoration: BoxDecoration(
                                           color: AppColors.danger,
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Text(
                                           '${provider.debtCount}',

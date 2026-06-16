@@ -27,7 +27,8 @@ class _StackGameScreenState extends State<StackGameScreen> {
   final double _boardWidth = 300.0;
   final double _boxHeight = 35.0;
   final double _initialWidth = 200.0;
-  final double _perfectTolerance = 18.0; // Píxeles de tolerancia para un "Perfecto"
+  final double _perfectTolerance =
+      18.0; // Píxeles de tolerancia para un "Perfecto"
   final double _minSafeWidth = 36.0;
 
   // --- ESTADOS DEL JUEGO ---
@@ -38,13 +39,13 @@ class _StackGameScreenState extends State<StackGameScreen> {
   int _comboPerfecto = 0; // Para efectos visuales futuros
 
   Timer? _gameTimer;
-  
+
   // Lista de cajas ya apiladas
   List<StackBox> _stackedBoxes = [];
-  
+
   // La caja que se está moviendo actualmente
   StackBox? _movingBox;
-  
+
   // Físicas
   double _speed = 1.4;
   int _direction = 1; // 1 = derecha, -1 = izquierda
@@ -63,14 +64,14 @@ class _StackGameScreenState extends State<StackGameScreen> {
       _comboPerfecto = 0;
       _speed = 1.4;
       _direction = 1;
-      
+
       // Reiniciamos la torre
       _stackedBoxes = [
         StackBox(
           left: (_boardWidth - _initialWidth) / 2,
           width: _initialWidth,
           color: _getColorForScore(0),
-        )
+        ),
       ];
 
       _spawnNewBox();
@@ -129,7 +130,10 @@ class _StackGameScreenState extends State<StackGameScreen> {
       _comboPerfecto = 0;
 
       final overlapLeft = max(_movingBox!.left, lastBox.left);
-      final overlapRight = min(_movingBox!.left + _movingBox!.width, lastBox.left + lastBox.width);
+      final overlapRight = min(
+        _movingBox!.left + _movingBox!.width,
+        lastBox.left + lastBox.width,
+      );
       final overlapWidth = overlapRight - overlapLeft;
 
       if (overlapWidth <= 0) {
@@ -138,11 +142,15 @@ class _StackGameScreenState extends State<StackGameScreen> {
         return;
       }
 
-      final centeredLeft = movingCenter < lastCenter
-          ? lastBox.left
-          : lastBox.left + (lastBox.width - overlapWidth);
+      final centeredLeft =
+          movingCenter < lastCenter
+              ? lastBox.left
+              : lastBox.left + (lastBox.width - overlapWidth);
 
-      final newLeft = centeredLeft.clamp(lastBox.left, lastBox.left + lastBox.width - overlapWidth).toDouble();
+      final newLeft =
+          centeredLeft
+              .clamp(lastBox.left, lastBox.left + lastBox.width - overlapWidth)
+              .toDouble();
       final newWidth = max(overlapWidth, _minSafeWidth);
 
       // Aplicamos el corte
@@ -154,7 +162,7 @@ class _StackGameScreenState extends State<StackGameScreen> {
       // Guardamos la caja en la torre
       _stackedBoxes.add(_movingBox!);
       _score++;
-      
+
       // Aumentamos la dificultad de forma más suave
       if (_speed < 3.2) _speed += 0.03;
 
@@ -193,9 +201,10 @@ class _StackGameScreenState extends State<StackGameScreen> {
   @override
   Widget build(BuildContext context) {
     // Calculamos el desplazamiento de la cámara para que la torre no se salga de la pantalla
-    final cameraOffset = _stackedBoxes.length > 8 
-        ? (_stackedBoxes.length - 8) * _boxHeight 
-        : 0.0;
+    final cameraOffset =
+        _stackedBoxes.length > 8
+            ? (_stackedBoxes.length - 8) * _boxHeight
+            : 0.0;
 
     return Scaffold(
       backgroundColor: Colors.blueGrey.shade900,
@@ -219,7 +228,10 @@ class _StackGameScreenState extends State<StackGameScreen> {
                         return AnimatedPositioned(
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeOut,
-                          bottom: (index * _boxHeight) - cameraOffset + 100, // +100 para separarlo del piso
+                          bottom:
+                              (index * _boxHeight) -
+                              cameraOffset +
+                              100, // +100 para separarlo del piso
                           left: box.left,
                           child: _buildBoxWidget(box),
                         );
@@ -230,7 +242,10 @@ class _StackGameScreenState extends State<StackGameScreen> {
                         AnimatedPositioned(
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeOut,
-                          bottom: (_stackedBoxes.length * _boxHeight) - cameraOffset + 100,
+                          bottom:
+                              (_stackedBoxes.length * _boxHeight) -
+                              cameraOffset +
+                              100,
                           left: _movingBox!.left,
                           child: _buildBoxWidget(_movingBox!),
                         ),
@@ -253,7 +268,13 @@ class _StackGameScreenState extends State<StackGameScreen> {
                           color: Colors.white,
                           fontSize: 64,
                           fontWeight: FontWeight.w900,
-                          shadows: [Shadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 4))],
+                          shadows: [
+                            Shadow(
+                              color: Colors.black45,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
                       ),
                       if (_comboPerfecto >= 3)
@@ -274,7 +295,8 @@ class _StackGameScreenState extends State<StackGameScreen> {
               if (!_isPlaying && !_isGameOver)
                 _buildOverlay(
                   title: 'Torre de Cajas',
-                  subtitle: 'Toca la pantalla para apilar las cajas.\nSi no calculas bien, la caja se cortará.\n¡Cada caja apilada es 1 moneda!',
+                  subtitle:
+                      'Toca la pantalla para apilar las cajas.\nSi no calculas bien, la caja se cortará.\n¡Cada caja apilada es 1 moneda!',
                   buttonLabel: 'INICIAR JUEGO',
                   onPressed: _startGame,
                   icon: Icons.layers_rounded,
@@ -284,7 +306,8 @@ class _StackGameScreenState extends State<StackGameScreen> {
               if (_isGameOver)
                 _buildOverlay(
                   title: '¡Se cayó la torre!',
-                  subtitle: 'Lograste apilar $_score cajas.\nHas ganado $_score monedas.',
+                  subtitle:
+                      'Lograste apilar $_score cajas.\nHas ganado $_score monedas.',
                   buttonLabel: 'RECLAMAR MONEDAS',
                   onPressed: () => Navigator.pop(context, _score),
                   icon: Icons.block_flipped,
@@ -305,7 +328,10 @@ class _StackGameScreenState extends State<StackGameScreen> {
       height: _boxHeight,
       decoration: BoxDecoration(
         color: box.color,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: box.color.withValues(alpha: 0.5),
@@ -316,7 +342,11 @@ class _StackGameScreenState extends State<StackGameScreen> {
       ),
       // Patrón sutil para que parezca una caja de inventario
       child: Center(
-        child: Icon(Icons.inventory_2_outlined, color: Colors.white.withValues(alpha: 0.2), size: 20),
+        child: Icon(
+          Icons.inventory_2_outlined,
+          color: Colors.white.withValues(alpha: 0.2),
+          size: 20,
+        ),
       ),
     );
   }
@@ -341,7 +371,12 @@ class _StackGameScreenState extends State<StackGameScreen> {
             color: Colors.blueGrey.shade800,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: AppColors.primary, width: 2),
-            boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 30)],
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 30,
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -351,13 +386,21 @@ class _StackGameScreenState extends State<StackGameScreen> {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade300, fontSize: 16, height: 1.5),
+                style: TextStyle(
+                  color: Colors.grey.shade300,
+                  fontSize: 16,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 32),
               if (_isSaving)
@@ -372,9 +415,12 @@ class _StackGameScreenState extends State<StackGameScreen> {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Volver atrás', style: TextStyle(color: Colors.grey)),
-                )
-              ]
+                  child: const Text(
+                    'Volver atrás',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

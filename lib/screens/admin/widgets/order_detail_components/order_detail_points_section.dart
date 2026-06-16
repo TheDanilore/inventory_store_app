@@ -66,7 +66,8 @@ class OrderDetailPointsSection extends StatelessWidget {
               Expanded(
                 child: OrderDetailPointInfo(
                   title: 'Descuento',
-                  value: 'S/ ${(pointsUsed * pointsToSolesRatio).toStringAsFixed(2)}',
+                  value:
+                      'S/ ${(pointsUsed * pointsToSolesRatio).toStringAsFixed(2)}',
                   color: Colors.teal,
                 ),
               ),
@@ -78,7 +79,8 @@ class OrderDetailPointsSection extends StatelessWidget {
               controller: pointsUsedCtrl,
               decoration: InputDecoration(
                 labelText: 'Monedas a aplicar (Max: $maxPointsAvailable)',
-                helperText: 'Solo se descuentan cuando la orden pase a COMPLETED.',
+                helperText:
+                    'Solo se descuentan cuando la orden pase a COMPLETED.',
                 border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,

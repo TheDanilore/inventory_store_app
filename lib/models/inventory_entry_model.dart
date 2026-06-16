@@ -38,7 +38,7 @@ class InventoryEntryModel {
     final wh = json['warehouses'] as Map<String, dynamic>?;
     final sup = json['suppliers'] as Map<String, dynamic>?;
     final itemsList = json['inventory_entry_items'] as List?;
-    
+
     return InventoryEntryModel(
       id: json['id'] as String,
       warehouseId: json['warehouse_id'] as String? ?? '',
@@ -48,13 +48,15 @@ class InventoryEntryModel {
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
       documentType: json['document_type'] as String? ?? 'NINGUNO',
       documentNumber: json['document_number'] as String?,
-      documentDate: json['document_date'] != null
-          ? DateTime.tryParse(json['document_date'] as String)
-          : null,
+      documentDate:
+          json['document_date'] != null
+              ? DateTime.tryParse(json['document_date'] as String)
+              : null,
       createdBy: json['created_by'] as String?,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String)
-          : null,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'] as String)
+              : null,
       warehouseName: wh?['name'] as String?,
       supplierName: sup?['name'] as String?,
       itemCount: itemsList?.length ?? (json['item_count'] as int? ?? 0),
@@ -72,7 +74,8 @@ class InventoryEntryModel {
       'total_amount': totalAmount,
       'document_type': documentType,
       'document_number': documentNumber,
-      if (documentDate != null) 'document_date': documentDate!.toIso8601String().split('T').first,
+      if (documentDate != null)
+        'document_date': documentDate!.toIso8601String().split('T').first,
       'created_by': createdBy,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
     };

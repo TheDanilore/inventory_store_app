@@ -40,13 +40,14 @@ class PurchaseOrderModel {
   factory PurchaseOrderModel.fromMap(Map<String, dynamic> m) {
     final sup = m['suppliers'] as Map<String, dynamic>?;
     final wh = m['warehouses'] as Map<String, dynamic>?;
-    
+
     // El count a veces viene en la misma consulta o como arreglo.
     // Si la query usa `purchase_order_items(count)` o arreglo:
     int count = 0;
     if (m['purchase_order_items'] is List) {
       count = (m['purchase_order_items'] as List).length;
-    } else if (m['purchase_order_items'] is Map && m['purchase_order_items']['count'] != null) {
+    } else if (m['purchase_order_items'] is Map &&
+        m['purchase_order_items']['count'] != null) {
       count = m['purchase_order_items']['count'] as int;
     }
 

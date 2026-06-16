@@ -22,11 +22,19 @@ class POFormItemTile extends StatelessWidget {
     if (item.variant.images.isNotEmpty) {
       currentImageUrl = item.variant.images.first.imageUrl;
     } else if (item.product.images.isNotEmpty) {
-      currentImageUrl = item.product.images.firstWhere((img) => img.isMain, orElse: () => item.product.images.first).imageUrl;
+      currentImageUrl =
+          item.product.images
+              .firstWhere(
+                (img) => img.isMain,
+                orElse: () => item.product.images.first,
+              )
+              .imageUrl;
     }
 
-    final String variantAttrs = item.variant.label.replaceAll(item.product.name, '').trim();
-    final String attributesText = variantAttrs.isNotEmpty ? variantAttrs : 'Variante Única';
+    final String variantAttrs =
+        item.variant.label.replaceAll(item.product.name, '').trim();
+    final String attributesText =
+        variantAttrs.isNotEmpty ? variantAttrs : 'Variante Única';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -40,7 +48,7 @@ class POFormItemTile extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -49,17 +57,23 @@ class POFormItemTile extends StatelessWidget {
           // Imagen miniatura
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: currentImageUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: currentImageUrl,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 120,
-                    placeholder: (_, _) => AppShimmer(width: 60, height: 60, borderRadius: 10),
-                    errorWidget: (_, _, _) => _ImagePlaceholder(),
-                  )
-                : _ImagePlaceholder(),
+            child:
+                currentImageUrl != null
+                    ? CachedNetworkImage(
+                      imageUrl: currentImageUrl,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 120,
+                      placeholder:
+                          (_, _) => AppShimmer(
+                            width: 60,
+                            height: 60,
+                            borderRadius: 10,
+                          ),
+                      errorWidget: (_, _, _) => _ImagePlaceholder(),
+                    )
+                    : _ImagePlaceholder(),
           ),
           const SizedBox(width: 12),
           // Info Central
@@ -69,29 +83,43 @@ class POFormItemTile extends StatelessWidget {
               children: [
                 Text(
                   item.product.name,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (attributesText.isNotEmpty && attributesText != 'Variante Única')
+                if (attributesText.isNotEmpty &&
+                    attributesText != 'Variante Única')
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       attributesText,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 const SizedBox(height: 6),
                 if (item.product.usesBatches)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'Lote: ${item.batchNumber}',
-                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],
@@ -104,7 +132,10 @@ class POFormItemTile extends StatelessWidget {
               GestureDetector(
                 onTap: onEditQuantity,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
@@ -114,10 +145,17 @@ class POFormItemTile extends StatelessWidget {
                     children: [
                       Text(
                         'x${item.quantity.toInt()}',
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.edit_rounded, size: 12, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.edit_rounded,
+                        size: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ],
                   ),
                 ),
@@ -125,16 +163,24 @@ class POFormItemTile extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'S/ ${item.subtotal.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 14),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 4),
               InkWell(
                 onTap: onRemove,
                 child: const Padding(
                   padding: EdgeInsets.all(4.0),
-                  child: Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.danger),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: AppColors.danger,
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ],
@@ -152,6 +198,10 @@ class _ImagePlaceholder extends StatelessWidget {
       color: AppColors.background,
       borderRadius: BorderRadius.circular(10),
     ),
-    child: const Icon(Icons.image_not_supported_outlined, color: AppColors.textHint, size: 24),
+    child: const Icon(
+      Icons.image_not_supported_outlined,
+      color: AppColors.textHint,
+      size: 24,
+    ),
   );
 }

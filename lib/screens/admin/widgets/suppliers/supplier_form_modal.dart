@@ -8,7 +8,11 @@ class SupplierFormModal extends StatefulWidget {
   final SupplierModel? supplierToEdit;
   final VoidCallback onSaved;
 
-  const SupplierFormModal({super.key, this.supplierToEdit, required this.onSaved});
+  const SupplierFormModal({
+    super.key,
+    this.supplierToEdit,
+    required this.onSaved,
+  });
 
   @override
   State<SupplierFormModal> createState() => _SupplierFormModalState();
@@ -91,7 +95,8 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
       }
     } on PostgrestException catch (e) {
       if (mounted) {
-        if (e.code == '23505') { // Código de duplicado en PostgreSQL
+        if (e.code == '23505') {
+          // Código de duplicado en PostgreSQL
           AppSnackbar.show(
             context,
             message: 'Ya existe un proveedor con ese número de RUC/ID fiscal.',

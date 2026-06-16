@@ -30,9 +30,9 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
 
   // Posición del obstáculo (caja)
   double _obstacleX = 1.5; // Empieza fuera de la pantalla por la derecha
-  
+
   // Posición de la moneda
-  double _coinX = 2.0; 
+  double _coinX = 2.0;
   double _coinY = 0.0; // Altura aleatoria para la moneda
 
   // --- VARIABLES DE VELOCIDAD Y DIFICULTAD ---
@@ -100,9 +100,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
 
       // 3. RECICLAR OBSTÁCULO (Si sale por la izquierda, vuelve a la derecha)
       if (_obstacleX < -1.5) {
-        _obstacleX = 1.5 + Random().nextDouble(); // Añade un poco de aleatoriedad al spawn
+        _obstacleX =
+            1.5 +
+            Random().nextDouble(); // Añade un poco de aleatoriedad al spawn
         // Incrementamos la dificultad lentamente
-        if (_gameSpeed < 0.06) _gameSpeed += 0.001; 
+        if (_gameSpeed < 0.06) _gameSpeed += 0.001;
       }
 
       // 4. RECICLAR MONEDA
@@ -124,11 +126,12 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
   void _checkCollisions() {
     // Hitbox del personaje está aprox en X = -0.5
     const double charX = -0.5;
-    
+
     // --- CHOQUE CON LA CAJA (GAME OVER) ---
     // Si la caja está en el rango X del personaje Y el personaje está cerca del suelo
     if (_obstacleX < (charX + 0.15) && _obstacleX > (charX - 0.15)) {
-      if (_charY > 0.8) { // 0.8 hacia 1.0 significa que está tocando la caja
+      if (_charY > 0.8) {
+        // 0.8 hacia 1.0 significa que está tocando la caja
         _endGame();
       }
     }
@@ -177,7 +180,9 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
       backgroundColor: Colors.lightBlue.shade100, // Color cielo
       body: SafeArea(
         child: GestureDetector(
-          onTapDown: (_) => _jump(), // Detecta el toque en cualquier parte de la pantalla
+          onTapDown:
+              (_) =>
+                  _jump(), // Detecta el toque en cualquier parte de la pantalla
           behavior: HitTestBehavior.opaque,
           child: Stack(
             children: [
@@ -199,7 +204,9 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                   width: double.infinity,
                   decoration: const BoxDecoration(
                     color: Colors.green,
-                    border: Border(top: BorderSide(color: Colors.lightGreenAccent, width: 4)),
+                    border: Border(
+                      top: BorderSide(color: Colors.lightGreenAccent, width: 4),
+                    ),
                   ),
                 ),
               ),
@@ -211,18 +218,29 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                   top: 20,
                   right: 20,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.monetization_on, color: Colors.amber, size: 24),
+                        const Icon(
+                          Icons.monetization_on,
+                          color: Colors.amber,
+                          size: 24,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           '$_score',
-                          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -232,7 +250,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                 // LA MONEDA
                 Container(
                   alignment: Alignment(_coinX, _coinY),
-                  child: const Icon(Icons.monetization_on, color: Colors.amber, size: 36),
+                  child: const Icon(
+                    Icons.monetization_on,
+                    color: Colors.amber,
+                    size: 36,
+                  ),
                 ),
 
                 // EL OBSTÁCULO (Caja)
@@ -242,11 +264,18 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                     decoration: BoxDecoration(
                       color: Colors.brown.shade400,
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.brown.shade800, width: 2),
+                      border: Border.all(
+                        color: Colors.brown.shade800,
+                        width: 2,
+                      ),
                     ),
                     width: 40,
                     height: 40,
-                    child: const Icon(Icons.layers, color: Colors.white54, size: 24),
+                    child: const Icon(
+                      Icons.layers,
+                      color: Colors.white54,
+                      size: 24,
+                    ),
                   ),
                 ),
 
@@ -259,18 +288,20 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.shopping_cart, color: Colors.white, size: 30),
+                    child: const Icon(
+                      Icons.shopping_cart,
+                      color: Colors.white,
+                      size: 30,
+                    ),
                   ),
                 ),
               ],
 
               // --- 2. ESTADO: PANTALLA DE INICIO ---
-              if (!_isPlaying && !_isGameOver)
-                _buildIntroScreen(),
+              if (!_isPlaying && !_isGameOver) _buildIntroScreen(),
 
               // --- 3. ESTADO: GAME OVER ---
-              if (_isGameOver)
-                _buildGameOverScreen(),
+              if (_isGameOver) _buildGameOverScreen(),
             ],
           ),
         ),
@@ -290,7 +321,12 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -299,7 +335,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
             const SizedBox(height: 16),
             const Text(
               'Super Salto',
-              style: TextStyle(color: AppColors.primaryDark, fontSize: 32, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: AppColors.primaryDark,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -308,15 +348,12 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
               style: TextStyle(fontSize: 16, height: 1.5, color: Colors.grey),
             ),
             const SizedBox(height: 32),
-            AppPrimaryButton(
-              label: 'JUGAR AHORA',
-              onPressed: _startGame,
-            ),
+            AppPrimaryButton(label: 'JUGAR AHORA', onPressed: _startGame),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Volver', style: TextStyle(color: Colors.grey)),
-            )
+            ),
           ],
         ),
       ),
@@ -331,22 +368,39 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.sentiment_very_dissatisfied, size: 80, color: Colors.redAccent),
+            const Icon(
+              Icons.sentiment_very_dissatisfied,
+              size: 80,
+              color: Colors.redAccent,
+            ),
             const SizedBox(height: 16),
             const Text(
               '¡Auch! Chocaste',
-              style: TextStyle(color: AppColors.primaryDark, fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.primaryDark,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               'Lograste atrapar\n$_score monedas',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.amber, fontSize: 22, fontWeight: FontWeight.w900),
+              style: const TextStyle(
+                color: Colors.amber,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 32),
             if (_isSaving)

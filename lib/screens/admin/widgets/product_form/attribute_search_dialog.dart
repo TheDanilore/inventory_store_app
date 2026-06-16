@@ -9,7 +9,7 @@ enum AttributeSearchMode { attribute, value }
 class AttributeSearchDialog extends StatefulWidget {
   final AttributeSearchMode mode;
   // CAMBIO: Ahora pedimos el ID directamente, no el nombre
-  final String? parentAttributeId; 
+  final String? parentAttributeId;
   final String? parentAttributeName; // Solo para mostrar en el título
 
   const AttributeSearchDialog({
@@ -125,7 +125,10 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
         final res =
             await Supabase.instance.client
                 .from('attribute_values')
-                .insert({'attribute_id': widget.parentAttributeId!, 'value': term})
+                .insert({
+                  'attribute_id': widget.parentAttributeId!,
+                  'value': term,
+                })
                 .select('id, value')
                 .single();
 
@@ -247,8 +250,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
                   shrinkWrap: true,
                   itemCount: _results.length,
                   separatorBuilder:
-                      (_, _) =>
-                          Divider(height: 1, color: Colors.grey.shade100),
+                      (_, _) => Divider(height: 1, color: Colors.grey.shade100),
                   itemBuilder: (context, index) {
                     final item = _results[index];
                     return ListTile(

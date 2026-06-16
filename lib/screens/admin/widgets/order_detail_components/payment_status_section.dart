@@ -214,23 +214,29 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           .eq('id', widget.orderId);
 
       // 3.5 Otorgar monedas si el pedido a crédito fue pagado completamente
-      if (newPaymentStatus == 'PAID' && widget.paymentMethod == 'CRÉDITO' && widget.customerId != null && widget.pointsEarned > 0) {
-        final earnedExists = await widget.supabase
-            .from('wallet_movements')
-            .select('id')
-            .eq('order_id', widget.orderId)
-            .eq('movement_type', 'EARNED')
-            .maybeSingle();
+      if (newPaymentStatus == 'PAID' &&
+          widget.paymentMethod == 'CRÉDITO' &&
+          widget.customerId != null &&
+          widget.pointsEarned > 0) {
+        final earnedExists =
+            await widget.supabase
+                .from('wallet_movements')
+                .select('id')
+                .eq('order_id', widget.orderId)
+                .eq('movement_type', 'EARNED')
+                .maybeSingle();
 
         if (earnedExists == null) {
-          final profileData = await widget.supabase
-              .from('profiles')
-              .select('wallet_balance')
-              .eq('id', widget.customerId!)
-              .maybeSingle();
+          final profileData =
+              await widget.supabase
+                  .from('profiles')
+                  .select('wallet_balance')
+                  .eq('id', widget.customerId!)
+                  .maybeSingle();
 
           if (profileData != null) {
-            final curBal = (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
+            final curBal =
+                (profileData['wallet_balance'] as num?)?.toInt() ?? 0;
             await Future.wait([
               widget.supabase
                   .from('profiles')
@@ -241,7 +247,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                 'order_id': widget.orderId,
                 'points': widget.pointsEarned,
                 'movement_type': 'EARNED',
-                'description': 'Monedas obtenidas al pagar crédito de pedido #${widget.orderId}',
+                'description':
+                    'Monedas obtenidas al pagar crédito de pedido #${widget.orderId}',
               }),
             ]);
           }
@@ -257,8 +264,7 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
         'account_id': _selectedAccount!['id'],
         'movement_type': 'INCOME',
         'amount': amount,
-        'description':
-            'Cobro de crédito — Pedido #${widget.orderId}',
+        'description': 'Cobro de crédito — Pedido #${widget.orderId}',
         'reference_type': 'orders',
         'reference_id': widget.orderId,
         if (shiftId != null) 'shift_id': shiftId,

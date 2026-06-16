@@ -114,7 +114,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       }
 
       if (pos.selectedClientId != null) {
-        final creditResp = await _checkoutService.fetchClientCredit(pos.selectedClientId!);
+        final creditResp = await _checkoutService.fetchClientCredit(
+          pos.selectedClientId!,
+        );
         if (mounted) {
           setState(() {
             _creditInfo = creditResp;
@@ -124,7 +126,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     } catch (e) {
       debugPrint('Error cargando datos iniciales: $e');
       if (mounted) {
-        AppSnackbar.show(context, message: 'Error cargando datos: $e', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: 'Error cargando datos: $e',
+          type: SnackbarType.error,
+        );
       }
     } finally {
       if (mounted) {
@@ -295,7 +301,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         );
         return;
       }
-      
+
       final disp = PosCalculatorUtils.getCreditDisponible(_creditInfo);
       if (disp < totalFinal) {
         AppSnackbar.show(
@@ -311,12 +317,18 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     if (!isDraft) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (context) => PosConfirmationDialog(
-          totalFinal: totalFinal,
-          clienteName: pos.selectedClientId != null ? pos.selectedClientName : _clienteCtrl.text.trim().isNotEmpty ? _clienteCtrl.text.trim() : null,
-          paymentMethod: pos.paymentMethod,
-          onConfirm: () {},
-        ),
+        builder:
+            (context) => PosConfirmationDialog(
+              totalFinal: totalFinal,
+              clienteName:
+                  pos.selectedClientId != null
+                      ? pos.selectedClientName
+                      : _clienteCtrl.text.trim().isNotEmpty
+                      ? _clienteCtrl.text.trim()
+                      : null,
+              paymentMethod: pos.paymentMethod,
+              onConfirm: () {},
+            ),
       );
 
       if (confirmed != true) return;
@@ -370,24 +382,44 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         await showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (dialogContext) => PosSuccessDialog(
-            isDraft: isDraft,
-            onPrint: () async {
-              try {
-                final orderResp = await Supabase.instance.client.from('orders').select('id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)').eq('id', orderId).single();
-                final itemsResp = await Supabase.instance.client.from('order_items').select('id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, product_images(id, image_url, is_main))').eq('order_id', orderId);
-                
-                final order = OrderModel.fromJson(orderResp);
-                final items = List<Map<String, dynamic>>.from(itemsResp).map((x) => OrderItemModel.fromJson(x)).toList();
-                
-                await OrderPdfGenerator.shareTicket(order, items: items);
-              } catch (e) {
-                if (dialogContext.mounted) {
-                  AppSnackbar.show(dialogContext, message: 'Error generando comprobante: $e', type: SnackbarType.error);
-                }
-              }
-            },
-          ),
+          builder:
+              (dialogContext) => PosSuccessDialog(
+                isDraft: isDraft,
+                onPrint: () async {
+                  try {
+                    final orderResp =
+                        await Supabase.instance.client
+                            .from('orders')
+                            .select(
+                              'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
+                            )
+                            .eq('id', orderId)
+                            .single();
+                    final itemsResp = await Supabase.instance.client
+                        .from('order_items')
+                        .select(
+                          'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name, product_images(id, image_url, is_main)), product_variants(sku, product_images(id, image_url, is_main))',
+                        )
+                        .eq('order_id', orderId);
+
+                    final order = OrderModel.fromJson(orderResp);
+                    final items =
+                        List<Map<String, dynamic>>.from(
+                          itemsResp,
+                        ).map((x) => OrderItemModel.fromJson(x)).toList();
+
+                    await OrderPdfGenerator.shareTicket(order, items: items);
+                  } catch (e) {
+                    if (dialogContext.mounted) {
+                      AppSnackbar.show(
+                        dialogContext,
+                        message: 'Error generando comprobante: $e',
+                        type: SnackbarType.error,
+                      );
+                    }
+                  }
+                },
+              ),
         );
         if (mounted) {
           Navigator.pop(context, true);
@@ -395,7 +427,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, message: 'Error: $e', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: 'Error: $e',
+          type: SnackbarType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isProcessingSale = false);
@@ -481,397 +517,534 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
 
-    final bodyContent = _isLoadingInitialData
-        ? ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: 4,
-            separatorBuilder: (_, _) => const SizedBox(height: 16),
-            itemBuilder: (_, _) => const AppShimmer(height: 120),
-          )
-        : Stack(
-      children: [
-        SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PosSectionLabel('Productos en caja'),
-              Consumer<PosProvider>(
-                builder: (context, pos, _) => PosCartItemsSection(
-                  pos: pos,
-                  onShowBatchEditSheet: _showBatchEditSheet,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              PosSectionLabel('Cliente'),
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  return AdminSaleClientSection(
-                    controller: _clienteCtrl,
-                    onSearchChanged: _onClientSearchChanged,
-                    searching: _searchingClients,
-                    matches: _clientMatches,
-                    selectedClientId: pos.selectedClientId,
-                    onClientTap: _selectClient,
-                    saldoActualCliente: pos.saldoActualCliente,
-                    creditInfo: _creditInfo,
-                    isCredito: isCredito,
-                  );
-                },
-              ),
-
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  return AdminSalePointsSection(
-                    show: pos.selectedClientId != null &&
-                        pos.saldoActualCliente > 0 &&
-                        !isCredito,
-                    saldoActualCliente: pos.saldoActualCliente,
-                    maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
-                      pos,
-                      pointsToSolesRatio,
-                    ),
-                    pointsToSolesRatio: pointsToSolesRatio,
-                    pointsController: _puntosCtrl,
-                    onPointsChanged: (p) {
-                      final next = PosCalculatorUtils.clampPointsValue(p, pos, pointsToSolesRatio);
-                      pos.setPuntosAUsar(next);
-                      _puntosCtrl.value = TextEditingValue(
-                        text: next.toString(),
-                        selection: TextSelection.collapsed(
-                          offset: next.toString().length,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-
-              PosSectionLabel('Configuración de venta'),
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  return PaymentWarehouseAccountCard(
-                    paymentMethod: pos.paymentMethod,
-                    warehouseList: _warehouseList,
-                    selectedWarehouseId: pos.selectedWarehouseId,
-                    accountsList: _accountsList,
-                    selectedAccountId: _selectedAccountId,
-                    activeShift: _activeShift,
-                    isCredito: isCredito,
-                    onCreditoToggle: (isCredito) {
-                      if (isCredito) {
-                        pos.setPaymentMethod('CRÉDITO');
-                        pos.setPuntosAUsar(0);
-                        _puntosCtrl.text = '0';
-                      } else {
-                        if (_selectedAccountId != null) {
-                          final acc = _accountsList.firstWhere(
-                            (a) => a['id'] == _selectedAccountId,
-                            orElse: () => {},
-                          );
-                          final accName = acc['name'] as String? ?? 'EFECTIVO';
-                          pos.setPaymentMethod(accName);
-                        } else {
-                          pos.setPaymentMethod('EFECTIVO');
-                        }
-                      }
-                      setState(() {});
-                    },
-                    onWarehouseChanged: (v) => pos.setWarehouse(v),
-                    onAccountChanged: (v) {
-                      setState(() => _selectedAccountId = v);
-                      if (v != null) {
-                        final acc = _accountsList.firstWhere(
-                          (a) => a['id'] == v,
-                          orElse: () => {},
-                        );
-                        final accName = acc['name'] as String? ?? 'OTRO';
-                        pos.setPaymentMethod(accName);
-                      }
-                      _checkActiveShift();
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  if (!isCredito) return const SizedBox.shrink();
-                  final totalFinal = PosCalculatorUtils.calcularTotalFinal(
-                    discountText: _descuentoCtrl.text,
-                    isDiscountPercentage: _isDiscountPercentage,
-                    pos: pos, 
-                    ratio: pointsToSolesRatio
-                  );
-                  return Column(
+    final bodyContent =
+        _isLoadingInitialData
+            ? ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: 4,
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
+              itemBuilder: (_, _) => const AppShimmer(height: 120),
+            )
+            : Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _CreditWarningCard(
-                        clienteSeleccionado: pos.selectedClientId != null,
-                        creditActivo: PosCalculatorUtils.isCreditActivo(_creditInfo),
-                        creditDisponible: PosCalculatorUtils.getCreditDisponible(_creditInfo),
-                        totalFinal: totalFinal,
-                        creditInfo: _creditInfo,
+                      PosSectionLabel('Productos en caja'),
+                      Consumer<PosProvider>(
+                        builder:
+                            (context, pos, _) => PosCartItemsSection(
+                              pos: pos,
+                              onShowBatchEditSheet: _showBatchEditSheet,
+                            ),
                       ),
                       const SizedBox(height: 20),
-                    ],
-                  );
-                },
-              ),
 
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  if (isCredito) return const SizedBox.shrink();
-
-                  final puntosSeguros = PosCalculatorUtils.clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
-                  final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
-                    discountText: _descuentoCtrl.text,
-                    isDiscountPercentage: _isDiscountPercentage,
-                    pos: pos, 
-                    ratio: pointsToSolesRatio
-                  );
-                  final descuentoExcedido = descuentoExtra > (pos.totalAmount - (puntosSeguros * pointsToSolesRatio));
-
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppColors.radius),
-                      border: Border.all(
-                        color: descuentoExcedido ? AppColors.danger : AppColors.border,
+                      PosSectionLabel('Cliente'),
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          return AdminSaleClientSection(
+                            controller: _clienteCtrl,
+                            onSearchChanged: _onClientSearchChanged,
+                            searching: _searchingClients,
+                            matches: _clientMatches,
+                            selectedClientId: pos.selectedClientId,
+                            onClientTap: _selectClient,
+                            saldoActualCliente: pos.saldoActualCliente,
+                            creditInfo: _creditInfo,
+                            isCredito: isCredito,
+                          );
+                        },
                       ),
-                      boxShadow: AppColors.cardShadow(),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        PosSectionLabel('Descuento extra'),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: Container(
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: AppColors.bg,
-                                  borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
-                                  border: Border.all(color: AppColors.border),
+
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          return AdminSalePointsSection(
+                            show:
+                                pos.selectedClientId != null &&
+                                pos.saldoActualCliente > 0 &&
+                                !isCredito,
+                            saldoActualCliente: pos.saldoActualCliente,
+                            maxPuntosAplicables:
+                                PosCalculatorUtils.maxPuntosAplicables(
+                                  pos,
+                                  pointsToSolesRatio,
                                 ),
-                                child: TextField(
-                                  controller: _descuentoCtrl,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  onChanged: (_) => setState(() {}),
-                                  decoration: const InputDecoration(
-                                    hintText: '0.00',
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
+                            pointsToSolesRatio: pointsToSolesRatio,
+                            pointsController: _puntosCtrl,
+                            onPointsChanged: (p) {
+                              final next = PosCalculatorUtils.clampPointsValue(
+                                p,
+                                pos,
+                                pointsToSolesRatio,
+                              );
+                              pos.setPuntosAUsar(next);
+                              _puntosCtrl.value = TextEditingValue(
+                                text: next.toString(),
+                                selection: TextSelection.collapsed(
+                                  offset: next.toString().length,
                                 ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      PosSectionLabel('Configuración de venta'),
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          return PaymentWarehouseAccountCard(
+                            paymentMethod: pos.paymentMethod,
+                            warehouseList: _warehouseList,
+                            selectedWarehouseId: pos.selectedWarehouseId,
+                            accountsList: _accountsList,
+                            selectedAccountId: _selectedAccountId,
+                            activeShift: _activeShift,
+                            isCredito: isCredito,
+                            onCreditoToggle: (isCredito) {
+                              if (isCredito) {
+                                pos.setPaymentMethod('CRÉDITO');
+                                pos.setPuntosAUsar(0);
+                                _puntosCtrl.text = '0';
+                              } else {
+                                if (_selectedAccountId != null) {
+                                  final acc = _accountsList.firstWhere(
+                                    (a) => a['id'] == _selectedAccountId,
+                                    orElse: () => {},
+                                  );
+                                  final accName =
+                                      acc['name'] as String? ?? 'EFECTIVO';
+                                  pos.setPaymentMethod(accName);
+                                } else {
+                                  pos.setPaymentMethod('EFECTIVO');
+                                }
+                              }
+                              setState(() {});
+                            },
+                            onWarehouseChanged: (v) => pos.setWarehouse(v),
+                            onAccountChanged: (v) {
+                              setState(() => _selectedAccountId = v);
+                              if (v != null) {
+                                final acc = _accountsList.firstWhere(
+                                  (a) => a['id'] == v,
+                                  orElse: () => {},
+                                );
+                                final accName =
+                                    acc['name'] as String? ?? 'OTRO';
+                                pos.setPaymentMethod(accName);
+                              }
+                              _checkActiveShift();
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          if (!isCredito) return const SizedBox.shrink();
+                          final totalFinal =
+                              PosCalculatorUtils.calcularTotalFinal(
+                                discountText: _descuentoCtrl.text,
+                                isDiscountPercentage: _isDiscountPercentage,
+                                pos: pos,
+                                ratio: pointsToSolesRatio,
+                              );
+                          return Column(
+                            children: [
+                              _CreditWarningCard(
+                                clienteSeleccionado:
+                                    pos.selectedClientId != null,
+                                creditActivo: PosCalculatorUtils.isCreditActivo(
+                                  _creditInfo,
+                                ),
+                                creditDisponible:
+                                    PosCalculatorUtils.getCreditDisponible(
+                                      _creditInfo,
+                                    ),
+                                totalFinal: totalFinal,
+                                creditInfo: _creditInfo,
                               ),
+                              const SizedBox(height: 20),
+                            ],
+                          );
+                        },
+                      ),
+
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          if (isCredito) return const SizedBox.shrink();
+
+                          final puntosSeguros =
+                              PosCalculatorUtils.clampPointsValue(
+                                pos.puntosAUsar,
+                                pos,
+                                pointsToSolesRatio,
+                              );
+                          final descuentoExtra =
+                              PosCalculatorUtils.getCustomDiscountAmount(
+                                discountText: _descuentoCtrl.text,
+                                isDiscountPercentage: _isDiscountPercentage,
+                                pos: pos,
+                                ratio: pointsToSolesRatio,
+                              );
+                          final descuentoExcedido =
+                              descuentoExtra >
+                              (pos.totalAmount -
+                                  (puntosSeguros * pointsToSolesRatio));
+
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(
+                                AppColors.radius,
+                              ),
+                              border: Border.all(
+                                color:
+                                    descuentoExcedido
+                                        ? AppColors.danger
+                                        : AppColors.border,
+                              ),
+                              boxShadow: AppColors.cardShadow(),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 1,
-                              child: Container(
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: AppColors.bg,
-                                  borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                PosSectionLabel('Descuento extra'),
+                                Row(
                                   children: [
                                     Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _isDiscountPercentage = false),
-                                        child: Container(
-                                          color: !_isDiscountPercentage
-                                              ? AppColors.teal.withValues(alpha: 0.1)
-                                              : Colors.transparent,
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'S/',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: !_isDiscountPercentage ? AppColors.teal : AppColors.textMuted,
-                                            ),
+                                      flex: 2,
+                                      child: Container(
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.bg,
+                                          borderRadius: BorderRadius.circular(
+                                            AppColors.radiusSm + 2,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.border,
+                                          ),
+                                        ),
+                                        child: TextField(
+                                          controller: _descuentoCtrl,
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          onChanged: (_) => setState(() {}),
+                                          decoration: const InputDecoration(
+                                            hintText: '0.00',
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 12,
+                                                ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                    Container(width: 1, color: AppColors.border),
+                                    const SizedBox(width: 12),
                                     Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _isDiscountPercentage = true),
-                                        child: Container(
-                                          color: _isDiscountPercentage
-                                              ? AppColors.teal.withValues(alpha: 0.1)
-                                              : Colors.transparent,
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '%',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: _isDiscountPercentage ? AppColors.teal : AppColors.textMuted,
-                                            ),
+                                      flex: 1,
+                                      child: Container(
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.bg,
+                                          borderRadius: BorderRadius.circular(
+                                            AppColors.radiusSm + 2,
                                           ),
+                                          border: Border.all(
+                                            color: AppColors.border,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap:
+                                                    () => setState(
+                                                      () =>
+                                                          _isDiscountPercentage =
+                                                              false,
+                                                    ),
+                                                child: Container(
+                                                  color:
+                                                      !_isDiscountPercentage
+                                                          ? AppColors.teal
+                                                              .withValues(
+                                                                alpha: 0.1,
+                                                              )
+                                                          : Colors.transparent,
+                                                  alignment: Alignment.center,
+                                                  child: Text(
+                                                    'S/',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color:
+                                                          !_isDiscountPercentage
+                                                              ? AppColors.teal
+                                                              : AppColors
+                                                                  .textMuted,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 1,
+                                              color: AppColors.border,
+                                            ),
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap:
+                                                    () => setState(
+                                                      () =>
+                                                          _isDiscountPercentage =
+                                                              true,
+                                                    ),
+                                                child: Container(
+                                                  color:
+                                                      _isDiscountPercentage
+                                                          ? AppColors.teal
+                                                              .withValues(
+                                                                alpha: 0.1,
+                                                              )
+                                                          : Colors.transparent,
+                                                  alignment: Alignment.center,
+                                                  child: Text(
+                                                    '%',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color:
+                                                          _isDiscountPercentage
+                                                              ? AppColors.teal
+                                                              : AppColors
+                                                                  .textMuted,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
+                                if (descuentoExcedido)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.warning_rounded,
+                                          size: 14,
+                                          color: AppColors.danger,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            'No puede superar los S/ ${(pos.totalAmount - (puntosSeguros * pointsToSolesRatio)).toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              color: AppColors.danger,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ],
-                        ),
-                        if (descuentoExcedido)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.warning_rounded, size: 14, color: AppColors.danger),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    'No puede superar los S/ ${(pos.totalAmount - (puntosSeguros * pointsToSolesRatio)).toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      color: AppColors.danger,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                          );
+                        },
+                      ),
+
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          if (!isCredito) return const SizedBox(height: 16);
+                          return const SizedBox.shrink();
+                        },
+                      ),
+
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          final puntosSeguros =
+                              PosCalculatorUtils.clampPointsValue(
+                                pos.puntosAUsar,
+                                pos,
+                                pointsToSolesRatio,
+                              );
+                          final totalFinal =
+                              PosCalculatorUtils.calcularTotalFinal(
+                                discountText: _descuentoCtrl.text,
+                                isDiscountPercentage: _isDiscountPercentage,
+                                pos: pos,
+                                ratio: pointsToSolesRatio,
+                              );
+
+                          return PosTotalSummarySection(
+                            subtotalAntesDePuntos: pos.totalAmount,
+                            puntosAplicables: isCredito ? 0 : puntosSeguros,
+                            descuentoPuntos:
+                                isCredito
+                                    ? 0
+                                    : puntosSeguros * pointsToSolesRatio,
+                            descuentoExtra:
+                                isCredito
+                                    ? 0
+                                    : PosCalculatorUtils.getCustomDiscountAmount(
+                                      discountText: _descuentoCtrl.text,
+                                      isDiscountPercentage:
+                                          _isDiscountPercentage,
+                                      pos: pos,
+                                      ratio: pointsToSolesRatio,
+                                    ),
+                            totalFinal: totalFinal,
+                            pointsToSolesRatio: pointsToSolesRatio,
+                            earningRate: earningRate,
+                            isCredito: isCredito,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      Consumer<PosProvider>(
+                        builder: (context, pos, _) {
+                          final isCredito = pos.paymentMethod == 'CRÉDITO';
+                          final puntosSeguros =
+                              PosCalculatorUtils.clampPointsValue(
+                                pos.puntosAUsar,
+                                pos,
+                                pointsToSolesRatio,
+                              );
+                          final descuentoExtra =
+                              PosCalculatorUtils.getCustomDiscountAmount(
+                                discountText: _descuentoCtrl.text,
+                                isDiscountPercentage: _isDiscountPercentage,
+                                pos: pos,
+                                ratio: pointsToSolesRatio,
+                              );
+                          final descuentoExcedido =
+                              descuentoExtra >
+                              (pos.totalAmount -
+                                  (puntosSeguros * pointsToSolesRatio));
+                          final totalFinal =
+                              PosCalculatorUtils.calcularTotalFinal(
+                                discountText: _descuentoCtrl.text,
+                                isDiscountPercentage: _isDiscountPercentage,
+                                pos: pos,
+                                ratio: pointsToSolesRatio,
+                              );
+
+                          final disp = PosCalculatorUtils.getCreditDisponible(
+                            _creditInfo,
+                          );
+                          final creditoInsuficiente =
+                              isCredito &&
+                              pos.selectedClientId != null &&
+                              PosCalculatorUtils.isCreditActivo(_creditInfo) &&
+                              disp < totalFinal;
+                          final creditoSinCliente =
+                              isCredito && pos.selectedClientId == null;
+                          final isCajaAccount = _accountsList.any(
+                            (a) =>
+                                a['id'] == _selectedAccountId &&
+                                a['type'] == 'CAJA',
+                          );
+                          final noCajaAbierta =
+                              !isCredito &&
+                              _selectedAccountId != null &&
+                              isCajaAccount &&
+                              _activeShift == null;
+
+                          final puedeVender =
+                              pos.itemCount > 0 &&
+                              !descuentoExcedido &&
+                              !creditoInsuficiente &&
+                              !creditoSinCliente &&
+                              !noCajaAbierta;
+
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: PosConfirmButton(
+                                  loading: _isProcessingSale,
+                                  enabled: puedeVender,
+                                  label:
+                                      isCredito
+                                          ? 'Vender a crédito'
+                                          : 'Confirmar venta',
+                                  onPressed:
+                                      () => _processSale(pos, isDraft: false),
+                                ),
+                              ),
+                              if (!isCredito) ...[
+                                const SizedBox(width: 12),
+                                SizedBox(
+                                  width: 56,
+                                  height: 56,
+                                  child: Tooltip(
+                                    message: 'Guardar borrador',
+                                    child: OutlinedButton(
+                                      onPressed:
+                                          (_isProcessingSale ||
+                                                  pos.itemCount == 0 ||
+                                                  descuentoExcedido)
+                                              ? null
+                                              : () => _processSale(
+                                                pos,
+                                                isDraft: true,
+                                              ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.teal,
+                                        padding: EdgeInsets.zero,
+                                        side: BorderSide(
+                                          color: AppColors.teal.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                          width: 1.5,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            AppColors.radius,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.save_as_rounded,
+                                        size: 22,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  if (!isCredito) return const SizedBox(height: 16);
-                  return const SizedBox.shrink();
-                },
-              ),
-
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  final puntosSeguros = PosCalculatorUtils.clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
-                  final totalFinal = PosCalculatorUtils.calcularTotalFinal(
-                    discountText: _descuentoCtrl.text,
-                    isDiscountPercentage: _isDiscountPercentage,
-                    pos: pos, 
-                    ratio: pointsToSolesRatio
-                  );
-
-                  return PosTotalSummarySection(
-                    subtotalAntesDePuntos: pos.totalAmount,
-                    puntosAplicables: isCredito ? 0 : puntosSeguros,
-                    descuentoPuntos: isCredito ? 0 : puntosSeguros * pointsToSolesRatio,
-                    descuentoExtra: isCredito ? 0 : PosCalculatorUtils.getCustomDiscountAmount(
-                      discountText: _descuentoCtrl.text,
-                      isDiscountPercentage: _isDiscountPercentage,
-                      pos: pos, 
-                      ratio: pointsToSolesRatio
-                    ),
-                    totalFinal: totalFinal,
-                    pointsToSolesRatio: pointsToSolesRatio,
-                    earningRate: earningRate,
-                    isCredito: isCredito,
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-
-              Consumer<PosProvider>(
-                builder: (context, pos, _) {
-                  final isCredito = pos.paymentMethod == 'CRÉDITO';
-                  final puntosSeguros = PosCalculatorUtils.clampPointsValue(pos.puntosAUsar, pos, pointsToSolesRatio);
-                  final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
-                    discountText: _descuentoCtrl.text,
-                    isDiscountPercentage: _isDiscountPercentage,
-                    pos: pos, 
-                    ratio: pointsToSolesRatio
-                  );
-                  final descuentoExcedido = descuentoExtra > (pos.totalAmount - (puntosSeguros * pointsToSolesRatio));
-                  final totalFinal = PosCalculatorUtils.calcularTotalFinal(
-                    discountText: _descuentoCtrl.text,
-                    isDiscountPercentage: _isDiscountPercentage,
-                    pos: pos, 
-                    ratio: pointsToSolesRatio
-                  );
-
-                  final disp = PosCalculatorUtils.getCreditDisponible(_creditInfo);
-                  final creditoInsuficiente = isCredito && pos.selectedClientId != null && PosCalculatorUtils.isCreditActivo(_creditInfo) && disp < totalFinal;
-                  final creditoSinCliente = isCredito && pos.selectedClientId == null;
-                  final isCajaAccount = _accountsList.any((a) => a['id'] == _selectedAccountId && a['type'] == 'CAJA');
-                  final noCajaAbierta = !isCredito && _selectedAccountId != null && isCajaAccount && _activeShift == null;
-
-                  final puedeVender = pos.itemCount > 0 &&
-                      !descuentoExcedido &&
-                      !creditoInsuficiente &&
-                      !creditoSinCliente &&
-                      !noCajaAbierta;
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: PosConfirmButton(
-                          loading: _isProcessingSale,
-                          enabled: puedeVender,
-                          label: isCredito ? 'Vender a crédito' : 'Confirmar venta',
-                          onPressed: () => _processSale(pos, isDraft: false),
-                        ),
+                            ],
+                          );
+                        },
                       ),
-                      if (!isCredito) ...[
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: Tooltip(
-                            message: 'Guardar borrador',
-                            child: OutlinedButton(
-                              onPressed: (_isProcessingSale || pos.itemCount == 0 || descuentoExcedido)
-                                  ? null
-                                  : () => _processSale(pos, isDraft: true),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.teal,
-                                padding: EdgeInsets.zero,
-                                side: BorderSide(
-                                  color: AppColors.teal.withValues(alpha: 0.4),
-                                  width: 1.5,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppColors.radius),
-                                ),
-                              ),
-                              child: const Icon(Icons.save_as_rounded, size: 22),
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        PosProcessingOverlay(isVisible: _isProcessingSale),
-      ],
-    );
+                  ),
+                ),
+                PosProcessingOverlay(isVisible: _isProcessingSale),
+              ],
+            );
 
     return AdminLayout(
       title: 'Caja POS',

@@ -21,10 +21,12 @@ class CustomerCreditMovementsScreen extends StatefulWidget {
   });
 
   @override
-  State<CustomerCreditMovementsScreen> createState() => _CustomerCreditMovementsScreenState();
+  State<CustomerCreditMovementsScreen> createState() =>
+      _CustomerCreditMovementsScreenState();
 }
 
-class _CustomerCreditMovementsScreenState extends State<CustomerCreditMovementsScreen> {
+class _CustomerCreditMovementsScreenState
+    extends State<CustomerCreditMovementsScreen> {
   final _supabase = Supabase.instance.client;
 
   bool _isLoading = true;

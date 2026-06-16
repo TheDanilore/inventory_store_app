@@ -782,8 +782,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                     ),
                                   ),
                                 ),
-                            errorWidget:
-                                (_, _, _) => _buildImagePlaceholder(),
+                            errorWidget: (_, _, _) => _buildImagePlaceholder(),
                           )
                           : _buildImagePlaceholder(),
                 ),
@@ -1722,8 +1721,7 @@ class _VariantPickerSheet extends StatelessWidget {
                                               ),
                                             ),
                                           ),
-                                      errorWidget:
-                                          (_, _, _) => _imgFallback(),
+                                      errorWidget: (_, _, _) => _imgFallback(),
                                     )
                                     : _imgFallback(),
                           ),

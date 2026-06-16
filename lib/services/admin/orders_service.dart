@@ -427,7 +427,9 @@ class OrdersService {
   /// Recupera los ítems de un pedido para la generación de tickets PDF
   /// trayendo estrictamente los datos necesarios (Directiva 3: Columnas específicas y !inner).
   /// Se remueven imágenes u otros datos pesados.
-  Future<List<Map<String, dynamic>>> fetchOrderItemsForPdf(String orderId) async {
+  Future<List<Map<String, dynamic>>> fetchOrderItemsForPdf(
+    String orderId,
+  ) async {
     final resp = await _supabase
         .from('order_items')
         .select('''

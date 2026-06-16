@@ -5,14 +5,17 @@ import 'package:inventory_store_app/models/product_variant_model.dart';
 class ProductDetailService {
   final _supabase = Supabase.instance.client;
 
-  Future<({
-    List<Map<String, dynamic>> stocks,
-    List<Map<String, dynamic>> batches,
-    List<ProductImageModel> images,
-    List<ProductVariantModel> variants,
-    List<Map<String, dynamic>> reviews,
-    List<Map<String, dynamic>> ingredients,
-  })> fetchProductExtraData(String productId) async {
+  Future<
+    ({
+      List<Map<String, dynamic>> stocks,
+      List<Map<String, dynamic>> batches,
+      List<ProductImageModel> images,
+      List<ProductVariantModel> variants,
+      List<Map<String, dynamic>> reviews,
+      List<Map<String, dynamic>> ingredients,
+    })
+  >
+  fetchProductExtraData(String productId) async {
     final queries = <Future<dynamic>>[
       // 0: Stocks / Batches — solo stock > 0 (filtro servidor)
       _supabase
@@ -27,7 +30,9 @@ class ProductDetailService {
       // 1: Images — columnas minimas
       _supabase
           .from('product_images')
-          .select('id, product_id, variant_id, image_url, display_order, is_main')
+          .select(
+            'id, product_id, variant_id, image_url, display_order, is_main',
+          )
           .eq('product_id', productId)
           .order('display_order', ascending: true),
 
@@ -56,7 +61,9 @@ class ProductDetailService {
       // 4: Ingredients
       _supabase
           .from('product_active_ingredients')
-          .select('concentration, unit, active_ingredients(id, name, description)')
+          .select(
+            'concentration, unit, active_ingredients(id, name, description)',
+          )
           .eq('product_id', productId),
     ];
 
@@ -91,22 +98,33 @@ class ProductDetailService {
     return (
       stocks: aggregatedStocks.values.toList(),
       batches: validBatches,
-      images: (results[1] as List)
-          .map((e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      variants: (results[2] as List)
-          .map((e) => ProductVariantModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
+      images:
+          (results[1] as List)
+              .map(
+                (e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e)),
+              )
+              .toList(),
+      variants:
+          (results[2] as List)
+              .map(
+                (e) =>
+                    ProductVariantModel.fromJson(Map<String, dynamic>.from(e)),
+              )
+              .toList(),
       reviews: List<Map<String, dynamic>>.from(results[3] as List),
       ingredients: List<Map<String, dynamic>>.from(results[4] as List),
     );
   }
 
-  Future<List<Map<String, dynamic>>> fetchAdminFinancialData(String productId) async {
+  Future<List<Map<String, dynamic>>> fetchAdminFinancialData(
+    String productId,
+  ) async {
     // Limitado a 500 registros para evitar egress masivo en productos con muchas ventas.
     final response = await _supabase
         .from('order_items')
-        .select('quantity, unit_cost, applied_price, variant_id, orders!inner(status)')
+        .select(
+          'quantity, unit_cost, applied_price, variant_id, orders!inner(status)',
+        )
         .eq('product_id', productId)
         .eq('orders.status', 'COMPLETED')
         .limit(500);
@@ -119,21 +137,23 @@ class ProductDetailService {
   Future<String?> fetchCurrentProfileId() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return null;
-    final profile = await _supabase
-        .from('profiles')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    final profile =
+        await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
     return profile?['id'] as String?;
   }
 
   Future<bool> checkWishlistState(String productId, String profileId) async {
-    final wish = await _supabase
-        .from('wishlist')
-        .select('id')
-        .eq('profile_id', profileId)
-        .eq('product_id', productId)
-        .maybeSingle();
+    final wish =
+        await _supabase
+            .from('wishlist')
+            .select('id')
+            .eq('profile_id', profileId)
+            .eq('product_id', productId)
+            .maybeSingle();
     return wish != null;
   }
 

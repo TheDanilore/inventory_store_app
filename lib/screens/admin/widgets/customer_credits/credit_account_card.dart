@@ -16,9 +16,10 @@ class CreditAccountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = account.usagePercent;
     final isRisk = pct >= 0.8;
-    final barColor = account.isMaxedOut
-        ? AppColors.danger
-        : isRisk
+    final barColor =
+        account.isMaxedOut
+            ? AppColors.danger
+            : isRisk
             ? Colors.orange
             : AppColors.teal;
 
@@ -27,9 +28,10 @@ class CreditAccountCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: account.isMaxedOut
-              ? AppColors.danger.withValues(alpha: 0.4)
-              : AppColors.border,
+          color:
+              account.isMaxedOut
+                  ? AppColors.danger.withValues(alpha: 0.4)
+                  : AppColors.border,
         ),
       ),
       child: InkWell(
@@ -44,15 +46,15 @@ class CreditAccountCard extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: account.isActive
-                        ? AppColors.tealLight
-                        : Colors.grey.shade200,
+                    backgroundColor:
+                        account.isActive
+                            ? AppColors.tealLight
+                            : Colors.grey.shade200,
                     child: Text(
                       account.partnerName.substring(0, 1).toUpperCase(),
                       style: TextStyle(
-                        color: account.isActive
-                            ? AppColors.tealDark
-                            : Colors.grey,
+                        color:
+                            account.isActive ? AppColors.tealDark : Colors.grey,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -95,9 +97,10 @@ class CreditAccountCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: account.isActive
-                          ? AppColors.successLight
-                          : AppColors.dangerLight,
+                      color:
+                          account.isActive
+                              ? AppColors.successLight
+                              : AppColors.dangerLight,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -105,9 +108,10 @@ class CreditAccountCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: account.isActive
-                            ? AppColors.success
-                            : AppColors.danger,
+                        color:
+                            account.isActive
+                                ? AppColors.success
+                                : AppColors.danger,
                       ),
                     ),
                   ),
@@ -135,11 +139,12 @@ class CreditAccountCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: account.currentDebt > 0
-                              ? (isRisk
-                                  ? AppColors.danger
-                                  : AppColors.textPrimary)
-                              : AppColors.success,
+                          color:
+                              account.currentDebt > 0
+                                  ? (isRisk
+                                      ? AppColors.danger
+                                      : AppColors.textPrimary)
+                                  : AppColors.success,
                         ),
                       ),
                     ],
@@ -152,9 +157,10 @@ class CreditAccountCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: account.isActive
-                              ? AppColors.teal
-                              : AppColors.textMuted,
+                          color:
+                              account.isActive
+                                  ? AppColors.teal
+                                  : AppColors.textMuted,
                         ),
                       ),
                       Text(
@@ -192,9 +198,10 @@ class CreditAccountCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: account.isMaxedOut
-                          ? AppColors.danger
-                          : AppColors.textMuted,
+                      color:
+                          account.isMaxedOut
+                              ? AppColors.danger
+                              : AppColors.textMuted,
                     ),
                   ),
                   const Icon(

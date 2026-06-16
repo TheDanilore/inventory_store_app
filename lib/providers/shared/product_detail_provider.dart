@@ -7,7 +7,7 @@ import 'package:inventory_store_app/services/shared/product_detail_service.dart'
 
 class ProductDetailProvider extends ChangeNotifier {
   final ProductDetailService _service = ProductDetailService();
-  
+
   final ProductModel product;
   final bool isAdmin;
 
@@ -40,10 +40,7 @@ class ProductDetailProvider extends ChangeNotifier {
 
   double averageRating = 0.0;
 
-  ProductDetailProvider({
-    required this.product,
-    required this.isAdmin,
-  }) {
+  ProductDetailProvider({required this.product, required this.isAdmin}) {
     _initData();
   }
 
@@ -54,10 +51,7 @@ class ProductDetailProvider extends ChangeNotifier {
   Future<void> loadData() async {
     isLoadingExtra = true;
     notifyListeners();
-    await Future.wait([
-      _fetchWishlistState(),
-      _fetchExtraData(),
-    ]);
+    await Future.wait([_fetchWishlistState(), _fetchExtraData()]);
   }
 
   Future<void> _fetchWishlistState() async {
@@ -66,7 +60,7 @@ class ProductDetailProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    
+
     try {
       // Obtener el profileId una sola vez y cachearlo
       _profileId ??= await _service.fetchCurrentProfileId();
@@ -87,7 +81,7 @@ class ProductDetailProvider extends ChangeNotifier {
   Future<void> _fetchExtraData() async {
     try {
       final extraData = await _service.fetchProductExtraData(product.id);
-      
+
       warehouseStocks = extraData.stocks;
       batchesList = extraData.batches;
       images = extraData.images;
@@ -99,14 +93,15 @@ class ProductDetailProvider extends ChangeNotifier {
       for (final r in reviewsList) {
         totalRating += (r['rating'] as num).toDouble();
       }
-      averageRating = reviewsList.isEmpty ? 0.0 : totalRating / reviewsList.length;
+      averageRating =
+          reviewsList.isEmpty ? 0.0 : totalRating / reviewsList.length;
 
       if (isAdmin) {
         final adminData = await _service.fetchAdminFinancialData(product.id);
         int soldUnits = 0;
         double reinvestment = 0.0;
         double revenue = 0.0;
-        
+
         final Map<String, Map<String, double>> variantSales = {};
         for (final row in adminData) {
           final q = (row['quantity'] as num?)?.toInt() ?? 0;
@@ -119,13 +114,17 @@ class ProductDetailProvider extends ChangeNotifier {
 
           final vid = row['variant_id']?.toString() ?? '';
           if (vid.isNotEmpty) {
-            variantSales.putIfAbsent(vid, () => {'qty': 0, 'cost': 0, 'revenue': 0});
+            variantSales.putIfAbsent(
+              vid,
+              () => {'qty': 0, 'cost': 0, 'revenue': 0},
+            );
             variantSales[vid]!['qty'] = variantSales[vid]!['qty']! + q;
             variantSales[vid]!['cost'] = variantSales[vid]!['cost']! + (q * uc);
-            variantSales[vid]!['revenue'] = variantSales[vid]!['revenue']! + (q * ap);
+            variantSales[vid]!['revenue'] =
+                variantSales[vid]!['revenue']! + (q * ap);
           }
         }
-        
+
         totalSold = soldUnits;
         reinvestmentNeeded = reinvestment;
         totalRevenue = revenue;
@@ -142,7 +141,7 @@ class ProductDetailProvider extends ChangeNotifier {
           }
           final vInv = variantStock * cost;
           invValue += vInv;
-          
+
           final sales = variantSales[v.id];
           summaries.add(
             VariantFinancialSummary(
@@ -196,13 +195,17 @@ class ProductDetailProvider extends ChangeNotifier {
     if (pid == null) throw Exception('Inicia sesión para usar favoritos.');
 
     final previousState = isWishlisted;
-    
+
     // Optimistic UI update
     isWishlisted = !isWishlisted;
     notifyListeners();
 
     try {
-      final success = await _service.toggleWishlist(product.id, pid, previousState);
+      final success = await _service.toggleWishlist(
+        product.id,
+        pid,
+        previousState,
+      );
       if (success != isWishlisted) {
         isWishlisted = success;
         notifyListeners();
@@ -228,7 +231,9 @@ class ProductDetailProvider extends ChangeNotifier {
 
   void selectAttribute(String key, String value) {
     selectedAttributes[key] = value;
-    final matchedVariant = variants.cast<ProductVariantModel?>().firstWhere((v) {
+    final matchedVariant = variants.cast<ProductVariantModel?>().firstWhere((
+      v,
+    ) {
       if (v == null) return false;
       bool matches = true;
       selectedAttributes.forEach((k, val) {
@@ -242,7 +247,7 @@ class ProductDetailProvider extends ChangeNotifier {
     } else {
       selectedVariantId = null;
     }
-    
+
     showVariantImage = true;
     selectedQty = 1;
     notifyListeners();
@@ -266,15 +271,18 @@ class ProductDetailProvider extends ChangeNotifier {
   // ─── DERIVED GETTERS ─────────────────────────────────────────────────────
 
   ProductVariantModel? get selectedVariant {
-    if (selectedVariantId != null && variants.any((v) => v.id == selectedVariantId)) {
+    if (selectedVariantId != null &&
+        variants.any((v) => v.id == selectedVariantId)) {
       return variants.firstWhere((v) => v.id == selectedVariantId);
     }
     return null;
   }
 
   double get baseSalePrice => selectedVariant?.salePrice ?? product.salePrice;
-  double? get baseWholesalePrice => selectedVariant?.wholesalePrice ?? product.wholesalePrice;
-  int get baseWholesaleMinQty => selectedVariant?.wholesaleMinQuantity ?? product.wholesaleMinQuantity;
+  double? get baseWholesalePrice =>
+      selectedVariant?.wholesalePrice ?? product.wholesalePrice;
+  int get baseWholesaleMinQty =>
+      selectedVariant?.wholesaleMinQuantity ?? product.wholesaleMinQuantity;
 
   double get effectivePrice {
     if (baseWholesalePrice != null && selectedQty >= baseWholesaleMinQty) {
@@ -311,7 +319,13 @@ class ProductDetailProvider extends ChangeNotifier {
     }
     final match = images.firstWhere(
       (img) => img.variantId == v.id,
-      orElse: () => ProductImageModel(id: '', productId: '', imageUrl: '', displayOrder: 0),
+      orElse:
+          () => ProductImageModel(
+            id: '',
+            productId: '',
+            imageUrl: '',
+            displayOrder: 0,
+          ),
     );
     if (match.id.isNotEmpty) return match.imageUrl;
     return null;

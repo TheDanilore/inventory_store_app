@@ -10,7 +10,11 @@ class CreditAccountModal extends StatefulWidget {
   final VoidCallback onSaved;
   final CreditAccountModel? accountToEdit;
 
-  const CreditAccountModal({super.key, required this.onSaved, this.accountToEdit});
+  const CreditAccountModal({
+    super.key,
+    required this.onSaved,
+    this.accountToEdit,
+  });
 
   @override
   State<CreditAccountModal> createState() => _CreditAccountModalState();
@@ -77,7 +81,9 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
     setState(() => _isSearching = true);
     try {
       final excludeId = _isEditing ? widget.accountToEdit!.profileId : null;
-      final existingIds = await _service.getExistingCreditProfileIds(excludeProfileId: excludeId);
+      final existingIds = await _service.getExistingCreditProfileIds(
+        excludeProfileId: excludeId,
+      );
       final filtered = await _service.searchClients(text, existingIds);
 
       if (mounted) {
@@ -136,7 +142,7 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
     setState(() => _isSaving = true);
     try {
       final adminProfileId = await _service.getAdminProfileId();
-      
+
       await _service.saveAccount(
         creditId: _isEditing ? widget.accountToEdit!.creditId : null,
         profileId: _selectedProfileId!,
@@ -147,9 +153,10 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: _isEditing
-              ? 'Límite de crédito actualizado.'
-              : 'Línea de crédito aprobada.',
+          message:
+              _isEditing
+                  ? 'Límite de crédito actualizado.'
+                  : 'Línea de crédito aprobada.',
           type: SnackbarType.success,
         );
         widget.onSaved();
@@ -222,9 +229,10 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
               color: _isEditing ? Colors.grey.shade100 : AppColors.bg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _selectedProfileId != null
-                    ? AppColors.teal
-                    : AppColors.border,
+                color:
+                    _selectedProfileId != null
+                        ? AppColors.teal
+                        : AppColors.border,
               ),
             ),
             child: TextField(
@@ -232,7 +240,8 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
               onChanged: _onSearchChanged,
               enabled: !_isEditing,
               style: TextStyle(
-                color: _isEditing ? Colors.grey.shade600 : AppColors.textPrimary,
+                color:
+                    _isEditing ? Colors.grey.shade600 : AppColors.textPrimary,
               ),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, DNI o teléfono...',
@@ -240,9 +249,10 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
                   _selectedProfileId != null
                       ? Icons.check_circle_rounded
                       : Icons.search_rounded,
-                  color: _selectedProfileId != null
-                      ? AppColors.teal
-                      : AppColors.textMuted,
+                  color:
+                      _selectedProfileId != null
+                          ? AppColors.teal
+                          : AppColors.textMuted,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -326,7 +336,9 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
             ),
             child: TextField(
               controller: _limitCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -381,25 +393,26 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+            child:
+                _isSaving
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : Text(
+                      _isEditing
+                          ? 'Actualizar límite'
+                          : 'Crear cuenta de crédito',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  )
-                : Text(
-                    _isEditing
-                        ? 'Actualizar límite'
-                        : 'Crear cuenta de crédito',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
           ),
         ],
       ),

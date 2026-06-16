@@ -27,15 +27,20 @@ class AppTheme {
         ),
       ),
 
-
       // =====================================
       // 3. CAMPOS DE TEXTO
       // =====================================
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        labelStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 14,
+        ),
         hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -81,9 +86,13 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.accent, // Usamos el rojo para destacar los enlaces de texto
+          foregroundColor:
+              AppColors
+                  .accent, // Usamos el rojo para destacar los enlaces de texto
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
@@ -92,7 +101,9 @@ class AppTheme {
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.border, width: 1.5),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
       ),
@@ -103,15 +114,21 @@ class AppTheme {
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
         elevation: 16, // Elevación para separar la barra del fondo
-        selectedItemColor: AppColors.accent, // El ícono activo en ROJO resalta hermoso
+        selectedItemColor:
+            AppColors.accent, // El ícono activo en ROJO resalta hermoso
         unselectedItemColor: AppColors.textHint,
         selectedIconTheme: IconThemeData(size: 26),
         unselectedIconTheme: IconThemeData(size: 24),
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
+        ),
         type: BottomNavigationBarType.fixed,
       ),
-
 
       // =====================================
       // 7. DIVISORES Y CHIPS
@@ -123,7 +140,8 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surface,
-        selectedColor: AppColors.primaryLight, // Fondo gris/azulado claro al seleccionar
+        selectedColor:
+            AppColors.primaryLight, // Fondo gris/azulado claro al seleccionar
         disabledColor: AppColors.background,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         labelStyle: const TextStyle(

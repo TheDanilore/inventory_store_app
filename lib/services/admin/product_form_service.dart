@@ -9,7 +9,7 @@ class ProductFormService {
   final SupabaseClient _supabase;
 
   ProductFormService({SupabaseClient? client})
-      : _supabase = client ?? Supabase.instance.client;
+    : _supabase = client ?? Supabase.instance.client;
 
   Future<List<CategoryModel>> fetchCategories() async {
     try {
@@ -28,7 +28,9 @@ class ProductFormService {
     try {
       final resp = await _supabase
           .from('product_active_ingredients')
-          .select('ingredient_id, concentration, unit, active_ingredients!inner(name)')
+          .select(
+            'ingredient_id, concentration, unit, active_ingredients!inner(name)',
+          )
           .eq('product_id', productId);
       return List<Map<String, dynamic>>.from(resp);
     } catch (e) {
@@ -85,18 +87,19 @@ class ProductFormService {
             .add(Map<String, dynamic>.from(row));
       }
 
-      final drafts = variantRows.map((item) {
-        final variantMap = Map<String, dynamic>.from(item as Map);
-        variantMap['variant_attribute_values'] =
-            attrsByVariant[variantMap['id']] ?? [];
+      final drafts =
+          variantRows.map((item) {
+            final variantMap = Map<String, dynamic>.from(item as Map);
+            variantMap['variant_attribute_values'] =
+                attrsByVariant[variantMap['id']] ?? [];
 
-        final variant = ProductVariantModel.fromJson(variantMap);
-        final draft = VariantDraftModel.fromVariant(variant);
-        final imagesData = (item['product_images'] as List?) ?? [];
-        draft.urlsExistentes =
-            imagesData.map((img) => img['image_url'] as String).toList();
-        return draft;
-      }).toList();
+            final variant = ProductVariantModel.fromJson(variantMap);
+            final draft = VariantDraftModel.fromVariant(variant);
+            final imagesData = (item['product_images'] as List?) ?? [];
+            draft.urlsExistentes =
+                imagesData.map((img) => img['image_url'] as String).toList();
+            return draft;
+          }).toList();
 
       return drafts;
     } catch (e) {
@@ -171,11 +174,12 @@ class ProductFormService {
     String? profileId;
 
     if (authUserId != null) {
-      final profileResp = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final profileResp =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
 
       if (profileResp != null) {
         profileId = profileResp['id'] as String;
@@ -194,11 +198,12 @@ class ProductFormService {
       await _supabase.from('products').update(dataToSave).eq('id', productId);
       return productId;
     } else {
-      final res = await _supabase
-          .from('products')
-          .insert(dataToSave)
-          .select('id')
-          .single();
+      final res =
+          await _supabase
+              .from('products')
+              .insert(dataToSave)
+              .select('id')
+              .single();
       return res['id'] as String;
     }
   }
@@ -210,11 +215,15 @@ class ProductFormService {
         .eq('product_id', productId);
   }
 
-  Future<void> updateExistingProductImage(String id, int index, bool isMain) async {
-     await _supabase
-          .from('product_images')
-          .update({'display_order': index, 'is_main': isMain})
-          .eq('id', id);
+  Future<void> updateExistingProductImage(
+    String id,
+    int index,
+    bool isMain,
+  ) async {
+    await _supabase
+        .from('product_images')
+        .update({'display_order': index, 'is_main': isMain})
+        .eq('id', id);
   }
 
   Future<void> insertProductImage({
@@ -241,12 +250,13 @@ class ProductFormService {
   }
 
   Future<String?> getFirstVariantId(String productId) async {
-    final vResp = await _supabase
-        .from('product_variants')
-        .select('id')
-        .eq('product_id', productId)
-        .limit(1)
-        .maybeSingle();
+    final vResp =
+        await _supabase
+            .from('product_variants')
+            .select('id')
+            .eq('product_id', productId)
+            .limit(1)
+            .maybeSingle();
     return vResp?['id'] as String?;
   }
 
@@ -259,11 +269,12 @@ class ProductFormService {
     String? profileId;
 
     if (authUserId != null) {
-      final profileResp = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final profileResp =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
 
       if (profileResp != null) {
         profileId = profileResp['id'] as String;
@@ -284,17 +295,20 @@ class ProductFormService {
           .eq('id', variantId);
       return variantId;
     } else {
-      final res = await _supabase
-          .from('product_variants')
-          .insert(payload)
-          .select('id')
-          .single();
+      final res =
+          await _supabase
+              .from('product_variants')
+              .insert(payload)
+              .select('id')
+              .single();
       return res['id'] as String;
     }
   }
 
   Future<void> saveVariantAttributes(
-      String variantId, List<String> attributeValueIds) async {
+    String variantId,
+    List<String> attributeValueIds,
+  ) async {
     await _supabase
         .from('variant_attribute_values')
         .delete()
@@ -302,7 +316,9 @@ class ProductFormService {
 
     if (attributeValueIds.isEmpty) return;
 
-    await _supabase.from('variant_attribute_values').insert(
+    await _supabase
+        .from('variant_attribute_values')
+        .insert(
           attributeValueIds
               .map(
                 (valId) => {
@@ -324,15 +340,10 @@ class ProductFormService {
       final parts = url.split('/public/productos/');
       if (parts.length > 1) {
         final pathToRemove = parts.last;
-        await _supabase.storage.from('productos').remove([
-          pathToRemove,
-        ]);
+        await _supabase.storage.from('productos').remove([pathToRemove]);
       }
     }
-    await _supabase
-        .from('product_images')
-        .delete()
-        .eq('variant_id', variantId);
+    await _supabase.from('product_images').delete().eq('variant_id', variantId);
   }
 
   Future<void> clearProductIngredients(String productId) async {
@@ -356,11 +367,12 @@ class ProductFormService {
   }
 
   Future<Map<String, dynamic>> createIngredient(String name) async {
-    final resp = await _supabase
-        .from('active_ingredients')
-        .insert({'name': name})
-        .select('id, name')
-        .single();
+    final resp =
+        await _supabase
+            .from('active_ingredients')
+            .insert({'name': name})
+            .select('id, name')
+            .single();
     return resp;
   }
 }

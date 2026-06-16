@@ -129,7 +129,8 @@ class ProductVariantModel {
     'created_by': createdBy,
     'updated_by': updatedBy,
     'product_images': images.map((img) => img.toJson()).toList(),
-    'variant_attribute_values': attributeValues.map((av) => av.toJson()).toList(),
+    'variant_attribute_values':
+        attributeValues.map((av) => av.toJson()).toList(),
   };
 
   // ── copyWith ────────────────────────────────────────────────────────────────

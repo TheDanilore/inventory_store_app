@@ -87,10 +87,7 @@ class _InventoryScreenState extends State<InventoryScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [
-                InventoryStockTab(),
-                InventoryBatchesTab(),
-              ],
+              children: const [InventoryStockTab(), InventoryBatchesTab()],
             ),
           ),
         ],

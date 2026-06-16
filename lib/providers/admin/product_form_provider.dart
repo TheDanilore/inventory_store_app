@@ -30,7 +30,7 @@ class FormImageItem {
   final String? newName;
 
   FormImageItem({this.existing, this.newBytes, this.newName})
-      : id = UniqueKey().toString();
+    : id = UniqueKey().toString();
 
   bool get isExisting => existing != null;
 }
@@ -46,9 +46,9 @@ class IngredientRow {
     String name = '',
     String concentration = '',
     String unit = '',
-  })  : nameCtrl = TextEditingController(text: name),
-        concentrationCtrl = TextEditingController(text: concentration),
-        unitCtrl = TextEditingController(text: unit);
+  }) : nameCtrl = TextEditingController(text: name),
+       concentrationCtrl = TextEditingController(text: concentration),
+       unitCtrl = TextEditingController(text: unit);
 
   void dispose() {
     nameCtrl.dispose();
@@ -93,7 +93,7 @@ class ProductFormProvider extends ChangeNotifier {
   bool _isDirty = false;
 
   ProductFormProvider({ProductFormService? service})
-      : _service = service ?? ProductFormService();
+    : _service = service ?? ProductFormService();
 
   // Getters
   bool get isInitializingData => _isInitializingData;
@@ -174,9 +174,12 @@ class ProductFormProvider extends ChangeNotifier {
 
       if (product.details.isNotEmpty) {
         product.details.forEach((key, value) {
-          detailRows.add(DetailControllers(
+          detailRows.add(
+            DetailControllers(
               keyCtrl: TextEditingController(text: key),
-              valueCtrl: TextEditingController(text: value.toString())));
+              valueCtrl: TextEditingController(text: value.toString()),
+            ),
+          );
         });
       }
 
@@ -238,8 +241,12 @@ class ProductFormProvider extends ChangeNotifier {
   // --- Manejo de Detalles y Formato ---
 
   void addDetailRow() {
-    detailRows.add(DetailControllers(
-        keyCtrl: TextEditingController(), valueCtrl: TextEditingController()));
+    detailRows.add(
+      DetailControllers(
+        keyCtrl: TextEditingController(),
+        valueCtrl: TextEditingController(),
+      ),
+    );
     markAsDirty();
     notifyListeners();
   }
@@ -309,7 +316,9 @@ class ProductFormProvider extends ChangeNotifier {
     if (item.isExisting) {
       try {
         await _service.deleteProductImage(
-            item.existing!.id, item.existing!.imageUrl);
+          item.existing!.id,
+          item.existing!.imageUrl,
+        );
         if (context.mounted) {
           AppSnackbar.show(
             context,
@@ -353,22 +362,23 @@ class ProductFormProvider extends ChangeNotifier {
   void duplicateVariantDraft(int index) {
     final original = variantDrafts[index];
     final copy = VariantDraftModel();
-    copy.skuCtrl.text = original.skuCtrl.text.isNotEmpty ? '${original.skuCtrl.text}-COPY' : '';
+    copy.skuCtrl.text =
+        original.skuCtrl.text.isNotEmpty ? '${original.skuCtrl.text}-COPY' : '';
     copy.reorderPointCtrl.text = original.reorderPointCtrl.text;
     copy.unitCostCtrl.text = original.unitCostCtrl.text;
     copy.priceCtrl.text = original.priceCtrl.text;
     copy.wholesalePriceCtrl.text = original.wholesalePriceCtrl.text;
     copy.wholesaleMinQuantityCtrl.text = original.wholesaleMinQuantityCtrl.text;
     copy.isActive = original.isActive;
-    
+
     final copiedAttributes = <Map<String, dynamic>>[];
     for (var attr in original.selectedAttributes) {
       copiedAttributes.add(Map<String, dynamic>.from(attr));
     }
     copy.selectedAttributes = copiedAttributes;
-    
+
     copy.urlsExistentes.addAll(original.urlsExistentes);
-    
+
     variantDrafts.insert(index + 1, copy);
     markAsDirty();
     notifyListeners();
@@ -476,7 +486,10 @@ class ProductFormProvider extends ChangeNotifier {
 
   // --- Guardado General ---
 
-  Future<bool> saveProduct(BuildContext context, GlobalKey<FormState> formKey) async {
+  Future<bool> saveProduct(
+    BuildContext context,
+    GlobalKey<FormState> formKey,
+  ) async {
     if (!formKey.currentState!.validate()) return false;
 
     final skus = variantDrafts
@@ -506,18 +519,20 @@ class ProductFormProvider extends ChangeNotifier {
       final isUpdating = _productToEdit != null;
       final unitCost = _parseDecimal(costoCtrl.text)!;
       final salePrice = _parseDecimal(precioCtrl.text)!;
-      final wholesalePrice = precioMayorCtrl.text.trim().isEmpty
-          ? null
-          : _parseDecimal(precioMayorCtrl.text);
+      final wholesalePrice =
+          precioMayorCtrl.text.trim().isEmpty
+              ? null
+              : _parseDecimal(precioMayorCtrl.text);
 
       final mapData = {
         'name': nombreCtrl.text.trim(),
         'unit_cost': unitCost,
         'sale_price': salePrice,
         'wholesale_price': wholesalePrice,
-        'wholesale_min_quantity': cantidadMayorCtrl.text.trim().isEmpty
-            ? 3
-            : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
+        'wholesale_min_quantity':
+            cantidadMayorCtrl.text.trim().isEmpty
+                ? 3
+                : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
         'description':
             descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
         'category_id': _selectedCategoryId,
@@ -542,11 +557,18 @@ class ProductFormProvider extends ChangeNotifier {
         final isMain = (i == 0);
 
         if (item.isExisting) {
-          await _service.updateExistingProductImage(item.existing!.id, i, isMain);
+          await _service.updateExistingProductImage(
+            item.existing!.id,
+            i,
+            isMain,
+          );
         } else {
-          final url = await _service.uploadImageToStorage(item.newBytes!, 'productos');
+          final url = await _service.uploadImageToStorage(
+            item.newBytes!,
+            'productos',
+          );
           if (url != null) {
-             await _service.insertProductImage(
+            await _service.insertProductImage(
               productId: productId,
               url: url,
               displayOrder: i,
@@ -576,21 +598,25 @@ class ProductFormProvider extends ChangeNotifier {
           final payload = {
             'sale_price': salePrice,
             'wholesale_price': wholesalePrice,
-            'wholesale_min_quantity': cantidadMayorCtrl.text.trim().isEmpty
-                ? 3
-                : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
+            'wholesale_min_quantity':
+                cantidadMayorCtrl.text.trim().isEmpty
+                    ? 3
+                    : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
             'is_active': true,
           };
           primaryVariantId = await _service.saveVariant(
-              productId: productId, variantData: payload);
+            productId: productId,
+            variantData: payload,
+          );
           await _service.saveVariantAttributes(primaryVariantId, []);
         }
       } else {
         for (var i = 0; i < variantDrafts.length; i++) {
           final draft = variantDrafts[i];
-          final valueIds = draft.selectedAttributes
-              .map((attr) => attr['value_id'] as String)
-              .toList();
+          final valueIds =
+              draft.selectedAttributes
+                  .map((attr) => attr['value_id'] as String)
+                  .toList();
 
           final skuValue = draft.skuCtrl.text.trim();
           final payload = {
@@ -598,16 +624,18 @@ class ProductFormProvider extends ChangeNotifier {
             'unit_cost': _parseDecimal(draft.unitCostCtrl.text) ?? 0.0,
             'sale_price': _parseDecimal(draft.priceCtrl.text),
             'wholesale_price': _parseDecimal(draft.wholesalePriceCtrl.text),
-            'wholesale_min_quantity':
-                int.tryParse(draft.wholesaleMinQuantityCtrl.text),
+            'wholesale_min_quantity': int.tryParse(
+              draft.wholesaleMinQuantityCtrl.text,
+            ),
             'reorder_point': int.tryParse(draft.reorderPointCtrl.text),
             'is_active': draft.isActive,
           };
 
           final vId = await _service.saveVariant(
-              productId: productId,
-              variantData: payload,
-              variantId: draft.id);
+            productId: productId,
+            variantData: payload,
+            variantId: draft.id,
+          );
 
           if (i == 0) primaryVariantId = vId;
           await _service.saveVariantAttributes(vId, valueIds);
@@ -615,14 +643,13 @@ class ProductFormProvider extends ChangeNotifier {
           if (draft.id != null) {
             if (draft.urlsExistentes.isEmpty ||
                 draft.nuevasImagenes.isNotEmpty) {
-               await _service.clearVariantImages(vId);
+              await _service.clearVariantImages(vId);
             }
           }
 
           if (draft.nuevasImagenes.isNotEmpty) {
             final bytes = draft.nuevasImagenes.first;
-            final url =
-                await _service.uploadImageToStorage(bytes, 'variantes');
+            final url = await _service.uploadImageToStorage(bytes, 'variantes');
             if (url != null) {
               await _service.insertProductImage(
                 productId: productId,
@@ -648,20 +675,22 @@ class ProductFormProvider extends ChangeNotifier {
           final payload = {
             'product_id': productId,
             'ingredient_id': row.ingredientId,
-            'concentration': row.concentrationCtrl.text.trim().isEmpty
-                ? null
-                : double.tryParse(
-                    row.concentrationCtrl.text.trim().replaceAll(',', '.'),
-                  ),
-            'unit': row.unitCtrl.text.trim().isEmpty
-                ? null
-                : row.unitCtrl.text.trim(),
+            'concentration':
+                row.concentrationCtrl.text.trim().isEmpty
+                    ? null
+                    : double.tryParse(
+                      row.concentrationCtrl.text.trim().replaceAll(',', '.'),
+                    ),
+            'unit':
+                row.unitCtrl.text.trim().isEmpty
+                    ? null
+                    : row.unitCtrl.text.trim(),
           };
 
           await _service.insertProductIngredient(payload);
         }
       } else {
-         await _service.clearProductIngredients(productId);
+        await _service.clearProductIngredients(productId);
       }
 
       if (context.mounted) {
@@ -672,7 +701,6 @@ class ProductFormProvider extends ChangeNotifier {
         );
       }
       return true;
-
     } catch (e) {
       if (context.mounted) {
         AppSnackbar.show(

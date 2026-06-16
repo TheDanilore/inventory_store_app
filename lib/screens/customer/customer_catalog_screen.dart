@@ -1857,8 +1857,7 @@ class _ProductCardState extends State<ProductCard> {
                                           ),
                                         ),
                                       ),
-                                  errorWidget:
-                                      (_, _, _) => _buildPlaceholder(),
+                                  errorWidget: (_, _, _) => _buildPlaceholder(),
                                 )
                                 : _buildPlaceholder(),
                       ),

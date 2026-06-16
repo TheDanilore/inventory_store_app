@@ -214,9 +214,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                     tabs: [
                       const Tab(text: 'Todos los clientes'),
                       Tab(
-                        text: provider.debtCustomersCount > 0 
-                            ? 'Con deuda activa (${provider.debtCustomersCount})' 
-                            : 'Con deuda activa'
+                        text:
+                            provider.debtCustomersCount > 0
+                                ? 'Con deuda activa (${provider.debtCustomersCount})'
+                                : 'Con deuda activa',
                       ),
                     ],
                   ),

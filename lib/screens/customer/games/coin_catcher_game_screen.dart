@@ -234,163 +234,184 @@ class _CoinCatcherGameScreenState extends State<CoinCatcherGameScreen> {
           builder: (context, constraints) {
             return Listener(
               behavior: HitTestBehavior.translucent,
-              onPointerDown: (event) => _updateBasketFromTouch(event.localPosition.dx, constraints.maxWidth),
-              onPointerMove: (event) => _updateBasketFromTouch(event.localPosition.dx, constraints.maxWidth),
+              onPointerDown:
+                  (event) => _updateBasketFromTouch(
+                    event.localPosition.dx,
+                    constraints.maxWidth,
+                  ),
+              onPointerMove:
+                  (event) => _updateBasketFromTouch(
+                    event.localPosition.dx,
+                    constraints.maxWidth,
+                  ),
               child: Stack(
                 children: [
-            // --- ÁREA DE JUEGO ---
-            if (_isPlaying || _isGameOver) ...[
-              // Elementos cayendo
-              ..._items.map((item) {
-                return Positioned(
-                  left: item.x,
-                  top: item.y,
-                  child: _buildItem(item.type),
-                );
-              }),
+                  // --- ÁREA DE JUEGO ---
+                  if (_isPlaying || _isGameOver) ...[
+                    // Elementos cayendo
+                    ..._items.map((item) {
+                      return Positioned(
+                        left: item.x,
+                        top: item.y,
+                        child: _buildItem(item.type),
+                      );
+                    }),
 
-              // Canasta del jugador
-              Positioned(
-                bottom: 40,
-                left: _basketX,
-                child: Container(
-                  width: _basketWidth,
-                  height: _basketHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(40),
-                    ),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Icon(
-                        Icons.shopping_basket_rounded,
-                        color: Colors.white,
-                        size: 36,
+                    // Canasta del jugador
+                    Positioned(
+                      bottom: 40,
+                      left: _basketX,
+                      child: Container(
+                        width: _basketWidth,
+                        height: _basketHeight,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(40),
+                          ),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Icon(
+                              Icons.shopping_basket_rounded,
+                              color: Colors.white,
+                              size: 36,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
 
-              // HUD (Puntuación y Tiempo)
-              Positioned(
-                top: 20,
-                left: 20,
-                right: 20,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildHudCard(Icons.stars_rounded, '$_score', Colors.amber),
-                    _buildHudCard(
-                      Icons.timer_rounded,
-                      '00:$_timeLeft',
-                      Colors.white,
+                    // HUD (Puntuación y Tiempo)
+                    Positioned(
+                      top: 20,
+                      left: 20,
+                      right: 20,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildHudCard(
+                            Icons.stars_rounded,
+                            '$_score',
+                            Colors.amber,
+                          ),
+                          _buildHudCard(
+                            Icons.timer_rounded,
+                            '00:$_timeLeft',
+                            Colors.white,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
-              ),
-            ],
 
-            // --- PANTALLA DE INICIO ---
-            if (!_isPlaying && !_isGameOver)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.catching_pokemon_rounded,
-                        size: 80,
-                        color: Colors.amber,
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Lluvia de Monedas',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                  // --- PANTALLA DE INICIO ---
+                  if (!_isPlaying && !_isGameOver)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.catching_pokemon_rounded,
+                              size: 80,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Lluvia de Monedas',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Arrastra la canasta y atrapa tantas monedas y regalos como puedas en 15 segundos.\n¡Cuidado con las bombas!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            AppPrimaryButton(
+                              label: 'Comenzar Juego',
+                              backgroundColor: Colors.amber,
+                              foregroundColor: AppColors.primaryDark,
+                              onPressed: () => _startGame(size.width),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text(
+                                'Volver',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Arrastra la canasta y atrapa tantas monedas y regalos como puedas en 15 segundos.\n¡Cuidado con las bombas!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                      const SizedBox(height: 40),
-                      AppPrimaryButton(
-                        label: 'Comenzar Juego',
-                        backgroundColor: Colors.amber,
-                        foregroundColor: AppColors.primaryDark,
-                        onPressed: () => _startGame(size.width),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Volver',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // --- PANTALLA DE FIN DE JUEGO ---
-            if (_isGameOver)
-              Container(
-                color: AppColors.primaryDark.withValues(alpha: 0.9),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          '¡Tiempo agotado!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Atrapaste',
-                          style: TextStyle(color: Colors.white70, fontSize: 18),
-                        ),
-                        Text(
-                          '$_score monedas',
-                          style: const TextStyle(
-                            color: Colors.amber,
-                            fontSize: 48,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        if (_isSaving)
-                          const CircularProgressIndicator(color: Colors.amber)
-                        else
-                          AppPrimaryButton(
-                            label: 'Reclamar y salir',
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppColors.primaryDark,
-                            onPressed: () => Navigator.pop(context, _score),
-                          ),
-                      ],
                     ),
-                  ),
-                ),
-              ),
-          ],
+
+                  // --- PANTALLA DE FIN DE JUEGO ---
+                  if (_isGameOver)
+                    Container(
+                      color: AppColors.primaryDark.withValues(alpha: 0.9),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                '¡Tiempo agotado!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              const Text(
+                                'Atrapaste',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              Text(
+                                '$_score monedas',
+                                style: const TextStyle(
+                                  color: Colors.amber,
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 40),
+                              if (_isSaving)
+                                const CircularProgressIndicator(
+                                  color: Colors.amber,
+                                )
+                              else
+                                AppPrimaryButton(
+                                  label: 'Reclamar y salir',
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primaryDark,
+                                  onPressed:
+                                      () => Navigator.pop(context, _score),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             );
           },

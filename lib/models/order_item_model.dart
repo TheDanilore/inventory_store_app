@@ -160,7 +160,8 @@ class OrderItemModel {
         .join(' | ');
   }
 
-  String? get variantDisplayName => variantLabel.isNotEmpty ? variantLabel : null;
+  String? get variantDisplayName =>
+      variantLabel.isNotEmpty ? variantLabel : null;
 
   OrderItemModel copyWith({
     String? id,

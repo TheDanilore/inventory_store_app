@@ -79,11 +79,12 @@ class WalletProvider extends ChangeNotifier {
     if (user == null) return;
 
     try {
-      final row = await _supabase
-          .from('profiles')
-          .select('wallet_balance')
-          .eq('auth_user_id', user.id)
-          .single();
+      final row =
+          await _supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('auth_user_id', user.id)
+              .single();
 
       if (_disposed) return;
       _balance = (row['wallet_balance'] as num?)?.toInt() ?? 0;

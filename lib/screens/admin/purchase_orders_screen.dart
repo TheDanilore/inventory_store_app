@@ -251,7 +251,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(12),
@@ -261,8 +263,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.edit_note_rounded,
-                              color: Color(0xFFD97706)),
+                          const Icon(
+                            Icons.edit_note_rounded,
+                            color: Color(0xFFD97706),
+                          ),
                           const SizedBox(width: 12),
                           const Expanded(
                             child: Text(
@@ -488,7 +492,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               _hasDraft ? 'Continuar Borrador' : 'Nueva orden',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            backgroundColor: _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+            backgroundColor:
+                _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
             foregroundColor: Colors.white,
           ),
         );

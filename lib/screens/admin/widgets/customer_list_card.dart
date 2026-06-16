@@ -61,7 +61,10 @@ class CustomerListCard extends StatelessWidget {
                           ),
                           if (!customer.isActive)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               margin: const EdgeInsets.only(left: 8),
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade200,
@@ -82,7 +85,11 @@ class CustomerListCard extends StatelessWidget {
                       if (customer.phone != null && customer.phone!.isNotEmpty)
                         Row(
                           children: [
-                            const Icon(Icons.phone_rounded, size: 12, color: Colors.grey),
+                            const Icon(
+                              Icons.phone_rounded,
+                              size: 12,
+                              color: Colors.grey,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               customer.phone!,
@@ -105,7 +112,8 @@ class CustomerListCard extends StatelessWidget {
                           if (customer.currentDebt > 0)
                             _Tag(
                               icon: Icons.warning_rounded,
-                              text: 'Debe S/ ${customer.currentDebt.toStringAsFixed(0)}',
+                              text:
+                                  'Debe S/ ${customer.currentDebt.toStringAsFixed(0)}',
                               color: Colors.red,
                             ),
                         ],
@@ -168,11 +176,15 @@ class _CustomerAvatar extends StatelessWidget {
     }
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.primaries[customer.fullName.length % Colors.primaries.length].withValues(alpha: 0.2),
+      backgroundColor: Colors
+          .primaries[customer.fullName.length % Colors.primaries.length]
+          .withValues(alpha: 0.2),
       child: Text(
         customer.fullName[0].toUpperCase(),
         style: TextStyle(
-          color: Colors.primaries[customer.fullName.length % Colors.primaries.length],
+          color:
+              Colors.primaries[customer.fullName.length %
+                  Colors.primaries.length],
           fontWeight: FontWeight.bold,
           fontSize: 18,
         ),
@@ -186,11 +198,7 @@ class _Tag extends StatelessWidget {
   final String text;
   final MaterialColor color;
 
-  const _Tag({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
+  const _Tag({required this.icon, required this.text, required this.color});
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,5 @@
 class PeruData {
-  static const List<String> departments = [
-    'Ancash',
-    'Lima',
-  ];
+  static const List<String> departments = ['Ancash', 'Lima'];
 
   static const Map<String, List<String>> provincesByDepartment = {
     'Ancash': ['Santa', 'Huaraz', 'Casma'],

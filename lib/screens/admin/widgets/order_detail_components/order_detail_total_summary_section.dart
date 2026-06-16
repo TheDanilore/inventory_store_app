@@ -52,7 +52,8 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isEmphasized ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight:
+                        isEmphasized ? FontWeight.w700 : FontWeight.w500,
                     color: Colors.grey.shade700,
                   ),
                 ),
@@ -94,9 +95,10 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
               'Descuento por monedas',
               '- S/ ${_appliedDiscount.toStringAsFixed(2)}',
               valueColor: Colors.green.shade800,
-              hint: capApplied
-                  ? 'Cap 50% aplicado (S/ ${_rawDiscount.toStringAsFixed(2)} → S/ ${_appliedDiscount.toStringAsFixed(2)})'
-                  : null,
+              hint:
+                  capApplied
+                      ? 'Cap 50% aplicado (S/ ${_rawDiscount.toStringAsFixed(2)} → S/ ${_appliedDiscount.toStringAsFixed(2)})'
+                      : null,
             ),
           ],
           if (discountAmount > 0)
@@ -113,7 +115,12 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             valueColor: Colors.teal,
           ),
           const SizedBox(height: 6),
-          _buildRow((isCompleted && !isCredit) ? 'Monedas ganadas' : 'Pendientes de otorgar', '$pointsEarned monedas'),
+          _buildRow(
+            (isCompleted && !isCredit)
+                ? 'Monedas ganadas'
+                : 'Pendientes de otorgar',
+            '$pointsEarned monedas',
+          ),
         ],
       ),
     );

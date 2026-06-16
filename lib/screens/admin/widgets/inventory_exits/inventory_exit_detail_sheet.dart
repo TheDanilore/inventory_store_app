@@ -16,7 +16,8 @@ class InventoryExitDetailSheet extends StatefulWidget {
   });
 
   @override
-  State<InventoryExitDetailSheet> createState() => _InventoryExitDetailSheetState();
+  State<InventoryExitDetailSheet> createState() =>
+      _InventoryExitDetailSheetState();
 }
 
 class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
@@ -32,7 +33,9 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
 
   Color _reasonColor(String reason) {
     final r = reason.toUpperCase();
-    if (r.contains('MERMA') || r.contains('DAÑO') || r.contains('VENCIMIENTO')) {
+    if (r.contains('MERMA') ||
+        r.contains('DAÑO') ||
+        r.contains('VENCIMIENTO')) {
       return AppColors.danger;
     }
     if (r.contains('ROBO') || r.contains('PÉRDIDA')) return Colors.red.shade900;
@@ -81,15 +84,24 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: _reasonColor(widget.exitData.reason ?? '').withValues(alpha: 0.1),
+                    color: _reasonColor(
+                      widget.exitData.reason ?? '',
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 10, color: _reasonColor(widget.exitData.reason ?? '')),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 10,
+                        color: _reasonColor(widget.exitData.reason ?? ''),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         widget.exitData.reason ?? 'Sin motivo',
@@ -199,7 +211,9 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
                                 ),
                                 Text(
                                   widget.exitData.createdAt != null
-                                      ? DateFormat('dd/MM/yyyy HH:mm').format(widget.exitData.createdAt!.toLocal())
+                                      ? DateFormat('dd/MM/yyyy HH:mm').format(
+                                        widget.exitData.createdAt!.toLocal(),
+                                      )
                                       : '—',
                                   style: const TextStyle(
                                     fontSize: 14,
@@ -258,37 +272,47 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(7),
                                 child:
-                                    item.imageUrl != null && item.imageUrl!.isNotEmpty
+                                    item.imageUrl != null &&
+                                            item.imageUrl!.isNotEmpty
                                         ? CachedNetworkImage(
-                                            imageUrl: item.imageUrl!,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) => Container(
-                                              color: Colors.grey.shade50,
-                                              child: const Center(
-                                                child: SizedBox(
-                                                  width: 16,
-                                                  height: 16,
-                                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                          imageUrl: item.imageUrl!,
+                                          fit: BoxFit.cover,
+                                          placeholder:
+                                              (context, url) => Container(
+                                                color: Colors.grey.shade50,
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            errorWidget: (context, url, error) => Container(
-                                              color: Colors.grey.shade50,
-                                              child: Icon(
-                                                Icons.broken_image_outlined,
-                                                size: 20,
-                                                color: Colors.grey.shade400,
+                                          errorWidget:
+                                              (
+                                                context,
+                                                url,
+                                                error,
+                                              ) => Container(
+                                                color: Colors.grey.shade50,
+                                                child: Icon(
+                                                  Icons.broken_image_outlined,
+                                                  size: 20,
+                                                  color: Colors.grey.shade400,
+                                                ),
                                               ),
-                                            ),
-                                          )
+                                        )
                                         : Container(
-                                            color: Colors.grey.shade50,
-                                            child: Icon(
-                                              Icons.inventory_2_outlined,
-                                              size: 22,
-                                              color: Colors.grey.shade400,
-                                            ),
+                                          color: Colors.grey.shade50,
+                                          child: Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 22,
+                                            color: Colors.grey.shade400,
                                           ),
+                                        ),
                               ),
                             ),
                             // ── TEXTOS ───────────────────────────────────
@@ -325,7 +349,8 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
                                         ),
                                       ),
                                     ),
-                                  if (item.usesBatches) // Solo mostrar si usa lotes
+                                  if (item
+                                      .usesBatches) // Solo mostrar si usa lotes
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Row(

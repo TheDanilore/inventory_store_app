@@ -52,11 +52,7 @@ class _SuppliersViewState extends State<_SuppliersView> {
     if (!mounted) return;
     final error = context.read<SuppliersProvider>().errorMessage;
     if (error != null) {
-      AppSnackbar.show(
-        context,
-        message: error,
-        type: SnackbarType.error,
-      );
+      AppSnackbar.show(context, message: error, type: SnackbarType.error);
       context.read<SuppliersProvider>().clearError();
     }
   }
@@ -95,7 +91,10 @@ class _SuppliersViewState extends State<_SuppliersView> {
             icon: const Icon(Icons.add_business_rounded, color: Colors.white),
             label: const Text(
               'Nuevo',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           body: Column(
@@ -141,8 +140,8 @@ class _SuppliersViewState extends State<_SuppliersView> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                provider.searchQuery.isNotEmpty 
-                                    ? 'No hay resultados para la búsqueda' 
+                                provider.searchQuery.isNotEmpty
+                                    ? 'No hay resultados para la búsqueda'
                                     : 'No hay proveedores registrados',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
@@ -153,63 +152,68 @@ class _SuppliersViewState extends State<_SuppliersView> {
                           ),
                         )
                         : Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'Página ${provider.currentPage + 1} de ${provider.totalPages}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Página ${provider.currentPage + 1} de ${provider.totalPages}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
-                              Expanded(
-                                child: RefreshIndicator(
-                                  onRefresh: () => provider.refresh(),
-                                  child: ListView.separated(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      4,
-                                      16,
-                                      16,
-                                    ),
-                                    itemCount: provider.suppliers.length,
-                                    separatorBuilder:
-                                        (_, _) => const SizedBox(height: 12),
-                                    itemBuilder: (context, index) {
-                                      final supplier = provider.suppliers[index];
-                                      return SupplierCard(
-                                        supplier: supplier,
-                                        onEdit:
-                                            () => _openSupplierModal(context, supplier),
-                                        onToggleStatus:
-                                            () => provider.toggleSupplierStatus(supplier),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              if (provider.totalPages > 1)
-                                Padding(
+                            ),
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: () => provider.refresh(),
+                                child: ListView.separated(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
-                                    8,
+                                    4,
                                     16,
-                                    10,
+                                    16,
                                   ),
-                                  child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: provider.setPage,
-                                  ),
+                                  itemCount: provider.suppliers.length,
+                                  separatorBuilder:
+                                      (_, _) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final supplier = provider.suppliers[index];
+                                    return SupplierCard(
+                                      supplier: supplier,
+                                      onEdit:
+                                          () => _openSupplierModal(
+                                            context,
+                                            supplier,
+                                          ),
+                                      onToggleStatus:
+                                          () => provider.toggleSupplierStatus(
+                                            supplier,
+                                          ),
+                                    );
+                                  },
                                 ),
-                            ],
-                          ),
+                              ),
+                            ),
+                            if (provider.totalPages > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  10,
+                                ),
+                                child: AdminPageBlocks(
+                                  currentPage: provider.currentPage,
+                                  totalPages: provider.totalPages,
+                                  onPageChanged: provider.setPage,
+                                ),
+                              ),
+                          ],
+                        ),
               ),
             ],
           ),
@@ -272,10 +276,7 @@ class _SuppliersSkeleton extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      Container(
-                        height: 1,
-                        color: AppColors.border,
-                      ),
+                      Container(height: 1, color: AppColors.border),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,

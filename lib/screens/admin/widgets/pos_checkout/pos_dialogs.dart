@@ -34,7 +34,10 @@ class PosConfirmationDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
         ),
         ElevatedButton(
           onPressed: () {
@@ -87,32 +90,35 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
       actions: [
         if (!widget.isDraft)
           OutlinedButton.icon(
-            onPressed: _isGenerating
-                ? null
-                : () async {
-                    setState(() => _isGenerating = true);
-                    try {
-                      await widget.onPrint();
-                    } finally {
-                      if (mounted) setState(() => _isGenerating = false);
-                    }
-                  },
-            icon: _isGenerating
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.print_rounded, size: 18),
+            onPressed:
+                _isGenerating
+                    ? null
+                    : () async {
+                      setState(() => _isGenerating = true);
+                      try {
+                        await widget.onPrint();
+                      } finally {
+                        if (mounted) setState(() => _isGenerating = false);
+                      }
+                    },
+            icon:
+                _isGenerating
+                    ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.print_rounded, size: 18),
             label: Text(_isGenerating ? 'Generando...' : 'Generar Ticket'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.teal,
-            ),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.teal),
           ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, true),
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal),
-          child: const Text('Nueva Venta', style: TextStyle(color: Colors.white)),
+          child: const Text(
+            'Nueva Venta',
+            style: TextStyle(color: Colors.white),
+          ),
         ),
       ],
     );

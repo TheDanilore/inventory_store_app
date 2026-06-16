@@ -12,10 +12,11 @@ class ProductBatchesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<ProductDetailProvider>();
     final isLoading = provider.isLoadingExtra;
-    
-    final filteredBatches = provider.batchesList
-        .where((row) => row['variant_id'] == provider.selectedVariantId)
-        .toList();
+
+    final filteredBatches =
+        provider.batchesList
+            .where((row) => row['variant_id'] == provider.selectedVariantId)
+            .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),

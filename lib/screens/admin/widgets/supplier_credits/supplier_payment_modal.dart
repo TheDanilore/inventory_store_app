@@ -45,7 +45,9 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
 
   Future<void> _loadPendingOrders() async {
     try {
-      final resp = await _service.getPendingPurchaseOrders(widget.account.supplierId);
+      final resp = await _service.getPendingPurchaseOrders(
+        widget.account.supplierId,
+      );
       if (mounted) {
         setState(() {
           _pendingOrders = resp;
@@ -108,15 +110,26 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
     }
 
     if (_selectedOrderId != null) {
-      final order = _pendingOrders.firstWhere((o) => o['id'] == _selectedOrderId);
-      final pending = (order['total_amount'] as num) - (order['amount_paid'] as num);
+      final order = _pendingOrders.firstWhere(
+        (o) => o['id'] == _selectedOrderId,
+      );
+      final pending =
+          (order['total_amount'] as num) - (order['amount_paid'] as num);
       if (amount > pending) {
-        setState(() => _errorMessage = 'El monto supera la deuda del pedido (S/ ${pending.toStringAsFixed(2)})');
+        setState(
+          () =>
+              _errorMessage =
+                  'El monto supera la deuda del pedido (S/ ${pending.toStringAsFixed(2)})',
+        );
         return;
       }
     } else {
       if (amount > widget.account.currentDebt) {
-        setState(() => _errorMessage = 'El monto supera la deuda total (S/ ${widget.account.currentDebt.toStringAsFixed(2)})');
+        setState(
+          () =>
+              _errorMessage =
+                  'El monto supera la deuda total (S/ ${widget.account.currentDebt.toStringAsFixed(2)})',
+        );
         return;
       }
     }
@@ -128,12 +141,20 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
     if (_errorMessage != null || _amountCtrl.text.isEmpty) return;
 
     if (_selectedAccount == null) {
-      AppSnackbar.show(context, message: 'Selecciona una cuenta de salida.', type: SnackbarType.warning);
+      AppSnackbar.show(
+        context,
+        message: 'Selecciona una cuenta de salida.',
+        type: SnackbarType.warning,
+      );
       return;
     }
 
     if (_selectedAccount!.type == 'CAJA' && _activeShift == null) {
-      AppSnackbar.show(context, message: 'La cuenta CAJA no tiene un turno abierto.', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: 'La cuenta CAJA no tiene un turno abierto.',
+        type: SnackbarType.error,
+      );
       return;
     }
 
@@ -148,20 +169,35 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
         amount: amount,
         selectedAccount: _selectedAccount!,
         selectedOrderId: _selectedOrderId,
-        notes: _notesCtrl.text.trim().isEmpty ? "Pago registrado desde Admin Cuentas por Pagar" : _notesCtrl.text.trim(),
+        notes:
+            _notesCtrl.text.trim().isEmpty
+                ? "Pago registrado desde Admin Cuentas por Pagar"
+                : _notesCtrl.text.trim(),
         pendingOrders: _pendingOrders,
         adminProfileId: adminProfileId,
-        shiftId: _selectedAccount!.type == 'CAJA' && _activeShift != null ? _activeShift!['id'] as String? : null,
+        shiftId:
+            _selectedAccount!.type == 'CAJA' && _activeShift != null
+                ? _activeShift!['id'] as String?
+                : null,
       );
 
       if (mounted) {
-        AppSnackbar.show(context, message: 'Pago de S/ ${amount.toStringAsFixed(2)} registrado exitosamente.', type: SnackbarType.success);
+        AppSnackbar.show(
+          context,
+          message:
+              'Pago de S/ ${amount.toStringAsFixed(2)} registrado exitosamente.',
+          type: SnackbarType.success,
+        );
         widget.onPaymentSaved();
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, message: 'Error: $e', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: 'Error: $e',
+          type: SnackbarType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -187,8 +223,13 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
           children: [
             Center(
               child: Container(
-                width: 36, height: 4, margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             Row(
@@ -199,8 +240,20 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Pagar al proveedor', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                      Text(widget.account.supplierName, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                      const Text(
+                        'Pagar al proveedor',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        widget.account.supplierName,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -209,25 +262,58 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(color: AppColors.dangerLight, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: AppColors.dangerLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.money_off_rounded, color: AppColors.danger, size: 18),
+                  const Icon(
+                    Icons.money_off_rounded,
+                    color: AppColors.danger,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
-                  const Text('Deuda actual', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.danger)),
+                  const Text(
+                    'Deuda actual',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.danger,
+                    ),
+                  ),
                   const Spacer(),
-                  Text('S/ ${widget.account.currentDebt.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.danger)),
+                  Text(
+                    'S/ ${widget.account.currentDebt.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      color: AppColors.danger,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            const Text('¿A qué pedido aplicar el pago?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            const Text(
+              '¿A qué pedido aplicar el pago?',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 8),
             if (_loadingOrders)
-              const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
             else
               Wrap(
-                spacing: 8, runSpacing: 8,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _OrderChip(
                     label: 'Distribuir (Pago General)',
@@ -241,9 +327,11 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                     },
                   ),
                   ..._pendingOrders.map((o) {
-                    final pending = (o['total_amount'] as num) - (o['amount_paid'] as num);
+                    final pending =
+                        (o['total_amount'] as num) - (o['amount_paid'] as num);
                     return _OrderChip(
-                      label: 'Orden #${o['id'].toString().substring(0, 6).toUpperCase()} (S/ ${pending.toStringAsFixed(2)})',
+                      label:
+                          'Orden #${o['id'].toString().substring(0, 6).toUpperCase()} (S/ ${pending.toStringAsFixed(2)})',
                       isSelected: _selectedOrderId == o['id'],
                       isTotalChip: false,
                       onTap: () {
@@ -257,7 +345,14 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                 ],
               ),
             const SizedBox(height: 16),
-            const Text('Cuenta desde donde se paga', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            const Text(
+              'Cuenta desde donde se paga',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 8),
             if (_loadingAccounts)
               const Center(child: CircularProgressIndicator())
@@ -267,12 +362,28 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.bg,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
-                items: _accounts.map((a) => DropdownMenuItem(
-                  value: a,
-                  child: Text('${a.name} (S/ ${a.balance.toStringAsFixed(2)})', style: TextStyle(color: a.balance > 0 ? Colors.black : AppColors.danger)),
-                )).toList(),
+                items:
+                    _accounts
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a,
+                            child: Text(
+                              '${a.name} (S/ ${a.balance.toStringAsFixed(2)})',
+                              style: TextStyle(
+                                color:
+                                    a.balance > 0
+                                        ? Colors.black
+                                        : AppColors.danger,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                 onChanged: (v) {
                   setState(() => _selectedAccount = v);
                   if (v!.type == 'CAJA') _checkActiveShift(v.id);
@@ -281,17 +392,41 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
               ),
             const SizedBox(height: 16),
             Container(
-              decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: _errorMessage != null ? AppColors.danger : AppColors.border)),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color:
+                      _errorMessage != null
+                          ? AppColors.danger
+                          : AppColors.border,
+                ),
+              ),
               child: TextField(
                 controller: _amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
                 onChanged: _validarEntrada,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
                 decoration: InputDecoration(
-                  hintText: 'Monto a pagar (Ej. 100.00)', errorText: _errorMessage,
-                  prefixIcon: Icon(Icons.attach_money_rounded, color: _errorMessage != null ? AppColors.danger : AppColors.textMuted),
-                  border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  hintText: 'Monto a pagar (Ej. 100.00)',
+                  errorText: _errorMessage,
+                  prefixIcon: Icon(
+                    Icons.attach_money_rounded,
+                    color:
+                        _errorMessage != null
+                            ? AppColors.danger
+                            : AppColors.textMuted,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ),
@@ -299,20 +434,65 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
             if (showSummary) ...[
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.success.withValues(alpha: 0.3))),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Resumen de la operación', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.success)),
+                    const Text(
+                      'Resumen de la operación',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.success,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [const Text('Pago total:', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)), Text('S/ ${amountToPay.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.success))],
+                      children: [
+                        const Text(
+                          'Pago total:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${amountToPay.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [const Text('Deuda restante:', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)), Text('S/ ${(widget.account.currentDebt - amountToPay).clamp(0.0, double.infinity).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary))],
+                      children: [
+                        const Text(
+                          'Deuda restante:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${(widget.account.currentDebt - amountToPay).clamp(0.0, double.infinity).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -320,13 +500,31 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
               const SizedBox(height: 24),
             ],
             ElevatedButton(
-              onPressed: (_errorMessage == null && _amountCtrl.text.isNotEmpty && !_isSaving) ? _savePayment : null,
+              onPressed:
+                  (_errorMessage == null &&
+                          _amountCtrl.text.isNotEmpty &&
+                          !_isSaving)
+                      ? _savePayment
+                      : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success, foregroundColor: Colors.white,
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: _isSaving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('Confirmar abono', style: TextStyle(fontWeight: FontWeight.bold)),
+              child:
+                  _isSaving
+                      ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                      : const Text(
+                        'Confirmar abono',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
             ),
           ],
         ),
@@ -355,7 +553,10 @@ class _OrderChip extends StatelessWidget {
     Color textColor;
 
     if (isSelected) {
-      bgColor = isTotalChip ? AppColors.success.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1);
+      bgColor =
+          isTotalChip
+              ? AppColors.success.withValues(alpha: 0.1)
+              : Colors.blue.withValues(alpha: 0.1);
       borderColor = isTotalChip ? AppColors.success : Colors.blue;
       textColor = isTotalChip ? Colors.green.shade800 : Colors.blue.shade800;
     } else {
@@ -370,15 +571,36 @@ class _OrderChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: bgColor, borderRadius: BorderRadius.circular(20),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
-          boxShadow: isSelected ? [BoxShadow(color: (isTotalChip ? AppColors.success : Colors.blue).withValues(alpha: 0.22), blurRadius: 6, offset: const Offset(0, 2))] : null,
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: (isTotalChip ? AppColors.success : Colors.blue)
+                          .withValues(alpha: 0.22),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isSelected) ...[Icon(Icons.check_rounded, size: 11, color: textColor), const SizedBox(width: 4)],
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: textColor)),
+            if (isSelected) ...[
+              Icon(Icons.check_rounded, size: 11, color: textColor),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
           ],
         ),
       ),

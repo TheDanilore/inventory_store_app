@@ -23,9 +23,10 @@ class InventoryBatchCard extends StatelessWidget {
       case 'critico':
         statusColor = AppColors.warning;
         final d = batch.daysRemaining ?? 0;
-        statusLabel = d == 0
-            ? 'HOY'
-            : d == 1
+        statusLabel =
+            d == 0
+                ? 'HOY'
+                : d == 1
                 ? 'MAÑANA'
                 : 'EN $d DÍAS';
         statusIcon = Icons.warning_amber_rounded;
@@ -38,11 +39,12 @@ class InventoryBatchCard extends StatelessWidget {
       case 'normal':
         statusColor = AppColors.success;
         final expiry = DateTime.tryParse(batch.expiryDate ?? '');
-        statusLabel = expiry != null
-            ? '${expiry.day.toString().padLeft(2, '0')}/'
-                '${expiry.month.toString().padLeft(2, '0')}/'
-                '${expiry.year}'
-            : 'NORMAL';
+        statusLabel =
+            expiry != null
+                ? '${expiry.day.toString().padLeft(2, '0')}/'
+                    '${expiry.month.toString().padLeft(2, '0')}/'
+                    '${expiry.year}'
+                : 'NORMAL';
         statusIcon = Icons.check_circle_rounded;
         break;
       default:
@@ -83,37 +85,42 @@ class InventoryBatchCard extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(11),
-                    child: batch.imageUrl != null && batch.imageUrl!.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: batch.imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: Colors.grey.shade50,
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
+                    child:
+                        batch.imageUrl != null && batch.imageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl: batch.imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey.shade50,
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey.shade50,
+                                    child: Icon(
+                                      Icons.broken_image_outlined,
+                                      size: 20,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                            )
+                            : Container(
                               color: Colors.grey.shade50,
                               child: Icon(
-                                Icons.broken_image_outlined,
-                                size: 20,
+                                Icons.inventory_2_outlined,
+                                size: 22,
                                 color: Colors.grey.shade400,
                               ),
                             ),
-                          )
-                        : Container(
-                            color: Colors.grey.shade50,
-                            child: Icon(
-                              Icons.inventory_2_outlined,
-                              size: 22,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -122,7 +129,8 @@ class InventoryBatchCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        batch.productName ?? 'Producto ${batch.productId.substring(0, 8)}',
+                        batch.productName ??
+                            'Producto ${batch.productId.substring(0, 8)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
@@ -134,9 +142,12 @@ class InventoryBatchCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         [
-                          if (batch.variantAttrs != null && batch.variantAttrs!.isNotEmpty && batch.variantAttrs != 'Única')
+                          if (batch.variantAttrs != null &&
+                              batch.variantAttrs!.isNotEmpty &&
+                              batch.variantAttrs != 'Única')
                             batch.variantAttrs!,
-                          if (batch.sku != null && batch.sku!.isNotEmpty) 'SKU: ${batch.sku}',
+                          if (batch.sku != null && batch.sku!.isNotEmpty)
+                            'SKU: ${batch.sku}',
                           if (batch.warehouseName != null) batch.warehouseName!,
                         ].join(' · '),
                         style: const TextStyle(
@@ -152,7 +163,10 @@ class InventoryBatchCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 // Status badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
@@ -186,7 +200,10 @@ class InventoryBatchCard extends StatelessWidget {
               children: [
                 _DetailPill(
                   icon: Icons.numbers_rounded,
-                  label: batch.batchNumber == 'DEFAULT' ? 'Sin lote' : 'Lote: ${batch.batchNumber}',
+                  label:
+                      batch.batchNumber == 'DEFAULT'
+                          ? 'Sin lote'
+                          : 'Lote: ${batch.batchNumber}',
                 ),
                 _DetailPill(
                   icon: Icons.inventory_2_rounded,

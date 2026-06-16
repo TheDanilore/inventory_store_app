@@ -18,9 +18,7 @@ class PurchaseOrdersService {
     final start = page * pageSize;
     final end = start + pageSize - 1;
 
-    var query = _supabase
-        .from('purchase_orders')
-        .select('''
+    var query = _supabase.from('purchase_orders').select('''
           id, created_at, supplier_id, supplier_name,
           status, total_amount, payment_method, payment_status,
           amount_paid, due_date, discount_amount, tax_amount,
@@ -38,28 +36,36 @@ class PurchaseOrdersService {
     // 2. Filter by Date Range
     if (dateRange != null) {
       final startIso = dateRange.start.toIso8601String();
-      final endIso = dateRange.end.add(const Duration(days: 1)).toIso8601String();
+      final endIso =
+          dateRange.end.add(const Duration(days: 1)).toIso8601String();
       query = query.gte('created_at', startIso).lt('created_at', endIso);
     }
 
     // 3. Filter by Search Text
     if (searchText.trim().isNotEmpty) {
       final txt = '%${searchText.trim()}%';
-      query = query.or('supplier_name.ilike.$txt,document_number.ilike.$txt,notes.ilike.$txt');
+      query = query.or(
+        'supplier_name.ilike.$txt,document_number.ilike.$txt,notes.ilike.$txt',
+      );
     }
 
     // Sort and Paginate
-    final finalQuery = query.order('created_at', ascending: false).range(start, end).count(CountOption.exact);
+    final finalQuery = query
+        .order('created_at', ascending: false)
+        .range(start, end)
+        .count(CountOption.exact);
 
     final response = await finalQuery;
-    final List<PurchaseOrderModel> dataList = (response.data as List)
-        .map((e) => PurchaseOrderModel.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
-        
-    return {
-      'data': dataList,
-      'count': response.count,
-    };
+    final List<PurchaseOrderModel> dataList =
+        (response.data as List)
+            .map(
+              (e) => PurchaseOrderModel.fromMap(
+                Map<String, dynamic>.from(e as Map),
+              ),
+            )
+            .toList();
+
+    return {'data': dataList, 'count': response.count};
   }
 
   /// Fetches the items for a specific purchase order.
@@ -102,11 +108,17 @@ class PurchaseOrdersService {
           }
         }
       }
-      final attrsText = parsedAttrs.isNotEmpty
-          ? parsedAttrs
-              .map((a) => a.attributeName.isNotEmpty ? '${a.attributeName}: ${a.value}' : a.value)
-              .join(' · ')
-          : 'Única';
+      final attrsText =
+          parsedAttrs.isNotEmpty
+              ? parsedAttrs
+                  .map(
+                    (a) =>
+                        a.attributeName.isNotEmpty
+                            ? '${a.attributeName}: ${a.value}'
+                            : a.value,
+                  )
+                  .join(' · ')
+              : 'Única';
 
       // ── Fetch Image ──
       String? imageUrl;
@@ -124,7 +136,10 @@ class PurchaseOrdersService {
       if (imageUrl == null) {
         final productImages = prod?['product_images'] as List?;
         if (productImages != null && productImages.isNotEmpty) {
-          final forVariant = productImages.where((img) => img['variant_id'] == variantId).toList();
+          final forVariant =
+              productImages
+                  .where((img) => img['variant_id'] == variantId)
+                  .toList();
           if (forVariant.isNotEmpty) {
             final main = forVariant.firstWhere(
               (img) => img['is_main'] == true,
@@ -132,7 +147,10 @@ class PurchaseOrdersService {
             );
             imageUrl = main['image_url'] as String?;
           } else {
-            final generic = productImages.where((img) => img['variant_id'] == null).toList();
+            final generic =
+                productImages
+                    .where((img) => img['variant_id'] == null)
+                    .toList();
             final pool = generic.isNotEmpty ? generic : productImages;
             final main = pool.firstWhere(
               (img) => img['is_main'] == true,
@@ -153,7 +171,10 @@ class PurchaseOrdersService {
         quantityReceived: (r['quantity_received'] as num?)?.toDouble() ?? 0,
         unitCost: (r['unit_cost'] as num).toDouble(),
         batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-        expiryDate: r['expiry_date'] != null ? DateTime.tryParse(r['expiry_date'] as String) : null,
+        expiryDate:
+            r['expiry_date'] != null
+                ? DateTime.tryParse(r['expiry_date'] as String)
+                : null,
         usesBatches: prod?['uses_batches'] as bool? ?? false,
         imageUrl: imageUrl,
       );
@@ -176,7 +197,8 @@ class PurchaseOrdersService {
     required String supplierId,
     required String supplierName,
     required String warehouseId,
-    required List<dynamic> items, // Expected to be EntryItemUI from UI layer, we will use dynamic to avoid circular import, or just pass primitives
+    required List<dynamic>
+    items, // Expected to be EntryItemUI from UI layer, we will use dynamic to avoid circular import, or just pass primitives
     required double totalAmount,
     required String paymentMode,
     required String paymentStatus,
@@ -191,35 +213,37 @@ class PurchaseOrdersService {
     final currentUser = _supabase.auth.currentUser;
     String? profileId;
     if (currentUser != null) {
-      final profile = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', currentUser.id)
-          .maybeSingle();
+      final profile =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', currentUser.id)
+              .maybeSingle();
       profileId = profile?['id'] as String?;
     }
 
     // 1. Insert Purchase Order
-    final poResp = await _supabase
-        .from('purchase_orders')
-        .insert({
-          'supplier_id': supplierId,
-          'supplier_name': supplierName,
-          'warehouse_id': warehouseId,
-          'status': 'SENT',
-          'total_amount': totalAmount,
-          'payment_method': paymentMode,
-          'payment_status': paymentStatus,
-          'amount_paid': paymentStatus == 'PAID' ? totalAmount : 0,
-          'due_date': dueDate?.toIso8601String().split('T').first,
-          'document_type': documentType,
-          'document_number': documentNumber,
-          'document_date': documentDate?.toIso8601String().split('T').first,
-          'notes': notes,
-          'created_by': profileId,
-        })
-        .select('id')
-        .single();
+    final poResp =
+        await _supabase
+            .from('purchase_orders')
+            .insert({
+              'supplier_id': supplierId,
+              'supplier_name': supplierName,
+              'warehouse_id': warehouseId,
+              'status': 'SENT',
+              'total_amount': totalAmount,
+              'payment_method': paymentMode,
+              'payment_status': paymentStatus,
+              'amount_paid': paymentStatus == 'PAID' ? totalAmount : 0,
+              'due_date': dueDate?.toIso8601String().split('T').first,
+              'document_type': documentType,
+              'document_number': documentNumber,
+              'document_date': documentDate?.toIso8601String().split('T').first,
+              'notes': notes,
+              'created_by': profileId,
+            })
+            .select('id')
+            .single();
 
     final poId = poResp['id'] as String;
 
@@ -239,12 +263,13 @@ class PurchaseOrdersService {
 
     // 3. Finanzas: Pago Adelantado
     if (paymentStatus == 'PAID' && accountId != null) {
-      final accountDataResp = await _supabase
-          .from('financial_accounts')
-          .select('balance')
-          .eq('id', accountId)
-          .single();
-      
+      final accountDataResp =
+          await _supabase
+              .from('financial_accounts')
+              .select('balance')
+              .eq('id', accountId)
+              .single();
+
       final currentBalance = (accountDataResp['balance'] as num).toDouble();
 
       await _supabase.from('account_movements').insert({
@@ -265,17 +290,19 @@ class PurchaseOrdersService {
     }
     // 4. Finanzas: Compra a Crédito
     else if (paymentMode == 'CREDITO') {
-      final creditResp = await _supabase
-          .from('supplier_credits')
-          .select('id, current_debt')
-          .eq('supplier_id', supplierId)
-          .single();
+      final creditResp =
+          await _supabase
+              .from('supplier_credits')
+              .select('id, current_debt')
+              .eq('supplier_id', supplierId)
+              .single();
       final supplierCreditId = creditResp['id'] as String;
 
       await _supabase
           .from('supplier_credits')
           .update({
-            'current_debt': (creditResp['current_debt'] as num).toDouble() + totalAmount,
+            'current_debt':
+                (creditResp['current_debt'] as num).toDouble() + totalAmount,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', supplierCreditId);
@@ -307,10 +334,14 @@ class PurchaseOrdersService {
   }
 
   /// Obtiene variantes dado un product_id.
-  Future<List<Map<String, dynamic>>> getProductVariants(String productId) async {
+  Future<List<Map<String, dynamic>>> getProductVariants(
+    String productId,
+  ) async {
     final response = await _supabase
         .from('product_variants')
-        .select('*, product_images(*), variant_attribute_values(attribute_values(value, attributes(name)))')
+        .select(
+          '*, product_images(*), variant_attribute_values(attribute_values(value, attributes(name)))',
+        )
         .eq('product_id', productId)
         .eq('is_active', true);
     return List<Map<String, dynamic>>.from(response as List);

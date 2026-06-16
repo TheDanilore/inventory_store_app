@@ -42,9 +42,12 @@ class CatalogService {
       final cached = prefs.getString('cached_admin_categories');
       if (cached != null) {
         final List decoded = jsonDecode(cached);
-        final offlineCats = decoded
-            .map((e) => CategoryModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
+        final offlineCats =
+            decoded
+                .map(
+                  (e) => CategoryModel.fromJson(Map<String, dynamic>.from(e)),
+                )
+                .toList();
         _memCategories = offlineCats;
         return offlineCats;
       }
@@ -58,7 +61,8 @@ class CatalogService {
     bool isAdmin = false,
   }) async {
     final cacheKey = '${categoryId ?? 'all'}_$isAdmin';
-    if ((searchTerm == null || searchTerm.trim().isEmpty) && _memProducts.containsKey(cacheKey)) {
+    if ((searchTerm == null || searchTerm.trim().isEmpty) &&
+        _memProducts.containsKey(cacheKey)) {
       return _memProducts[cacheKey]!;
     }
 

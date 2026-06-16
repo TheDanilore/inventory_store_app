@@ -126,8 +126,7 @@ class DashboardService {
               .where((b) => b['variant_id'] == variantId)
               .fold<int>(
                 0,
-                (s, b) =>
-                    s + ((b['available_quantity'] as num?)?.toInt() ?? 0),
+                (s, b) => s + ((b['available_quantity'] as num?)?.toInt() ?? 0),
               );
 
           if (variantStock <= 0) continue;
@@ -137,15 +136,15 @@ class DashboardService {
                   ? (variant['unit_cost'] as num).toDouble()
                   : prodUnitCost;
 
-          final varSalePrice = (variant['sale_price'] as num?)?.toDouble() ??
-              prodSalePrice;
+          final varSalePrice =
+              (variant['sale_price'] as num?)?.toDouble() ?? prodSalePrice;
 
           final varWholesalePrice =
               (variant['wholesale_price'] as num?)?.toDouble() ??
-                  prodWholesalePrice;
+              prodWholesalePrice;
           final varWholesaleMinQty =
               (variant['wholesale_min_quantity'] as num?)?.toInt() ??
-                  prodWholesaleMinQty;
+              prodWholesaleMinQty;
           final reorderPoint = (variant['reorder_point'] as num?)?.toInt() ?? 3;
 
           totalStock += variantStock;
@@ -162,7 +161,8 @@ class DashboardService {
           final effectiveWholesale =
               canApplyWholesale ? varWholesalePrice : varSalePrice;
           gananciaEsperadaMin +=
-              (variantStock * effectiveWholesale) - (variantStock * varUnitCost);
+              (variantStock * effectiveWholesale) -
+              (variantStock * varUnitCost);
 
           if (variantStock <= reorderPoint) prodHasLowStock = true;
         }
@@ -171,7 +171,9 @@ class DashboardService {
       }
 
       final margenBruto =
-          inversionTotal > 0 ? (gananciaBruta / valorVentaMinorista) * 100 : 0.0;
+          inversionTotal > 0
+              ? (gananciaBruta / valorVentaMinorista) * 100
+              : 0.0;
 
       return InventoryMetrics(
         totalStock: totalStock,
@@ -235,7 +237,11 @@ class DashboardService {
           break;
         case SalesTimeFilter.thisWeek:
           final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-          final startOfWeekDay = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+          final startOfWeekDay = DateTime(
+            startOfWeek.year,
+            startOfWeek.month,
+            startOfWeek.day,
+          );
           query = query.gte('created_at', startOfWeekDay.toIso8601String());
           break;
         case SalesTimeFilter.thisMonth:

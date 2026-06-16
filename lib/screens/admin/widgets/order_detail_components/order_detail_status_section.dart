@@ -76,9 +76,10 @@ class OrderDetailStatusSection extends StatelessWidget {
     return OrderDetailSectionCard(
       title: 'Estado del Pedido',
       child: DropdownButtonFormField<String>(
-        initialValue: options.contains(currentStatus.toUpperCase())
-            ? currentStatus.toUpperCase()
-            : options.first,
+        initialValue:
+            options.contains(currentStatus.toUpperCase())
+                ? currentStatus.toUpperCase()
+                : options.first,
         decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           contentPadding: const EdgeInsets.symmetric(
@@ -92,32 +93,33 @@ class OrderDetailStatusSection extends StatelessWidget {
           Icons.arrow_drop_down_circle_rounded,
           color: AppColors.primary,
         ),
-        items: options.map((s) {
-          String label = s;
-          Color itemColor = Colors.black87;
+        items:
+            options.map((s) {
+              String label = s;
+              Color itemColor = Colors.black87;
 
-          if (s == 'COMPLETED') {
-            label = '✅  COMPLETAR PEDIDO';
-            itemColor = Colors.teal.shade700;
-          } else if (s == 'PENDING') {
-            label = '⏳  MANTENER PENDIENTE';
-            itemColor = Colors.orange.shade800;
-          } else if (s == 'CANCELLED') {
-            label = '❌  CANCELAR PEDIDO';
-            itemColor = Colors.red.shade700;
-          }
+              if (s == 'COMPLETED') {
+                label = '✅  COMPLETAR PEDIDO';
+                itemColor = Colors.teal.shade700;
+              } else if (s == 'PENDING') {
+                label = '⏳  MANTENER PENDIENTE';
+                itemColor = Colors.orange.shade800;
+              } else if (s == 'CANCELLED') {
+                label = '❌  CANCELAR PEDIDO';
+                itemColor = Colors.red.shade700;
+              }
 
-          return DropdownMenuItem(
-            value: s,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: itemColor,
-              ),
-            ),
-          );
-        }).toList(),
+              return DropdownMenuItem(
+                value: s,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: itemColor,
+                  ),
+                ),
+              );
+            }).toList(),
         onChanged: onChanged,
       ),
     );

@@ -16,18 +16,19 @@ class PinataGameScreen extends StatefulWidget {
   State<PinataGameScreen> createState() => _PinataGameScreenState();
 }
 
-class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerProviderStateMixin {
+class _PinataGameScreenState extends State<PinataGameScreen>
+    with SingleTickerProviderStateMixin {
   // --- ESTADOS DEL JUEGO ---
   bool _isPlaying = false;
   bool _isGameOver = false;
   bool _isSaving = false;
-  
+
   int _timeLeft = 10;
   int _tapCount = 0;
   int _pointsEarned = 0;
 
   Timer? _timer;
-  
+
   // --- ANIMACIÓN DE VIBRACIÓN ---
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
@@ -96,7 +97,8 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
     // Leer valores dinámicos desde AppConfigProvider
     final config = context.read<AppConfigProvider>();
     final grandPrize = config.getDouble('pinata_grand_prize', 50).toInt();
-    final consolationPrize = config.getDouble('pinata_consolation_prize', 5).toInt();
+    final consolationPrize =
+        config.getDouble('pinata_consolation_prize', 5).toInt();
 
     // Lógica de premios: Si llega a 50 toques, gana el premio mayor.
     _pointsEarned = _tapCount >= 50 ? grandPrize : consolationPrize;
@@ -141,16 +143,13 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
         child: Stack(
           children: [
             // --- ESTADO 1: INICIO ---
-            if (!_isPlaying && !_isGameOver)
-              _buildIntroScreen(),
+            if (!_isPlaying && !_isGameOver) _buildIntroScreen(),
 
             // --- ESTADO 2: JUGANDO ---
-            if (_isPlaying)
-              _buildPlayingScreen(),
+            if (_isPlaying) _buildPlayingScreen(),
 
             // --- ESTADO 3: FIN DEL JUEGO ---
-            if (_isGameOver)
-              _buildGameOverScreen(),
+            if (_isGameOver) _buildGameOverScreen(),
           ],
         ),
       ),
@@ -168,18 +167,30 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.celebration_rounded, size: 100, color: Colors.amber),
+            const Icon(
+              Icons.celebration_rounded,
+              size: 100,
+              color: Colors.amber,
+            ),
             const SizedBox(height: 24),
             const Text(
               'Frenesí de Piñata',
-              style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
               '¡Tienes 10 segundos!\nToca la piñata lo más rápido que puedas. Si logras 50 toques, te llevas el Premio Mayor.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16, height: 1.4),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 16,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 48),
             AppPrimaryButton(
@@ -191,8 +202,11 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Volver', style: TextStyle(color: Colors.white)),
-            )
+              child: const Text(
+                'Volver',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),
@@ -208,8 +222,16 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildHudChip(Icons.touch_app_rounded, 'Toques: $_tapCount', Colors.amber),
-              _buildHudChip(Icons.timer_rounded, '00:${_timeLeft.toString().padLeft(2, '0')}', Colors.white),
+              _buildHudChip(
+                Icons.touch_app_rounded,
+                'Toques: $_tapCount',
+                Colors.amber,
+              ),
+              _buildHudChip(
+                Icons.timer_rounded,
+                '00:${_timeLeft.toString().padLeft(2, '0')}',
+                Colors.white,
+              ),
             ],
           ),
         ),
@@ -258,9 +280,13 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
         Padding(
           padding: const EdgeInsets.only(bottom: 40),
           child: Text(
-            _tapCount < 10 ? '¡TOCA MÁS RÁPIDO!' : 
-            _tapCount < 30 ? '¡ESO ES! ¡SÍGUELE!' : 
-            _tapCount < 50 ? '¡YA CASI SE ROMPE!' : '¡PIÑATA ROTA!',
+            _tapCount < 10
+                ? '¡TOCA MÁS RÁPIDO!'
+                : _tapCount < 30
+                ? '¡ESO ES! ¡SÍGUELE!'
+                : _tapCount < 50
+                ? '¡YA CASI SE ROMPE!'
+                : '¡PIÑATA ROTA!',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -284,28 +310,45 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
           children: [
             Text(
               '¡Tiempo Agotado!',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 20),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 20,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               '$_tapCount toques',
-              style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w900),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 48,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 16),
             Icon(
-              wonGrandPrize ? Icons.emoji_events_rounded : Icons.thumb_up_alt_rounded,
+              wonGrandPrize
+                  ? Icons.emoji_events_rounded
+                  : Icons.thumb_up_alt_rounded,
               size: 80,
               color: wonGrandPrize ? Colors.amber : Colors.blueAccent,
             ),
             const SizedBox(height: 24),
             Text(
               wonGrandPrize ? '¡Rompiste la piñata!' : '¡Buen esfuerzo!',
-              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Has ganado $_pointsEarned monedas.',
-              style: const TextStyle(color: Colors.amber, fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.amber,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 48),
             if (_isSaving)
@@ -336,7 +379,11 @@ class _PinataGameScreenState extends State<PinataGameScreen> with SingleTickerPr
           const SizedBox(width: 8),
           Text(
             text,
-            style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

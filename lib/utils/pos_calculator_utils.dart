@@ -4,25 +4,25 @@ class PosCalculatorUtils {
   static int clampPointsValue(int desired, PosProvider pos, double ratio) {
     if (pos.selectedClientId == null) return 0;
     if (pos.saldoActualCliente <= 0) return 0;
-    
+
     int maxPts = pos.saldoActualCliente;
     final total = pos.totalAmount;
     final maxPtsForTotal = (total / ratio).floor();
-    
+
     if (maxPts > maxPtsForTotal) maxPts = maxPtsForTotal;
     if (desired > maxPts) return maxPts;
     if (desired < 0) return 0;
-    
+
     return desired;
   }
 
   static int maxPuntosAplicables(PosProvider pos, double ratio) {
     if (pos.selectedClientId == null) return 0;
     if (pos.saldoActualCliente <= 0) return 0;
-    
+
     final total = pos.totalAmount;
     final maxPtsForTotal = (total / ratio).floor();
-    
+
     return pos.saldoActualCliente > maxPtsForTotal
         ? maxPtsForTotal
         : pos.saldoActualCliente;
@@ -36,13 +36,13 @@ class PosCalculatorUtils {
   }) {
     final raw = double.tryParse(discountText) ?? 0.0;
     if (raw <= 0) return 0.0;
-    
+
     if (isDiscountPercentage) {
       final safePts = clampPointsValue(pos.puntosAUsar, pos, ratio);
       final partial = pos.totalAmount - (safePts * ratio);
       return partial * (raw / 100).clamp(0.0, 1.0);
     }
-    
+
     return raw;
   }
 
@@ -59,7 +59,7 @@ class PosCalculatorUtils {
       pos: pos,
       ratio: ratio,
     );
-    
+
     final partial = pos.totalAmount - (safePts * ratio) - discExtra;
     return partial < 0 ? 0 : partial;
   }
@@ -74,16 +74,17 @@ class PosCalculatorUtils {
     for (final item in pos.items.values) {
       totalNetProfit += (item.unitPrice - item.unitCost) * item.quantity;
     }
-    
+
     final safePts = clampPointsValue(pos.puntosAUsar, pos, ratio);
-    final totalDesc = (safePts * ratio) +
+    final totalDesc =
+        (safePts * ratio) +
         getCustomDiscountAmount(
           discountText: discountText,
           isDiscountPercentage: isDiscountPercentage,
           pos: pos,
           ratio: ratio,
         );
-        
+
     return totalNetProfit - totalDesc;
   }
 

@@ -34,26 +34,27 @@ class PointsMiniGameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final attemptsLeft = (dailyLimit - playsToday).clamp(0, dailyLimit);
-    final statusText = !canPlay
-        ? 'Intentos: $playsToday/$dailyLimit. Hoy ya completaste este juego.'
-        : isPreparingBoxes
+    final statusText =
+        !canPlay
+            ? 'Intentos: $playsToday/$dailyLimit. Hoy ya completaste este juego.'
+            : isPreparingBoxes
             ? 'Intentos: $playsToday/$dailyLimit. Mira los premios y espera la mezcla.'
             : boxesRoundReady
-                ? 'Intentos: $playsToday/$dailyLimit. Ahora elige una caja.'
-                : 'Intentos: $playsToday/$dailyLimit. Toca “Mezclar cajas” para empezar.';
+            ? 'Intentos: $playsToday/$dailyLimit. Ahora elige una caja.'
+            : 'Intentos: $playsToday/$dailyLimit. Toca “Mezclar cajas” para empezar.';
 
     final statusColor =
-      !canPlay
-        ? const Color(0xFF8A8A8A)
-        : attemptsLeft == dailyLimit
-          ? const Color(0xFF16794C)
-          : const Color(0xFF8A5200);
+        !canPlay
+            ? const Color(0xFF8A8A8A)
+            : attemptsLeft == dailyLimit
+            ? const Color(0xFF16794C)
+            : const Color(0xFF8A5200);
     final statusBackground =
-      !canPlay
-        ? const Color(0xFFE5E5E5)
-        : attemptsLeft == dailyLimit
-          ? const Color(0xFFE8F7EF)
-          : const Color(0xFFFFF4C7);
+        !canPlay
+            ? const Color(0xFFE5E5E5)
+            : attemptsLeft == dailyLimit
+            ? const Color(0xFFE8F7EF)
+            : const Color(0xFFFFF4C7);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -97,14 +98,21 @@ class PointsMiniGameCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: statusBackground,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   'Intentos: $playsToday/$dailyLimit',
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 12),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -130,8 +138,14 @@ class PointsMiniGameCard extends StatelessWidget {
               final reward = prizePreview[index];
               final locked = !canPlay || isPlayingMiniGame || !boxesRoundReady;
               final shouldShowValue = showPreviewValues;
-              final wobble = isPreparingBoxes ? ((shuffleSeed + index) % 3 - 1) * 0.03 : 0.0;
-              final verticalShift = isPreparingBoxes ? ((shuffleSeed + index * 2) % 3 - 1) * 4.0 : 0.0;
+              final wobble =
+                  isPreparingBoxes
+                      ? ((shuffleSeed + index) % 3 - 1) * 0.03
+                      : 0.0;
+              final verticalShift =
+                  isPreparingBoxes
+                      ? ((shuffleSeed + index * 2) % 3 - 1) * 4.0
+                      : 0.0;
 
               return Expanded(
                 child: Padding(
@@ -168,14 +182,18 @@ class PointsMiniGameCard extends StatelessWidget {
                                 shouldShowValue
                                     ? Icons.casino_rounded
                                     : locked
-                                        ? Icons.lock_rounded
-                                        : Icons.card_giftcard_rounded,
+                                    ? Icons.lock_rounded
+                                    : Icons.card_giftcard_rounded,
                                 color: const Color(0xFF7A4500),
                                 size: 30,
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                shouldShowValue ? 'Premio visible' : locked ? 'Caja' : 'Caja ${index + 1}',
+                                shouldShowValue
+                                    ? 'Premio visible'
+                                    : locked
+                                    ? 'Caja'
+                                    : 'Caja ${index + 1}',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Color(0xFF7A4500),
@@ -187,8 +205,8 @@ class PointsMiniGameCard extends StatelessWidget {
                                 shouldShowValue
                                     ? '+$reward'
                                     : locked
-                                        ? 'Toca para ver'
-                                        : 'Toca para jugar',
+                                    ? 'Toca para ver'
+                                    : 'Toca para jugar',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Color(0xFF7A4500),

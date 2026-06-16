@@ -72,7 +72,8 @@ class OrderDetailCustomerSection extends StatelessWidget {
                 hintText: 'Nombre del cliente (opcional)',
                 prefixIcon: Icon(Icons.person_outline),
                 border: OutlineInputBorder(),
-                helperText: 'O busca abajo para asociar a un cliente registrado',
+                helperText:
+                    'O busca abajo para asociar a un cliente registrado',
               ),
             ),
             const SizedBox(height: 12),
@@ -145,12 +146,13 @@ class OrderDetailCustomerSection extends StatelessWidget {
               hintText: 'Buscar por nombre, teléfono o documento',
               prefixIcon: const Icon(Icons.search),
               border: const OutlineInputBorder(),
-              suffixIcon: searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: onClearSearch,
-                    )
-                  : null,
+              suffixIcon:
+                  searchController.text.isNotEmpty
+                      ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: onClearSearch,
+                      )
+                      : null,
             ),
             onChanged: (_) => onSearchChanged(),
           ),
@@ -161,52 +163,70 @@ class OrderDetailCustomerSection extends StatelessWidget {
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: filteredProfiles.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'No se encontraron clientes.',
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: filteredProfiles.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final profile = filteredProfiles[index];
-                      final customerId = profile['id'] as String;
-                      final isSelected = customerId == selectedCustomerId;
-                      final fullName = (profile['full_name'] as String?)?.trim().isNotEmpty == true
-                          ? profile['full_name'] as String
-                          : 'Sin nombre';
-                      final phone = (profile['phone'] as String?)?.trim().isNotEmpty == true
-                          ? profile['phone'] as String
-                          : null;
-                      final document = (profile['document_number'] as String?)?.trim().isNotEmpty == true
-                          ? profile['document_number'] as String
-                          : null;
+            child:
+                filteredProfiles.isEmpty
+                    ? Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        'No se encontraron clientes.',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    )
+                    : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: filteredProfiles.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final profile = filteredProfiles[index];
+                        final customerId = profile['id'] as String;
+                        final isSelected = customerId == selectedCustomerId;
+                        final fullName =
+                            (profile['full_name'] as String?)
+                                        ?.trim()
+                                        .isNotEmpty ==
+                                    true
+                                ? profile['full_name'] as String
+                                : 'Sin nombre';
+                        final phone =
+                            (profile['phone'] as String?)?.trim().isNotEmpty ==
+                                    true
+                                ? profile['phone'] as String
+                                : null;
+                        final document =
+                            (profile['document_number'] as String?)
+                                        ?.trim()
+                                        .isNotEmpty ==
+                                    true
+                                ? profile['document_number'] as String
+                                : null;
 
-                      return ListTile(
-                        dense: true,
-                        selected: isSelected,
-                        selectedTileColor: Colors.teal.withValues(alpha: 0.08),
-                        title: Text(fullName),
-                        subtitle: phone != null || document != null
-                            ? Text(
-                                [
-                                  if (phone != null) 'Tel: $phone',
-                                  if (document != null) 'Doc: $document',
-                                ].join('  |  '),
-                              )
-                            : null,
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle, color: Colors.teal)
-                            : null,
-                        onTap: () => onSelectCustomer(customerId),
-                      );
-                    },
-                  ),
+                        return ListTile(
+                          dense: true,
+                          selected: isSelected,
+                          selectedTileColor: Colors.teal.withValues(
+                            alpha: 0.08,
+                          ),
+                          title: Text(fullName),
+                          subtitle:
+                              phone != null || document != null
+                                  ? Text(
+                                    [
+                                      if (phone != null) 'Tel: $phone',
+                                      if (document != null) 'Doc: $document',
+                                    ].join('  |  '),
+                                  )
+                                  : null,
+                          trailing:
+                              isSelected
+                                  ? const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.teal,
+                                  )
+                                  : null,
+                          onTap: () => onSelectCustomer(customerId),
+                        );
+                      },
+                    ),
           ),
         ],
       ),

@@ -81,7 +81,10 @@ class PosProvider with ChangeNotifier {
 
   /// Guarda el override de lotes para un ítem. Llamado desde el checkout
   /// cuando el usuario confirma la asignación en el _BatchEditSheet.
-  void setBatchOverride(String cartKey, List<BatchAssignmentModel> assignments) {
+  void setBatchOverride(
+    String cartKey,
+    List<BatchAssignmentModel> assignments,
+  ) {
     _batchOverrides[cartKey] = assignments;
     notifyListeners();
   }
@@ -148,7 +151,8 @@ class PosProvider with ChangeNotifier {
           wholesalePrice: wholesalePrice ?? product.wholesalePrice,
 
           // Si el unitCost es 0 o null, lo tomamos del producto para evitar problemas en el checkout
-          unitCost: unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
+          unitCost:
+              unitCost != null && unitCost > 0 ? unitCost : product.unitCost,
           imageUrl: imageUrl,
           sku: sku,
           availableStock: stockLimit,

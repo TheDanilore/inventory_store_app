@@ -42,7 +42,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   String? _selectedCategoryId;
   int _currentPage = 0;
   bool _isExportingPdf = false;
-  
+
   List<ProductModel>? _currentProducts;
   bool _isLoadingProducts = true;
   String? _productsError;
@@ -352,7 +352,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   onToggleIngredientSearch: _toggleIngredientSearch,
                 ),
                 if (_isLoadingProducts && _currentProducts != null)
-                  const LinearProgressIndicator(color: AppColors.teal, minHeight: 2),
+                  const LinearProgressIndicator(
+                    color: AppColors.teal,
+                    minHeight: 2,
+                  ),
               ],
             ),
           );
@@ -423,7 +426,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             );
           }
 
-          if ((_currentProducts == null || _currentProducts!.isEmpty) && !_isLoadingProducts) {
+          if ((_currentProducts == null || _currentProducts!.isEmpty) &&
+              !_isLoadingProducts) {
             return RefreshIndicator(
               color: AppColors.teal,
               onRefresh: () async => _refreshProducts(),

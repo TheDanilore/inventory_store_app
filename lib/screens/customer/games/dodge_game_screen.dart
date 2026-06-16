@@ -90,10 +90,11 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
 
       // 4. Generar nuevos objetos
       _spawnTimer += _gameSpeed;
-      if (_spawnTimer > 0.5) { // Distancia/Tiempo entre cada fila de objetos
+      if (_spawnTimer > 0.5) {
+        // Distancia/Tiempo entre cada fila de objetos
         _spawnRow();
         _spawnTimer = 0.0;
-        
+
         // Aumentamos la dificultad muy poco a poco (límite de velocidad: 0.032)
         if (_gameSpeed < 0.032) {
           _gameSpeed += 0.00012;
@@ -132,22 +133,26 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
 
     for (int i = 0; i < obstacleLanes.length; i++) {
       final lane = obstacleLanes[i];
-      _activeItems.add(FallingItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}o$i',
-        y: -1.2,
-        lane: lane,
-        type: ItemType.obstacle,
-      ));
+      _activeItems.add(
+        FallingItem(
+          id: '${DateTime.now().microsecondsSinceEpoch}o$i',
+          y: -1.2,
+          lane: lane,
+          type: ItemType.obstacle,
+        ),
+      );
     }
 
     for (int i = 0; i < coinLanes.length; i++) {
       final lane = coinLanes[i];
-      _activeItems.add(FallingItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}c$i',
-        y: -1.2,
-        lane: lane,
-        type: ItemType.coin,
-      ));
+      _activeItems.add(
+        FallingItem(
+          id: '${DateTime.now().microsecondsSinceEpoch}c$i',
+          y: -1.2,
+          lane: lane,
+          type: ItemType.coin,
+        ),
+      );
     }
   }
 
@@ -185,7 +190,7 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
 
   void _checkCollisions() {
     // La posición "Y" del jugador en la pantalla (cerca de la parte inferior)
-    const double playerY = 0.8; 
+    const double playerY = 0.8;
     const double hitboxSize = 0.15; // Tamaño del área de colisión
 
     for (var item in _activeItems) {
@@ -210,7 +215,7 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
 
     // Detectamos la dirección del deslizamiento horizontal
     final velocity = details.primaryVelocity ?? 0;
-    
+
     setState(() {
       if (velocity < -100 && _playerLane > 0) {
         // Deslizó hacia la izquierda
@@ -263,129 +268,172 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return GestureDetector(
-              onTapDown: (details) => _handleTapDown(details, constraints.maxWidth),
+              onTapDown:
+                  (details) => _handleTapDown(details, constraints.maxWidth),
               onHorizontalDragEnd: _onSwipe,
               behavior: HitTestBehavior.opaque,
               child: Stack(
                 children: [
-              // --- FONDO (Los 3 carriles) ---
-              Row(
-                children: [
-                  _buildLaneBackground(),
-                  _buildLaneBackground(isCenter: true),
-                  _buildLaneBackground(),
-                ],
-              ),
-
-              // --- MARCADOR ---
-              if (_isPlaying || _isGameOver)
-                Positioned(
-                  top: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.monetization_on, color: Colors.amber, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          '$_score',
-                          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              // --- LOS OBJETOS CAYENDO ---
-              if (_isPlaying)
-                ..._activeItems.map((item) {
-                  return Align(
-                    alignment: Alignment(_getAlignmentXForLane(item.lane), item.y),
-                    child: item.type == ItemType.obstacle
-                        ? _buildObstacleWidget()
-                        : _buildCoinWidget(),
-                  );
-                }),
-
-              // --- EL JUGADOR (Carrito de Compras) ---
-              if (_isPlaying || _isGameOver)
-                AnimatedAlign(
-                  duration: const Duration(milliseconds: 150), // Movimiento suave entre carriles
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment(_getAlignmentXForLane(_playerLane), 0.8),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _isGameOver ? Colors.redAccent : AppColors.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_isGameOver ? Colors.red : AppColors.primary).withValues(alpha: 0.5),
-                          blurRadius: 15,
-                        )
-                      ],
-                    ),
-                    child: const Icon(Icons.shopping_cart, color: Colors.white, size: 36),
-                  ),
-                ),
-
-              // --- PANTALLAS DE OVERLAY ---
-              if (!_isPlaying && !_isGameOver)
-                _buildOverlay(
-                  title: 'Esquiva y Atrapa',
-                  subtitle: 'Desliza tu dedo a la izquierda o derecha para cambiar de carril.\nAtrapa las monedas y ¡cuidado con las cajas!',
-                  buttonLabel: '¡A CORRER!',
-                  onPressed: _startGame,
-                  icon: Icons.swipe_rounded,
-                  iconColor: Colors.blueAccent,
-                ),
-
-              if (_isGameOver)
-                _buildOverlay(
-                  title: '¡Chocaste!',
-                  subtitle: 'Lograste esquivar y recolectaste $_score monedas.\n¡Bien jugado!',
-                  buttonLabel: 'RECLAMAR RECOMPENSA',
-                  onPressed: () => Navigator.pop(context, _score),
-                  icon: Icons.warning_rounded,
-                  iconColor: Colors.redAccent,
-                  isGameOver: true,
-                ),
-
-              if (_isPlaying)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 18,
-                  child: Row(
+                  // --- FONDO (Los 3 carriles) ---
+                  Row(
                     children: [
-                      Expanded(
-                        child: AppPrimaryButton(
-                          label: 'Izquierda',
-                          onPressed: _moveLeft,
-                          backgroundColor: Colors.black.withValues(alpha: 0.35),
-                          foregroundColor: Colors.white,
-                          icon: const Icon(Icons.chevron_left_rounded, color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppPrimaryButton(
-                          label: 'Derecha',
-                          onPressed: _moveRight,
-                          backgroundColor: Colors.black.withValues(alpha: 0.35),
-                          foregroundColor: Colors.white,
-                          icon: const Icon(Icons.chevron_right_rounded, color: Colors.white),
-                        ),
-                      ),
+                      _buildLaneBackground(),
+                      _buildLaneBackground(isCenter: true),
+                      _buildLaneBackground(),
                     ],
                   ),
-                ),
-            ],
+
+                  // --- MARCADOR ---
+                  if (_isPlaying || _isGameOver)
+                    Positioned(
+                      top: 20,
+                      right: 20,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.monetization_on,
+                              color: Colors.amber,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$_score',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // --- LOS OBJETOS CAYENDO ---
+                  if (_isPlaying)
+                    ..._activeItems.map((item) {
+                      return Align(
+                        alignment: Alignment(
+                          _getAlignmentXForLane(item.lane),
+                          item.y,
+                        ),
+                        child:
+                            item.type == ItemType.obstacle
+                                ? _buildObstacleWidget()
+                                : _buildCoinWidget(),
+                      );
+                    }),
+
+                  // --- EL JUGADOR (Carrito de Compras) ---
+                  if (_isPlaying || _isGameOver)
+                    AnimatedAlign(
+                      duration: const Duration(
+                        milliseconds: 150,
+                      ), // Movimiento suave entre carriles
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment(
+                        _getAlignmentXForLane(_playerLane),
+                        0.8,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              _isGameOver
+                                  ? Colors.redAccent
+                                  : AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_isGameOver
+                                      ? Colors.red
+                                      : AppColors.primary)
+                                  .withValues(alpha: 0.5),
+                              blurRadius: 15,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.shopping_cart,
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                    ),
+
+                  // --- PANTALLAS DE OVERLAY ---
+                  if (!_isPlaying && !_isGameOver)
+                    _buildOverlay(
+                      title: 'Esquiva y Atrapa',
+                      subtitle:
+                          'Desliza tu dedo a la izquierda o derecha para cambiar de carril.\nAtrapa las monedas y ¡cuidado con las cajas!',
+                      buttonLabel: '¡A CORRER!',
+                      onPressed: _startGame,
+                      icon: Icons.swipe_rounded,
+                      iconColor: Colors.blueAccent,
+                    ),
+
+                  if (_isGameOver)
+                    _buildOverlay(
+                      title: '¡Chocaste!',
+                      subtitle:
+                          'Lograste esquivar y recolectaste $_score monedas.\n¡Bien jugado!',
+                      buttonLabel: 'RECLAMAR RECOMPENSA',
+                      onPressed: () => Navigator.pop(context, _score),
+                      icon: Icons.warning_rounded,
+                      iconColor: Colors.redAccent,
+                      isGameOver: true,
+                    ),
+
+                  if (_isPlaying)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 18,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: AppPrimaryButton(
+                              label: 'Izquierda',
+                              onPressed: _moveLeft,
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.35,
+                              ),
+                              foregroundColor: Colors.white,
+                              icon: const Icon(
+                                Icons.chevron_left_rounded,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AppPrimaryButton(
+                              label: 'Derecha',
+                              onPressed: _moveRight,
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.35,
+                              ),
+                              foregroundColor: Colors.white,
+                              icon: const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             );
           },
@@ -400,10 +448,19 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: isCenter ? Colors.white.withValues(alpha: 0.05) : Colors.transparent,
+          color:
+              isCenter
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.transparent,
           border: Border(
-            left: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
-            right: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
+            left: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
+            right: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
           ),
         ),
       ),
@@ -418,7 +475,13 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
         color: Colors.brown.shade600,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.brown.shade800, width: 2),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: const Icon(Icons.inventory_2, color: Colors.white54, size: 30),
     );
@@ -433,10 +496,18 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
         shape: BoxShape.circle,
         border: Border.all(color: Colors.yellowAccent, width: 2),
         boxShadow: [
-          BoxShadow(color: Colors.amber.withValues(alpha: 0.6), blurRadius: 15, spreadRadius: 2),
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.6),
+            blurRadius: 15,
+            spreadRadius: 2,
+          ),
         ],
       ),
-      child: const Icon(Icons.attach_money_rounded, color: Colors.white, size: 28),
+      child: const Icon(
+        Icons.attach_money_rounded,
+        color: Colors.white,
+        size: 28,
+      ),
     );
   }
 
@@ -459,7 +530,12 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
             color: Colors.blueGrey.shade800,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: AppColors.primary, width: 2),
-            boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 30)],
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 30,
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -469,13 +545,21 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade300, fontSize: 16, height: 1.5),
+                style: TextStyle(
+                  color: Colors.grey.shade300,
+                  fontSize: 16,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 32),
               if (_isSaving)
@@ -490,9 +574,12 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Volver atrás', style: TextStyle(color: Colors.grey)),
-                )
-              ]
+                  child: const Text(
+                    'Volver atrás',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
