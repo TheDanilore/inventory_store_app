@@ -16,6 +16,7 @@ class AdminLayout extends StatelessWidget {
   final bool showProfileButton;
   final bool showSettingsButton;
   final bool showDrawerButton;
+  final bool showAppBar;
   final List<PopupMenuEntry<String>>? settingsActions;
   final ValueChanged<String>? onSettingsSelected;
 
@@ -29,6 +30,7 @@ class AdminLayout extends StatelessWidget {
     this.showProfileButton = true,
     this.showSettingsButton = false,
     this.showDrawerButton = true,
+    this.showAppBar = true,
     this.settingsActions,
     this.onSettingsSelected,
   });
@@ -44,75 +46,80 @@ class AdminLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
       endDrawer: showDrawerButton ? const AppDrawer(isAdmin: true) : null,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
-        surfaceTintColor: Colors.transparent,
-        titleSpacing: 0,
-        title: Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.3,
-            ),
-          ),
-        ),
-        // Ajustamos el ancho dependiendo de cuántos botones hay realmente
-        leadingWidth: (showBackButton && showProfileButton) ? 104 : 60,
-        leading:
-            (!showBackButton && !showProfileButton)
-                ? const SizedBox.shrink()
-                : Align(
-                  alignment:
-                      Alignment.centerLeft, // <-- ANCLAJE FIJO A LA IZQUIERDA
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(width: 12), // <-- MARGEN CONSTANTE
-                      if (showBackButton)
-                        _AppBarIconButton(
-                          icon: Icons.arrow_back_ios_new_rounded,
-                          onTap: () => Navigator.maybePop(context),
-                        ),
-                      if (showBackButton && showProfileButton)
-                        const SizedBox(width: 8),
-                      if (showProfileButton)
-                        _ProfileAvatar(onTap: () => _openProfile(context)),
-                    ],
+      appBar:
+          showAppBar
+              ? AppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.black.withValues(alpha: 0.06),
+                surfaceTintColor: Colors.transparent,
+                titleSpacing: 0,
+                title: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.3,
+                    ),
                   ),
                 ),
-        actions: [
-          if (showSettingsButton &&
-              settingsActions != null &&
-              settingsActions!.isNotEmpty) ...[
-            _SettingsMenuButton(
-              items: settingsActions!,
-              onSelected: onSettingsSelected,
-            ),
-            const SizedBox(width: 8),
-          ],
+                // Ajustamos el ancho dependiendo de cuántos botones hay realmente
+                leadingWidth: (showBackButton && showProfileButton) ? 104 : 60,
+                leading:
+                    (!showBackButton && !showProfileButton)
+                        ? const SizedBox.shrink()
+                        : Align(
+                          alignment:
+                              Alignment
+                                  .centerLeft, // <-- ANCLAJE FIJO A LA IZQUIERDA
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(width: 12), // <-- MARGEN CONSTANTE
+                              if (showBackButton)
+                                AdminAppBarIconButton(
+                                  icon: Icons.arrow_back_ios_new_rounded,
+                                  onTap: () => Navigator.maybePop(context),
+                                ),
+                              if (showBackButton && showProfileButton)
+                                const SizedBox(width: 8),
+                              if (showProfileButton)
+                                AdminProfileAvatar(
+                                  onTap: () => _openProfile(context),
+                                ),
+                            ],
+                          ),
+                        ),
+                actions: [
+                  if (showSettingsButton &&
+                      settingsActions != null &&
+                      settingsActions!.isNotEmpty) ...[
+                    AdminSettingsMenuButton(
+                      items: settingsActions!,
+                      onSelected: onSettingsSelected,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
 
-          if (showDrawerButton)
-            Builder(
-              builder:
-                  (context) => _AppBarIconButton(
-                    icon: Icons.menu_rounded,
-                    onTap: () => Scaffold.of(context).openEndDrawer(),
-                  ),
-            ),
+                  if (showDrawerButton)
+                    Builder(
+                      builder:
+                          (context) => AdminAppBarIconButton(
+                            icon: Icons.menu_rounded,
+                            onTap: () => Scaffold.of(context).openEndDrawer(),
+                          ),
+                    ),
 
-          const SizedBox(width: 12),
-        ],
-      ),
+                  const SizedBox(width: 12),
+                ],
+              )
+              : null,
       body: Column(
         children: [
           // Offline banner — Animates its height layout size so it doesn't leave gaps
@@ -122,33 +129,34 @@ class AdminLayout extends StatelessWidget {
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.topCenter,
-                child: network.isOnline
-                    ? const SizedBox(width: double.infinity, height: 0)
-                    : Container(
-                        width: double.infinity,
-                        color: const Color(0xFFFF3B30),
-                        padding: const EdgeInsets.symmetric(vertical: 7),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.wifi_off_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'Sin conexión a internet',
-                              style: TextStyle(
+                child:
+                    network.isOnline
+                        ? const SizedBox(width: double.infinity, height: 0)
+                        : Container(
+                          width: double.infinity,
+                          color: const Color(0xFFFF3B30),
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.wifi_off_rounded,
                                 color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.2,
+                                size: 14,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 6),
+                              Text(
+                                'Sin conexión a internet',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
               );
             },
           ),
@@ -162,11 +170,15 @@ class AdminLayout extends StatelessWidget {
 }
 
 /// Botón circular para la AppBar
-class _AppBarIconButton extends StatelessWidget {
+class AdminAppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _AppBarIconButton({required this.icon, required this.onTap});
+  const AdminAppBarIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -185,11 +197,15 @@ class _AppBarIconButton extends StatelessWidget {
   }
 }
 
-class _SettingsMenuButton extends StatelessWidget {
+class AdminSettingsMenuButton extends StatelessWidget {
   final List<PopupMenuEntry<String>> items;
   final PopupMenuItemSelected<String>? onSelected;
 
-  const _SettingsMenuButton({required this.items, this.onSelected});
+  const AdminSettingsMenuButton({
+    super.key,
+    required this.items,
+    this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -216,9 +232,9 @@ class _SettingsMenuButton extends StatelessWidget {
 }
 
 /// Avatar / botón de perfil — carga la foto real del usuario desde ProfileProvider
-class _ProfileAvatar extends StatelessWidget {
+class AdminProfileAvatar extends StatelessWidget {
   final VoidCallback onTap;
-  const _ProfileAvatar({required this.onTap});
+  const AdminProfileAvatar({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +255,9 @@ class _ProfileAvatar extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           child: Consumer<ProfileProvider>(
             builder: (context, profile, _) {
-              if (profile.isLoading && profile.avatarUrl == null && profile.fullName.isEmpty) {
+              if (profile.isLoading &&
+                  profile.avatarUrl == null &&
+                  profile.fullName.isEmpty) {
                 // Skeleton/Loading state
                 return const Center(
                   child: SizedBox(
@@ -260,17 +278,19 @@ class _ProfileAvatar extends StatelessWidget {
                   width: 38,
                   height: 38,
                   fadeInDuration: const Duration(milliseconds: 150),
-                  placeholder: (context, url) => const Center(
-                    child: SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white70,
+                  placeholder:
+                      (context, url) => const Center(
+                        child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white70,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => _initialsWidget(profile),
+                  errorWidget:
+                      (context, url, error) => _initialsWidget(profile),
                 );
               }
               return _initialsWidget(profile);
@@ -286,9 +306,10 @@ class _ProfileAvatar extends StatelessWidget {
     final name = profile.fullName.trim();
     if (name.isNotEmpty) {
       final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
-      initials = parts.length >= 2
-          ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-          : name[0].toUpperCase();
+      initials =
+          parts.length >= 2
+              ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+              : name[0].toUpperCase();
     }
 
     return Center(

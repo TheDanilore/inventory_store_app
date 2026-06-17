@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
@@ -22,12 +23,15 @@ class CatalogHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Column(
-        children: [
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          color: Colors.white.withValues(alpha: 0.85),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Column(
+            children: [
           Row(
             children: [
               Expanded(
@@ -224,7 +228,9 @@ class CatalogHeader extends StatelessWidget {
                     : const SizedBox.shrink(),
           ),
           const SizedBox(height: 12),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

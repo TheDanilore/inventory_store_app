@@ -16,6 +16,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
   final double bottomPadding;
+  final Widget topBarSliver;
   final Widget headerSliver;
   final Widget? chipsSliver;
 
@@ -28,6 +29,7 @@ class CatalogGridScrollView extends StatelessWidget {
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
+    required this.topBarSliver,
     required this.headerSliver,
     this.chipsSliver,
     this.searchByIngredient = false,
@@ -64,6 +66,7 @@ class CatalogGridScrollView extends StatelessWidget {
         return CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            topBarSliver,
             headerSliver,
             if (chipsSliver != null) chipsSliver!,
             SliverToBoxAdapter(

@@ -19,6 +19,7 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/a
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_fab_buttons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
   const AdminCatalogScreen({super.key});
@@ -237,28 +238,130 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 break;
             }
           },
+          showAppBar: false,
           body: Builder(
             builder: (context) {
               const double fabsBottomPadding = 54;
 
-              final headerSliver = SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    CatalogHeader(
-                      searchController: _searchCtrl,
-                      isExporting: provider.isLoadingAction,
-                      onExport: () => _exportCatalogPdf(provider),
-                      onSearchChanged: provider.setSearchTerm,
-                      searchByIngredient: provider.searchByIngredient,
-                      onToggleIngredientSearch:
-                          provider.toggleSearchByIngredient,
+              final topBarSliver = SliverAppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.black.withValues(alpha: 0.06),
+                surfaceTintColor: Colors.transparent,
+                titleSpacing: 0,
+                floating: true,
+                pinned: false,
+                title: const Padding(
+                  padding: EdgeInsets.only(left: 4),
+                  child: Text(
+                    'Catálogo',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.3,
                     ),
-                    if (provider.isLoadingAction)
-                      const LinearProgressIndicator(
-                        color: AppColors.teal,
-                        minHeight: 2,
+                  ),
+                ),
+                leadingWidth: 60,
+                leading: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 12),
+                      AdminProfileAvatar(onTap: () {
+                        final user = Supabase.instance.client.auth.currentUser;
+                        if (user == null) {
+                          context.go('/login');
+                        } else {
+                          context.push('/admin/profile');
+                        }
+                      }),
+                    ],
+                  ),
+                ),
+                actions: [
+                  AdminSettingsMenuButton(
+                    items: [
+                      if (provider.filterIsActive == null ||
+                          provider.filterIsActive == true)
+                        const PopupMenuItem(
+                          value: 'filter_inactive',
+                          child: Text('Ver Inactivos'),
+                        ),
+                      if (provider.filterIsActive == null ||
+                          provider.filterIsActive == false)
+                        const PopupMenuItem(
+                          value: 'filter_all',
+                          child: Text('Ver Todos'),
+                        ),
+                      const PopupMenuItem(value: 'export', child: Text('Exportar')),
+                      const PopupMenuItem(
+                        value: 'sync',
+                        child: Text('Forzar Sincronización'),
                       ),
-                  ],
+                    ],
+                    onSelected: (value) async {
+                      switch (value) {
+                        case 'filter_inactive':
+                          provider.setFilterIsActive(false);
+                          break;
+                        case 'filter_all':
+                          provider.setFilterIsActive(null);
+                          break;
+                        case 'export':
+                          await _exportCatalogPdf(provider);
+                          break;
+                        case 'sync':
+                          await provider.forceSync();
+                          if (context.mounted) {
+                            AppSnackbar.show(
+                              context,
+                              message: 'Sincronización completada.',
+                              type: SnackbarType.success,
+                            );
+                          }
+                          break;
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Builder(
+                    builder: (context) => AdminAppBarIconButton(
+                      icon: Icons.menu_rounded,
+                      onTap: () => Scaffold.of(context).openEndDrawer(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              );
+
+              final headerHeight = provider.searchByIngredient ? 165.0 : 108.0;
+
+              final headerSliver = SliverPersistentHeader(
+                pinned: true,
+                delegate: _CatalogHeaderDelegate(
+                  minHeight: headerHeight,
+                  maxHeight: headerHeight,
+                  child: Column(
+                    children: [
+                      CatalogHeader(
+                        searchController: _searchCtrl,
+                        isExporting: provider.isLoadingAction,
+                        onExport: () => _exportCatalogPdf(provider),
+                        onSearchChanged: provider.setSearchTerm,
+                        searchByIngredient: provider.searchByIngredient,
+                        onToggleIngredientSearch:
+                            provider.toggleSearchByIngredient,
+                      ),
+                      if (provider.isLoadingAction)
+                        const LinearProgressIndicator(
+                          color: AppColors.teal,
+                          minHeight: 2,
+                        ),
+                    ],
+                  ),
                 ),
               );
 
@@ -280,6 +383,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   onRefresh: () async => provider.refreshProducts(),
                   child: CustomScrollView(
                     slivers: [
+                      topBarSliver,
                       headerSliver,
                       if (chipsSliver != null) chipsSliver,
                       SliverPadding(
@@ -313,6 +417,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   onRefresh: () async => provider.refreshProducts(),
                   child: CustomScrollView(
                     slivers: [
+                      topBarSliver,
                       headerSliver,
                       if (chipsSliver != null) chipsSliver,
                       SliverFillRemaining(
@@ -329,6 +434,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   onRefresh: () async => provider.refreshProducts(),
                   child: CustomScrollView(
                     slivers: [
+                      topBarSliver,
                       headerSliver,
                       if (chipsSliver != null) chipsSliver,
                       SliverFillRemaining(
@@ -355,6 +461,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   searchByIngredient: provider.searchByIngredient,
                   matchedIngredients: provider.matchedIngredients,
                   bottomPadding: fabsBottomPadding,
+                  topBarSliver: topBarSliver,
                   headerSliver: headerSliver,
                   chipsSliver: chipsSliver,
                   onEdit: (product) async {
@@ -403,5 +510,35 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         );
       },
     );
+  }
+}
+
+class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double minHeight;
+  final double maxHeight;
+
+  _CatalogHeaderDelegate({
+    required this.child,
+    required this.minHeight,
+    required this.maxHeight,
+  });
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(covariant _CatalogHeaderDelegate oldDelegate) {
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        child != oldDelegate.child;
   }
 }
