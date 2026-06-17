@@ -338,49 +338,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _StickyHeaderDelegate(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Expanded(
-                              child: SectionHeader(
-                                icon: Icons.point_of_sale_rounded,
-                                title: 'Ventas Registradas',
-                                subtitle: 'Órdenes con estado COMPLETADO',
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<SalesTimeFilter>(
-                                  value: _salesFilter,
-                                  icon: const Icon(
-                                    Icons.arrow_drop_down,
-                                    color: AppColors.primary,
-                                  ),
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
+                        child: const SectionHeader(
+                          icon: Icons.point_of_sale_rounded,
+                          title: 'Ventas Registradas',
+                          subtitle: 'Órdenes con estado COMPLETADO',
+                        ),
+                      ),
+                    ),
+
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: SalesTimeFilter.values.map((filter) {
+                              final isSelected = _salesFilter == filter;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  showCheckmark: false,
+                                  label: Text(_filterName(filter)),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    if (selected) _onFilterChanged(filter);
+                                  },
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                                     fontSize: 13,
                                   ),
-                                  onChanged: _onFilterChanged,
-                                  items:
-                                      SalesTimeFilter.values.map((filter) {
-                                        return DropdownMenuItem(
-                                          value: filter,
-                                          child: Text(_filterName(filter)),
-                                        );
-                                      }).toList(),
+                                  selectedColor: AppColors.primary,
+                                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                                  side: isSelected ? BorderSide.none : BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 ),
-                              ),
-                            ),
-                          ],
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
@@ -516,35 +512,29 @@ class _HealthSummaryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (lowStockCount == 0 && criticalBatchesCount == 0) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.1),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.success.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: const Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.success),
+            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
             SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Todo bajo control',
-                    style: TextStyle(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'No hay alertas críticas para hoy.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+            Text(
+              'Todo bajo control. No hay alertas para hoy.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -553,15 +543,29 @@ class _HealthSummaryBar extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.error.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_rounded, color: Colors.red.shade800),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -572,38 +576,33 @@ class _HealthSummaryBar extends StatelessWidget {
                   style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
-                if (lowStockCount > 0)
-                  Text(
-                    '• $lowStockCount producto(s) con bajo stock.',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (lowStockCount > 0) '$lowStockCount bajo stock',
+                    if (criticalBatchesCount > 0) '$criticalBatchesCount lotes críticos',
+                  ].join(' · '),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                if (criticalBatchesCount > 0)
-                  Text(
-                    '• $criticalBatchesCount lote(s) por vencer pronto.',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
+                ),
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              context.push('/admin/inventory');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade800,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              minimumSize: const Size(0, 48),
+          TextButton.icon(
+            onPressed: () => context.push('/admin/inventory'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(0, 36),
             ),
-            child: const Text('Revisar'),
+            icon: const Text('Revisar', style: TextStyle(fontWeight: FontWeight.w700)),
+            label: const Icon(Icons.chevron_right_rounded, size: 18),
           ),
         ],
       ),

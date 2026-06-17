@@ -210,16 +210,18 @@ class KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseColor = gradient.colors.first;
     final card = Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: baseColor.withValues(alpha: 0.15), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: gradient.colors.last.withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: baseColor.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -229,32 +231,49 @@ class KpiCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: Colors.white70, size: 20),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: gradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: baseColor.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
               if (badge != null)
                 Semantics(
                   label: 'Alerta',
                   child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Center(
-                      child: Text(
-                        badge!,
-                        style: TextStyle(
-                          color: gradient.colors.last,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
+                    child: Text(
+                      badge!,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
+                )
+              else if (onTap != null)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: baseColor.withValues(alpha: 0.4),
+                  size: 22,
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           Semantics(
             label: '$title: $value, $subtitle',
             child: FittedBox(
@@ -263,29 +282,32 @@ class KpiCard extends StatelessWidget {
               child: AnimatedNumericText(
                 text: value,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                  color: AppColors.textPrimary,
+                  fontSize: 24,
                   fontWeight: FontWeight.w900,
                   height: 1.1,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: baseColor,
               fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 10,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -325,96 +347,129 @@ class KpiCardWide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 22),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Sparkline background
+          Positioned(
+            right: -20,
+            bottom: 0,
+            left: 50,
+            height: 50,
+            child: Opacity(
+              opacity: 0.3,
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  color,
+                  [1.2, 1.0, 1.8, 1.5, 2.5, 2.1, 3.2, 2.8, 3.8, 4.2],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                    letterSpacing: 0.3,
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: color,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Semantics(
+                        label: '$title: $value, $subtitle',
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: AnimatedNumericText(
+                            text: value,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Semantics(
-                  label: '$title: $value, $subtitle',
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: AnimatedNumericText(
-                      text: value,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: color,
+                Container(
+                  height: 50,
+                  width: 1.5,
+                  color: color.withValues(alpha: 0.15),
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      rightLabel,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                  ),
+                    const SizedBox(height: 6),
+                    Semantics(
+                      label: '$rightLabel: $rightValue',
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: AnimatedNumericText(
+                          text: rightValue,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: rightColor ?? color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          Container(
-            height: 44,
-            width: 1,
-            color: color.withValues(alpha: 0.2),
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                rightLabel,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Semantics(
-                label: '$rightLabel: $rightValue',
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: AnimatedNumericText(
-                    text: rightValue,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: rightColor ?? color,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -437,131 +492,155 @@ class GananciaBrutaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.tealDark, AppColors.success],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.2), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+            color: AppColors.success.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.price_check_rounded,
-                color: Colors.white70,
-                size: 18,
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'GANANCIA BRUTA',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
+          // Sparkline en el fondo
+          Positioned(
+            right: -20,
+            bottom: 0,
+            left: 50,
+            height: 60,
+            child: Opacity(
+              opacity: 0.4,
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  AppColors.success,
+                  [1.0, 1.5, 1.2, 2.0, 2.8, 2.4, 3.5, 4.0, 3.8, 5.0],
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'vs precio de compra',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Semantics(
-                label: 'Ganancia bruta: S/ ${gananciaBruta.toStringAsFixed(2)}',
-                child: AnimatedCounter(
-                  value: gananciaBruta,
-                  formatter: (v) => 'S/ ${v.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    height: 1.0,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'Inversión: S/ ${inversion.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Text(
-                'Margen Bruto',
-                style: TextStyle(color: Colors.white70, fontSize: 11),
-              ),
-              const Spacer(),
-              Semantics(
-                label:
-                    'Margen bruto: ${margenPct.toStringAsFixed(1)} por ciento',
-                child: AnimatedCounter(
-                  value: margenPct,
-                  formatter: (v) => '${v.toStringAsFixed(1)}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: (margenPct / 100).clamp(0.0, 1.0)),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutCubic,
-              builder: (context, animatedValue, _) {
-                return LinearProgressIndicator(
-                  value: animatedValue,
-                  minHeight: 7,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Colors.greenAccent,
-                  ),
-                );
-              },
             ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.price_check_rounded,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'GANANCIA BRUTA',
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.textSecondary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'vs precio de compra',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Semantics(
+                    label: 'Ganancia bruta: S/ ${gananciaBruta.toStringAsFixed(2)}',
+                    child: AnimatedCounter(
+                      value: gananciaBruta,
+                      formatter: (v) => 'S/ ${v.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Inversión total: S/ ${inversion.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text(
+                    'Margen Bruto Global',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Semantics(
+                    label: 'Margen bruto: ${margenPct.toStringAsFixed(1)} por ciento',
+                    child: AnimatedCounter(
+                      value: margenPct,
+                      formatter: (v) => '${v.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        color: AppColors.success,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: (margenPct / 100).clamp(0.0, 1.0)),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, animatedValue, _) {
+                    return LinearProgressIndicator(
+                      value: animatedValue,
+                      minHeight: 8,
+                      backgroundColor: AppColors.success.withValues(alpha: 0.15),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -584,22 +663,36 @@ class MargenBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Icon(Icons.percent_rounded, color: color, size: 16),
-              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.percent_rounded, color: color, size: 16),
+              ),
+              const SizedBox(width: 10),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: color,
                 ),
@@ -611,17 +704,17 @@ class MargenBar extends StatelessWidget {
                   value: percent,
                   formatter: (v) => '${v.toStringAsFixed(1)}%',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: color,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: (percent / 100).clamp(0.0, 1.0)),
               duration: const Duration(milliseconds: 700),
@@ -629,7 +722,7 @@ class MargenBar extends StatelessWidget {
               builder: (context, animatedValue, _) {
                 return LinearProgressIndicator(
                   value: animatedValue,
-                  minHeight: 6,
+                  minHeight: 8,
                   backgroundColor: color.withValues(alpha: 0.15),
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                 );
@@ -700,83 +793,96 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.orange.shade900.withValues(alpha: 0.15),
-            Colors.red.shade900.withValues(alpha: 0.08),
-          ],
-        ),
+        color: Colors.white,
         border: Border.all(
-          color: AppColors.danger.withValues(alpha: 0.4),
+          color: AppColors.danger.withValues(alpha: 0.2),
           width: 1.5,
         ),
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.danger.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.warning_amber_rounded,
-                    color: AppColors.danger,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lotes Próximos a Vencer',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: AppColors.danger,
-                        ),
-                      ),
-                      Text(
-                        '${batches.length} lote${batches.length != 1 ? "s" : ""} en los próximos 30 días'
-                        '${criticalCount > 0 ? " · $criticalCount crítico${criticalCount != 1 ? "s" : ""}" : ""}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.danger.withValues(alpha: 0.75),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${batches.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
+          BounceScale(
+            onTap: () {
+              // TODO: Redirigir al inventario o expandir
+              setState(() => _expanded = !_expanded);
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppColors.danger,
+                      size: 22,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Lotes Próximos a Vencer',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                        Text(
+                          '${batches.length} lote${batches.length != 1 ? "s" : ""} en próximos 30 días'
+                          '${criticalCount > 0 ? " · $criticalCount crítico${criticalCount != 1 ? "s" : ""}" : ""}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${batches.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
+                ],
+              ),
             ),
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -1114,12 +1220,12 @@ class _BounceScaleState extends State<BounceScale>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
+      duration: const Duration(milliseconds: 150),
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.95,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -1141,4 +1247,62 @@ class _BounceScaleState extends State<BounceScale>
       child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final Color color;
+  final List<double> data;
+  _SparklinePainter(this.color, this.data);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.4)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    final maxData = data.reduce((a, b) => a > b ? a : b);
+    final minData = data.reduce((a, b) => a < b ? a : b);
+    final range = (maxData - minData) == 0 ? 1 : (maxData - minData);
+
+    final stepX = size.width / (data.length - 1);
+    for (int i = 0; i < data.length; i++) {
+      final x = i * stepX;
+      // padding superior e inferior virtual (10%)
+      final y = size.height * 0.9 - ((data[i] - minData) / range) * (size.height * 0.8);
+      
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        // Curve to make it smoother
+        final prevX = (i - 1) * stepX;
+        final prevY = size.height * 0.9 - ((data[i - 1] - minData) / range) * (size.height * 0.8);
+        final cpX = (x + prevX) / 2;
+        path.cubicTo(cpX, prevY, cpX, y, x, y);
+      }
+    }
+
+    final fillPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.0)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    
+    final fillPath = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawPath(fillPath, fillPaint);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter old) => false;
 }
