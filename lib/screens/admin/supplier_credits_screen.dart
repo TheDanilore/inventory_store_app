@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/providers/admin/supplier_credits_provider.dart';
@@ -266,62 +267,29 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                 else if (provider.errorMessage != null)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline_rounded,
-                              size: 48,
-                              color: AppColors.danger,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Ocurrió un error: ${provider.errorMessage}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: provider.fetchAccounts,
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Reintentar'),
-                            ),
-                          ],
-                        ),
+                    child: AppEmptyState(
+                      icon: Icons.error_outline_rounded,
+                      color: AppColors.danger,
+                      title: 'Ocurrió un error',
+                      message: provider.errorMessage ?? '',
+                      action: ElevatedButton.icon(
+                        onPressed: provider.fetchAccounts,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
                       ),
                     ),
                   )
                 else if (provider.accounts.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.receipt_long_rounded,
-                            size: 64,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchCtrl.text.isNotEmpty
-                                ? 'No se encontraron resultados'
-                                : (provider.withDebtOnly
-                                    ? 'No hay créditos con deuda'
-                                    : 'No hay líneas de crédito registradas'),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: AppEmptyState(
+                      icon: Icons.receipt_long_rounded,
+                      title: _searchCtrl.text.isNotEmpty
+                          ? 'No se encontraron resultados'
+                          : (provider.withDebtOnly
+                              ? 'No hay créditos con deuda'
+                              : 'No hay líneas de crédito registradas'),
+                      message: 'Intenta cambiar los filtros o realizar otra búsqueda.',
                     ),
                   )
                 else

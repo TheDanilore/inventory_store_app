@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/widgets/offline_games_suggestion.dart';
 
 class AppEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
   final Widget? action;
+  final Color? color;
 
   const AppEmptyState({
     super.key,
@@ -12,10 +14,13 @@ class AppEmptyState extends StatelessWidget {
     required this.title,
     required this.message,
     this.action,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final baseColor = color ?? Theme.of(context).primaryColor;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -25,13 +30,13 @@ class AppEmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.08),
+                color: baseColor.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 64,
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
+                color: baseColor.withValues(alpha: 0.8),
               ),
             ),
             const SizedBox(height: 24),
@@ -55,6 +60,7 @@ class AppEmptyState extends StatelessWidget {
               ),
             ),
             if (action != null) ...[const SizedBox(height: 24), action!],
+            OfflineGamesSuggestion(errorMessage: message),
           ],
         ),
       ),

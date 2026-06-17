@@ -12,6 +12,7 @@ import 'package:inventory_store_app/screens/admin/widgets/orders/admin_order_car
 import 'package:inventory_store_app/screens/admin/widgets/orders/orders_filter_dropdown.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/orders_provider.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -585,59 +586,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Widget _buildErrorState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 64,
-              color: Colors.red.shade300,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.red.shade700,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppEmptyState(
+      icon: Icons.error_outline_rounded,
+      color: Colors.red,
+      title: 'Ocurrió un error',
+      message: message,
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long_rounded,
-            size: 64,
-            color: Colors.grey.shade300,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No se encontraron pedidos.',
-            style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Intenta cambiar los filtros o la búsqueda.',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-          ),
-        ],
-      ),
+    return const AppEmptyState(
+      icon: Icons.receipt_long_rounded,
+      title: 'No se encontraron pedidos.',
+      message: 'Intenta cambiar los filtros o la búsqueda.',
     );
   }
 }

@@ -9,6 +9,7 @@ import 'package:inventory_store_app/screens/admin/widgets/financial/movement_for
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class MovementsTab extends StatelessWidget {
   const MovementsTab({super.key});
@@ -159,7 +160,7 @@ class MovementsTab extends StatelessWidget {
                   child: isLoading && movements.isEmpty
                       ? const _MovementsSkeleton()
                       : movements.isEmpty
-                          ? const _EmptyState()
+                          ? const AppEmptyState(icon: Icons.sync_alt_rounded, title: 'Sin movimientos', message: 'No se encontraron movimientos financieros.')
                           : Column(
                               children: [
                                 Expanded(
@@ -392,23 +393,7 @@ class _MovementCard extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_rounded, size: 60, color: AppColors.textSecondary.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('No hay movimientos registrados', style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
 
 class _MovementsSkeleton extends StatelessWidget {
   const _MovementsSkeleton();

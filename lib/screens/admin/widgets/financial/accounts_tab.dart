@@ -5,6 +5,7 @@ import 'package:inventory_store_app/screens/admin/widgets/financial/account_form
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class AccountsTab extends StatelessWidget {
   const AccountsTab({super.key});
@@ -33,7 +34,7 @@ class AccountsTab extends StatelessWidget {
                   child: isLoading && accounts.isEmpty
                       ? const _AccountsSkeleton()
                       : accounts.isEmpty
-                          ? const _EmptyState()
+                          ? const AppEmptyState(icon: Icons.account_balance_wallet_rounded, title: 'Sin Cuentas', message: 'No hay cuentas financieras registradas.')
                           : RefreshIndicator(
                               onRefresh: () async => provider.fetchAccounts(),
                               child: ListView(
@@ -265,23 +266,7 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.account_balance_wallet_outlined, size: 60, color: AppColors.textSecondary.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('No hay cuentas creadas', style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
 
 class _AccountsSkeleton extends StatelessWidget {
   const _AccountsSkeleton();

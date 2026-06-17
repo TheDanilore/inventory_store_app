@@ -14,6 +14,7 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class InventoryEntriesScreen extends StatefulWidget {
   const InventoryEntriesScreen({super.key});
@@ -312,15 +313,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     provider.isLoading
                         ? const _EntriesSkeleton()
                         : provider.entries.isEmpty
-                        ? _EmptyState(
-                          icon: Icons.inbox_outlined,
-                          message:
-                              provider.searchQuery.isEmpty &&
+                        ? AppEmptyState(icon: Icons.inbox_outlined, title: 'Sin Resultados', message: provider.searchQuery.isEmpty &&
                                       provider.dateRange == null &&
                                       provider.warehouseFilter == 'Todos'
                                   ? 'No hay entradas registradas'
-                                  : 'Sin resultados para los filtros aplicados',
-                        )
+                                  : 'Sin resultados para los filtros aplicados')
                         : Column(
                           children: [
                             Padding(
@@ -672,43 +669,7 @@ class _Pill extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  const _EmptyState({required this.icon, required this.message});
 
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.textSecondary.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            size: 34,
-            color: AppColors.textSecondary.withValues(alpha: 0.45),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          message,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-  );
-}
 
 class _EntriesSkeleton extends StatelessWidget {
   const _EntriesSkeleton();

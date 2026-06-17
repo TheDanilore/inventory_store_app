@@ -15,6 +15,7 @@ import 'package:inventory_store_app/services/admin/inventory_exits_pdf_generator
 import 'package:inventory_store_app/screens/admin/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class InventoryExitsScreen extends StatefulWidget {
   const InventoryExitsScreen({super.key});
@@ -295,14 +296,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                           ),
                         )
                         : provider.exits.isEmpty
-                        ? _EmptyState(
-                          icon: Icons.inventory_2_outlined,
-                          message:
-                              provider.searchQuery.isEmpty &&
+                        ? AppEmptyState(icon: Icons.inventory_2_outlined, title: 'Sin Resultados', message: provider.searchQuery.isEmpty &&
                                       provider.dateRange == null
                                   ? 'No hay salidas registradas'
-                                  : 'Sin resultados para los filtros',
-                        )
+                                  : 'Sin resultados para los filtros')
                         : Column(
                           children: [
                             Padding(
@@ -629,40 +626,4 @@ class _Pill extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  const _EmptyState({required this.icon, required this.message});
 
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.textSecondary.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            size: 34,
-            color: AppColors.textSecondary.withValues(alpha: 0.45),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          message,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-  );
-}

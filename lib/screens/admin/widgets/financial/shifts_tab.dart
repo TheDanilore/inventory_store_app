@@ -10,6 +10,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class ShiftsTab extends StatelessWidget {
   const ShiftsTab({super.key});
@@ -91,7 +92,7 @@ class ShiftsTab extends StatelessWidget {
                   child: isLoading && shifts.isEmpty
                       ? const _ShiftsSkeleton()
                       : shifts.isEmpty
-                          ? const _EmptyState()
+                          ? const AppEmptyState(icon: Icons.store_rounded, title: 'Sin turnos', message: 'No hay turnos registrados en este período.')
                           : Column(
                               children: [
                                 Expanded(
@@ -360,23 +361,7 @@ class _ShiftCard extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history_rounded, size: 60, color: AppColors.textSecondary.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('No hay turnos registrados', style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
 
 class _ShiftsSkeleton extends StatelessWidget {
   const _ShiftsSkeleton();

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/customer_credits_provider.dart';
@@ -192,18 +193,19 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                         ? const _CustomerCreditsSkeleton()
                         : provider.errorMessage.isNotEmpty &&
                             provider.accounts.isEmpty
-                        ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Text(
-                              'Error: ${provider.errorMessage}',
-                              style: const TextStyle(color: AppColors.danger),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
+                        ? AppEmptyState(
+                            icon: Icons.error_outline_rounded,
+                            color: AppColors.danger,
+                            title: 'Error',
+                            message: provider.errorMessage,
+                          )
                         : provider.accounts.isEmpty
-                        ? _buildEmptyState()
+                        ? const AppEmptyState(
+                            icon: Icons.credit_card_off_rounded,
+                            title: 'No se encontraron cuentas',
+                            message:
+                                'Puedes crear una nueva línea de crédito\nusando el botón superior.',
+                          )
                         : ListView.separated(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -242,37 +244,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
       ),
     );
   }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.credit_card_off_rounded,
-            size: 64,
-            color: AppColors.border,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No se encontraron cuentas',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Puedes crear una nueva línea de crédito\nusando el botón superior.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   void _showAccountOptions(
     BuildContext context,
     var account,

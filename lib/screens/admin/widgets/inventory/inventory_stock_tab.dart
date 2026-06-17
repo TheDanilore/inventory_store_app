@@ -6,6 +6,7 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'dart:async';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class InventoryStockTab extends StatefulWidget {
   const InventoryStockTab({super.key});
@@ -133,12 +134,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   provider.isLoadingStock
                       ? const _InventoryStockSkeleton()
                       : provider.errorMessageStock.isNotEmpty
-                      ? Center(child: Text(provider.errorMessageStock))
+                      ? AppEmptyState(icon: Icons.error_outline_rounded, color: Colors.red, title: 'Error', message: provider.errorMessageStock)
                       : provider.stockItems.isEmpty
-                      ? const _EmptyState(
-                        icon: Icons.inventory_2_outlined,
-                        message: 'No hay productos con stock disponible',
-                      )
+                      ? AppEmptyState(icon: Icons.inventory_2_outlined, title: 'Sin Resultados', message: 'No hay productos con stock disponible')
                       : RefreshIndicator(
                         color: AppColors.primary,
                         onRefresh: () async => provider.fetchStockPage(),
@@ -338,40 +336,7 @@ class _CategoryDropdown extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
 
-  const _EmptyState({required this.icon, required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 40, color: AppColors.primary),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _InventoryStockSkeleton extends StatelessWidget {
   const _InventoryStockSkeleton();

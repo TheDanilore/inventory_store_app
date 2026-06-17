@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -729,34 +730,20 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                           child: OrderDetailSkeleton(),
                         )
                         : _hasError
-                        ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline_rounded,
-                                size: 64,
-                                color: Colors.red.shade300,
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Ocurrió un error al cargar el pedido',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: _fetchData,
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Reintentar'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.teal,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ],
+                        ? AppEmptyState(
+                          icon: Icons.error_outline_rounded,
+                          color: Colors.red,
+                          title: 'Ocurrió un error al cargar el pedido',
+                          message:
+                              'Verifica tu conexión a internet o intenta nuevamente.',
+                          action: ElevatedButton.icon(
+                            onPressed: _fetchData,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Reintentar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.teal,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         )
                         : ListView(

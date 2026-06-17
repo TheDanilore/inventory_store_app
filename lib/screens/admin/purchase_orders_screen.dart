@@ -15,6 +15,7 @@ import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   const PurchaseOrdersScreen({super.key});
@@ -395,10 +396,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               ),
                         )
                         : filtered.isEmpty
-                        ? const _EmptyState(
-                          icon: Icons.shopping_cart_outlined,
-                          message: 'Sin resultados para los filtros aplicados',
-                        )
+                        ? AppEmptyState(icon: Icons.shopping_cart_outlined, title: 'Sin Resultados', message: 'Sin resultados para los filtros aplicados')
                         : Column(
                           children: [
                             Padding(
@@ -635,39 +633,4 @@ class _DateRangeButton extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  const _EmptyState({required this.icon, required this.message});
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.textSecondary.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            size: 34,
-            color: AppColors.textSecondary.withValues(alpha: 0.45),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          message,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-  );
-}
+

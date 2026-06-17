@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/providers/admin/users_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/users/user_detail_sheet.dart';
@@ -75,46 +76,23 @@ class _UsersTabState extends State<UsersTab> {
           }
 
           if (provider.errorMessage != null && provider.users.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 60),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Ocurrió un error al cargar',
-                    style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold),
-                  ),
-                  TextButton(
-                    onPressed: provider.refresh,
-                    child: const Text('Reintentar'),
-                  ),
-                ],
+            return AppEmptyState(
+              icon: Icons.error_outline_rounded,
+              color: Colors.red,
+              title: 'Ocurrió un error al cargar',
+              message: provider.errorMessage ?? '',
+              action: TextButton(
+                onPressed: provider.refresh,
+                child: const Text('Reintentar'),
               ),
             );
           }
 
           if (provider.users.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.people_outline_rounded,
-                    size: 60,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No se encontraron usuarios.',
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+            return const AppEmptyState(
+              icon: Icons.people_outline_rounded,
+              title: 'Sin Usuarios',
+              message: 'No se encontraron usuarios.',
             );
           }
 

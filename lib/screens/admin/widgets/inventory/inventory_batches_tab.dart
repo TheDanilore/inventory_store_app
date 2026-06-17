@@ -6,6 +6,7 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'dart:async';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class InventoryBatchesTab extends StatefulWidget {
   const InventoryBatchesTab({super.key});
@@ -178,12 +179,9 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                   provider.isLoadingBatches
                       ? const _InventoryBatchesSkeleton()
                       : provider.errorMessageBatches.isNotEmpty
-                      ? Center(child: Text(provider.errorMessageBatches))
+                      ? AppEmptyState(icon: Icons.error_outline_rounded, color: Colors.red, title: 'Error', message: provider.errorMessageBatches)
                       : provider.batchItems.isEmpty
-                      ? const _EmptyState(
-                        icon: Icons.event_available_rounded,
-                        message: 'No hay lotes con stock disponible',
-                      )
+                      ? AppEmptyState(icon: Icons.event_available_rounded, title: 'Sin Resultados', message: 'No hay lotes con stock disponible')
                       : RefreshIndicator(
                         color: AppColors.primary,
                         onRefresh: () async => provider.fetchBatchPage(),
@@ -288,40 +286,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
 
-  const _EmptyState({required this.icon, required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 40, color: AppColors.primary),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _InventoryBatchesSkeleton extends StatelessWidget {
   const _InventoryBatchesSkeleton();
