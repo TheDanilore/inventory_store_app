@@ -31,9 +31,11 @@ class PointsGameActionsSection extends StatelessWidget {
       }
 
       // Refresh points data after playing
-      await context.read<PointsProvider>().fetchPointsData(
-        context.read<AppConfigProvider>(),
-      );
+      if (context.mounted) {
+        await context.read<PointsProvider>().fetchPointsData(
+          context.read<AppConfigProvider>(),
+        );
+      }
     }
   }
 

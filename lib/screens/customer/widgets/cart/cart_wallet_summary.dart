@@ -93,7 +93,7 @@ class CartWalletSummary extends StatelessWidget {
               ),
               CupertinoSwitch(
                 value: checkout.usePoints,
-                activeColor: Colors.amber,
+                activeTrackColor: Colors.amber,
                 onChanged: (val) {
                   checkout.toggleUsePoints();
                 },

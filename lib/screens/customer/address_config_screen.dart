@@ -435,6 +435,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
     bool enabled = true,
   }) {
     return DropdownButtonFormField<String>(
+      // ignore: deprecated_member_use
       value: items.contains(value) ? value : null,
       onChanged: enabled ? onChanged : null,
       validator: (val) {
