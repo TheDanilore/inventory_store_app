@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/services/admin/orders_service.dart';
 
 /// Resultado del guardado de cambios. Permite al widget actuar sin conocer detalles.
 class SaveOrderResult {
@@ -99,9 +100,9 @@ class OrderDetailService {
         );
         if (!result.success) return result;
       } else if (wasCompleted && isNowCancelled) {
-        await _revertCompletedOrder(
+        await OrdersService().cancelOrder(
           orderId: orderId,
-          items: items,
+          customerId: selectedCustomerId,
           currentProfileId: currentProfileId,
           notesOverride: notesOverride,
         );
@@ -362,67 +363,10 @@ class OrderDetailService {
     return SaveOrderResult.ok();
   }
 
-  // ─── REVERTIR PEDIDO COMPLETADO (COMPLETED → CANCELLED) ───────────────────
-
-  Future<void> _revertCompletedOrder({
-    required String orderId,
-    required List<OrderItemModel> items,
-    required String? currentProfileId,
-    String? notesOverride,
-  }) async {
-    final orderData =
-        await _supabase
-            .from('orders')
-            .select('warehouse_id, total_amount, payment_method, customer_id')
-            .eq('id', orderId)
-            .single();
-
-    final warehouseId = orderData['warehouse_id'] as String?;
-    final origAmount = (orderData['total_amount'] as num).toDouble();
-    final origPaymentMethod = orderData['payment_method'] as String;
-    final origCustomerId = orderData['customer_id'] as String?;
-
-    // Revertir stock en paralelo por item
-    await Future.wait(
-      items.map(
-        (item) => _revertItemStock(
-          orderId: orderId,
-          item: item,
-          warehouseId: warehouseId,
-          currentProfileId: currentProfileId,
-          notesOverride: notesOverride,
-        ),
-      ),
-    );
-
-    // Revertir crédito o movimiento financiero
-    if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
-      await _revertCreditDebt(
-        customerId: origCustomerId,
-        orderId: orderId,
-        origAmount: origAmount,
-        currentProfileId: currentProfileId,
-        notesOverride: notesOverride,
-      );
-    } else if (origPaymentMethod != 'CRÉDITO') {
-      await _revertFinancialMovement(
-        orderId: orderId,
-        origAmount: origAmount,
-        currentProfileId: currentProfileId,
-        notesOverride: notesOverride,
-      );
-    }
-
-    // Revertir monedas de fidelidad
-    if (origCustomerId != null) {
-      await _revertLoyaltyPoints(orderId: orderId, customerId: origCustomerId);
-    }
-  }
-
   // ─── DEVOLUCIÓN (widget Registrar Devolución) ──────────────────────────────
 
   /// Procesa la devolución completa de un pedido COMPLETED.
-  /// Revierte stock, crédito/caja, y monedas de fidelidad.
+  /// Llama a OrdersService para revertir stock, crédito/caja, y monedas de fidelidad.
   Future<SaveOrderResult> processReturn({
     required String orderId,
     required List<OrderItemModel> items,
@@ -430,71 +374,13 @@ class OrderDetailService {
   }) async {
     try {
       final currentProfileId = await getCurrentProfileId();
-
-      final orderData =
-          await _supabase
-              .from('orders')
-              .select('warehouse_id, total_amount, payment_method, customer_id')
-              .eq('id', orderId)
-              .single();
-
-      final origPaymentMethod = orderData['payment_method'] as String;
-      final origAmount = (orderData['total_amount'] as num).toDouble();
-      final origCustomerId = orderData['customer_id'] as String?;
-      final warehouseId = orderData['warehouse_id'] as String?;
-
-      // Revertir stock en paralelo
-      await Future.wait(
-        items.map(
-          (item) => _revertItemStock(
-            orderId: orderId,
-            item: item,
-            warehouseId: warehouseId,
-            currentProfileId: currentProfileId,
-            notesOverride: notesOverride,
-          ),
-        ),
+      await OrdersService().cancelOrder(
+        orderId: orderId,
+        customerId: null, // OrdersService fetches it internally
+        currentProfileId: currentProfileId,
+        notesOverride:
+            notesOverride ?? 'Reembolso por devolución · Pedido #$orderId',
       );
-
-      // Revertir pago
-      if (origPaymentMethod == 'CRÉDITO' && origCustomerId != null) {
-        await _revertCreditDebt(
-          customerId: origCustomerId,
-          orderId: orderId,
-          origAmount: origAmount,
-          currentProfileId: currentProfileId,
-          notesOverride: notesOverride,
-        );
-      } else if (origPaymentMethod != 'CRÉDITO' && origAmount > 0) {
-        await _revertFinancialMovement(
-          orderId: orderId,
-          origAmount: origAmount,
-          currentProfileId: currentProfileId,
-          notesOverride:
-              notesOverride ?? 'Reembolso por devolución · Pedido #$orderId',
-        );
-      }
-
-      // Revertir monedas
-      if (origCustomerId != null) {
-        await _revertLoyaltyPoints(
-          orderId: orderId,
-          customerId: origCustomerId,
-        );
-      }
-
-      // Marcar la orden como CANCELLED
-      await _supabase
-          .from('orders')
-          .update({
-            'status': 'CANCELLED',
-            'payment_status': 'PAID',
-            'amount_paid': 0,
-            'updated_by': currentProfileId,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('id', orderId);
-
       return SaveOrderResult.ok();
     } catch (e) {
       debugPrint('[OrderDetailService] processReturn error: $e');
@@ -503,64 +389,6 @@ class OrderDetailService {
   }
 
   // ─── HELPERS INTERNOS ──────────────────────────────────────────────────────
-
-  Future<void> _revertItemStock({
-    required String orderId,
-    required OrderItemModel item,
-    required String? warehouseId,
-    required String? currentProfileId,
-    String? notesOverride,
-  }) async {
-    final safeVariantId = item.variantId ?? '';
-    final movs = await _supabase
-        .from('inventory_movements')
-        .select('quantity, stock_batch_id')
-        .eq('order_id', orderId)
-        .eq('variant_id', safeVariantId)
-        .eq('reason', 'SALE');
-
-    final insertions = <Future>[];
-    for (final mov in (movs as List)) {
-      final batchId = mov['stock_batch_id'] as String?;
-      final qtyDeducted = ((mov['quantity'] as num).toDouble()).abs().toInt();
-      if (batchId == null || qtyDeducted <= 0) continue;
-
-      final batchResp =
-          await _supabase
-              .from('warehouse_stock_batches')
-              .select('available_quantity')
-              .eq('id', batchId)
-              .maybeSingle();
-
-      if (batchResp == null) continue;
-      final currentStock = (batchResp['available_quantity'] as num).toInt();
-      final newStock = currentStock + qtyDeducted;
-
-      insertions.add(
-        _supabase
-            .from('warehouse_stock_batches')
-            .update({'available_quantity': newStock})
-            .eq('id', batchId),
-      );
-      insertions.add(
-        _supabase.from('inventory_movements').insert({
-          'variant_id': safeVariantId,
-          'warehouse_id': warehouseId,
-          'stock_batch_id': batchId,
-          'order_id': orderId,
-          'quantity': qtyDeducted,
-          'previous_stock': currentStock,
-          'new_stock': newStock,
-          'unit_cost': item.unitCost,
-          'reason': 'RETURN',
-          'notes':
-              notesOverride ?? 'Devolución de inventario — Pedido #$orderId',
-          if (currentProfileId != null) 'created_by': currentProfileId,
-        }),
-      );
-    }
-    await Future.wait(insertions);
-  }
 
   Future<void> _registerCreditDebt({
     required String customerId,
@@ -592,46 +420,6 @@ class OrderDetailService {
         'movement_type': 'CHARGE',
         'amount': totalAmount,
         'notes': 'Activación de pedido desde detalles',
-        if (currentProfileId != null) 'created_by': currentProfileId,
-      }),
-    ]);
-  }
-
-  Future<void> _revertCreditDebt({
-    required String customerId,
-    required String orderId,
-    required double origAmount,
-    required String? currentProfileId,
-    String? notesOverride,
-  }) async {
-    final creditResp =
-        await _supabase
-            .from('customer_credits')
-            .select('id, current_debt')
-            .eq('profile_id', customerId)
-            .maybeSingle();
-    if (creditResp == null) return;
-
-    final creditId = creditResp['id'] as String;
-    final currentDebt = (creditResp['current_debt'] as num).toDouble();
-    final newDebt =
-        (currentDebt - origAmount) < 0 ? 0.0 : currentDebt - origAmount;
-
-    await Future.wait([
-      _supabase
-          .from('customer_credits')
-          .update({
-            'current_debt': newDebt,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', creditId),
-      _supabase.from('customer_credit_movements').insert({
-        'credit_id': creditId,
-        'order_id': orderId,
-        'movement_type': 'PAYMENT',
-        'amount': origAmount,
-        'notes':
-            notesOverride ?? 'Reembolso por cancelación/devolución de pedido',
         if (currentProfileId != null) 'created_by': currentProfileId,
       }),
     ]);
@@ -701,76 +489,6 @@ class OrderDetailService {
           .update({'balance': currentBalance + totalAmount})
           .eq('id', targetAccount['id'] as String),
     ]);
-  }
-
-  Future<void> _revertFinancialMovement({
-    required String orderId,
-    required double origAmount,
-    required String? currentProfileId,
-    String? notesOverride,
-  }) async {
-    final origMovResp =
-        await _supabase
-            .from('account_movements')
-            .select('account_id, amount')
-            .eq('reference_id', orderId)
-            .eq('reference_type', 'orders')
-            .eq('movement_type', 'INCOME')
-            .maybeSingle();
-
-    if (origMovResp == null) return;
-
-    final accountId = origMovResp['account_id'] as String;
-    final origMovAmount = (origMovResp['amount'] as num).toDouble();
-
-    final acctResp =
-        await _supabase
-            .from('financial_accounts')
-            .select('type, balance')
-            .eq('id', accountId)
-            .maybeSingle();
-
-    String? shiftId;
-    if (acctResp != null && acctResp['type'] == 'CAJA') {
-      final shiftResp =
-          await _supabase
-              .from('cash_shifts')
-              .select('id')
-              .eq('account_id', accountId)
-              .eq('status', 'OPEN')
-              .maybeSingle();
-      shiftId = shiftResp?['id'] as String?;
-    }
-
-    final insertFuture = _supabase.from('account_movements').insert({
-      'account_id': accountId,
-      'movement_type': 'EXPENSE',
-      'amount': origMovAmount,
-      'description':
-          notesOverride ?? 'Reversión por cancelación — Pedido #$orderId',
-      'reference_type': 'orders',
-      'reference_id': orderId,
-      if (shiftId != null) 'shift_id': shiftId,
-      if (currentProfileId != null) 'created_by': currentProfileId,
-    });
-
-    if (acctResp != null) {
-      final currentBalance = (acctResp['balance'] as num?)?.toDouble() ?? 0.0;
-      await Future.wait([
-        insertFuture,
-        _supabase
-            .from('financial_accounts')
-            .update({
-              'balance': (currentBalance - origMovAmount).clamp(
-                0.0,
-                double.infinity,
-              ),
-            })
-            .eq('id', accountId),
-      ]);
-    } else {
-      await insertFuture;
-    }
   }
 
   Future<void> _handleLoyaltyPoints({
@@ -855,80 +573,6 @@ class OrderDetailService {
             }),
           ]);
         }
-      }
-    }
-  }
-
-  Future<void> _revertLoyaltyPoints({
-    required String orderId,
-    required String customerId,
-  }) async {
-    // Revertir monedas EARNED
-    final earnedMov =
-        await _supabase
-            .from('wallet_movements')
-            .select('id, points')
-            .eq('order_id', orderId)
-            .eq('movement_type', 'EARNED')
-            .maybeSingle();
-
-    if (earnedMov != null) {
-      final ptsGanados = (earnedMov['points'] as num).toInt();
-      final profileData =
-          await _supabase
-              .from('profiles')
-              .select('wallet_balance')
-              .eq('id', customerId)
-              .single();
-      final currentBal = (profileData['wallet_balance'] as num).toInt();
-      final newBal = (currentBal - ptsGanados).clamp(0, currentBal);
-      await Future.wait([
-        _supabase
-            .from('profiles')
-            .update({'wallet_balance': newBal})
-            .eq('id', customerId),
-        _supabase.from('wallet_movements').insert({
-          'profile_id': customerId,
-          'order_id': orderId,
-          'points': -ptsGanados,
-          'movement_type': 'ADJUSTMENT',
-          'description': 'Reversión de monedas por cancelación/devolución',
-        }),
-      ]);
-    }
-
-    // Devolver monedas canjeadas REDEEMED
-    final redeemedMov =
-        await _supabase
-            .from('wallet_movements')
-            .select('id, points')
-            .eq('order_id', orderId)
-            .eq('movement_type', 'REDEEMED')
-            .maybeSingle();
-
-    if (redeemedMov != null) {
-      final ptsCanjeados = (redeemedMov['points'] as num).toInt().abs();
-      if (ptsCanjeados > 0) {
-        final profileData =
-            await _supabase
-                .from('profiles')
-                .select('wallet_balance')
-                .eq('id', customerId)
-                .single();
-        final currentBal = (profileData['wallet_balance'] as num).toInt();
-        await Future.wait([
-          _supabase
-              .from('profiles')
-              .update({'wallet_balance': currentBal + ptsCanjeados})
-              .eq('id', customerId),
-          _supabase.from('wallet_movements').insert({
-            'profile_id': customerId,
-            'order_id': orderId,
-            'points': ptsCanjeados,
-            'movement_type': 'ADJUSTMENT',
-            'description': 'Devolución de monedas canjeadas',
-          }),
-        ]);
       }
     }
   }

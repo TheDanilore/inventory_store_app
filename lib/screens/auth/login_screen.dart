@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/shared/constants/app_roles.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -86,7 +87,17 @@ class _LoginScreenState extends State<LoginScreen>
           type: SnackbarType.success,
         );
       }
-      // Al autenticar exitosamente, AuthProvider notifica y GoRouter redirige solo.
+
+      // GoRouter solo redirige automáticamente si la ruta base era /login (mediante go).
+      // Si la pantalla se abrió con un push() (ej. desde el catálogo),
+      // debemos cerrarla manualmente.
+      if (context.canPop()) {
+        if (provider.currentUserRole == AppRoles.admin) {
+          context.go('/admin');
+        } else {
+          context.pop();
+        }
+      }
     }
   }
 

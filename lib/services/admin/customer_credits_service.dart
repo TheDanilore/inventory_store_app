@@ -266,15 +266,27 @@ class CustomerCreditsService {
 
       // Insertar movimiento específico para esta orden
       if (toApply > 0) {
-        await _supabase.from('customer_credit_movements').insert({
-          'credit_id': account.creditId,
-          'order_id': orderId,
-          'movement_type': 'PAYMENT',
-          'amount': toApply,
-          'payment_method': selectedAccount.paymentMethodLabel,
-          'notes': notes,
-          if (adminProfileId != null) 'created_by': adminProfileId,
-        });
+        await Future.wait([
+          _supabase.from('customer_credit_movements').insert({
+            'credit_id': account.creditId,
+            'order_id': orderId,
+            'movement_type': 'PAYMENT',
+            'amount': toApply,
+            'payment_method': selectedAccount.paymentMethodLabel,
+            'notes': notes,
+            if (adminProfileId != null) 'created_by': adminProfileId,
+          }),
+          _supabase.from('account_movements').insert({
+            'account_id': selectedAccount.id,
+            'movement_type': 'INCOME',
+            'amount': toApply,
+            'description': 'Cobro de crédito — Pedido #$orderId',
+            'reference_type': 'orders',
+            'reference_id': orderId,
+            if (shiftId != null) 'shift_id': shiftId,
+            if (adminProfileId != null) 'created_by': adminProfileId,
+          }),
+        ]);
       }
 
       // Otorgar puntos si aplica
@@ -308,14 +320,26 @@ class CustomerCreditsService {
 
     // Si sobra dinero (pago excede la suma de pedidos), registrarlo como abono global
     if (remaining > 0) {
-      await _supabase.from('customer_credit_movements').insert({
-        'credit_id': account.creditId,
-        'movement_type': 'PAYMENT',
-        'amount': remaining,
-        'payment_method': selectedAccount.paymentMethodLabel,
-        'notes': notes,
-        if (adminProfileId != null) 'created_by': adminProfileId,
-      });
+      await Future.wait([
+        _supabase.from('customer_credit_movements').insert({
+          'credit_id': account.creditId,
+          'movement_type': 'PAYMENT',
+          'amount': remaining,
+          'payment_method': selectedAccount.paymentMethodLabel,
+          'notes': notes,
+          if (adminProfileId != null) 'created_by': adminProfileId,
+        }),
+        _supabase.from('account_movements').insert({
+          'account_id': selectedAccount.id,
+          'movement_type': 'INCOME',
+          'amount': remaining,
+          'description': 'Cobro de crédito — ${account.partnerName}',
+          'reference_type': 'customer_credits',
+          'reference_id': account.creditId,
+          if (shiftId != null) 'shift_id': shiftId,
+          if (adminProfileId != null) 'created_by': adminProfileId,
+        }),
+      ]);
     }
 
     // 3. Reducir deuda
@@ -327,18 +351,6 @@ class CustomerCreditsService {
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', account.creditId);
-
-    // 4. Ingreso caja
-    await _supabase.from('account_movements').insert({
-      'account_id': selectedAccount.id,
-      'movement_type': 'INCOME',
-      'amount': amount,
-      'description': 'Cobro de crédito — ${account.partnerName}',
-      'reference_type': 'customer_credits',
-      'reference_id': account.creditId,
-      if (shiftId != null) 'shift_id': shiftId,
-      if (adminProfileId != null) 'created_by': adminProfileId,
-    });
 
     // 5. Saldo caja
     final newBalance = selectedAccount.balance + amount;
