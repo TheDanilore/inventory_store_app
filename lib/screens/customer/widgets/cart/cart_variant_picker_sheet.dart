@@ -127,16 +127,22 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
             ),
             const SizedBox(height: 16),
             Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children:
-                      _variants.map((variant) {
-                        return _buildVariantOption(context, variant);
-                      }).toList(),
+              child: GridView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
                 ),
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.72,
+                ),
+                itemCount: _variants.length,
+                itemBuilder: (context, index) {
+                  return _buildVariantOption(context, _variants[index]);
+                },
               ),
             ),
             const SizedBox(height: 24),
@@ -196,7 +202,6 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
       child: Opacity(
         opacity: isAgotado ? 0.5 : 1.0,
         child: Container(
-          width: 140,
           decoration: BoxDecoration(
             border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(16),

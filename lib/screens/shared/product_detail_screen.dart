@@ -3,6 +3,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_admin_info_card.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_availability_card.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_batches_card.dart';
@@ -193,6 +195,7 @@ class _ProductDetailScreenContentState
       sku: _selectedVariant?.sku,
       availableStock: _effectiveStock,
     );
+    if (!kIsWeb) Vibration.vibrate(duration: 50, amplitude: 128);
     HapticFeedback.lightImpact();
     _showSnack('¡Añadido al carrito!', isSuccess: true);
   }

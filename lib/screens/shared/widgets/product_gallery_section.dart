@@ -92,7 +92,8 @@ class ProductGallerySection extends StatelessWidget {
         if (wishlistWidget != null)
           Positioned(top: 14, right: 14, child: wishlistWidget!),
 
-        if (variantLabelOverride != null)
+        if (variantLabelOverride != null &&
+            variantLabelOverride!.trim().isNotEmpty)
           Positioned(
             bottom: 28,
             left: 20,
