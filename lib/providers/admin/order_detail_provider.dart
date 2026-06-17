@@ -40,6 +40,17 @@ class OrderDetailProvider extends ChangeNotifier {
   }
 
   bool get isCompleted => currentStatus.toUpperCase() == 'COMPLETED';
+  
+  String? get updaterName {
+    if (order.updatedBy == null) return null;
+    try {
+      final profile = profiles.firstWhere((p) => p['id'] == order.updatedBy);
+      return profile['full_name'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool get canToggleEdit => order.status.toUpperCase() == 'PENDING';
 
   Future<void> fetchData(String manualCustomerName) async {

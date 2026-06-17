@@ -22,6 +22,7 @@ import 'package:inventory_store_app/screens/admin/widgets/order_detail_component
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_points_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_credit_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/payment_status_section.dart';
+import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_audit_section.dart';
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderModel order;
@@ -484,6 +485,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       ),
                                       const SizedBox(height: 16),
                                     ],
+                                    OrderDetailAuditSection(
+                                      order: provider.order,
+                                      updaterName: provider.updaterName,
+                                    ),
+                                    const SizedBox(height: 16),
                                     OrderDetailTotalSummarySection(
                                       subtotal: subtotal,
                                       pointsUsed: provider.pointsUsed,
