@@ -1,5 +1,3 @@
-import 'package:inventory_store_app/models/product_image_model.dart';
-
 class OrderItemModel {
   final String? id;
   final String orderId;
@@ -43,22 +41,11 @@ class OrderItemModel {
 
     if (variantImages.isNotEmpty) {
       try {
-        final images =
-            variantImages
-                .map(
-                  (e) =>
-                      ProductImageModel.fromJson(Map<String, dynamic>.from(e)),
-                )
-                .toList();
-        if (images.isNotEmpty) {
-          variantImageUrl =
-              images
-                  .firstWhere(
-                    (image) => image.isMain,
-                    orElse: () => images.first,
-                  )
-                  .imageUrl;
-        }
+        final mainImg = variantImages.firstWhere(
+          (img) => img['is_main'] == true,
+          orElse: () => variantImages.first,
+        );
+        variantImageUrl = mainImg['image_url'] as String?;
       } catch (_) {
         variantImageUrl = null;
       }
@@ -66,22 +53,11 @@ class OrderItemModel {
 
     if (productImages.isNotEmpty) {
       try {
-        final images =
-            productImages
-                .map(
-                  (e) =>
-                      ProductImageModel.fromJson(Map<String, dynamic>.from(e)),
-                )
-                .toList();
-        if (images.isNotEmpty) {
-          productImageUrl =
-              images
-                  .firstWhere(
-                    (image) => image.isMain,
-                    orElse: () => images.first,
-                  )
-                  .imageUrl;
-        }
+        final mainImg = productImages.firstWhere(
+          (img) => img['is_main'] == true,
+          orElse: () => productImages.first,
+        );
+        productImageUrl = mainImg['image_url'] as String?;
       } catch (_) {
         productImageUrl = null;
       }

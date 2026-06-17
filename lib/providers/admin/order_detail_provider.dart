@@ -195,11 +195,37 @@ class OrderDetailProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void selectCustomer(String customerId) {
-    selectedCustomerId = customerId;
+  void selectCustomer(String? customerId, double ratio, double earnRate) {
+    selectedCustomerId = (customerId != null && customerId.isNotEmpty) ? customerId : null;
     creditInfo = null;
+    pointsEarned = calculatePointsEarned(ratio, earnRate);
     notifyListeners();
-    _loadCreditInfo(customerId);
+    if (selectedCustomerId != null) {
+      _loadCreditInfo(selectedCustomerId!);
+    }
+  }
+
+  void updatePaymentMethod(String method, double ratio, double earnRate) {
+    paymentMethod = method;
+    if (method == 'CRÉDITO') {
+      pointsUsed = 0;
+    }
+    pointsEarned = calculatePointsEarned(ratio, earnRate);
+    notifyListeners();
+  }
+
+  void updateStatus(String status) {
+    currentStatus = status;
+    notifyListeners();
+  }
+
+  void resetEditState() {
+    selectedCustomerId = order.customerId;
+    currentStatus = order.status;
+    pointsUsed = order.pointsUsed;
+    pointsEarned = order.pointsEarned;
+    paymentMethod = order.paymentMethod;
+    notifyListeners();
   }
 
   Future<void> _loadCreditInfo(String profileId) async {
@@ -257,12 +283,12 @@ class OrderDetailProvider extends ChangeNotifier {
   Future<List<BatchAssignmentModel>> fetchAvailableBatches(String variantId, String warehouseId) async {
     final resp = await _supabase
         .from('warehouse_stock_batches')
-        .select('id, batch_number, expiry_date, available_quantity, status')
+        .select('id, batch_number, expiry_date, available_quantity')
         .eq('variant_id', variantId)
         .eq('warehouse_id', warehouseId)
-        .eq('status', 'ACTIVE')
+        .neq('batch_number', 'DEFAULT')
         .gt('available_quantity', 0)
-        .order('expiry_date', ascending: true);
+        .order('expiry_date', ascending: true, nullsFirst: false);
         
     return (resp as List).map((row) => BatchAssignmentModel(
       batchId: row['id'] as String,

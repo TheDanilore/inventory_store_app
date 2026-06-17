@@ -284,17 +284,28 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
           List<Map<String, dynamic>> filteredProfiles = provider.profiles;
           if (_customerSearchCtrl.text.isNotEmpty) {
-            final q = _customerSearchCtrl.text.toLowerCase();
+            final q = _customerSearchCtrl.text.trim().toLowerCase();
             filteredProfiles = provider.profiles.where((p) {
               final name = (p['full_name'] as String? ?? '').toLowerCase();
               final doc = (p['document_number'] as String? ?? '').toLowerCase();
-              return name.contains(q) || doc.contains(q);
+              final phone = (p['phone'] as String? ?? '').toLowerCase();
+              return name.contains(q) || doc.contains(q) || phone.contains(q);
             }).toList();
           }
 
-          String customerLabelFor(Map<String, dynamic> p) {
-            final doc = p['document_number'] != null ? ' - ${p['document_number']}' : '';
-            return '${p['full_name']}$doc';
+          String getCustomerLabel(String? customerId) {
+            if (customerId == null) {
+              final manualName = _manualNameCtrl.text.trim();
+              return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
+            }
+            try {
+              final profile = provider.profiles.firstWhere((p) => p['id'] == customerId);
+              final name = (profile['full_name'] as String?)?.trim();
+              if (name != null && name.isNotEmpty) return name;
+            } catch (_) {}
+            return provider.order.displayCustomerName.isNotEmpty 
+                ? provider.order.displayCustomerName 
+                : 'Cliente mostrador';
           }
 
           return PopScope(
@@ -351,6 +362,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       isEditing: _isEditing,
                                       canToggleEdit: provider.canToggleEdit,
                                       onToggleEditing: () {
+                                        if (_isEditing) {
+                                          provider.resetEditState();
+                                          _pointsUsedCtrl.text = provider.pointsUsed.toString();
+                                          _manualNameCtrl.text = provider.order.displayCustomerName.trim();
+                                        }
                                         setState(() {
                                           _isEditing = !_isEditing;
                                         });
@@ -364,8 +380,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       isEditing: _isEditing,
                                       onChanged: (val) {
                                         if (val != null) {
-                                          provider.currentStatus = val;
-                                          provider.updateItemQuantity(0, provider.items[0].quantity, pointsToSolesRatio, earningRate); // hack to notifyListeners
+                                          provider.updateStatus(val);
                                         }
                                       },
                                     ),
@@ -377,22 +392,20 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       manualNameController: _manualNameCtrl,
                                       searchController: _customerSearchCtrl,
                                       filteredProfiles: filteredProfiles,
-                                      selectedCustomerLabel: provider.selectedCustomerId != null
-                                          ? customerLabelFor(provider.profiles.firstWhere((p) => p['id'] == provider.selectedCustomerId))
-                                          : 'Seleccionar cliente',
+                                      selectedCustomerLabel: getCustomerLabel(provider.selectedCustomerId),
                                       selectedCustomerId: provider.selectedCustomerId,
                                       onSearchChanged: () {
                                           setState(() {}); // Minimal UI update
                                       },
                                       onSelectCustomer: (id) {
-                                        provider.selectCustomer(id);
+                                        provider.selectCustomer(id, pointsToSolesRatio, earningRate);
                                         _customerSearchCtrl.clear();
                                       },
                                       onClearSearch: () {
                                         _customerSearchCtrl.clear();
                                       },
                                       onClearCustomer: () {
-                                        provider.selectCustomer(''); 
+                                        provider.selectCustomer(null, pointsToSolesRatio, earningRate); 
                                         _manualNameCtrl.text = '';
                                       },
                                     ),
@@ -404,10 +417,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       currentPaymentMethod: provider.paymentMethod,
                                       onChanged: (val) {
                                         if (val != null) {
-                                          provider.paymentMethod = val;
-                                          if (val == 'CRÉDITO') provider.pointsUsed = 0;
-                                          provider.pointsEarned = provider.calculatePointsEarned(pointsToSolesRatio, earningRate);
-                                          provider.updateItemQuantity(0, provider.items[0].quantity, pointsToSolesRatio, earningRate); // hack
+                                          provider.updatePaymentMethod(val, pointsToSolesRatio, earningRate);
+                                          if (val == 'CRÉDITO') {
+                                            _pointsUsedCtrl.text = '0';
+                                          }
                                         }
                                       },
                                     ),
