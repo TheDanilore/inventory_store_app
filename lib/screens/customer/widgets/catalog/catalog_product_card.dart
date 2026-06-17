@@ -43,15 +43,7 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
     final product = widget.product;
     bool isAgotado = false;
     if (product.stockControl) {
-      if (product.warehouseStockBatches.isNotEmpty) {
-        final totalBatchesStock = product.warehouseStockBatches.fold<double>(
-          0,
-          (sum, b) => sum + b.availableQuantity,
-        );
-        isAgotado = totalBatchesStock <= 0;
-      } else {
-        isAgotado = product.totalStock <= 0;
-      }
+      isAgotado = product.totalStock <= 0;
     }
 
     final imageUrl =

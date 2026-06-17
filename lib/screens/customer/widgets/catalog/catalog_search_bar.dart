@@ -35,7 +35,7 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
   void _onBack(CustomerCatalogProvider provider) {
     _focusNode.unfocus();
     provider.setSearchMode(false);
-    if (_ctrl.text.isNotEmpty) {
+    if (_ctrl.text.isNotEmpty || provider.searchTerm.isNotEmpty) {
       _ctrl.clear();
       provider.setSearchTerm('');
     }

@@ -55,22 +55,40 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null && !_hasShownLoginPrompt) {
       _hasShownLoginPrompt = true;
-      Future.delayed(const Duration(milliseconds: 800), () {
+      Future.delayed(const Duration(milliseconds: 1000), () {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Inicia sesión para disfrutar de más beneficios y acumular puntos.',
-              key: UniqueKey(),
-            ),
-            action: SnackBarAction(
-              label: 'Iniciar sesión',
-              onPressed: () => context.push('/login'),
-              textColor: AppColors.accent,
-            ),
-            duration: const Duration(seconds: 8),
-          ),
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radius),
+                ),
+                title: const Text('¡Bienvenido!'),
+                content: const Text(
+                  'Inicia sesión para disfrutar de más beneficios, guardar tus favoritos y acumular puntos en tus compras.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Ahora no',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push('/login');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Iniciar sesión'),
+                  ),
+                ],
+              ),
         );
       });
     }
