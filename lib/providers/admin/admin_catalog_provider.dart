@@ -89,7 +89,16 @@ class AdminCatalogProvider extends ChangeNotifier {
         _hasMore = true;
       }
     } catch (e) {
-      _error = e.toString();
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup') ||
+          errStr.contains('offline') ||
+          errStr.contains('sin conexión')) {
+        _error = 'Sin conexión a internet.';
+      } else {
+        _error = e.toString();
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
