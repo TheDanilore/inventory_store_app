@@ -60,8 +60,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
+            content: Text(
               'Inicia sesión para disfrutar de más beneficios y acumular puntos.',
+              key: UniqueKey(),
             ),
             action: SnackBarAction(
               label: 'Iniciar sesión',
