@@ -211,6 +211,7 @@ class AppRouter {
 
         // ── Paso 3: Sin sesión ───────────────────────────────────────────
         if (role == null) {
+          if (isSplash) return '/customer';
           if (isLogin) return null;
           if (isPublicCustomerRoute) return null;
           return '/login';

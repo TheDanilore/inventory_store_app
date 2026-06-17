@@ -13,6 +13,8 @@ import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_sea
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_category_list.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_banners.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_product_grid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
@@ -25,12 +27,14 @@ class CustomerCatalogScreen extends StatefulWidget {
 class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showBackToTop = false;
+  static bool _hasShownLoginPrompt = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CustomerCatalogProvider>().init();
+      _checkLoginPrompt();
     });
 
     _scrollController.addListener(() {
@@ -45,6 +49,30 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
         context.read<CustomerCatalogProvider>().loadMoreProducts();
       }
     });
+  }
+
+  void _checkLoginPrompt() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null && !_hasShownLoginPrompt) {
+      _hasShownLoginPrompt = true;
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Inicia sesión para disfrutar de más beneficios y acumular puntos.',
+            ),
+            action: SnackBarAction(
+              label: 'Iniciar sesión',
+              onPressed: () => context.push('/login'),
+              textColor: AppColors.accent,
+            ),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      });
+    }
   }
 
   @override
@@ -76,13 +104,12 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final statusBarHeight = MediaQuery.of(context).padding.top;
     final provider = context.watch<CustomerCatalogProvider>();
 
     return CustomerLayout(
       title: 'Catálogo',
       currentIndex: 0,
-      showAppBar: !provider.isSearchMode,
+      showAppBar: false,
       onTabSelected: widget.onTabSelected,
       // Usaremos el appbar normal de customer layout si es que no queremos hacer uno super custom,
       // pero CustomerLayout por defecto esconde el AppBar si pasamos child.
@@ -95,9 +122,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(height: provider.isSearchMode ? 16 : (statusBarHeight + 16)),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // --- Banners ---
                 if (!provider.isSearchMode && provider.searchTerm.isEmpty) ...[
@@ -111,7 +136,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _StickySearchDelegate(
-                    statusBarHeight: statusBarHeight,
                     child: const CatalogSearchBar(),
                   ),
                 ),
@@ -249,15 +273,14 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
 class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
-  final double statusBarHeight;
 
-  _StickySearchDelegate({required this.child, required this.statusBarHeight});
-
-  @override
-  double get minExtent => 68.0 + statusBarHeight;
+  _StickySearchDelegate({required this.child});
 
   @override
-  double get maxExtent => 68.0 + statusBarHeight;
+  double get minExtent => 68.0;
+
+  @override
+  double get maxExtent => 68.0;
 
   @override
   Widget build(
@@ -270,7 +293,7 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           color: Colors.white.withValues(alpha: 0.82),
-          padding: EdgeInsets.fromLTRB(16, 9 + statusBarHeight, 16, 9),
+          padding: const EdgeInsets.fromLTRB(16, 9, 16, 9),
           child: child,
         ),
       ),
@@ -278,6 +301,5 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(covariant _StickySearchDelegate old) =>
-      old.statusBarHeight != statusBarHeight || old.child != child;
+  bool shouldRebuild(covariant _StickySearchDelegate old) => old.child != child;
 }
