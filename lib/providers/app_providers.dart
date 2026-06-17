@@ -21,6 +21,7 @@ import 'package:inventory_store_app/providers/admin/attributes_provider.dart';
 import 'package:inventory_store_app/providers/admin/cash_shifts_provider.dart';
 import 'package:inventory_store_app/providers/admin/categories_provider.dart';
 import 'package:inventory_store_app/providers/admin/warehouses_provider.dart';
+import 'package:inventory_store_app/providers/admin/admin_catalog_provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:inventory_store_app/providers/auth_provider.dart';
@@ -59,6 +60,10 @@ class AppProviders {
     ),
     ChangeNotifierProvider(
       create: (_) => CustomerAddressesProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => AdminCatalogProvider(),
       lazy: true,
     ),
     ChangeNotifierProvider(
@@ -133,6 +138,10 @@ class AppProviders {
     ),
     ChangeNotifierProvider(
       create: (_) => CustomerAddressesProvider(),
+      lazy: true,
+    ),
+    ChangeNotifierProvider(
+      create: (_) => AdminCatalogProvider(),
       lazy: true,
     ),
     ChangeNotifierProvider(

@@ -64,62 +64,57 @@ class CatalogService {
     // Si no está en memoria, buscalo en Supabase a través del repositorio.
     // Usamos fetchProducts para re-utilizar la query que trae stock y otros datos básicos.
     try {
-      final products = await _repository.fetchProducts();
-      final p = products.firstWhere((p) => p.id == id);
+      final productsResult = await _repository.fetchProducts();
+      final p = productsResult.products.firstWhere((p) => p.id == id);
       return p;
     } catch (_) {
       return null;
     }
   }
 
-  Future<List<ProductModel>> loadProducts({
+  Future<({List<ProductModel> products, int totalCount})> loadProducts({
     String? categoryId,
     String? searchTerm,
     bool isAdmin = false,
+    bool? filterIsActive,
+    int offset = 0,
+    int? limit,
   }) async {
-    final cacheKey = '${categoryId ?? 'all'}_$isAdmin';
-    if ((searchTerm == null || searchTerm.trim().isEmpty) &&
-        _memProducts.containsKey(cacheKey)) {
-      return _memProducts[cacheKey]!;
-    }
-
     final prefs = await SharedPreferences.getInstance();
     try {
-      final products = await _repository.fetchProducts(
+      final productsResp = await _repository.fetchProducts(
         categoryId: categoryId,
         searchTerm: searchTerm,
         isAdmin: isAdmin,
+        filterIsActive: filterIsActive,
+        offset: offset,
+        limit: limit,
       );
 
-      if (products.isEmpty) return [];
+      if (productsResp.products.isEmpty) {
+        return (
+          products: <ProductModel>[],
+          totalCount: productsResp.totalCount,
+        );
+      }
 
-      final productIds = products.map((p) => p.id).toList(growable: false);
+      final productIds = productsResp.products
+          .map((p) => p.id)
+          .toList(growable: false);
       final stockByProduct = await _repository.fetchProductStock(
         productIds: productIds,
       );
 
-      final processedProducts = products
+      final processedProducts = productsResp.products
           .map(
             (product) =>
                 product.copyWith(totalStock: stockByProduct[product.id] ?? 0),
           )
           .toList(growable: false);
 
-      processedProducts.sort(_compareProductsForCatalog);
+      // Eliminado: processedProducts.sort(_compareProductsForCatalog);
 
-      if (categoryId == null &&
-          (searchTerm == null || searchTerm.trim().isEmpty)) {
-        await prefs.setString(
-          'cached_admin_products',
-          jsonEncode(processedProducts.map((p) => p.toJson()).toList()),
-        );
-      }
-
-      if (searchTerm == null || searchTerm.trim().isEmpty) {
-        _memProducts[cacheKey] = processedProducts;
-      }
-
-      return processedProducts;
+      return (products: processedProducts, totalCount: productsResp.totalCount);
     } catch (e) {
       final cached = prefs.getString('cached_admin_products');
       if (cached != null) {
@@ -140,7 +135,7 @@ class CatalogService {
                   .where((p) => p.name.toLowerCase().contains(term))
                   .toList();
         }
-        return offlineProducts;
+        return (products: offlineProducts, totalCount: offlineProducts.length);
       }
       throw Exception(
         'Estás sin conexión a internet y no hay catálogo guardado en este dispositivo.',
@@ -148,16 +143,24 @@ class CatalogService {
     }
   }
 
-  Future<({List<ProductModel> products, Map<String, String> matches})>
+  Future<
+    ({List<ProductModel> products, Map<String, String> matches, int totalCount})
+  >
   loadProductsByIngredient({
     required String searchTerm,
     String? categoryId,
     bool isAdmin = false,
+    bool? filterIsActive,
+    int offset = 0,
+    int? limit,
   }) async {
     final result = await _repository.fetchProductsByIngredient(
       searchTerm: searchTerm,
       categoryId: categoryId,
       isAdmin: isAdmin,
+      filterIsActive: filterIsActive,
+      offset: offset,
+      limit: limit,
     );
 
     if (result.products.isEmpty) return result;
@@ -174,9 +177,11 @@ class CatalogService {
         )
         .toList(growable: false);
 
-    processedProducts.sort(_compareProductsForCatalog);
-
-    return (products: processedProducts, matches: result.matches);
+    return (
+      products: processedProducts,
+      matches: result.matches,
+      totalCount: result.totalCount,
+    );
   }
 
   Future<Map<String, List<ProductVariantModel>>> loadVariantsByProductIds(
@@ -199,20 +204,5 @@ class CatalogService {
       productId: productId,
       isActive: isActive,
     );
-  }
-
-  int _compareProductsForCatalog(ProductModel a, ProductModel b) {
-    if (a.isActive && !b.isActive) return -1;
-    if (!a.isActive && b.isActive) return 1;
-
-    if (a.isActive && b.isActive) {
-      final aAgotado = a.totalStock <= 0;
-      final bAgotado = b.totalStock <= 0;
-
-      if (!aAgotado && bAgotado) return -1;
-      if (aAgotado && !bAgotado) return 1;
-    }
-
-    return 0;
   }
 }

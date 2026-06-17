@@ -59,10 +59,13 @@ class ProductsRepository {
 
   // ── Productos ─────────────────────────────────────────────────────────────
 
-  Future<List<ProductModel>> fetchProducts({
+  Future<({List<ProductModel> products, int totalCount})> fetchProducts({
     String? categoryId,
     String? searchTerm,
     bool isAdmin = false,
+    bool? filterIsActive,
+    int offset = 0,
+    int? limit,
   }) async {
     var query = _supabase
         .from('products')
@@ -82,19 +85,41 @@ class ProductsRepository {
       query = query.ilike('name', '%$normalized%');
     }
 
-    final response = await query.order('name');
+    if (isAdmin && filterIsActive != null) {
+      query = query.eq('is_active', filterIsActive);
+    }
 
-    return List<Map<String, dynamic>>.from(
-      response,
+    PostgrestTransformBuilder<PostgrestList> transformQuery = query.order(
+      'name',
+    );
+
+    if (limit != null) {
+      transformQuery = transformQuery.range(offset, offset + limit - 1);
+    }
+
+    final response = await transformQuery.count(CountOption.exact);
+
+    final List data = response.data;
+    final int count = response.count;
+
+    final productsList = List<Map<String, dynamic>>.from(
+      data,
     ).map(ProductModel.fromJson).toList(growable: false);
+
+    return (products: productsList, totalCount: count);
   }
 
   /// Busca productos basándose en ingredientes activos
-  Future<({List<ProductModel> products, Map<String, String> matches})>
+  Future<
+    ({List<ProductModel> products, Map<String, String> matches, int totalCount})
+  >
   fetchProductsByIngredient({
     required String searchTerm,
     String? categoryId,
     bool isAdmin = false,
+    bool? filterIsActive,
+    int offset = 0,
+    int? limit,
   }) async {
     // 1. RPC: buscar ingredient_ids.
     final List<dynamic> aiResp = await _supabase.rpc(
@@ -111,7 +136,11 @@ class ProductsRepository {
             .toList();
 
     if (ingredientIds.isEmpty) {
-      return (products: <ProductModel>[], matches: <String, String>{});
+      return (
+        products: <ProductModel>[],
+        matches: <String, String>{},
+        totalCount: 0,
+      );
     }
 
     // 2. Buscar product_ids y los datos reales de los ingredientes
@@ -160,7 +189,11 @@ class ProductsRepository {
 
     final uniqueProductIds = productIds.toSet().toList();
     if (uniqueProductIds.isEmpty) {
-      return (products: <ProductModel>[], matches: <String, String>{});
+      return (
+        products: <ProductModel>[],
+        matches: <String, String>{},
+        totalCount: 0,
+      );
     }
 
     var query = _supabase
@@ -182,10 +215,25 @@ class ProductsRepository {
       query = query.eq('category_id', categoryId);
     }
 
-    final resp = await query.order('name');
+    if (isAdmin && filterIsActive != null) {
+      query = query.eq('is_active', filterIsActive);
+    }
+
+    PostgrestTransformBuilder<PostgrestList> transformQuery = query.order(
+      'name',
+    );
+
+    if (limit != null) {
+      transformQuery = transformQuery.range(offset, offset + limit - 1);
+    }
+
+    final resp = await transformQuery.count(CountOption.exact);
+
+    final List data = resp.data;
+    final int count = resp.count;
 
     final productsList = <ProductModel>[];
-    for (final e in resp as List) {
+    for (final e in data) {
       try {
         final row = Map<String, dynamic>.from(e as Map);
         if (row['id'] == null || row['name'] == null) continue;
@@ -193,7 +241,7 @@ class ProductsRepository {
       } catch (_) {}
     }
 
-    return (products: productsList, matches: newMatches);
+    return (products: productsList, matches: newMatches, totalCount: count);
   }
 
   // ── Stock de productos ────────────────────────────────────────────────────
