@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
-import 'package:provider/provider.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:vibration/vibration.dart';
 
 enum ItemType { coin, gift, bomb }
 
@@ -160,6 +163,9 @@ class _CoinCatcherGameScreenState extends State<CoinCatcherGameScreen> {
           if (item.x + _itemSize > _basketX &&
               item.x < _basketX + _basketWidth) {
             // ¡Atrapado!
+            if (!kIsWeb) {
+              Vibration.vibrate(duration: 30, amplitude: 64);
+            }
             _handleCatch(item.type);
             _items.removeAt(i);
             continue;
@@ -205,16 +211,23 @@ class _CoinCatcherGameScreenState extends State<CoinCatcherGameScreen> {
     });
 
     if (_score > 0) {
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 200, amplitude: 255);
+      }
       try {
-        // Insertamos el movimiento; el trigger actualizará el saldo automáticamente
-        await Supabase.instance.client.from('wallet_movements').insert({
-          'profile_id': widget.profileId,
-          'points': _score,
-          'movement_type': 'MINI_GAME_CATCHER',
-          'description': 'Lluvia de Monedas',
-        });
+        await context.read<WalletProvider>().processGameReward(
+          points: _score,
+          movementType: 'MINI_GAME_CATCHER',
+          description: 'Lluvia de Monedas: Ganó $_score monedas',
+        );
       } catch (e) {
-        debugPrint('Error al guardar puntos: $e');
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al guardar tus puntos.',
+            type: SnackbarType.error,
+          );
+        }
       }
     }
 

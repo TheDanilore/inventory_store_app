@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vibration/vibration.dart';
 
 enum _CardMatchState { hidden, revealed, matched }
 
@@ -17,6 +20,8 @@ class _MemoryCard {
 
   _MemoryCard({required this.id, required this.symbol})
     : state = _CardMatchState.hidden;
+
+  String get value => id;
 }
 
 class MemoramaGameScreen extends StatefulWidget {
@@ -30,7 +35,6 @@ class MemoramaGameScreen extends StatefulWidget {
 
 class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
   final _random = Random();
-  final _supabase = Supabase.instance.client;
   late AppConfigProvider _config;
 
   final List<_MemoryCard> _cards = [];
@@ -121,6 +125,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
       _cards[index].state = _CardMatchState.revealed;
     });
 
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 30, amplitude: 64);
+    }
+
     if (_firstIndex == null) {
       _firstIndex = index;
       return;
@@ -129,29 +137,35 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     final firstIndex = _firstIndex!;
     if (firstIndex == index) return;
 
-    setState(() => _isResolving = true);
+    _isResolving = true;
+    final firstCard = _cards[firstIndex];
+    final secondCard = _cards[index];
+
     await Future<void>.delayed(const Duration(milliseconds: 650));
 
     if (!mounted || !_isPlaying) return;
 
-    final firstCard = _cards[firstIndex];
-    final secondCard = _cards[index];
-    final isMatch = firstCard.id == secondCard.id;
-    final matchReward =
-        _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
-
-    setState(() {
-      if (isMatch) {
+    if (firstCard.value == secondCard.value) {
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 80, amplitude: 128);
+      }
+      final matchReward =
+          _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
+      setState(() {
         firstCard.state = _CardMatchState.matched;
         secondCard.state = _CardMatchState.matched;
         _score += matchReward;
-      } else {
+        _firstIndex = null;
+        _isResolving = false;
+      });
+    } else {
+      setState(() {
         firstCard.state = _CardMatchState.hidden;
         secondCard.state = _CardMatchState.hidden;
-      }
-      _firstIndex = null;
-      _isResolving = false;
-    });
+        _firstIndex = null;
+        _isResolving = false;
+      });
+    }
 
     final completed = _cards.every(
       (card) => card.state == _CardMatchState.matched,
@@ -175,15 +189,23 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     });
 
     if (_score > 0) {
+      if (completed && !kIsWeb) {
+        Vibration.vibrate(duration: 300, amplitude: 255);
+      }
       try {
-        await _supabase.from('wallet_movements').insert({
-          'profile_id': widget.profileId,
-          'points': _score,
-          'movement_type': 'MINI_GAME_MEMORY',
-          'description': 'Recompensa por Memorama',
-        });
+        await context.read<WalletProvider>().processGameReward(
+          points: _score,
+          movementType: 'MINI_GAME_MEMORY',
+          description: 'Recompensa por Memorama: Ganó $_score monedas',
+        );
       } catch (e) {
-        debugPrint('Error al guardar monedas del memorama: $e');
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu premio. Intenta de nuevo.',
+            type: SnackbarType.error,
+          );
+        }
       }
     }
 

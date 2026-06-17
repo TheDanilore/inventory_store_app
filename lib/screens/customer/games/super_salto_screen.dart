@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:vibration/vibration.dart';
 
 class SuperSaltoScreen extends StatefulWidget {
   final String profileId;
@@ -132,6 +136,9 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
     if (_obstacleX < (charX + 0.15) && _obstacleX > (charX - 0.15)) {
       if (_charY > 0.8) {
         // 0.8 hacia 1.0 significa que está tocando la caja
+        if (!kIsWeb) {
+          Vibration.vibrate(duration: 200, amplitude: 255);
+        }
         _endGame();
       }
     }
@@ -141,6 +148,9 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
     if (_coinX < (charX + 0.15) && _coinX > (charX - 0.15)) {
       if ((_charY - _coinY).abs() < 0.2) {
         // Atrapó la moneda
+        if (!kIsWeb) {
+          Vibration.vibrate(duration: 30, amplitude: 64);
+        }
         _score++;
         _coinX = 2.0; // Desaparece la moneda y la manda lejos para reciclar
         _randomizeCoinY();
@@ -158,14 +168,19 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
 
     if (_score > 0) {
       try {
-        await Supabase.instance.client.from('wallet_movements').insert({
-          'profile_id': widget.profileId,
-          'points': _score,
-          'movement_type': 'MINI_GAME_JUMP',
-          'description': 'Super Salto: Ganó $_score monedas',
-        });
+        await context.read<WalletProvider>().processGameReward(
+          points: _score,
+          movementType: 'MINI_GAME_JUMP',
+          description: 'Super Salto: Ganó $_score monedas',
+        );
       } catch (e) {
-        debugPrint('Error al guardar puntos de Super Salto: $e');
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu recompensa. Intenta de nuevo.',
+            type: SnackbarType.error,
+          );
+        }
       }
     }
 

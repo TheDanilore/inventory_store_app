@@ -108,4 +108,48 @@ class WalletProvider extends ChangeNotifier {
     _authSub?.cancel();
     super.dispose();
   }
+
+  /// Procesa una recompensa de minijuego, maneja errores y actualiza el saldo local.
+  Future<void> processGameReward({
+    required int points,
+    required String movementType,
+    required String description,
+  }) async {
+    if (points <= 0) return;
+
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      _error = 'Debes iniciar sesión para guardar puntos.';
+      if (!_disposed) notifyListeners();
+      throw Exception('No authenticated user');
+    }
+
+    try {
+      // Intentamos recuperar el profile_id si no lo tenemos a mano
+      // Muchos juegos pasan el profileId por parámetro, pero al usar provider, el provider puede averiguarlo.
+      final profileResponse = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+          
+      final profileId = profileResponse['id'] as String;
+
+      await _service.addReward(
+        profileId: profileId,
+        points: points,
+        movementType: movementType,
+        description: description,
+      );
+
+      // Si fue exitoso, sumamos el balance local
+      addLocalBalance(points);
+      
+    } catch (e) {
+      _error = 'No se pudieron guardar los puntos: $e';
+      if (!_disposed) notifyListeners();
+      // Relanzamos el error por si la pantalla necesita mostrar un snackbar
+      throw Exception('Error saving reward: $e');
+    }
+  }
 }

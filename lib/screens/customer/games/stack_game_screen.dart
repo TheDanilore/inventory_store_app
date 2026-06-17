@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:vibration/vibration.dart';
 
 // --- MODELO PARA LAS CAJAS ---
 class StackBox {
@@ -122,11 +126,17 @@ class _StackGameScreenState extends State<StackGameScreen> {
     // 1. Verificar si hubo un "Perfecto" (Imán)
     if (centerDifference <= _perfectTolerance) {
       // LO LOGRÓ PERFECTO
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 80, amplitude: 128);
+      }
       _movingBox!.left = lastBox.left;
       _movingBox!.width = lastBox.width;
       _comboPerfecto++;
     } else {
       // 2. CORTE DE LA CAJA
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 30, amplitude: 64);
+      }
       _comboPerfecto = 0;
 
       final overlapLeft = max(_movingBox!.left, lastBox.left);
@@ -181,15 +191,23 @@ class _StackGameScreenState extends State<StackGameScreen> {
 
     // Guardar las monedas si hizo al menos 1 punto
     if (_score > 0) {
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 200, amplitude: 255);
+      }
       try {
-        await Supabase.instance.client.from('wallet_movements').insert({
-          'profile_id': widget.profileId,
-          'points': _score,
-          'movement_type': 'MINI_GAME_STACK',
-          'description': 'Torre de Cajas: $_score cajas apiladas',
-        });
+        await context.read<WalletProvider>().processGameReward(
+          points: _score,
+          movementType: 'MINI_GAME_STACK',
+          description: 'Torre de Cajas: $_score cajas apiladas. Ganó $_score monedas',
+        );
       } catch (e) {
-        debugPrint('Error al guardar puntos de Torre de Cajas: $e');
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu premio. Intenta de nuevo.',
+            type: SnackbarType.error,
+          );
+        }
       }
     }
 

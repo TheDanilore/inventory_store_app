@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:vibration/vibration.dart';
 
 class PinataGameScreen extends StatefulWidget {
   final String profileId;
@@ -80,6 +83,10 @@ class _PinataGameScreenState extends State<PinataGameScreen>
       _tapCount++;
     });
 
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 30, amplitude: 64);
+    }
+
     // Disparar la animación de temblor
     _shakeController.forward(from: 0.0).then((_) {
       _shakeController.reverse();
@@ -103,15 +110,25 @@ class _PinataGameScreenState extends State<PinataGameScreen>
     // Lógica de premios: Si llega a 50 toques, gana el premio mayor.
     _pointsEarned = _tapCount >= 50 ? grandPrize : consolationPrize;
 
-    try {
-      await Supabase.instance.client.from('wallet_movements').insert({
-        'profile_id': widget.profileId,
-        'points': _pointsEarned,
-        'movement_type': 'MINI_GAME_PINATA',
-        'description': 'Rompe la Piñata: $_tapCount toques',
-      });
-    } catch (e) {
-      debugPrint('Error al guardar puntos de piñata: $e');
+    if (_pointsEarned > 0) {
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 300, amplitude: 255);
+      }
+      try {
+        await context.read<WalletProvider>().processGameReward(
+          points: _pointsEarned,
+          movementType: 'MINI_GAME_PINATA',
+          description: 'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas',
+        );
+      } catch (e) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu premio. Intenta de nuevo.',
+            type: SnackbarType.error,
+          );
+        }
+      }
     }
 
     if (mounted) {

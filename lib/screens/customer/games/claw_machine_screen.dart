@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:vibration/vibration.dart';
 
 // Clase auxiliar para definir los premios en el fondo de la máquina
 class ClawPrize {
@@ -145,6 +148,10 @@ class _ClawMachineScreenState extends State<ClawMachineScreen> {
   Future<void> _dropClaw() async {
     if (_isDropping) return;
 
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 50, amplitude: 128);
+    }
+
     // 1. Detenemos el movimiento horizontal
     _horizontalTimer?.cancel();
     setState(() {
@@ -189,15 +196,23 @@ class _ClawMachineScreenState extends State<ClawMachineScreen> {
     final int pointsEarned = _caughtPrize?.points ?? 0;
 
     if (pointsEarned > 0) {
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 200, amplitude: 255);
+      }
       try {
-        await Supabase.instance.client.from('wallet_movements').insert({
-          'profile_id': widget.profileId,
-          'points': pointsEarned,
-          'movement_type': 'MINI_GAME_CLAW',
-          'description': 'Máquina de Garra: Ganó $pointsEarned monedas',
-        });
+        await context.read<WalletProvider>().processGameReward(
+          points: pointsEarned,
+          movementType: 'MINI_GAME_CLAW',
+          description: 'Máquina de Garra: Ganó $pointsEarned monedas',
+        );
       } catch (e) {
-        debugPrint('Error al guardar puntos de la garra: $e');
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu premio. Intenta de nuevo.',
+            type: SnackbarType.error,
+          );
+        }
       }
     }
 
