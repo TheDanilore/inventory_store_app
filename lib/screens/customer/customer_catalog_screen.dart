@@ -82,6 +82,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     return CustomerLayout(
       title: 'Catálogo',
       currentIndex: 0,
+      showAppBar: !provider.isSearchMode,
       onTabSelected: widget.onTabSelected,
       // Usaremos el appbar normal de customer layout si es que no queremos hacer uno super custom,
       // pero CustomerLayout por defecto esconde el AppBar si pasamos child.
@@ -95,15 +96,15 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
-                  child: SizedBox(height: statusBarHeight + 16),
+                  child: SizedBox(height: provider.isSearchMode ? 16 : (statusBarHeight + 16)),
                 ),
 
                 // --- Banners ---
                 if (!provider.isSearchMode && provider.searchTerm.isEmpty) ...[
                   const SliverToBoxAdapter(child: CatalogWelcomeBanner()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
                   const SliverToBoxAdapter(child: CatalogPromoBanner()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
                 ],
 
                 // --- Search Bar (Sticky) ---

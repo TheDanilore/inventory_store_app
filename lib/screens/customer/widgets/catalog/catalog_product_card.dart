@@ -41,7 +41,18 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final isAgotado = product.totalStock <= 0;
+    bool isAgotado = false;
+    if (product.stockControl) {
+      if (product.warehouseStockBatches.isNotEmpty) {
+        final totalBatchesStock = product.warehouseStockBatches.fold<double>(
+          0,
+          (sum, b) => sum + b.availableQuantity,
+        );
+        isAgotado = totalBatchesStock <= 0;
+      } else {
+        isAgotado = product.totalStock <= 0;
+      }
+    }
 
     final imageUrl =
         product.images.isNotEmpty
