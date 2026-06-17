@@ -1,5 +1,109 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+
+/// Anima un valor numérico desde 0 hasta [value] cuando el widget aparece
+/// o cuando [value] cambia. [formatter] decide cómo se muestra el número
+/// en cada frame de la animación (ej. con prefijo "S/" o sufijo "%").
+class AnimatedCounter extends StatelessWidget {
+  final double value;
+  final String Function(double) formatter;
+  final TextStyle? style;
+  final Duration duration;
+
+  const AnimatedCounter({
+    super.key,
+    required this.value,
+    required this.formatter,
+    this.style,
+    this.duration = const Duration(milliseconds: 700),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) {
+        return Text(formatter(animatedValue), style: style);
+      },
+    );
+  }
+}
+
+/// Anima la parte numérica de un texto ya formateado (ej. "S/ 1,234.56",
+/// "45", "12.5%"), preservando el prefijo, sufijo y precisión decimal
+/// originales. Si el texto no contiene un número parseable, se muestra
+/// estático sin animar (fallback seguro).
+class AnimatedNumericText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  final TextAlign? textAlign;
+  final int? maxLines;
+  final TextOverflow? overflow;
+  final Duration duration;
+
+  const AnimatedNumericText({
+    super.key,
+    required this.text,
+    this.style,
+    this.textAlign,
+    this.maxLines,
+    this.overflow,
+    this.duration = const Duration(milliseconds: 700),
+  });
+
+  static final _numberPattern = RegExp(r'[\d,]+\.?\d*');
+
+  @override
+  Widget build(BuildContext context) {
+    final match = _numberPattern.firstMatch(text);
+    if (match == null) {
+      return Text(
+        text,
+        style: style,
+        textAlign: textAlign,
+        maxLines: maxLines,
+        overflow: overflow,
+      );
+    }
+
+    final numericStr = match.group(0)!;
+    final cleanNumber = numericStr.replaceAll(',', '');
+    final value = double.tryParse(cleanNumber);
+    if (value == null) {
+      return Text(
+        text,
+        style: style,
+        textAlign: textAlign,
+        maxLines: maxLines,
+        overflow: overflow,
+      );
+    }
+
+    final prefix = text.substring(0, match.start);
+    final suffix = text.substring(match.end);
+    final decimals =
+        cleanNumber.contains('.') ? cleanNumber.split('.').last.length : 0;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) {
+        final formatted = animatedValue.toStringAsFixed(decimals);
+        return Text(
+          '$prefix$formatted$suffix',
+          style: style,
+          textAlign: textAlign,
+          maxLines: maxLines,
+          overflow: overflow,
+        );
+      },
+    );
+  }
+}
 
 class SectionHeader extends StatelessWidget {
   final IconData icon;
@@ -91,6 +195,7 @@ class KpiCard extends StatelessWidget {
   final IconData icon;
   final LinearGradient gradient;
   final String? badge;
+  final VoidCallback? onTap;
 
   const KpiCard({
     super.key,
@@ -100,11 +205,12 @@ class KpiCard extends StatelessWidget {
     required this.icon,
     required this.gradient,
     this.badge,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
         gradient: gradient,
@@ -125,20 +231,23 @@ class KpiCard extends StatelessWidget {
             children: [
               Icon(icon, color: Colors.white70, size: 20),
               if (badge != null)
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      badge!,
-                      style: TextStyle(
-                        color: gradient.colors.last,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
+                Semantics(
+                  label: 'Alerta',
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        badge!,
+                        style: TextStyle(
+                          color: gradient.colors.last,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ),
@@ -146,13 +255,20 @@ class KpiCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              height: 1.1,
+          Semantics(
+            label: '$title: $value, $subtitle',
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: AnimatedNumericText(
+                text: value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -177,6 +293,10 @@ class KpiCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap == null) return card;
+
+    return BounceScale(onTap: onTap!, child: card);
   }
 }
 
@@ -237,17 +357,27 @@ class KpiCardWide extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: color,
+                Semantics(
+                  label: '$title: $value, $subtitle',
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: AnimatedNumericText(
+                      text: value,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: color,
+                      ),
+                    ),
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -263,15 +393,25 @@ class KpiCardWide extends StatelessWidget {
             children: [
               Text(
                 rightLabel,
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 4),
-              Text(
-                rightValue,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: rightColor ?? color,
+              Semantics(
+                label: '$rightLabel: $rightValue',
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: AnimatedNumericText(
+                    text: rightValue,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: rightColor ?? color,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -355,13 +495,17 @@ class GananciaBrutaCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'S/ ${gananciaBruta.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  height: 1.0,
+              Semantics(
+                label: 'Ganancia bruta: S/ ${gananciaBruta.toStringAsFixed(2)}',
+                child: AnimatedCounter(
+                  value: gananciaBruta,
+                  formatter: (v) => 'S/ ${v.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -370,7 +514,7 @@ class GananciaBrutaCard extends StatelessWidget {
                 child: Text(
                   'Inversión: S/ ${inversion.toStringAsFixed(2)}',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 11,
                   ),
                 ),
@@ -385,12 +529,17 @@ class GananciaBrutaCard extends StatelessWidget {
                 style: TextStyle(color: Colors.white70, fontSize: 11),
               ),
               const Spacer(),
-              Text(
-                '${margenPct.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
+              Semantics(
+                label:
+                    'Margen bruto: ${margenPct.toStringAsFixed(1)} por ciento',
+                child: AnimatedCounter(
+                  value: margenPct,
+                  formatter: (v) => '${v.toStringAsFixed(1)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -398,13 +547,20 @@ class GananciaBrutaCard extends StatelessWidget {
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: (margenPct / 100).clamp(0.0, 1.0),
-              minHeight: 7,
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Colors.greenAccent,
-              ),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: (margenPct / 100).clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, animatedValue, _) {
+                return LinearProgressIndicator(
+                  value: animatedValue,
+                  minHeight: 7,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Colors.greenAccent,
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -449,12 +605,16 @@ class MargenBar extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text(
-                '${percent.toStringAsFixed(1)}%',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: color,
+              Semantics(
+                label: '$label: ${percent.toStringAsFixed(1)} por ciento',
+                child: AnimatedCounter(
+                  value: percent,
+                  formatter: (v) => '${v.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
                 ),
               ),
             ],
@@ -462,11 +622,18 @@ class MargenBar extends StatelessWidget {
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: (percent / 100).clamp(0.0, 1.0),
-              minHeight: 6,
-              backgroundColor: color.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: (percent / 100).clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, animatedValue, _) {
+                return LinearProgressIndicator(
+                  value: animatedValue,
+                  minHeight: 6,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                );
+              },
             ),
           ),
         ],
@@ -504,6 +671,19 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
     if (diff <= 7) return AppColors.danger;
     if (diff <= 15) return AppColors.warning;
     return Colors.orange.shade400;
+  }
+
+  // Complementa el color con un ícono distinto por nivel de urgencia,
+  // para que la información no dependa solo del canal de color
+  // (importante para usuarios con daltonismo rojo-verde/naranja).
+  IconData _urgencyIcon(String? expiryDateStr) {
+    if (expiryDateStr == null) return Icons.help_outline_rounded;
+    final expiry = DateTime.tryParse(expiryDateStr);
+    if (expiry == null) return Icons.help_outline_rounded;
+    final diff = expiry.difference(DateTime.now()).inDays;
+    if (diff <= 7) return Icons.error_rounded;
+    if (diff <= 15) return Icons.warning_rounded;
+    return Icons.schedule_rounded;
   }
 
   @override
@@ -625,97 +805,114 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
               }
             }
             final attrsDesc = attrValues.join(' · ');
+            final urgencyIcon = _urgencyIcon(expiryStr);
 
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: urgencyColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: urgencyColor.withValues(alpha: 0.25)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 4,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: urgencyColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+            final detailLine = [
+              if (attrsDesc.isNotEmpty) attrsDesc,
+              if (sku != null && sku.isNotEmpty) 'SKU: $sku',
+              'Lote: $batchNumber',
+              warehouseName,
+            ].join(' · ');
+
+            return Tooltip(
+              message: '$productName\n$detailLine\n$daysLabel · $qty uds.',
+              triggerMode: TooltipTriggerMode.longPress,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: urgencyColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: urgencyColor.withValues(alpha: 0.25),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          productName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: urgencyColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            productName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 2),
+                          Text(
+                            detailLine,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: urgencyColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(urgencyIcon, color: urgencyColor, size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                daysLabel,
+                                style: TextStyle(
+                                  color: urgencyColor,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
-                          [
-                            if (attrsDesc.isNotEmpty) attrsDesc,
-                            if (sku != null && sku.isNotEmpty) 'SKU: $sku',
-                            'Lote: $batchNumber',
-                            warehouseName,
-                          ].join(' · '),
+                          '$qty uds.',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: urgencyColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          daysLabel,
-                          style: TextStyle(
-                            color: urgencyColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$qty uds.',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }),
           if (batches.length > 3)
             TextButton(
+              style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
               onPressed: () => setState(() => _expanded = !_expanded),
               child: Text(
                 _expanded ? 'Ver menos' : 'Ver ${batches.length - 3} más...',
@@ -749,7 +946,6 @@ class AdminGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rawProgress = targetAmount > 0 ? (currentAmount / targetAmount) : 0.0;
     final progress = rawProgress.clamp(0.0, 1.0);
-    final int percentage = (rawProgress * 100).clamp(0, 100).toInt();
     final remainingAmount = (targetAmount - currentAmount).clamp(
       0.0,
       double.infinity,
@@ -775,31 +971,40 @@ class AdminGoalCard extends StatelessWidget {
           SizedBox(
             width: 76,
             height: 76,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 7,
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    hasReachedGoal
-                        ? Colors.greenAccent.shade400
-                        : Colors.amber.shade400,
-                  ),
-                  strokeCap: StrokeCap.round,
-                ),
-                Center(
-                  child: Text(
-                    '$percentage%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, animatedProgress, _) {
+                final animatedPercentage =
+                    (animatedProgress * 100).clamp(0, 100).toInt();
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CircularProgressIndicator(
+                      value: animatedProgress,
+                      strokeWidth: 7,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        hasReachedGoal
+                            ? Colors.greenAccent.shade400
+                            : Colors.amber.shade400,
+                      ),
+                      strokeCap: StrokeCap.round,
                     ),
-                  ),
-                ),
-              ],
+                    Center(
+                      child: Text(
+                        '$animatedPercentage%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(width: 18),
@@ -827,19 +1032,25 @@ class AdminGoalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 7),
-                Text(
-                  'S/ ${currentAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
+                Semantics(
+                  label:
+                      'Ahorro actual: S/ ${currentAmount.toStringAsFixed(2)} de S/ ${targetAmount.toStringAsFixed(2)}',
+                  child: AnimatedCounter(
+                    value: currentAmount,
+                    formatter: (v) => 'S/ ${v.toStringAsFixed(2)}',
+                    duration: const Duration(milliseconds: 800),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
                   ),
                 ),
                 Text(
                   'de S/ ${targetAmount.toStringAsFixed(2)}',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -853,7 +1064,7 @@ class AdminGoalCard extends StatelessWidget {
                     color:
                         hasReachedGoal
                             ? Colors.greenAccent.shade100
-                            : Colors.white.withValues(alpha: 0.8),
+                            : Colors.white.withValues(alpha: 0.85),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -879,6 +1090,55 @@ class AdminGoalCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class BounceScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const BounceScale({super.key, required this.child, required this.onTap});
+
+  @override
+  State<BounceScale> createState() => _BounceScaleState();
+}
+
+class _BounceScaleState extends State<BounceScale>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        HapticFeedback.lightImpact();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }

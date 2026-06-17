@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -28,6 +30,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   SalesMetrics? _sales;
   List<Map<String, dynamic>> _batches = [];
 
+  int get _criticalBatchesCount =>
+      _batches.where((b) {
+        final expiry = DateTime.tryParse(b['expiry_date'] ?? '');
+        return expiry != null && expiry.difference(DateTime.now()).inDays <= 7;
+      }).length;
+
   @override
   void initState() {
     super.initState();
@@ -54,7 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error al cargar el dashboard: \$e',
+          message: 'Error al cargar el dashboard: $e',
           backgroundColor: AppColors.error,
         );
       }
@@ -73,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: 'Error al cargar ventas: \$e',
+          message: 'Error al cargar ventas: $e',
           backgroundColor: AppColors.error,
         );
       }
@@ -132,7 +140,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       title: 'Dashboard Financiero',
       showBackButton: true,
       body: RefreshIndicator(
-        onRefresh: _loadAllData,
+        color: AppColors.primary,
+        onRefresh: () async {
+          HapticFeedback.lightImpact();
+          await _loadAllData();
+        },
         child:
             _isLoading
                 ? const SingleChildScrollView(
@@ -140,293 +152,490 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
                   child: DashboardSkeleton(),
                 )
-                : SingleChildScrollView(
+                : CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // ── Meta de Ahorro ─────────────────────────────────────────
-                      AdminGoalCard(
-                        currentAmount: adminGoalCurrent,
-                        targetAmount: adminGoalTarget,
-                        onAddPressed:
-                            () => _openGoalDialog(
-                              context,
-                              adminGoalCurrent,
-                              adminGoalTarget,
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          // ── Meta de Ahorro ─────────────────────────────────────────
+                          AdminGoalCard(
+                            currentAmount: adminGoalCurrent,
+                            targetAmount: adminGoalTarget,
+                            onAddPressed:
+                                () => _openGoalDialog(
+                                  context,
+                                  adminGoalCurrent,
+                                  adminGoalTarget,
+                                ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ── Resumen ejecutivo: ¿necesito actuar hoy? ────────────────
+                          if (_inventory != null)
+                            _HealthSummaryBar(
+                              lowStockCount: _inventory!.productosBajoStock,
+                              criticalBatchesCount: _criticalBatchesCount,
                             ),
-                      ),
-                      const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                      // ── Alertas: Lotes por Vencer ───────────────────────────────
-                      if (_batches.isNotEmpty) ...[
-                        ExpiringBatchesCard(batches: _batches),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // ── Inventario ─────────────────────────────────────────────
-                      const SectionHeader(
-                        icon: Icons.inventory_2_rounded,
-                        title: 'Inventario',
-                        subtitle: 'Valorización y proyecciones de stock',
+                          // ── Alertas: Lotes por Vencer ───────────────────────────────
+                          if (_batches.isNotEmpty) ...[
+                            ExpiringBatchesCard(batches: _batches),
+                            const SizedBox(height: 24),
+                          ],
+                        ]),
                       ),
-                      const SizedBox(height: 12),
-                      if (_inventory != null)
-                        Column(
+                    ),
+
+                    // ── Inventario ─────────────────────────────────────────────
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _StickyHeaderDelegate(
+                        child: const SectionHeader(
+                          icon: Icons.inventory_2_rounded,
+                          title: 'Inventario',
+                          subtitle: 'Valorización y proyecciones de stock',
+                        ),
+                      ),
+                    ),
+
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: KpiCard(
-                                    title: 'Stock Total',
-                                    value: '${_inventory!.totalStock}',
-                                    subtitle:
-                                        '${_inventory!.totalProductos} productos activos',
-                                    icon: Icons.inventory_2_rounded,
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppColors.blue,
-                                        AppColors.blue.withValues(alpha: 0.8),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: KpiCard(
-                                    title: 'Bajo Stock',
-                                    value: '${_inventory!.productosBajoStock}',
-                                    subtitle: 'Productos en alerta',
-                                    icon: Icons.warning_amber_rounded,
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppColors.warning,
-                                        AppColors.warning.withValues(
-                                          alpha: 0.8,
+                            const SizedBox(height: 12),
+                            if (_inventory != null)
+                              Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: KpiCard(
+                                          title: 'Stock Total',
+                                          value: '${_inventory!.totalStock}',
+                                          subtitle:
+                                              '${_inventory!.totalProductos} productos activos',
+                                          icon: Icons.inventory_2_rounded,
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              AppColors.blue,
+                                              AppColors.blue.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ],
-                                    ),
-                                    badge:
-                                        _inventory!.productosBajoStock > 0
-                                            ? '!'
-                                            : null,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: KpiCard(
+                                          title: 'Bajo Stock',
+                                          value:
+                                              '${_inventory!.productosBajoStock}',
+                                          subtitle: 'Productos en alerta',
+                                          icon: Icons.warning_amber_rounded,
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              AppColors.warning,
+                                              AppColors.warning.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                            ],
+                                          ),
+                                          badge:
+                                              _inventory!.productosBajoStock > 0
+                                                  ? '!'
+                                                  : null,
+                                          onTap:
+                                              () => context.push(
+                                                '/admin/inventory',
+                                              ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            KpiCardWide(
-                              title: 'Inversión en Inventario',
-                              value:
-                                  'S/ ${_inventory!.inversionTotal.toStringAsFixed(2)}',
-                              subtitle: 'Valor al precio de compra',
-                              icon: Icons.account_balance_wallet_rounded,
-                              color: AppColors.textSecondary,
-                              rightLabel: 'Valor venta minorista',
-                              rightValue:
-                                  'S/ ${_inventory!.valorVentaMinorista.toStringAsFixed(2)}',
-                            ),
-                            const SizedBox(height: 12),
-                            const SubSectionLabel(
-                              label: 'Indicadores de Ganancia Proyectada',
-                            ),
-                            const SizedBox(height: 8),
-                            GananciaBrutaCard(
-                              gananciaBruta: _inventory!.gananciaBruta,
-                              margenPct: _inventory!.margenBruto,
-                              inversion: _inventory!.inversionTotal,
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: KpiCard(
-                                    title: 'G. Minorista',
+                                  const SizedBox(height: 12),
+                                  KpiCardWide(
+                                    title: 'Inversión en Inventario',
                                     value:
-                                        'S/ ${_inventory!.gananciaEsperadaMax.toStringAsFixed(2)}',
-                                    subtitle: 'Vendiendo al detalle',
-                                    icon: Icons.trending_up_rounded,
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppColors.teal,
-                                        AppColors.teal.withValues(alpha: 0.8),
-                                      ],
-                                    ),
+                                        'S/ ${_inventory!.inversionTotal.toStringAsFixed(2)}',
+                                    subtitle: 'Valor al precio de compra',
+                                    icon: Icons.account_balance_wallet_rounded,
+                                    color: AppColors.textSecondary,
+                                    rightLabel: 'Valor venta minorista',
+                                    rightValue:
+                                        'S/ ${_inventory!.valorVentaMinorista.toStringAsFixed(2)}',
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: KpiCard(
-                                    title: 'G. Mayorista',
-                                    value:
-                                        'S/ ${_inventory!.gananciaEsperadaMin.toStringAsFixed(2)}',
-                                    subtitle: 'Aplicando precio por mayor',
-                                    icon: Icons.people_alt_rounded,
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppColors.primary,
-                                        AppColors.primaryDark,
-                                      ],
-                                    ),
+                                  const SizedBox(height: 12),
+                                  const SubSectionLabel(
+                                    label: 'Indicadores de Ganancia Proyectada',
                                   ),
-                                ),
-                              ],
-                            ),
+                                  const SizedBox(height: 8),
+                                  GananciaBrutaCard(
+                                    gananciaBruta: _inventory!.gananciaBruta,
+                                    margenPct: _inventory!.margenBruto,
+                                    inversion: _inventory!.inversionTotal,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: KpiCard(
+                                          title: 'G. Minorista',
+                                          value:
+                                              'S/ ${_inventory!.gananciaEsperadaMax.toStringAsFixed(2)}',
+                                          subtitle: 'Vendiendo al detalle',
+                                          icon: Icons.trending_up_rounded,
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              AppColors.teal,
+                                              AppColors.teal.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: KpiCard(
+                                          title: 'G. Mayorista',
+                                          value:
+                                              'S/ ${_inventory!.gananciaEsperadaMin.toStringAsFixed(2)}',
+                                          subtitle:
+                                              'Aplicando precio por mayor',
+                                          icon: Icons.people_alt_rounded,
+                                          gradient: const LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              AppColors.primary,
+                                              AppColors.primaryDark,
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
+                      ),
+                    ),
 
-                      const SizedBox(height: 28),
-
-                      // ── Ventas ─────────────────────────────────────────────────
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Expanded(
-                            child: SectionHeader(
-                              icon: Icons.point_of_sale_rounded,
-                              title: 'Ventas Registradas',
-                              subtitle: 'Órdenes con estado COMPLETADO',
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<SalesTimeFilter>(
-                                value: _salesFilter,
-                                icon: const Icon(
-                                  Icons.arrow_drop_down,
-                                  color: AppColors.primary,
-                                ),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                                onChanged: _onFilterChanged,
-                                items:
-                                    SalesTimeFilter.values.map((filter) {
-                                      return DropdownMenuItem(
-                                        value: filter,
-                                        child: Text(_filterName(filter)),
-                                      );
-                                    }).toList(),
+                    // ── Ventas ─────────────────────────────────────────────────
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _StickyHeaderDelegate(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: SectionHeader(
+                                icon: Icons.point_of_sale_rounded,
+                                title: 'Ventas Registradas',
+                                subtitle: 'Órdenes con estado COMPLETADO',
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      if (_isSalesLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<SalesTimeFilter>(
+                                  value: _salesFilter,
+                                  icon: const Icon(
+                                    Icons.arrow_drop_down,
+                                    color: AppColors.primary,
+                                  ),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  onChanged: _onFilterChanged,
+                                  items:
+                                      SalesTimeFilter.values.map((filter) {
+                                        return DropdownMenuItem(
+                                          value: filter,
+                                          child: Text(_filterName(filter)),
+                                        );
+                                      }).toList(),
+                                ),
+                              ),
                             ),
-                          ),
-                        )
-                      else if (_sales != null)
-                        Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: KpiCard(
-                                    title: 'Órdenes',
-                                    value: '${_sales!.totalVentas}',
-                                    subtitle: 'Ventas completadas',
-                                    icon: Icons.shopping_bag_rounded,
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppColors.primary,
-                                        AppColors.primary.withValues(
-                                          alpha: 0.85,
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      sliver: SliverToBoxAdapter(
+                        child:
+                            _sales == null && _isSalesLoading
+                                ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 40),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                )
+                                : _sales != null
+                                ? AnimatedOpacity(
+                                  opacity: _isSalesLoading ? 0.4 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: IgnorePointer(
+                                    ignoring: _isSalesLoading,
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: KpiCard(
+                                                title: 'Órdenes',
+                                                value: '${_sales!.totalVentas}',
+                                                subtitle: 'Ventas completadas',
+                                                icon:
+                                                    Icons.shopping_bag_rounded,
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    AppColors.primary,
+                                                    AppColors.primary
+                                                        .withValues(
+                                                          alpha: 0.85,
+                                                        ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: KpiCard(
+                                                title: 'Ticket Prom.',
+                                                value:
+                                                    'S/ ${_sales!.ticketPromedio.toStringAsFixed(2)}',
+                                                subtitle: 'Por orden vendida',
+                                                icon:
+                                                    Icons.receipt_long_rounded,
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    AppColors.blue,
+                                                    AppColors.blue.withValues(
+                                                      alpha: 0.85,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        KpiCardWide(
+                                          title: 'Ingreso Total Bruto',
+                                          value:
+                                              'S/ ${_sales!.ingresoTotal.toStringAsFixed(2)}',
+                                          subtitle: 'Facturado en caja',
+                                          icon: Icons.monetization_on_rounded,
+                                          color: AppColors.tealDark,
+                                          rightLabel: 'Ganancia Neta',
+                                          rightValue:
+                                              'S/ ${_sales!.gananciaTotal.toStringAsFixed(2)}',
+                                          rightColor: AppColors.success,
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        KpiCardWide(
+                                          title: 'Fondo de Reposición',
+                                          value:
+                                              'S/ ${_sales!.fondoReposicion.toStringAsFixed(2)}',
+                                          subtitle:
+                                              'Costo unitario de lo vendido',
+                                          icon: Icons.currency_exchange_rounded,
+                                          color: Colors.blueGrey.shade600,
+                                          rightLabel: '% del Ingreso',
+                                          rightValue:
+                                              _sales!.ingresoTotal > 0
+                                                  ? '${((_sales!.fondoReposicion / _sales!.ingresoTotal) * 100).toStringAsFixed(1)}%'
+                                                  : '0.0%',
+                                          rightColor: Colors.blueGrey.shade600,
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        MargenBar(
+                                          label: 'Margen Nivelado sobre ventas',
+                                          percent: _sales!.margenVentas,
+                                          color: AppColors.success,
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: KpiCard(
-                                    title: 'Ticket Prom.',
-                                    value:
-                                        'S/ ${_sales!.ticketPromedio.toStringAsFixed(2)}',
-                                    subtitle: 'Por orden vendida',
-                                    icon: Icons.receipt_long_rounded,
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppColors.blue,
-                                        AppColors.blue.withValues(alpha: 0.85),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            KpiCardWide(
-                              title: 'Ingreso Total Bruto',
-                              value:
-                                  'S/ ${_sales!.ingresoTotal.toStringAsFixed(2)}',
-                              subtitle: 'Facturado en caja',
-                              icon: Icons.monetization_on_rounded,
-                              color: AppColors.tealDark,
-                              rightLabel: 'Ganancia Neta',
-                              rightValue:
-                                  'S/ ${_sales!.gananciaTotal.toStringAsFixed(2)}',
-                              rightColor: AppColors.success,
-                            ),
-                            const SizedBox(height: 12),
-
-                            KpiCardWide(
-                              title: 'Fondo de Reposición',
-                              value:
-                                  'S/ ${_sales!.fondoReposicion.toStringAsFixed(2)}',
-                              subtitle: 'Costo unitario de lo vendido',
-                              icon: Icons.currency_exchange_rounded,
-                              color: Colors.blueGrey.shade600,
-                              rightLabel: '% del Ingreso',
-                              rightValue:
-                                  _sales!.ingresoTotal > 0
-                                      ? '${((_sales!.fondoReposicion / _sales!.ingresoTotal) * 100).toStringAsFixed(1)}%'
-                                      : '0.0%',
-                              rightColor: Colors.blueGrey.shade600,
-                            ),
-                            const SizedBox(height: 12),
-
-                            MargenBar(
-                              label: 'Margen Nivelado sobre ventas',
-                              percent: _sales!.margenVentas,
-                              color: AppColors.success,
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 28),
-                    ],
-                  ),
+                                )
+                                : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ],
                 ),
       ),
     );
   }
+}
+
+class _HealthSummaryBar extends StatelessWidget {
+  final int lowStockCount;
+  final int criticalBatchesCount;
+
+  const _HealthSummaryBar({
+    required this.lowStockCount,
+    required this.criticalBatchesCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (lowStockCount == 0 && criticalBatchesCount == 0) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: AppColors.success),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Todo bajo control',
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'No hay alertas críticas para hoy.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_rounded, color: Colors.red.shade800),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Atención requerida',
+                  style: TextStyle(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (lowStockCount > 0)
+                  Text(
+                    '• $lowStockCount producto(s) con bajo stock.',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                if (criticalBatchesCount > 0)
+                  Text(
+                    '• $criticalBatchesCount lote(s) por vencer pronto.',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              context.push('/admin/inventory');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade800,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              minimumSize: const Size(0, 48),
+            ),
+            child: const Text('Revisar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _StickyHeaderDelegate({required this.child});
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: child,
+    );
+  }
+
+  @override
+  double get maxExtent => 70.0;
+
+  @override
+  double get minExtent => 70.0;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
+      true;
 }
