@@ -218,14 +218,17 @@ class _UserFormContentState extends State<_UserFormContent> {
                                     if (isEditing) {
                                       if (v != null &&
                                           v.isNotEmpty &&
-                                          v.length < 6)
+                                          v.length < 6) {
                                         return 'Mínimo 6 caracteres';
+                                      }
                                       return null;
                                     }
-                                    if (v == null || v.isEmpty)
+                                    if (v == null || v.isEmpty) {
                                       return 'Ingresa una contraseña';
-                                    if (v.length < 6)
+                                    }
+                                    if (v.length < 6) {
                                       return 'Mínimo 6 caracteres';
+                                    }
                                     return null;
                                   },
                                   suffixIcon: IconButton(

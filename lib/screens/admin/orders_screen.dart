@@ -116,6 +116,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final confirm = await _showConfirmDialog(order, newStatus);
     if (confirm != true) return;
 
+    if (!mounted) return;
+
     try {
       await context.read<OrdersProvider>().updateOrderStatus(order, newStatus);
 

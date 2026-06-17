@@ -227,7 +227,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 break;
               case 'sync':
                 await provider.forceSync();
-                if (mounted) {
+                if (context.mounted) {
                   AppSnackbar.show(
                     context,
                     message: 'Sincronización completada.',

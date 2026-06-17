@@ -34,7 +34,7 @@ class AdminCatalogProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
-  bool _isFetchingMore = false;
+  final bool _isFetchingMore = false;
   bool get isFetchingMore => _isFetchingMore;
 
   bool _isLoadingAction = false;

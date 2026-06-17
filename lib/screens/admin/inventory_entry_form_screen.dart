@@ -145,7 +145,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       provider.setActiveShiftId(activeShiftId);
     }
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (!provider.validate(activeShiftId)) {
       AppSnackbar.show(
         context,
@@ -156,7 +156,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     }
 
     final success = await provider.saveEntry(_notesCtrl.text.trim());
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     if (success) {
       AppSnackbar.show(
