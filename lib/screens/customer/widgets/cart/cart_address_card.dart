@@ -4,11 +4,13 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 class CartAddressCard extends StatelessWidget {
   final Map<String, dynamic>? address;
   final bool isLoading;
+  final VoidCallback? onTap;
 
   const CartAddressCard({
     super.key,
     required this.address,
     this.isLoading = false,
+    this.onTap,
   });
 
   @override
@@ -45,9 +47,7 @@ class CartAddressCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          // TODO: Implement address selection
-        },
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

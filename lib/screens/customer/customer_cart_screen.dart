@@ -15,6 +15,7 @@ import 'package:inventory_store_app/shared/widgets/customer_layout.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
+import 'package:go_router/go_router.dart';
 
 class CustomerCartScreen extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
@@ -208,6 +209,14 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                           return CartAddressCard(
                             address: checkout.defaultAddress,
                             isLoading: checkout.isLoadingAddress,
+                            onTap: () async {
+                              await context.push('/customer/address');
+                              if (context.mounted) {
+                                context
+                                    .read<CartCheckoutProvider>()
+                                    .loadAddress();
+                              }
+                            },
                           );
                         }
                         if (i == 2) {
