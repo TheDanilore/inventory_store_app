@@ -63,6 +63,7 @@ class MyApp extends StatelessWidget {
         ...AppProviders.providersExcludingAuth,
       ],
       child: MaterialApp.router(
+        restorationScopeId: 'app',
         title: 'Inventario Store',
         theme: AppTheme.light(),
         debugShowCheckedModeBanner: false,

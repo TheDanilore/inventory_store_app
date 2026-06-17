@@ -144,6 +144,7 @@ class AppRouter {
   static GoRouter createRouter(AuthProvider authProvider) {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
+      restorationScopeId: 'router',
       initialLocation: '/',
       refreshListenable: authProvider,
       errorBuilder:
@@ -186,8 +187,14 @@ class AppRouter {
         final isSplash = currentPath == '/';
         final isLogin = currentPath == '/login';
 
-        // ── Paso 1: Sesión aún cargando → mostrar splash siempre ─────────
+        // ── Paso 1: Sesión aún cargando -> mostrar splash siempre ─────────
         if (!isSessionReady) {
+          if (!isSplash && _pendingDeepLink == null) {
+            final uri = state.uri.toString();
+            if (uri != '/login') {
+              _pendingDeepLink = uri;
+            }
+          }
           return isSplash ? null : '/';
         }
 
