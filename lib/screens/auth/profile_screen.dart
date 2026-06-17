@@ -219,32 +219,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             value: 'Canjear ',
                             icon: Icons.stars_rounded,
                             color: AppColors.gold,
-                            onTap:
-                                () => context.push('/customer/points'),
+                            onTap: () => context.push('/customer/points'),
                           ),
                           ProfileQuickActionItem(
                             title: 'Pedidos',
                             value: 'Ver historial',
                             icon: Icons.receipt_long_rounded,
                             color: AppColors.info,
-                            onTap:
-                                () => context.push('/customer/orders'),
+                            onTap: () => context.push('/customer/orders'),
                           ),
                           ProfileQuickActionItem(
                             title: 'Direcciones',
                             value: 'Ver direcciones',
                             icon: Icons.location_on_rounded,
                             color: AppColors.success,
-                            onTap:
-                                () => context.push('/customer/address'),
+                            onTap: () => context.push('/customer/address'),
                           ),
                           ProfileQuickActionItem(
                             title: 'Deseos',
                             value: 'Ver wishlist',
                             icon: Icons.favorite_rounded,
                             color: AppColors.accent,
-                            onTap:
-                                () => context.push('/customer/wishlist'),
+                            onTap: () => context.push('/customer/wishlist'),
                           ),
                         ],
                       ),
@@ -314,12 +310,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 context.go('/admin');
                               }
                             },
-                            onSignOut: () {
-                              provider.signOut().then((_) {
-                                if (context.mounted) {
-                                  context.read<AuthProvider>().clearSession();
-                                }
-                              });
+                            onSignOut: () async {
+                              final authProvider = context.read<AuthProvider>();
+                              authProvider.clearSession();
+                              try {
+                                await provider.signOut();
+                              } catch (e) {
+                                debugPrint('Logout error: $e');
+                              }
                             },
                           ),
                           const SizedBox(height: 32),

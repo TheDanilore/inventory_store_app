@@ -27,7 +27,7 @@ class ProfileProvider extends ChangeNotifier {
         _documentNumber = '';
         _avatarUrl = null;
         _imageBytes = null;
-        _isLoading = true;
+        _isLoading = false;
         _safeNotify();
       }
     });
@@ -223,7 +223,12 @@ class ProfileProvider extends ChangeNotifier {
   Future<void> signOut() async {
     _isLoading = true;
     _safeNotify();
-    await _supabase.auth.signOut();
+    try {
+      await _supabase.auth.signOut();
+    } finally {
+      _isLoading = false;
+      _safeNotify();
+    }
   }
 
   Future<Uint8List> optimizeImage(Uint8List bytesOriginales) async {
