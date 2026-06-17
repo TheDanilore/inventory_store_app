@@ -222,7 +222,9 @@ class PointsProvider extends ChangeNotifier {
       notifyListeners();
       debugPrint('Error loading points: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         throw Exception('Sin conexión a internet.');
       }
       throw Exception('Ocurrió un error inesperado al cargar tus puntos.');
@@ -299,11 +301,7 @@ class PointsProvider extends ChangeNotifier {
   }
 
   Future<void> startBoxesRound(AppConfigProvider config) async {
-    final boxesLimit = config.getDouble('boxes_daily_limit', 1).round();
-    if (_profileId == null ||
-        _boxesPlaysToday >= boxesLimit ||
-        _isPlayingMiniGame ||
-        _isPreparingBoxes) {
+    if (_profileId == null || _isPlayingMiniGame || _isPreparingBoxes) {
       return;
     }
 
@@ -331,39 +329,45 @@ class PointsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> playBoxMiniGame(
+  Future<int?> playBoxMiniGame(
     int boxIndex,
     AppConfigProvider config, [
     WalletProvider? wallet,
   ]) async {
     final boxesLimit = config.getDouble('boxes_daily_limit', 1).round();
-    if (_profileId == null ||
-        _boxesPlaysToday >= boxesLimit ||
-        _isPlayingMiniGame ||
-        !_boxesRoundReady) {
-      return;
+    if (_profileId == null || _isPlayingMiniGame || !_boxesRoundReady) {
+      return null;
     }
-    if (boxIndex < 0 || boxIndex >= _miniGameBoxes.length) return;
+    if (boxIndex < 0 || boxIndex >= _miniGameBoxes.length) return null;
 
     _isPlayingMiniGame = true;
     notifyListeners();
 
     final now = DateTime.now();
     final todayDate = DateFormat('yyyy-MM-dd').format(now);
+    final isForFun = _boxesPlaysToday >= boxesLimit;
     final reward = _miniGameBoxes[boxIndex];
 
     try {
-      final newBalance = _currentBalance + reward;
-      await _service.recordMiniGamePlay(
-        profileId: _profileId!,
-        reward: reward,
-        newBalance: newBalance,
-        movementType: 'MINI_GAME_BOXES',
-        description: 'Juego de cajas del $todayDate',
-      );
+      if (!isForFun) {
+        final newBalance = _currentBalance + reward;
+        await _service.recordMiniGamePlay(
+          profileId: _profileId!,
+          reward: reward,
+          newBalance: newBalance,
+          movementType: 'MINI_GAME_BOXES',
+          description: 'Juego de cajas del $todayDate',
+        );
 
-      _currentBalance = newBalance;
-      wallet?.addLocalBalance(reward);
+        _currentBalance = newBalance;
+        wallet?.addLocalBalance(reward);
+
+        _movements.insert(0, {
+          'points': reward,
+          'description': 'Juego de cajas del $todayDate',
+          'created_at': now.toIso8601String(),
+        });
+      }
 
       _boxesPlaysToday += 1;
       _lastBoxesReward = reward;
@@ -372,11 +376,7 @@ class PointsProvider extends ChangeNotifier {
       _boxesRoundReady = false;
       _showBoxesPreviewValues = false;
 
-      _movements.insert(0, {
-        'points': reward,
-        'description': 'Juego de cajas del $todayDate',
-        'created_at': now.toIso8601String(),
-      });
+      return reward;
     } finally {
       _isPlayingMiniGame = false;
       notifyListeners();

@@ -17,9 +17,7 @@ class PointsMiniGameCard extends StatelessWidget {
     final canPlay = provider.boxesPlaysToday < dailyLimit;
 
     final phase =
-        !canPlay
-            ? 'done'
-            : provider.isPreparingBoxes
+        provider.isPreparingBoxes
             ? 'reveal'
             : provider.boxesRoundReady
             ? 'pick'
@@ -27,31 +25,19 @@ class PointsMiniGameCard extends StatelessWidget {
 
     final phaseLabel =
         {
-          'done': 'Ya completaste el juego de hoy',
           'reveal': 'Mira los premios, luego se mezclarán...',
           'pick': '¡Elige una caja ahora!',
-          'idle': 'Toca "Revelar cajas" para comenzar',
+          'idle':
+              canPlay
+                  ? 'Toca "Revelar cajas" para comenzar'
+                  : 'Límite alcanzado. ¡Juega por diversión!',
         }[phase]!;
 
-    final headerBg =
-        phase == 'done'
-            ? const Color(0xFFF1F5F9)
-            : phase == 'pick'
-            ? PointsDS.goldLight
-            : PointsDS.tealLight;
+    final headerBg = phase == 'pick' ? PointsDS.goldLight : PointsDS.tealLight;
 
     final headerIcon =
-        phase == 'done'
-            ? Icons.lock_rounded
-            : phase == 'pick'
-            ? Icons.card_giftcard_rounded
-            : Icons.extension_rounded;
-    final headerIconColor =
-        phase == 'done'
-            ? PointsDS.textMuted
-            : phase == 'pick'
-            ? PointsDS.gold
-            : PointsDS.teal;
+        phase == 'pick' ? Icons.card_giftcard_rounded : Icons.extension_rounded;
+    final headerIconColor = phase == 'pick' ? PointsDS.gold : PointsDS.teal;
 
     final prizePreview =
         provider.boxesRoundReady && provider.miniGameBoxes.isNotEmpty
@@ -119,7 +105,7 @@ class PointsMiniGameCard extends StatelessWidget {
               color:
                   phase == 'pick'
                       ? PointsDS.goldLight
-                      : phase == 'done'
+                      : (!canPlay && phase == 'idle')
                       ? const Color(0xFFF1F5F9)
                       : PointsDS.tealLight,
               borderRadius: BorderRadius.circular(10),
@@ -129,14 +115,14 @@ class PointsMiniGameCard extends StatelessWidget {
                 Icon(
                   phase == 'pick'
                       ? Icons.touch_app_rounded
-                      : phase == 'done'
-                      ? Icons.check_circle_rounded
+                      : (!canPlay && phase == 'idle')
+                      ? Icons.info_outline_rounded
                       : Icons.info_outline_rounded,
                   size: 14,
                   color:
                       phase == 'pick'
                           ? PointsDS.goldDark
-                          : phase == 'done'
+                          : (!canPlay && phase == 'idle')
                           ? PointsDS.textMuted
                           : PointsDS.teal,
                 ),
@@ -150,7 +136,7 @@ class PointsMiniGameCard extends StatelessWidget {
                       color:
                           phase == 'pick'
                               ? PointsDS.goldDark
-                              : phase == 'done'
+                              : (!canPlay && phase == 'idle')
                               ? PointsDS.textMuted
                               : PointsDS.tealDark,
                     ),
@@ -167,9 +153,7 @@ class PointsMiniGameCard extends StatelessWidget {
               children: List.generate(prizePreview.length, (index) {
                 final reward = prizePreview[index];
                 final locked =
-                    !canPlay ||
-                    provider.isPlayingMiniGame ||
-                    !provider.boxesRoundReady;
+                    provider.isPlayingMiniGame || !provider.boxesRoundReady;
                 final wobble =
                     provider.isPreparingBoxes
                         ? ((provider.boxesShuffleSeed + index) % 3 - 1) * 0.04
@@ -179,7 +163,10 @@ class PointsMiniGameCard extends StatelessWidget {
                         ? ((provider.boxesShuffleSeed + index * 2) % 3 - 1) *
                             5.0
                         : 0.0;
-                final isWinner = !canPlay && provider.lastBoxesReward == reward;
+                final isWinner =
+                    phase == 'idle' &&
+                    provider.lastBoxesReward == reward &&
+                    provider.lastBoxesReward != null;
 
                 return Expanded(
                   child: Padding(
@@ -188,13 +175,30 @@ class PointsMiniGameCard extends StatelessWidget {
                       onTap:
                           locked
                               ? null
-                              : () => context
-                                  .read<PointsProvider>()
-                                  .playBoxMiniGame(
-                                    index,
-                                    config,
-                                    context.read<WalletProvider>(),
-                                  ),
+                              : () async {
+                                final wasForFun = !canPlay;
+                                final picked = await context
+                                    .read<PointsProvider>()
+                                    .playBoxMiniGame(
+                                      index,
+                                      config,
+                                      context.read<WalletProvider>(),
+                                    );
+                                if (picked != null && wasForFun) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '¡Sacaste $picked monedas! (Modo diversión)',
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: PointsDS.teal,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
                       child: Transform.translate(
                         offset: Offset(0, vertShift),
                         child: Transform.rotate(
@@ -273,7 +277,7 @@ class PointsMiniGameCard extends StatelessWidget {
                                         ),
                                     child:
                                         (provider.showBoxesPreviewValues ||
-                                                (locked && canPlay == false))
+                                                (locked && phase == 'idle'))
                                             ? Column(
                                               key: const ValueKey('value'),
                                               mainAxisAlignment:
@@ -335,7 +339,7 @@ class PointsMiniGameCard extends StatelessWidget {
             height: 48,
             child: ElevatedButton(
               onPressed:
-                  (canPlay && phase == 'idle' && !provider.isPlayingMiniGame)
+                  (phase == 'idle' && !provider.isPlayingMiniGame)
                       ? () =>
                           context.read<PointsProvider>().startBoxesRound(config)
                       : null,

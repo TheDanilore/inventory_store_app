@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/screens/admin/widgets/order_detail_components/order_detail_section_card.dart';
-import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class OrderDetailAuditSection extends StatelessWidget {
   final OrderModel order;
@@ -22,8 +21,6 @@ class OrderDetailAuditSection extends StatelessWidget {
 
     return OrderDetailSectionCard(
       title: 'Auditoría / Historial',
-      icon: Icons.history_rounded,
-      iconColor: AppColors.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
