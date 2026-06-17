@@ -88,15 +88,10 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // GoRouter solo redirige automáticamente si la ruta base era /login (mediante go).
-      // Si la pantalla se abrió con un push() (ej. desde el catálogo),
-      // debemos cerrarla manualmente.
-      if (context.canPop()) {
-        if (provider.currentUserRole == AppRoles.admin) {
-          context.go('/admin');
-        } else {
-          context.pop();
-        }
+      if (provider.currentUserRole == AppRoles.admin) {
+        context.go('/admin');
+      } else {
+        context.go('/customer');
       }
     }
   }
