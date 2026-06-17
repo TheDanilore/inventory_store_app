@@ -16,6 +16,8 @@ class OrderModel {
   final double amountPaid;
   final DateTime? dueDate;
   final String? createdBy;
+  final String? updatedBy;
+  final DateTime? updatedAt;
   final double discountAmount;
 
   final WarehouseModel? warehouse;
@@ -40,6 +42,8 @@ class OrderModel {
     this.amountPaid = 0.00,
     this.dueDate,
     this.createdBy,
+    this.updatedBy,
+    this.updatedAt,
     this.warehouse,
     this.discountAmount = 0.00,
     this.profileFullName,
@@ -75,6 +79,11 @@ class OrderModel {
               ? DateTime.parse(json['due_date'] as String)
               : null,
       createdBy: json['created_by'] as String?,
+      updatedBy: json['updated_by'] as String?,
+      updatedAt:
+          json['updated_at'] != null
+              ? DateTime.parse(json['updated_at'] as String)
+              : null,
       warehouse:
           json['warehouses'] != null && json['warehouses'] is Map
               ? WarehouseModel.fromJson(
@@ -106,6 +115,8 @@ class OrderModel {
       'amount_paid': amountPaid,
       if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
       'created_by': createdBy,
+      'updated_by': updatedBy,
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       'discount_amount': discountAmount,
     };
   }
@@ -145,6 +156,8 @@ class OrderModel {
     double? amountPaid,
     DateTime? dueDate,
     String? createdBy,
+    String? updatedBy,
+    DateTime? updatedAt,
     WarehouseModel? warehouse,
     double? discountAmount,
     String? profileFullName,
@@ -166,6 +179,8 @@ class OrderModel {
       amountPaid: amountPaid ?? this.amountPaid,
       dueDate: dueDate ?? this.dueDate,
       createdBy: createdBy ?? this.createdBy,
+      updatedBy: updatedBy ?? this.updatedBy,
+      updatedAt: updatedAt ?? this.updatedAt,
       warehouse: warehouse ?? this.warehouse,
       discountAmount: discountAmount ?? this.discountAmount,
       profileFullName: profileFullName ?? this.profileFullName,

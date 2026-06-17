@@ -143,6 +143,8 @@ class OrderDetailService {
             'total_profit': totalProfit,
             'points_used': finalPointsUsed,
             'points_earned': finalPointsEarned,
+            'updated_by': currentProfileId,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', orderId);
 
@@ -488,6 +490,8 @@ class OrderDetailService {
             'status': 'CANCELLED',
             'payment_status': 'PAID',
             'amount_paid': 0,
+            'updated_by': currentProfileId,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', orderId);
 
