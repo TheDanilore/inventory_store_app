@@ -97,7 +97,7 @@ class ProductImagesSection extends StatelessWidget {
                           );
                         },
                         itemCount: provider.formImages.length,
-                        onReorder: (oldIndex, newIndex) {
+                        onReorderItem: (oldIndex, newIndex) {
                           provider.reorderImages(oldIndex, newIndex);
                         },
                         itemBuilder: (context, index) {

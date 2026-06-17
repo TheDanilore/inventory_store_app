@@ -76,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (!mounted) return;
     if (pickedFile != null) {
       final provider = context.read<ProfileProvider>();
       final bytesOriginales = await pickedFile.readAsBytes();

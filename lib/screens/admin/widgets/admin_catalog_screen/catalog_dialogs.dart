@@ -360,7 +360,9 @@ class _ExportRadioOption extends StatelessWidget {
           children: [
             Radio<int>(
               value: value,
+              // ignore: deprecated_member_use
               groupValue: groupValue,
+              // ignore: deprecated_member_use
               onChanged: onChanged,
               activeColor: AppColors.teal,
               visualDensity: VisualDensity.compact,

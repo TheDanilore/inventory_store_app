@@ -25,7 +25,7 @@ class UserCard extends StatefulWidget {
 class _UserCardState extends State<UserCard> {
   bool _isToggling = false;
 
-  Future<void> _handleToggle(BuildContext context, bool currentStatus) async {
+  Future<void> _handleToggle(bool currentStatus) async {
     if (_isToggling) return;
 
     setState(() => _isToggling = true);
@@ -224,7 +224,7 @@ class _UserCardState extends State<UserCard> {
                               value: isActive,
                               activeTrackColor: Colors.green,
                               onChanged:
-                                  (val) => _handleToggle(context, isActive),
+                                  (val) => _handleToggle(isActive),
                             ),
                           ),
                         ),

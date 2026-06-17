@@ -186,6 +186,7 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
 
     try {
       final adminProfileId = await _service.getAdminProfileId();
+      if (!mounted) return;
       final config = context.read<AppConfigProvider>();
       final ratio = config.getDouble('points_to_soles_ratio', 0.01);
       final rate = config.getDouble('points_earning_rate', 0.03);

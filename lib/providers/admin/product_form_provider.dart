@@ -350,7 +350,6 @@ class ProductFormProvider extends ChangeNotifier {
   }
 
   void reorderImages(int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) newIndex -= 1;
     final item = formImages.removeAt(oldIndex);
     formImages.insert(newIndex, item);
     markAsDirty();
