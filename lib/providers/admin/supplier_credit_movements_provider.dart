@@ -82,7 +82,13 @@ class SupplierCreditMovementsProvider extends ChangeNotifier {
     try {
       await Future.wait([_loadTotals(), _loadMovementsPage(notify: false)]);
     } catch (e) {
-      _errorMessage = 'Error al cargar los datos: $e';
+      debugPrint('Error loading movements: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar los datos.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -148,7 +154,13 @@ class SupplierCreditMovementsProvider extends ChangeNotifier {
               .map((e) => SupplierCreditMovementModel.fromJson(e))
               .toList();
     } catch (e) {
-      _errorMessage = 'Error al cargar la página: $e';
+      debugPrint('Error paginating movements: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar la página.';
+      }
     } finally {
       if (notify) {
         _isLoading = false;
@@ -260,7 +272,13 @@ class SupplierCreditMovementsProvider extends ChangeNotifier {
         filename: 'estado_cuenta_${supplierName.replaceAll(' ', '_')}.pdf',
       );
     } catch (e) {
-      _errorMessage = 'Error al exportar PDF: $e';
+      debugPrint('Error exporting PDF: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al exportar PDF.';
+      }
     } finally {
       _isExporting = false;
       notifyListeners();

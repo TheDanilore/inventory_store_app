@@ -81,7 +81,12 @@ class AuthProvider extends ChangeNotifier {
     } on AuthException catch (e) {
       return _authErrorMessage(e);
     } catch (e) {
-      return 'Error inesperado: $e';
+      debugPrint('Error auth: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        return 'Sin conexión a internet.';
+      }
+      return 'Error inesperado al iniciar sesión.';
     } finally {
       setLoading(false);
     }
@@ -136,7 +141,12 @@ class AuthProvider extends ChangeNotifier {
     } on AuthException catch (e) {
       return _authErrorMessage(e);
     } catch (e) {
-      return 'Error al enviar el correo de recuperación: $e';
+      debugPrint('Error recovery: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        return 'Sin conexión a internet.';
+      }
+      return 'Error al enviar el correo de recuperación.';
     } finally {
       setLoading(false);
     }

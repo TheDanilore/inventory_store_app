@@ -100,7 +100,13 @@ class InventoryExitFormProvider extends ChangeNotifier {
 
       await _loadDraft();
     } catch (e) {
-      _errorMessage = 'Error cargando datos: $e';
+      debugPrint('Error loading form data: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error cargando datos.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -197,7 +203,13 @@ class InventoryExitFormProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      _errorMessage = 'Error registrando salida: $e';
+      debugPrint('Error saving exit: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error registrando salida.';
+      }
       return false;
     } finally {
       _isSaving = false;

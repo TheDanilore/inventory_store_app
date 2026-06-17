@@ -83,7 +83,13 @@ class SupplierCreditsProvider extends ChangeNotifier {
 
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = e.toString();
+      debugPrint('Error loading supplier credits: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar los créditos de proveedores.';
+      }
     } finally {
       _isLoading = false;
       _isBackgroundLoading = false;
@@ -119,7 +125,12 @@ class SupplierCreditsProvider extends ChangeNotifier {
       await _service.toggleAccountStatus(creditId, currentStatus);
       await fetchAccounts(showLoading: false);
     } catch (e) {
-      rethrow;
+      debugPrint('Error applying payment: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        throw Exception('Sin conexión a internet.');
+      }
+      throw Exception('Error al registrar el pago.');
     }
   }
 }

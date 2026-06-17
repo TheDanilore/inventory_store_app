@@ -44,7 +44,13 @@ class FinancialAccountsProvider extends ChangeNotifier {
       
       _accounts = data.map((e) => FinancialAccountModel.fromJson(Map<String, dynamic>.from(e))).toList();
     } catch (e) {
-      _errorMessage = e.toString();
+      debugPrint('Error loading financial accounts: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar cuentas financieras.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

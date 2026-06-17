@@ -117,7 +117,13 @@ class CartProvider with ChangeNotifier {
         _debouncedSyncToCloud();
       }
     } catch (e) {
-      _setError(e.toString());
+      debugPrint('Error loading cart: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _setError('Sin conexión a internet.');
+      } else {
+        _setError('No se pudo cargar el carrito.');
+      }
     } finally {
       _setSyncing(false);
     }
@@ -146,7 +152,13 @@ class CartProvider with ChangeNotifier {
     try {
       await _cloudService.syncToCloud(user.id, _items);
     } catch (e) {
-      _setError(e.toString());
+      debugPrint('Error applying coupon: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _setError('Sin conexión a internet.');
+      } else {
+        _setError('Error al aplicar el cupón.');
+      }
     } finally {
       _setSyncing(false);
     }

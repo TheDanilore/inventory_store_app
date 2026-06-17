@@ -118,7 +118,13 @@ class AccountMovementsProvider extends ChangeNotifier {
       await _fetchTotals();
 
     } catch (e) {
-      _errorMessage = e.toString();
+      debugPrint('Error loading account movements: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar los movimientos.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

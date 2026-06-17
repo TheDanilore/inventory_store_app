@@ -99,7 +99,13 @@ class InventoryProvider extends ChangeNotifier {
         categoryName: stockCategoryFilter,
       );
     } catch (e) {
-      errorMessageStock = 'Error cargando stock: $e';
+      debugPrint('Error loading stock: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        errorMessageStock = 'Sin conexión a internet.';
+      } else {
+        errorMessageStock = 'Error cargando stock.';
+      }
     } finally {
       isLoadingStock = false;
       notifyListeners();
@@ -160,7 +166,13 @@ class InventoryProvider extends ChangeNotifier {
         statusFilter: batchStatusFilter,
       );
     } catch (e) {
-      errorMessageBatches = 'Error cargando lotes: $e';
+      debugPrint('Error loading batches: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        errorMessageBatches = 'Sin conexión a internet.';
+      } else {
+        errorMessageBatches = 'Error cargando lotes.';
+      }
     } finally {
       isLoadingBatches = false;
       notifyListeners();

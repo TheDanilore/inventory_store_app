@@ -84,7 +84,13 @@ class InventoryEntriesProvider extends ChangeNotifier {
               .toList();
       _totalRecords = response['count'] as int;
     } catch (e) {
-      _errorMessage = 'Error al cargar entradas: $e';
+      debugPrint('Error loading inventory entries: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar entradas.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

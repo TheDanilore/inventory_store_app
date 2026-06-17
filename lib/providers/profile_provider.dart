@@ -295,6 +295,10 @@ class ProfileProvider extends ChangeNotifier {
       return 'Error de autenticación: ${e.message}';
     } catch (e) {
       debugPrint('Error deleting account: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        return 'Sin conexión a internet.';
+      }
       return 'Ocurrió un error inesperado al eliminar la cuenta.';
     } finally {
       _isDeletingAccount = false;

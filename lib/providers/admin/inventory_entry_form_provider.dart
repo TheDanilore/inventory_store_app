@@ -109,7 +109,13 @@ class InventoryEntryFormProvider extends ChangeNotifier {
         await _loadDraft();
       }
     } catch (e) {
-      _errorMessage = 'Error cargando datos: $e';
+      debugPrint('Error loading form data: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error cargando datos.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -262,7 +268,13 @@ class InventoryEntryFormProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Error registrando entrada: $e';
+      debugPrint('Error saving entry: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error registrando entrada.';
+      }
       _isSaving = false;
       notifyListeners();
       return false;

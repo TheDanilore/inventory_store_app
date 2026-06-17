@@ -244,7 +244,13 @@ class CartCheckoutProvider extends ChangeNotifier {
     } catch (e) {
       _isSending = false;
       notifyListeners();
-      return {'error': 'EXCEPTION', 'message': e.toString()};
+      debugPrint('Error confirming order: $e');
+      final errStr = e.toString().toLowerCase();
+      String errorMsg = 'Ocurrió un error inesperado al confirmar el pedido.';
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        errorMsg = 'Sin conexión a internet.';
+      }
+      return {'error': 'EXCEPTION', 'message': errorMsg};
     } finally {
       _isSending = false;
       notifyListeners();

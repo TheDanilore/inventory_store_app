@@ -68,7 +68,13 @@ class CustomerCreditsProvider extends ChangeNotifier {
       _suspendedAccounts = res.stats['suspendedAccounts'] as int;
       _maxedOutAccounts = res.stats['maxedOutAccounts'] as int;
     } catch (e) {
-      _errorMessage = e.toString();
+      debugPrint('Error loading customer credits: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar los créditos.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -105,7 +111,12 @@ class CustomerCreditsProvider extends ChangeNotifier {
       await _service.toggleAccountStatus(account.creditId, account.isActive);
       await fetchPage(); // Refrescar para ver el nuevo estado
     } catch (e) {
-      rethrow;
+      debugPrint('Error applying customer payment: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        throw Exception('Sin conexión a internet.');
+      }
+      throw Exception('Error al aplicar el pago.');
     }
   }
 }

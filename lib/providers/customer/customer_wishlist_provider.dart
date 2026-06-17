@@ -152,7 +152,13 @@ class CustomerWishlistProvider extends ChangeNotifier {
       _hasMore = fetchedEntries.length == _limit;
       _errorMessage = '';
     } catch (e) {
-      _errorMessage = 'Error al cargar la lista de deseos: $e';
+      debugPrint('Error al cargar wishlist: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'No se pudo cargar la lista de deseos.';
+      }
     } finally {
       _isLoading = false;
       _isLoadingMore = false;

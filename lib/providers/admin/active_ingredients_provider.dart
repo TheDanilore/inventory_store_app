@@ -153,12 +153,18 @@ class ActiveIngredientsProvider extends ChangeNotifier {
       await fetchIngredients();
       return true;
     } catch (e) {
+      debugPrint('Error saving active ingredient: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error inesperado al guardar.';
+        if (errStr.contains('active_ingredients_name_key')) {
+          msg = 'Ya existe un componente con ese nombre.';
+        } else if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message: e.toString().contains('active_ingredients_name_key')
-              ? 'Ya existe un componente con ese nombre'
-              : 'Error al guardar: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }
@@ -187,8 +193,10 @@ class ActiveIngredientsProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
+      debugPrint('Error deleting active ingredient: $e');
       if (context.mounted) {
-        if (e.toString().contains('Foreign key violation') || e.toString().contains('violates foreign key constraint')) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('foreign key violation') || errStr.contains('violates foreign key constraint')) {
           AppSnackbar.show(
             context,
             message: 'No puedes borrar "$name" porque hay productos que usan este componente.',
@@ -196,9 +204,13 @@ class ActiveIngredientsProvider extends ChangeNotifier {
             duration: const Duration(seconds: 4),
           );
         } else {
+          String msg = 'Error al borrar el componente.';
+          if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+            msg = 'Sin conexión a internet.';
+          }
           AppSnackbar.show(
             context,
-            message: 'Error al borrar: $e',
+            message: msg,
             type: SnackbarType.error,
           );
         }

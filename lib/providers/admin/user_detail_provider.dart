@@ -87,7 +87,13 @@ class UserDetailProvider extends ChangeNotifier {
       // Recargar historial silenciosamente
       await _loadRecentMovements(profileId);
     } catch (e) {
-      _errorMessage = 'Error al actualizar saldo: $e';
+      debugPrint('Error updating balance: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al actualizar saldo.';
+      }
     } finally {
       _isSaving = false;
       notifyListeners();
@@ -110,7 +116,13 @@ class UserDetailProvider extends ChangeNotifier {
       _user = Map<String, dynamic>.from(updated);
       await _loadRecentMovements(_user!['id']);
     } catch (e) {
-      _errorMessage = 'Error al recargar usuario: $e';
+      debugPrint('Error reloading user: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al recargar usuario.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

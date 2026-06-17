@@ -129,7 +129,13 @@ class CashShiftsProvider extends ChangeNotifier {
           .toSet();
 
     } catch (e) {
-      _errorMessage = e.toString();
+      debugPrint('Error loading cash shifts: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar los turnos de caja.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

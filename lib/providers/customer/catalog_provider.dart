@@ -165,7 +165,19 @@ class CustomerCatalogProvider extends ChangeNotifier {
         _currentPage++;
       }
     } catch (e) {
-      _productsError = 'Error cargando productos: $e';
+      debugPrint('Error cargando productos: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup') ||
+          errStr.contains('connection refused') ||
+          errStr.contains('network is unreachable')) {
+        _productsError =
+            'Comprueba tu conexión a internet e inténtalo de nuevo.';
+      } else {
+        _productsError =
+            'No se pudieron cargar los productos en este momento. Inténtalo de nuevo más tarde.';
+      }
     } finally {
       _isLoadingProducts = false;
       _isInitialLoad = false;

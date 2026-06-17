@@ -64,7 +64,13 @@ class CustomerAddressesProvider extends ChangeNotifier {
           ).map(_toAddressEntry).toList();
       _errorMessage = '';
     } catch (e) {
-      _errorMessage = 'No se pudieron cargar las direcciones: $e';
+      debugPrint('Error cargando direcciones: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'No se pudieron cargar las direcciones.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

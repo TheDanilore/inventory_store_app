@@ -65,7 +65,13 @@ class InventoryExitsProvider extends ChangeNotifier {
               .toList();
       _totalRecords = response['count'] as int;
     } catch (e) {
-      _errorMessage = 'Error al cargar salidas: $e';
+      debugPrint('Error loading inventory exits: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar salidas.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

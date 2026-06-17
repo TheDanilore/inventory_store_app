@@ -148,7 +148,15 @@ class CustomerOrdersProvider extends ChangeNotifier {
       _hasMore = fetchedOrders.length == _limit;
       _errorMessage = '';
     } catch (e) {
-      _errorMessage = 'Error al obtener pedidos: $e';
+      debugPrint('Error al obtener pedidos: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') ||
+          errStr.contains('failed host lookup') ||
+          errStr.contains('clientexception')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Ocurrió un error inesperado al cargar tus pedidos.';
+      }
     } finally {
       _isLoading = false;
       _isLoadingMore = false;

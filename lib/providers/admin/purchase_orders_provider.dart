@@ -66,7 +66,13 @@ class PurchaseOrdersProvider extends ChangeNotifier {
       _hasMore =
           false; // Ya no usamos _hasMore de forma clasica, pero lo dejo por retrocompatibilidad si es necesario, o _currentPage < totalPages - 1
     } catch (e) {
-      _errorMessage = 'Error al cargar órdenes de compra: $e';
+      debugPrint('Error loading purchase orders: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar órdenes de compra.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

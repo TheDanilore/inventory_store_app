@@ -128,7 +128,13 @@ class KardexProvider extends ChangeNotifier {
               .map((row) => KardexMovementModel.fromSupabaseRow(row))
               .toList();
     } catch (e) {
-      _errorMessage = 'Error al cargar kardex: $e';
+      debugPrint('Error loading kardex: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar kardex.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -248,7 +254,13 @@ class KardexProvider extends ChangeNotifier {
             'Kardex_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
       );
     } catch (e) {
-      _errorMessage = 'Error al exportar PDF: $e';
+      debugPrint('Error exporting PDF: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al exportar PDF.';
+      }
     } finally {
       _isExporting = false;
       notifyListeners();

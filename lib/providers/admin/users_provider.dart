@@ -90,7 +90,13 @@ class UsersProvider extends ChangeNotifier {
       _totalCount = response.count;
       _users = List<Map<String, dynamic>>.from(response.data as List);
     } catch (e) {
-      _errorMessage = 'Error al cargar usuarios: $e';
+      debugPrint('Error loading users: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar usuarios.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -111,7 +117,13 @@ class UsersProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
-      _errorMessage = 'Error al cambiar estado: $e';
+      debugPrint('Error toggling user status: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cambiar estado.';
+      }
       notifyListeners();
       return false;
     }

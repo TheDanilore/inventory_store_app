@@ -52,8 +52,15 @@ class WalletProvider extends ChangeNotifier {
       _balance = balance;
     } catch (e) {
       if (_disposed) return;
-      _error = 'No se pudo cargar el saldo: $e';
+      debugPrint('Error loading wallet: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _error = 'Sin conexión a internet.';
+      } else {
+        _error = 'No se pudo cargar el saldo.';
+      }
       _balance = _balance ?? 0;
+      notifyListeners();
     } finally {
       if (!_disposed) {
         _isLoading = false;
@@ -93,7 +100,14 @@ class WalletProvider extends ChangeNotifier {
       _balance = balance;
     } catch (e) {
       if (_disposed) return;
-      _error = 'Error refrescando saldo: $e';
+      debugPrint('Error refreshing wallet: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _error = 'Sin conexión a internet.';
+      } else {
+        _error = 'Error refrescando saldo.';
+      }
+      notifyListeners();
     } finally {
       if (!_disposed) {
         _isLoading = false;
@@ -146,7 +160,13 @@ class WalletProvider extends ChangeNotifier {
       addLocalBalance(points);
       
     } catch (e) {
-      _error = 'No se pudieron guardar los puntos: $e';
+      debugPrint('Error saving points: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _error = 'Sin conexión a internet.';
+      } else {
+        _error = 'No se pudieron guardar los puntos.';
+      }
       if (!_disposed) notifyListeners();
       // Relanzamos el error por si la pantalla necesita mostrar un snackbar
       throw Exception('Error saving reward: $e');

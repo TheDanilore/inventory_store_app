@@ -117,10 +117,16 @@ class UserFormProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
+      debugPrint('Error saving user form: $e');
       if (e.toString().contains('already been registered')) {
         _errorMessage = 'Este correo ya está registrado en el sistema.';
       } else {
-        _errorMessage = 'Error: $e';
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          _errorMessage = 'Sin conexión a internet.';
+        } else {
+          _errorMessage = 'Error inesperado al guardar el usuario.';
+        }
       }
       return false;
     } finally {

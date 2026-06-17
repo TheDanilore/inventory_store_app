@@ -118,7 +118,13 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
       await _loadDraft();
     } catch (e) {
-      _errorMessage = 'Error cargando datos: $e';
+      debugPrint('Error loading form data: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error cargando datos.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -354,7 +360,13 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Error al guardar la orden: $e';
+      debugPrint('Error saving order: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al guardar la orden.';
+      }
       _isSaving = false;
       notifyListeners();
       return false;

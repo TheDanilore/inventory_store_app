@@ -183,6 +183,12 @@ class ProductDetailProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error loading extra: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        debugPrint('Sin conexión a internet.');
+      } else {
+        debugPrint('No se pudieron cargar los datos extra.');
+      }
     } finally {
       isLoadingExtra = false;
       notifyListeners();

@@ -170,10 +170,16 @@ class CategoriesProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
+      debugPrint('Error toggling category status: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error al cambiar estado.';
+        if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message: 'Error al cambiar estado: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }
@@ -241,12 +247,18 @@ class CategoriesProvider extends ChangeNotifier {
       await fetchCategories();
       return true;
     } catch (e) {
+      debugPrint('Error saving category: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error inesperado al guardar la categoría.';
+        if (errStr.contains('categories_name_key')) {
+          msg = 'Ya existe una categoría con ese nombre.';
+        } else if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message: e.toString().contains('categories_name_key')
-              ? 'Ya existe una categoría con ese nombre'
-              : 'Error al guardar: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }

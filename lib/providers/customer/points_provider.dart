@@ -220,7 +220,12 @@ class PointsProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      rethrow; // Delegar el manejo de error visual a la pantalla si es necesario
+      debugPrint('Error loading points: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        throw Exception('Sin conexión a internet.');
+      }
+      throw Exception('Ocurrió un error inesperado al cargar tus puntos.');
     }
   }
 

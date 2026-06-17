@@ -84,7 +84,13 @@ class SuppliersProvider extends ChangeNotifier {
               .map((e) => SupplierModel.fromJson(e))
               .toList();
     } catch (e) {
-      _errorMessage = 'Error al cargar proveedores: $e';
+      debugPrint('Error loading suppliers: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar proveedores.';
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -105,9 +111,14 @@ class SuppliersProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      _errorMessage = 'Error al cambiar estado: $e';
+      debugPrint('Error toggling supplier status: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cambiar estado.';
+      }
       notifyListeners();
-      rethrow;
     }
   }
 }

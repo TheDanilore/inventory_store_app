@@ -82,13 +82,18 @@ class AttributesProvider extends ChangeNotifier {
       await fetchAttributes();
       return true;
     } catch (e) {
+      debugPrint('Error saving attribute: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error inesperado al guardar la propiedad.';
+        if (errStr.contains('attributes_name_key')) {
+          msg = 'Ya existe una propiedad con ese nombre.';
+        } else if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message:
-              e.toString().contains('attributes_name_key')
-                  ? 'Ya existe una propiedad con ese nombre'
-                  : 'Error al guardar: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }
@@ -125,13 +130,18 @@ class AttributesProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
+      debugPrint('Error adding attribute value: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error inesperado al añadir el valor.';
+        if (errStr.contains('attribute_values_attribute_id_value_key')) {
+          msg = 'Este valor ya existe para la propiedad actual.';
+        } else if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message:
-              e.toString().contains('attribute_values_attribute_id_value_key')
-                  ? 'Este valor ya existe para la propiedad actual'
-                  : 'Error al añadir el valor: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }
@@ -164,10 +174,11 @@ class AttributesProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
+      debugPrint('Error deleting attribute value: $e');
       if (context.mounted) {
-        // En Supabase, si hay una foreign key violation, el error incluirá ciertas palabras clave
-        if (e.toString().contains('Foreign key violation') ||
-            e.toString().contains('violates foreign key constraint')) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('foreign key violation') ||
+            errStr.contains('violates foreign key constraint')) {
           AppSnackbar.show(
             context,
             message:
@@ -176,9 +187,13 @@ class AttributesProvider extends ChangeNotifier {
             duration: const Duration(seconds: 4),
           );
         } else {
+          String msg = 'Error al eliminar el valor.';
+          if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+            msg = 'Sin conexión a internet.';
+          }
           AppSnackbar.show(
             context,
-            message: 'Error al borrar: $e',
+            message: msg,
             type: SnackbarType.error,
           );
         }

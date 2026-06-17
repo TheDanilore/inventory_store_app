@@ -139,7 +139,13 @@ class OrdersProvider extends ChangeNotifier {
       _totalRecords = response.count;
       _orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
     } catch (e) {
-      _errorMessage = 'Error al cargar pedidos: $e';
+      debugPrint('Error loading orders: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar pedidos.';
+      }
     } finally {
       _isLoading = false;
       _isBackgroundLoading = false;

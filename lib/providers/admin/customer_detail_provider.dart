@@ -133,7 +133,13 @@ class CustomerDetailProvider extends ChangeNotifier {
         _loadAddresses(),
       ]);
     } catch (e) {
-      _errorMessage = 'Error al cargar los datos del cliente: $e';
+      debugPrint('Error loading customer details: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Sin conexión a internet.';
+      } else {
+        _errorMessage = 'Error al cargar los datos del cliente.';
+      }
       debugPrint(_errorMessage);
     } finally {
       _isLoading = false;

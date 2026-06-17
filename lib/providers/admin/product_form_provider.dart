@@ -327,11 +327,17 @@ class ProductFormProvider extends ChangeNotifier {
           );
         }
       } catch (e) {
+        debugPrint('Error deleting product image: $e');
         if (context.mounted) {
+          final errStr = e.toString().toLowerCase();
+          String msg = 'Ocurrió un error al intentar actualizar el estado.';
+          if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+            msg = 'Sin conexión a internet.';
+          }
           AppSnackbar.show(
             context,
-            message: 'Error al eliminar',
-            backgroundColor: AppColors.error,
+            message: msg,
+            type: SnackbarType.error,
           );
         }
         return;
@@ -422,8 +428,14 @@ class ProductFormProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
+      debugPrint('Error deleting product image: $e');
       if (context.mounted) {
-        AppSnackbar.show(context, message: "Error al intentar eliminar: $e");
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error al intentar eliminar.';
+        if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
+        AppSnackbar.show(context, message: msg, type: SnackbarType.error);
       }
     }
   }
@@ -702,11 +714,17 @@ class ProductFormProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
+      debugPrint('Error saving product: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error inesperado.';
+        if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message: 'Error: $e',
-          backgroundColor: AppColors.error,
+          message: msg,
+          type: SnackbarType.error,
         );
       }
       return false;

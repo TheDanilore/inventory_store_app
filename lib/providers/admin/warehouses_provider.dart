@@ -169,12 +169,18 @@ class WarehousesProvider extends ChangeNotifier {
       await fetchWarehouses();
       return true;
     } catch (e) {
+      debugPrint('Error saving warehouse: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Ocurrió un error inesperado al guardar el almacén.';
+        if (errStr.contains('warehouses_name_key')) {
+          msg = 'Ya existe un almacén con ese nombre.';
+        } else if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message: e.toString().contains('warehouses_name_key')
-              ? 'Ya existe un almacén con ese nombre'
-              : 'Error al guardar: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }
@@ -213,10 +219,16 @@ class WarehousesProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
+      debugPrint('Error toggling warehouse status: $e');
       if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        String msg = 'Error al cambiar el estado del almacén.';
+        if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+          msg = 'Sin conexión a internet.';
+        }
         AppSnackbar.show(
           context,
-          message: 'Error al cambiar estado: $e',
+          message: msg,
           type: SnackbarType.error,
         );
       }
