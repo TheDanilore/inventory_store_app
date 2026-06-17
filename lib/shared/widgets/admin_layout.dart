@@ -120,48 +120,52 @@ class AdminLayout extends StatelessWidget {
                 ],
               )
               : null,
-      body: Column(
-        children: [
-          // Offline banner — Animates its height layout size so it doesn't leave gaps
-          Consumer<NetworkProvider>(
-            builder: (context, network, child) {
-              return AnimatedSize(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child:
-                    network.isOnline
-                        ? const SizedBox(width: double.infinity, height: 0)
-                        : Container(
-                          width: double.infinity,
-                          color: const Color(0xFFFF3B30),
-                          padding: const EdgeInsets.symmetric(vertical: 7),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.wifi_off_rounded,
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Sin conexión a internet',
-                                style: TextStyle(
+      body: SafeArea(
+        top: !showAppBar,
+        bottom: false,
+        child: Column(
+          children: [
+            // Offline banner — Animates its height layout size so it doesn't leave gaps
+            Consumer<NetworkProvider>(
+              builder: (context, network, child) {
+                return AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child:
+                      network.isOnline
+                          ? const SizedBox(width: double.infinity, height: 0)
+                          : Container(
+                            width: double.infinity,
+                            color: const Color(0xFFFF3B30),
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.wifi_off_rounded,
                                   color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.2,
+                                  size: 14,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 6),
+                                Text(
+                                  'Sin conexión a internet',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-              );
-            },
-          ),
-          Expanded(child: body),
-        ],
+                );
+              },
+            ),
+            Expanded(child: body),
+          ],
+        ),
       ),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,

@@ -244,7 +244,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               const double fabsBottomPadding = 54;
 
               final topBarSliver = SliverAppBar(
-                backgroundColor: Colors.white,
+                backgroundColor: const Color(0xFFF7F8FC),
                 elevation: 0,
                 shadowColor: Colors.black.withValues(alpha: 0.06),
                 surfaceTintColor: Colors.transparent,
