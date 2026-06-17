@@ -113,10 +113,10 @@ class AdminCatalogProvider extends ChangeNotifier {
 
   // fetchMoreProducts has been replaced by setPage
 
-  Future<({List<ProductModel> products, Map<String, String> matches, int totalCount})> _loadFromService({
-    required int offset,
-    required int limit,
-  }) async {
+  Future<
+    ({List<ProductModel> products, Map<String, String> matches, int totalCount})
+  >
+  _loadFromService({required int offset, required int limit}) async {
     if (_searchByIngredient) {
       if (_searchTerm.trim().isNotEmpty) {
         return await _service.loadProductsByIngredient(
@@ -128,7 +128,11 @@ class AdminCatalogProvider extends ChangeNotifier {
           limit: limit,
         );
       } else {
-        return (products: <ProductModel>[], matches: <String, String>{}, totalCount: 0);
+        return (
+          products: <ProductModel>[],
+          matches: <String, String>{},
+          totalCount: 0,
+        );
       }
     }
 
@@ -140,13 +144,17 @@ class AdminCatalogProvider extends ChangeNotifier {
       offset: offset,
       limit: limit,
     );
-    return (products: productsResp.products, matches: <String, String>{}, totalCount: productsResp.totalCount);
+    return (
+      products: productsResp.products,
+      matches: <String, String>{},
+      totalCount: productsResp.totalCount,
+    );
   }
 
   void setSearchTerm(String term) {
     if (_searchTerm == term) return;
     _searchTerm = term;
-    
+
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       refreshProducts();
@@ -163,7 +171,8 @@ class AdminCatalogProvider extends ChangeNotifier {
     if (_searchByIngredient == value) return;
     _searchByIngredient = value;
     if (value) {
-      _selectedCategoryId = null; // Clear category when ingredient search is active
+      _selectedCategoryId =
+          null; // Clear category when ingredient search is active
     }
     refreshProducts();
   }

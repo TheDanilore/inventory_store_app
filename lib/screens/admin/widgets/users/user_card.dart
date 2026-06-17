@@ -223,8 +223,7 @@ class _UserCardState extends State<UserCard> {
                             child: CupertinoSwitch(
                               value: isActive,
                               activeTrackColor: Colors.green,
-                              onChanged:
-                                  (val) => _handleToggle(isActive),
+                              onChanged: (val) => _handleToggle(isActive),
                             ),
                           ),
                         ),

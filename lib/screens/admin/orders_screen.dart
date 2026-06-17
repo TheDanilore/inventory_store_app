@@ -554,7 +554,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   isProcessing: provider.isOrderProcessing(
                                     order.id,
                                   ),
-                                  isGeneratingPDF: provider.isGeneratingPDF(order.id),
+                                  isGeneratingPDF: provider.isGeneratingPDF(
+                                    order.id,
+                                  ),
                                   onTap: () => _showOrderDetails(order),
                                   onUpdateStatus:
                                       (o, s) => _updateOrderStatus(o, s),

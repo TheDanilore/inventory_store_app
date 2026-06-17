@@ -64,7 +64,11 @@ class CartWalletSummary extends StatelessWidget {
                     color: Colors.amber.shade500.withValues(alpha: 0.5),
                   ),
                 ),
-                child: const Icon(Icons.stars_rounded, color: Colors.amber, size: 28),
+                child: const Icon(
+                  Icons.stars_rounded,
+                  color: Colors.amber,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -105,7 +109,11 @@ class CartWalletSummary extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.trending_up_rounded, color: Colors.blueGrey.shade300, size: 16),
+              Icon(
+                Icons.trending_up_rounded,
+                color: Colors.blueGrey.shade300,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Ganarás $puntosAGanar monedas con este pedido',

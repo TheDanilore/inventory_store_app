@@ -21,9 +21,10 @@ class PointsGameActionsSection extends StatelessWidget {
       if (r > 0) {
         final newBalance = (wallet.balance ?? 0) + r;
         try {
-          await Supabase.instance.client.from('profiles').update({
-            'wallet_balance': newBalance,
-          }).eq('id', provider.profileId!);
+          await Supabase.instance.client
+              .from('profiles')
+              .update({'wallet_balance': newBalance})
+              .eq('id', provider.profileId!);
           wallet.addLocalBalance(r);
         } catch (e) {
           debugPrint('Error actualizando balance tras juego: $e');
