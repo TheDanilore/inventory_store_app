@@ -210,7 +210,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       ),
                       TextButton(
                         onPressed: () async {
-                          final result = await context.push<bool>('/admin/inventory-exit-form');
+                          final result = await context.push<bool>(
+                            '/admin/inventory-exit-form',
+                          );
                           _checkDraft();
                           if (result == true && context.mounted) {
                             context.read<InventoryExitsProvider>().initLoad();
@@ -296,10 +298,15 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                           ),
                         )
                         : provider.exits.isEmpty
-                        ? AppEmptyState(icon: Icons.inventory_2_outlined, title: 'Sin Resultados', message: provider.searchQuery.isEmpty &&
+                        ? AppEmptyState(
+                          icon: Icons.inventory_2_outlined,
+                          title: 'Sin Resultados',
+                          message:
+                              provider.searchQuery.isEmpty &&
                                       provider.dateRange == null
                                   ? 'No hay salidas registradas'
-                                  : 'Sin resultados para los filtros')
+                                  : 'Sin resultados para los filtros',
+                        )
                         : Column(
                           children: [
                             Padding(
@@ -368,7 +375,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
-              final result = await context.push<bool>('/admin/inventory-exit-form');
+              final result = await context.push<bool>(
+                '/admin/inventory-exit-form',
+              );
               if (result == true) {
                 provider.loadExits(isRefresh: true);
               }
@@ -625,5 +634,3 @@ class _Pill extends StatelessWidget {
     );
   }
 }
-
-

@@ -284,9 +284,17 @@ class ProductDetailProvider extends ChangeNotifier {
     return null;
   }
 
-  double get baseSalePrice => selectedVariant?.salePrice ?? product.salePrice;
-  double? get baseWholesalePrice =>
-      selectedVariant?.wholesalePrice ?? product.wholesalePrice;
+  double get baseSalePrice {
+    final vSale = selectedVariant?.salePrice;
+    if (vSale != null && vSale > 0) return vSale;
+    return product.salePrice;
+  }
+
+  double? get baseWholesalePrice {
+    final vWholesale = selectedVariant?.wholesalePrice;
+    if (vWholesale != null && vWholesale > 0) return vWholesale;
+    return product.wholesalePrice;
+  }
   int get baseWholesaleMinQty =>
       selectedVariant?.wholesaleMinQuantity ?? product.wholesaleMinQuantity;
 

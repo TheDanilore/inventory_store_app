@@ -284,12 +284,14 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     hasScrollBody: false,
                     child: AppEmptyState(
                       icon: Icons.receipt_long_rounded,
-                      title: _searchCtrl.text.isNotEmpty
-                          ? 'No se encontraron resultados'
-                          : (provider.withDebtOnly
-                              ? 'No hay créditos con deuda'
-                              : 'No hay líneas de crédito registradas'),
-                      message: 'Intenta cambiar los filtros o realizar otra búsqueda.',
+                      title:
+                          _searchCtrl.text.isNotEmpty
+                              ? 'No se encontraron resultados'
+                              : (provider.withDebtOnly
+                                  ? 'No hay créditos con deuda'
+                                  : 'No hay líneas de crédito registradas'),
+                      message:
+                          'Intenta cambiar los filtros o realizar otra búsqueda.',
                     ),
                   )
                 else

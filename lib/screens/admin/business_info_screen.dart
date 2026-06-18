@@ -34,7 +34,8 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   void _initControllers() {
     final config = context.read<AppConfigProvider>();
     if (config.businessName != 'Cargando...') {
-      _businessNameCtrl.text = config.businessName == 'Sin configurar' ? '' : config.businessName;
+      _businessNameCtrl.text =
+          config.businessName == 'Sin configurar' ? '' : config.businessName;
       _taxIdCtrl.text = config.businessTaxId;
       _addressCtrl.text = config.businessAddress;
       _phoneCtrl.text = config.businessPhone;
@@ -51,7 +52,8 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     if (config.businessName != 'Cargando...') {
       config.removeListener(_onConfigLoaded);
       if (mounted) {
-        _businessNameCtrl.text = config.businessName == 'Sin configurar' ? '' : config.businessName;
+        _businessNameCtrl.text =
+            config.businessName == 'Sin configurar' ? '' : config.businessName;
         _taxIdCtrl.text = config.businessTaxId;
         _addressCtrl.text = config.businessAddress;
         _phoneCtrl.text = config.businessPhone;
@@ -107,125 +109,132 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     return AdminLayout(
       title: 'Información del Negocio',
       showBackButton: true,
-      body: !_isInitialized
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _BusinessPreviewCard(
-                    businessName: config.businessName,
-                    businessLogoUrl: config.businessLogoUrl,
-                    businessAddress: config.businessAddress,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Formulario
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.grey.shade200),
+      body:
+          !_isInitialized
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _BusinessPreviewCard(
+                      businessName: config.businessName,
+                      businessLogoUrl: config.businessLogoUrl,
+                      businessAddress: config.businessAddress,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Datos del negocio',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                    const SizedBox(height: 16),
+
+                    // Formulario
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Datos del negocio',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _businessNameCtrl,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
-                                labelText: 'Nombre del negocio',
-                                hintText: 'Mi Tienda',
-                                border: OutlineInputBorder(),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _businessNameCtrl,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nombre del negocio',
+                                  hintText: 'Mi Tienda',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator:
+                                    (val) =>
+                                        val == null || val.trim().isEmpty
+                                            ? 'El nombre del negocio es requerido'
+                                            : null,
                               ),
-                              validator: (val) => val == null || val.trim().isEmpty 
-                                  ? 'El nombre del negocio es requerido' 
-                                  : null,
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _taxIdCtrl,
-                              decoration: const InputDecoration(
-                                labelText: 'RUC / Tax ID (Opcional)',
-                                hintText: '20123456789',
-                                border: OutlineInputBorder(),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _taxIdCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'RUC / Tax ID (Opcional)',
+                                  hintText: '20123456789',
+                                  border: OutlineInputBorder(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _addressCtrl,
-                              maxLines: 2,
-                              textCapitalization: TextCapitalization.sentences,
-                              decoration: const InputDecoration(
-                                labelText: 'Dirección (Opcional)',
-                                hintText: 'Av. Principal 123',
-                                border: OutlineInputBorder(),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _addressCtrl,
+                                maxLines: 2,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                decoration: const InputDecoration(
+                                  labelText: 'Dirección (Opcional)',
+                                  hintText: 'Av. Principal 123',
+                                  border: OutlineInputBorder(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _phoneCtrl,
-                              keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(
-                                labelText: 'Teléfono (Opcional)',
-                                hintText: '999 999 999',
-                                border: OutlineInputBorder(),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _phoneCtrl,
+                                keyboardType: TextInputType.phone,
+                                decoration: const InputDecoration(
+                                  labelText: 'Teléfono (Opcional)',
+                                  hintText: '999 999 999',
+                                  border: OutlineInputBorder(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _logoUrlCtrl,
-                              keyboardType: TextInputType.url,
-                              decoration: const InputDecoration(
-                                labelText: 'URL del logo (Opcional)',
-                                hintText: 'https://...',
-                                border: OutlineInputBorder(),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _logoUrlCtrl,
+                                keyboardType: TextInputType.url,
+                                decoration: const InputDecoration(
+                                  labelText: 'URL del logo (Opcional)',
+                                  hintText: 'https://...',
+                                  border: OutlineInputBorder(),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  Card(
-                    elevation: 0,
-                    color: Colors.teal.shade50,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.teal.shade100),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                        'Esta información se usa en toda la app: título global, menú lateral y vista cliente.',
-                        style: TextStyle(color: Colors.teal),
+                    const SizedBox(height: 16),
+
+                    Card(
+                      elevation: 0,
+                      color: Colors.teal.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: Colors.teal.shade100),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          'Esta información se usa en toda la app: título global, menú lateral y vista cliente.',
+                          style: TextStyle(color: Colors.teal),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  AppPrimaryButton(
-                    label: config.isSavingBusinessInfo ? 'Guardando...' : 'Guardar información',
-                    onPressed: config.isSavingBusinessInfo ? null : _save,
-                  ),
-                ],
+                    const SizedBox(height: 16),
+
+                    AppPrimaryButton(
+                      label:
+                          config.isSavingBusinessInfo
+                              ? 'Guardando...'
+                              : 'Guardar información',
+                      onPressed: config.isSavingBusinessInfo ? null : _save,
+                    ),
+                  ],
+                ),
               ),
-            ),
     );
   }
 }
@@ -256,10 +265,7 @@ class _BusinessPreviewCard extends StatelessWidget {
           children: [
             const Text(
               'Vista previa',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Container(
@@ -288,21 +294,23 @@ class _BusinessPreviewCard extends StatelessWidget {
                       child: CachedNetworkImage(
                         imageUrl: businessLogoUrl,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                        placeholder:
+                            (context, url) => const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => const Icon(
-                          Icons.storefront_rounded,
-                          color: Colors.white,
-                          size: 34,
-                        ),
+                        errorWidget:
+                            (context, url, error) => const Icon(
+                              Icons.storefront_rounded,
+                              color: Colors.white,
+                              size: 34,
+                            ),
                       ),
                     )
                   else
@@ -327,10 +335,7 @@ class _BusinessPreviewCard extends StatelessWidget {
                     businessAddress.isNotEmpty
                         ? businessAddress
                         : 'Dirección principal',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      height: 1.35,
-                    ),
+                    style: const TextStyle(color: Colors.white70, height: 1.35),
                   ),
                 ],
               ),

@@ -270,14 +270,17 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(width: 12),
-                      AdminProfileAvatar(onTap: () {
-                        final user = Supabase.instance.client.auth.currentUser;
-                        if (user == null) {
-                          context.go('/login');
-                        } else {
-                          context.push('/admin/profile');
-                        }
-                      }),
+                      AdminProfileAvatar(
+                        onTap: () {
+                          final user =
+                              Supabase.instance.client.auth.currentUser;
+                          if (user == null) {
+                            context.go('/login');
+                          } else {
+                            context.push('/admin/profile');
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -296,7 +299,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           value: 'filter_all',
                           child: Text('Ver Todos'),
                         ),
-                      const PopupMenuItem(value: 'export', child: Text('Exportar')),
+                      const PopupMenuItem(
+                        value: 'export',
+                        child: Text('Exportar'),
+                      ),
                       const PopupMenuItem(
                         value: 'sync',
                         child: Text('Forzar Sincronización'),
@@ -328,10 +334,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   ),
                   const SizedBox(width: 8),
                   Builder(
-                    builder: (context) => AdminAppBarIconButton(
-                      icon: Icons.menu_rounded,
-                      onTap: () => Scaffold.of(context).openEndDrawer(),
-                    ),
+                    builder:
+                        (context) => AdminAppBarIconButton(
+                          icon: Icons.menu_rounded,
+                          onTap: () => Scaffold.of(context).openEndDrawer(),
+                        ),
                   ),
                   const SizedBox(width: 12),
                 ],
@@ -531,7 +538,11 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => maxHeight;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return child;
   }
 

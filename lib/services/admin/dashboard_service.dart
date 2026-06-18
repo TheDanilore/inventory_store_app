@@ -136,12 +136,11 @@ class DashboardService {
                   ? (variant['unit_cost'] as num).toDouble()
                   : prodUnitCost;
 
-          final varSalePrice =
-              (variant['sale_price'] as num?)?.toDouble() ?? prodSalePrice;
+          final rawVarSalePrice = (variant['sale_price'] as num?)?.toDouble() ?? 0.0;
+          final varSalePrice = rawVarSalePrice > 0 ? rawVarSalePrice : prodSalePrice;
 
-          final varWholesalePrice =
-              (variant['wholesale_price'] as num?)?.toDouble() ??
-              prodWholesalePrice;
+          final rawVarWholesalePrice = (variant['wholesale_price'] as num?)?.toDouble() ?? 0.0;
+          final varWholesalePrice = rawVarWholesalePrice > 0 ? rawVarWholesalePrice : prodWholesalePrice;
           final varWholesaleMinQty =
               (variant['wholesale_min_quantity'] as num?)?.toInt() ??
               prodWholesaleMinQty;

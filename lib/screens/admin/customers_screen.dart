@@ -70,13 +70,16 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   }
 
   void _openDetail(CustomerSummary customer) {
-    context.push('/admin/customer-detail/${customer.id}', extra: {'customer': customer}).then((
-      _,
-    ) {
-      if (mounted) {
-        context.read<CustomersProvider>().reload();
-      }
-    });
+    context
+        .push(
+          '/admin/customer-detail/${customer.id}',
+          extra: {'customer': customer},
+        )
+        .then((_) {
+          if (mounted) {
+            context.read<CustomersProvider>().reload();
+          }
+        });
   }
 
   @override

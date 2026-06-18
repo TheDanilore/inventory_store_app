@@ -396,7 +396,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               ),
                         )
                         : filtered.isEmpty
-                        ? AppEmptyState(icon: Icons.shopping_cart_outlined, title: 'Sin Resultados', message: 'Sin resultados para los filtros aplicados')
+                        ? AppEmptyState(
+                          icon: Icons.shopping_cart_outlined,
+                          title: 'Sin Resultados',
+                          message: 'Sin resultados para los filtros aplicados',
+                        )
                         : Column(
                           children: [
                             Padding(
@@ -632,5 +636,3 @@ class _DateRangeButton extends StatelessWidget {
     );
   }
 }
-
-

@@ -29,7 +29,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    
+
     // Fetch data initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {

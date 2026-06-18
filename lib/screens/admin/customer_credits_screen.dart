@@ -194,18 +194,18 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                         : provider.errorMessage.isNotEmpty &&
                             provider.accounts.isEmpty
                         ? AppEmptyState(
-                            icon: Icons.error_outline_rounded,
-                            color: AppColors.danger,
-                            title: 'Error',
-                            message: provider.errorMessage,
-                          )
+                          icon: Icons.error_outline_rounded,
+                          color: AppColors.danger,
+                          title: 'Error',
+                          message: provider.errorMessage,
+                        )
                         : provider.accounts.isEmpty
                         ? const AppEmptyState(
-                            icon: Icons.credit_card_off_rounded,
-                            title: 'No se encontraron cuentas',
-                            message:
-                                'Puedes crear una nueva línea de crédito\nusando el botón superior.',
-                          )
+                          icon: Icons.credit_card_off_rounded,
+                          title: 'No se encontraron cuentas',
+                          message:
+                              'Puedes crear una nueva línea de crédito\nusando el botón superior.',
+                        )
                         : ListView.separated(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -244,7 +244,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
       ),
     );
   }
-  
+
   void _showAccountOptions(
     BuildContext context,
     var account,

@@ -63,23 +63,26 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
                   decoration: InputDecoration(
                     hintText: 'Buscar componente químico...',
                     hintStyle: TextStyle(
-                        color: Colors.grey.shade400, fontSize: 14),
+                      color: Colors.grey.shade400,
+                      fontSize: 14,
+                    ),
                     prefixIcon: Icon(
                       Icons.search_rounded,
                       color: Colors.grey.shade400,
                     ),
-                    suffixIcon: provider.searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(
-                              Icons.clear_rounded,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              provider.clearSearch();
-                            },
-                          )
-                        : null,
+                    suffixIcon:
+                        provider.searchQuery.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                provider.clearSearch();
+                              },
+                            )
+                            : null,
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
@@ -106,7 +109,10 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
+                ),
                 child: Text(
                   'Total: ${provider.totalIngredients} componentes',
                   style: TextStyle(
@@ -122,102 +128,118 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
                 child: RefreshIndicator(
                   onRefresh: () => provider.fetchIngredients(),
                   color: AppColors.primary,
-                  child: provider.isLoading
-                      ? const ActiveIngredientsSkeleton(itemCount: 8)
-                      : provider.ingredients.isEmpty
+                  child:
+                      provider.isLoading
+                          ? const ActiveIngredientsSkeleton(itemCount: 8)
+                          : provider.ingredients.isEmpty
                           ? ListView(
-                              children: [
-                                SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                                Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.science_outlined,
-                                        size: 60,
-                                        color: Colors.grey.shade300,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        provider.searchQuery.isNotEmpty
-                                            ? 'No se encontraron componentes'
-                                            : 'No hay componentes registrados',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade500,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.2,
                               ),
-                              itemCount: provider.ingredients.length,
-                              itemBuilder: (context, index) {
-                                final item = provider.ingredients[index];
-                                return Card(
-                                  elevation: 0,
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: BorderSide(color: Colors.grey.shade200),
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.science_outlined,
+                                      size: 60,
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      provider.searchQuery.isNotEmpty
+                                          ? 'No se encontraron componentes'
+                                          : 'No hay componentes registrados',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                          : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            itemCount: provider.ingredients.length,
+                            itemBuilder: (context, index) {
+                              final item = provider.ingredients[index];
+                              return Card(
+                                elevation: 0,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: Colors.grey.shade200),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 4,
                                   ),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    leading: CircleAvatar(
-                                      backgroundColor: AppColors.primary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      child: const Icon(
-                                        Icons.science_rounded,
-                                        color: AppColors.primary,
-                                      ),
+                                  leading: CircleAvatar(
+                                    backgroundColor: AppColors.primary
+                                        .withValues(alpha: 0.1),
+                                    child: const Icon(
+                                      Icons.science_rounded,
+                                      color: AppColors.primary,
                                     ),
-                                    title: Text(
-                                      item['name'],
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  title: Text(
+                                    item['name'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    subtitle: item['description'] != null
-                                        ? Text(
+                                  ),
+                                  subtitle:
+                                      item['description'] != null
+                                          ? Text(
                                             item['description'],
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           )
-                                        : null,
-                                    trailing: PopupMenuButton(
-                                      onSelected: (val) {
-                                        if (val == 'edit') {
-                                          _showIngredientForm(item);
-                                        }
-                                        if (val == 'delete') {
-                                          provider.deleteIngredient(context, item['id'], item['name']);
-                                        }
-                                      },
-                                      itemBuilder: (context) => [
-                                        const PopupMenuItem(
-                                          value: 'edit',
-                                          child: Text('Editar'),
-                                        ),
-                                        const PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text(
-                                            'Eliminar',
-                                            style: TextStyle(color: Colors.red),
+                                          : null,
+                                  trailing: PopupMenuButton(
+                                    onSelected: (val) {
+                                      if (val == 'edit') {
+                                        _showIngredientForm(item);
+                                      }
+                                      if (val == 'delete') {
+                                        provider.deleteIngredient(
+                                          context,
+                                          item['id'],
+                                          item['name'],
+                                        );
+                                      }
+                                    },
+                                    itemBuilder:
+                                        (context) => [
+                                          const PopupMenuItem(
+                                            value: 'edit',
+                                            child: Text('Editar'),
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text(
+                                              'Eliminar',
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
+                          ),
                 ),
               ),
 

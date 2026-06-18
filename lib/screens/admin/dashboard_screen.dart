@@ -348,34 +348,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
                           child: Row(
-                            children: SalesTimeFilter.values.map((filter) {
-                              final isSelected = _salesFilter == filter;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  showCheckmark: false,
-                                  label: Text(_filterName(filter)),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    if (selected) _onFilterChanged(filter);
-                                  },
-                                  labelStyle: TextStyle(
-                                    color: isSelected ? Colors.white : AppColors.textPrimary,
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                  selectedColor: AppColors.primary,
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                                  side: isSelected ? BorderSide.none : BorderSide(color: AppColors.primary.withValues(alpha: 0.15)),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                ),
-                              );
-                            }).toList(),
+                            children:
+                                SalesTimeFilter.values.map((filter) {
+                                  final isSelected = _salesFilter == filter;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      showCheckmark: false,
+                                      label: Text(_filterName(filter)),
+                                      selected: isSelected,
+                                      onSelected: (selected) {
+                                        if (selected) _onFilterChanged(filter);
+                                      },
+                                      labelStyle: TextStyle(
+                                        color:
+                                            isSelected
+                                                ? Colors.white
+                                                : AppColors.textPrimary,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                      selectedColor: AppColors.primary,
+                                      backgroundColor: AppColors.primary
+                                          .withValues(alpha: 0.08),
+                                      side:
+                                          isSelected
+                                              ? BorderSide.none
+                                              : BorderSide(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.15),
+                                              ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                           ),
                         ),
                       ),
@@ -527,7 +546,11 @@ class _HealthSummaryBar extends StatelessWidget {
         ),
         child: const Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+            Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.success,
+              size: 20,
+            ),
             SizedBox(width: 12),
             Text(
               'Todo bajo control. No hay alertas para hoy.',
@@ -564,7 +587,11 @@ class _HealthSummaryBar extends StatelessWidget {
               color: AppColors.error.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
+            child: const Icon(
+              Icons.warning_rounded,
+              color: AppColors.error,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -583,7 +610,8 @@ class _HealthSummaryBar extends StatelessWidget {
                 Text(
                   [
                     if (lowStockCount > 0) '$lowStockCount bajo stock',
-                    if (criticalBatchesCount > 0) '$criticalBatchesCount lotes críticos',
+                    if (criticalBatchesCount > 0)
+                      '$criticalBatchesCount lotes críticos',
                   ].join(' · '),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
@@ -601,7 +629,10 @@ class _HealthSummaryBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               minimumSize: const Size(0, 36),
             ),
-            icon: const Text('Revisar', style: TextStyle(fontWeight: FontWeight.w700)),
+            icon: const Text(
+              'Revisar',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             label: const Icon(Icons.chevron_right_rounded, size: 18),
           ),
         ],

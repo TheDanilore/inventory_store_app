@@ -39,10 +39,7 @@ class _InventoryScreenState extends State<InventoryScreen>
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(
-                bottom: BorderSide(
-                  color: AppColors.border,
-                  width: 1,
-                ),
+                bottom: BorderSide(color: AppColors.border, width: 1),
               ),
             ),
             child: TabBar(

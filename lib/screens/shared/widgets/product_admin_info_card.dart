@@ -15,15 +15,28 @@ class ProductAdminInfoCard extends StatelessWidget {
     if (!provider.isAdmin) return const SizedBox.shrink();
 
     final cost =
-        provider.selectedVariant?.unitCost ?? provider.product.unitCost;
+        ((provider.selectedVariant?.unitCost ?? 0) > 0)
+            ? provider.selectedVariant!.unitCost!
+            : provider.product.unitCost;
     final wPrice = provider.baseWholesalePrice;
     final wMinQty = provider.baseWholesaleMinQty;
     final rPoint = provider.selectedVariant?.reorderPoint ?? 0;
-    final profit = provider.effectivePrice - cost;
-    final margin =
+
+    final retailProfitUnit = provider.effectivePrice - cost;
+    final retailMargin =
         (provider.effectivePrice > 0)
-            ? (profit / provider.effectivePrice) * 100
+            ? (retailProfitUnit / provider.effectivePrice) * 100
             : 0.0;
+
+    final wholesaleProfitUnit = wPrice != null ? wPrice - cost : 0.0;
+    final wholesaleMargin =
+        (wPrice != null && wPrice > 0)
+            ? (wholesaleProfitUnit / wPrice) * 100
+            : 0.0;
+
+    final effectiveStock = provider.effectiveStock;
+    final projectedRetail = retailProfitUnit * effectiveStock;
+    final projectedWholesale = wholesaleProfitUnit * effectiveStock;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -73,19 +86,20 @@ class ProductAdminInfoCard extends StatelessWidget {
           _AdminRow(
             Icons.trending_up_rounded,
             AppColors.success,
-            'Ganancia estim.',
-            'S/ ${profit.toStringAsFixed(2)}',
-            badge: '${margin.toStringAsFixed(1)}%',
+            'G. Minorista (und)',
+            'S/ ${retailProfitUnit.toStringAsFixed(2)}',
+            badge: '${retailMargin.toStringAsFixed(1)}%',
             valueColor: AppColors.success,
           ),
           if (wPrice != null) ...[
             const SizedBox(height: 8),
             _AdminRow(
               Icons.people_rounded,
-              AppColors.amber,
-              'Precio mayor',
-              'S/ ${wPrice.toStringAsFixed(2)}',
-              badge: 'x$wMinQty',
+              AppColors.primary,
+              'G. Mayorista (und)',
+              'S/ ${wholesaleProfitUnit.toStringAsFixed(2)}',
+              badge: '${wholesaleMargin.toStringAsFixed(1)}%',
+              valueColor: AppColors.primary,
             ),
           ],
           const SizedBox(height: 8),
@@ -95,6 +109,26 @@ class ProductAdminInfoCard extends StatelessWidget {
             'Pto. reorden',
             '$rPoint unds.',
           ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 12),
+          _AdminRow(
+            Icons.bar_chart_rounded,
+            AppColors.teal,
+            'Proy. Minorista',
+            'S/ ${projectedRetail.toStringAsFixed(2)}',
+            badge: 'Todo el stock',
+          ),
+          if (wPrice != null) ...[
+            const SizedBox(height: 8),
+            _AdminRow(
+              Icons.bar_chart_rounded,
+              AppColors.blue,
+              'Proy. Mayorista',
+              'S/ ${projectedWholesale.toStringAsFixed(2)}',
+              badge: 'Todo el stock',
+            ),
+          ],
         ],
       ),
     );

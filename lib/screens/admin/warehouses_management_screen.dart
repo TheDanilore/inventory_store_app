@@ -64,23 +64,27 @@ class _WarehousesManagementScreenState
                   onChanged: provider.onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Buscar almacén por nombre o dirección...',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 14,
+                    ),
                     prefixIcon: Icon(
                       Icons.search_rounded,
                       color: Colors.grey.shade400,
                     ),
-                    suffixIcon: provider.searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(
-                              Icons.clear_rounded,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              provider.clearSearch();
-                            },
-                          )
-                        : null,
+                    suffixIcon:
+                        provider.searchQuery.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                provider.clearSearch();
+                              },
+                            )
+                            : null,
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
@@ -107,7 +111,10 @@ class _WarehousesManagementScreenState
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
+                ),
                 child: Text(
                   'Total: ${provider.totalWarehouses} almacenes',
                   style: TextStyle(
@@ -123,165 +130,194 @@ class _WarehousesManagementScreenState
                 child: RefreshIndicator(
                   onRefresh: () => provider.fetchWarehouses(),
                   color: AppColors.primary,
-                  child: provider.isLoading
-                      ? const WarehousesSkeleton(itemCount: 5)
-                      : provider.warehouses.isEmpty
+                  child:
+                      provider.isLoading
+                          ? const WarehousesSkeleton(itemCount: 5)
+                          : provider.warehouses.isEmpty
                           ? ListView(
-                              children: [
-                                SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                                Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.warehouse_outlined,
-                                        size: 60,
-                                        color: Colors.grey.shade300,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        provider.searchQuery.isNotEmpty
-                                            ? 'No se encontraron almacenes'
-                                            : 'No hay almacenes registrados',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade500,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.2,
                               ),
-                              itemCount: provider.warehouses.length,
-                              itemBuilder: (context, index) {
-                                final wh = provider.warehouses[index];
-                                return Card(
-                                  elevation: 0,
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    side: BorderSide(color: Colors.grey.shade200),
-                                  ),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () => _showWarehouseForm(wh),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 46,
-                                            height: 46,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                              borderRadius: BorderRadius.circular(12),
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.warehouse_outlined,
+                                      size: 60,
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      provider.searchQuery.isNotEmpty
+                                          ? 'No se encontraron almacenes'
+                                          : 'No hay almacenes registrados',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                          : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            itemCount: provider.warehouses.length,
+                            itemBuilder: (context, index) {
+                              final wh = provider.warehouses[index];
+                              return Card(
+                                elevation: 0,
+                                margin: const EdgeInsets.only(bottom: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(color: Colors.grey.shade200),
+                                ),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () => _showWarehouseForm(wh),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 46,
+                                          height: 46,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.1,
                                             ),
-                                            child: const Icon(
-                                              Icons.store_mall_directory_rounded,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  wh.name,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 15,
-                                                    color: Colors.black87,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.location_on_rounded,
-                                                      size: 12,
-                                                      color: Colors.grey.shade500,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(
-                                                        wh.address?.isNotEmpty == true
-                                                            ? wh.address!
-                                                            : 'Sin dirección registrada',
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.grey.shade600,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
+                                            borderRadius: BorderRadius.circular(
+                                              12,
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                          child: const Icon(
+                                            Icons.store_mall_directory_rounded,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: wh.isActive
-                                                      ? Colors.green.shade50
-                                                      : Colors.red.shade50,
-                                                  borderRadius: BorderRadius.circular(6),
-                                                  border: Border.all(
-                                                    color: wh.isActive
-                                                        ? Colors.green.shade200
-                                                        : Colors.red.shade200,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  wh.isActive ? 'ACTIVO' : 'INACTIVO',
-                                                  style: TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: wh.isActive
-                                                        ? Colors.green.shade700
-                                                        : Colors.red.shade700,
-                                                  ),
+                                              Text(
+                                                wh.name,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 15,
+                                                  color: Colors.black87,
                                                 ),
                                               ),
                                               const SizedBox(height: 4),
-                                              Switch(
-                                                value: wh.isActive,
-                                                onChanged: (val) {
-                                                  provider.toggleWarehouseStatus(context, wh, val);
-                                                },
-                                                activeThumbColor: AppColors.primary,
-                                                materialTapTargetSize:
-                                                    MaterialTapTargetSize.shrinkWrap,
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.location_on_rounded,
+                                                    size: 12,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: Text(
+                                                      wh.address?.isNotEmpty ==
+                                                              true
+                                                          ? wh.address!
+                                                          : 'Sin dirección registrada',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            Colors
+                                                                .grey
+                                                                .shade600,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    wh.isActive
+                                                        ? Colors.green.shade50
+                                                        : Colors.red.shade50,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color:
+                                                      wh.isActive
+                                                          ? Colors
+                                                              .green
+                                                              .shade200
+                                                          : Colors.red.shade200,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                wh.isActive
+                                                    ? 'ACTIVO'
+                                                    : 'INACTIVO',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                  color:
+                                                      wh.isActive
+                                                          ? Colors
+                                                              .green
+                                                              .shade700
+                                                          : Colors.red.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Switch(
+                                              value: wh.isActive,
+                                              onChanged: (val) {
+                                                provider.toggleWarehouseStatus(
+                                                  context,
+                                                  wh,
+                                                  val,
+                                                );
+                                              },
+                                              activeThumbColor:
+                                                  AppColors.primary,
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
+                          ),
                 ),
               ),
 

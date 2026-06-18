@@ -313,11 +313,16 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     provider.isLoading
                         ? const _EntriesSkeleton()
                         : provider.entries.isEmpty
-                        ? AppEmptyState(icon: Icons.inbox_outlined, title: 'Sin Resultados', message: provider.searchQuery.isEmpty &&
+                        ? AppEmptyState(
+                          icon: Icons.inbox_outlined,
+                          title: 'Sin Resultados',
+                          message:
+                              provider.searchQuery.isEmpty &&
                                       provider.dateRange == null &&
                                       provider.warehouseFilter == 'Todos'
                                   ? 'No hay entradas registradas'
-                                  : 'Sin resultados para los filtros aplicados')
+                                  : 'Sin resultados para los filtros aplicados',
+                        )
                         : Column(
                           children: [
                             Padding(
@@ -668,8 +673,6 @@ class _Pill extends StatelessWidget {
     );
   }
 }
-
-
 
 class _EntriesSkeleton extends StatelessWidget {
   const _EntriesSkeleton();
