@@ -36,48 +36,40 @@ class _InventoryScreenState extends State<InventoryScreen>
         children: [
           // ── Tab Bar ──
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(
+                  color: AppColors.border,
+                  width: 1,
+                ),
+              ),
             ),
             child: TabBar(
               controller: _tabController,
-              indicator: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              labelColor: Colors.white,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 3,
+              labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondary,
               labelStyle: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 14,
                 letterSpacing: 0.1,
               ),
               unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
               tabs: const [
                 Tab(
-                  icon: Icon(Icons.inventory_2_rounded, size: 17),
+                  icon: Icon(Icons.inventory_2_rounded, size: 20),
                   text: 'Stock General',
-                  iconMargin: EdgeInsets.only(bottom: 2),
+                  iconMargin: EdgeInsets.only(bottom: 4),
                 ),
                 Tab(
-                  icon: Icon(Icons.event_busy_rounded, size: 17),
+                  icon: Icon(Icons.event_busy_rounded, size: 20),
                   text: 'Estado de Lotes',
-                  iconMargin: EdgeInsets.only(bottom: 2),
+                  iconMargin: EdgeInsets.only(bottom: 4),
                 ),
               ],
             ),

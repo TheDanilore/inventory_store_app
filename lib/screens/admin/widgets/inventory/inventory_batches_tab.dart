@@ -125,29 +125,51 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: _onSearchChanged,
-                  style: const TextStyle(fontSize: 14),
+                  style: const TextStyle(fontSize: 15),
+                  textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
                     hintText: 'Buscar producto o lote...',
                     hintStyle: TextStyle(
                       color: AppColors.textSecondary.withValues(alpha: 0.7),
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                     prefixIcon: Icon(
                       Icons.search_rounded,
                       size: 20,
                       color: AppColors.textSecondary,
                     ),
-                    suffixIcon:
-                        _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                              color: AppColors.textSecondary,
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                provider.setBatchSearch('');
-                              },
-                            )
-                            : null,
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchCtrl.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            color: AppColors.textSecondary,
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              provider.setBatchSearch('');
+                            },
+                          ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.qr_code_scanner_rounded,
+                            size: 20,
+                          ),
+                          color: AppColors.primary,
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'La función de escáner QR estará disponible pronto.',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -160,17 +182,27 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
 
             if (!provider.isLoadingBatches && provider.batchItems.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Mostrando ${(provider.currentBatchPage * InventoryProvider.batchPageSize) + 1}–${((provider.currentBatchPage * InventoryProvider.batchPageSize) + provider.batchItems.length).clamp(0, provider.totalBatchItems)} de ${provider.totalBatchItems} lotes',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Resultados',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
+                    Text(
+                      '${(provider.currentBatchPage * InventoryProvider.batchPageSize) + 1}–${((provider.currentBatchPage * InventoryProvider.batchPageSize) + provider.batchItems.length).clamp(0, provider.totalBatchItems)} de ${provider.totalBatchItems}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -179,9 +211,18 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                   provider.isLoadingBatches
                       ? const _InventoryBatchesSkeleton()
                       : provider.errorMessageBatches.isNotEmpty
-                      ? AppEmptyState(icon: Icons.error_outline_rounded, color: Colors.red, title: 'Error', message: provider.errorMessageBatches)
+                      ? AppEmptyState(
+                        icon: Icons.error_outline_rounded,
+                        color: Colors.red,
+                        title: 'Error',
+                        message: provider.errorMessageBatches,
+                      )
                       : provider.batchItems.isEmpty
-                      ? AppEmptyState(icon: Icons.event_available_rounded, title: 'Sin Resultados', message: 'No hay lotes con stock disponible')
+                      ? AppEmptyState(
+                        icon: Icons.event_available_rounded,
+                        title: 'Sin Resultados',
+                        message: 'No hay lotes con stock disponible',
+                      )
                       : RefreshIndicator(
                         color: AppColors.primary,
                         onRefresh: () async => provider.fetchBatchPage(),
@@ -233,60 +274,62 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? color : AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? color : AppColors.border,
-              width: selected ? 1.5 : 1,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: selected ? color : AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? color : AppColors.border,
+                width: selected ? 1.5 : 1,
+              ),
+              boxShadow:
+                  selected
+                      ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                      : null,
             ),
-            boxShadow:
-                selected
-                    ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Column(
-            children: [
-              Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: selected ? Colors.white : color,
+            child: Column(
+              children: [
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: selected ? Colors.white : color,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color:
-                      selected
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : AppColors.textSecondary,
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color:
+                        selected
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : AppColors.textSecondary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-
-
 
 class _InventoryBatchesSkeleton extends StatelessWidget {
   const _InventoryBatchesSkeleton();

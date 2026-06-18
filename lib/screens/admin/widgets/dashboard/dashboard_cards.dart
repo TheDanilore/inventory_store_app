@@ -216,7 +216,10 @@ class KpiCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: baseColor.withValues(alpha: 0.15), width: 1.5),
+        border: Border.all(
+          color: baseColor.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: baseColor.withValues(alpha: 0.06),
@@ -250,7 +253,10 @@ class KpiCard extends StatelessWidget {
                 Semantics(
                   label: 'Alerta',
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.danger.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -370,10 +376,18 @@ class KpiCardWide extends StatelessWidget {
             child: Opacity(
               opacity: 0.3,
               child: CustomPaint(
-                painter: _SparklinePainter(
-                  color,
-                  [1.2, 1.0, 1.8, 1.5, 2.5, 2.1, 3.2, 2.8, 3.8, 4.2],
-                ),
+                painter: _SparklinePainter(color, [
+                  1.2,
+                  1.0,
+                  1.8,
+                  1.5,
+                  2.5,
+                  2.1,
+                  3.2,
+                  2.8,
+                  3.8,
+                  4.2,
+                ]),
               ),
             ),
           ),
@@ -496,7 +510,10 @@ class GananciaBrutaCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.2), width: 1.5),
+        border: Border.all(
+          color: AppColors.success.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.success.withValues(alpha: 0.08),
@@ -516,10 +533,18 @@ class GananciaBrutaCard extends StatelessWidget {
             child: Opacity(
               opacity: 0.4,
               child: CustomPaint(
-                painter: _SparklinePainter(
-                  AppColors.success,
-                  [1.0, 1.5, 1.2, 2.0, 2.8, 2.4, 3.5, 4.0, 3.8, 5.0],
-                ),
+                painter: _SparklinePainter(AppColors.success, [
+                  1.0,
+                  1.5,
+                  1.2,
+                  2.0,
+                  2.8,
+                  2.4,
+                  3.5,
+                  4.0,
+                  3.8,
+                  5.0,
+                ]),
               ),
             ),
           ),
@@ -552,7 +577,10 @@ class GananciaBrutaCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.textSecondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -573,7 +601,8 @@ class GananciaBrutaCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Semantics(
-                    label: 'Ganancia bruta: S/ ${gananciaBruta.toStringAsFixed(2)}',
+                    label:
+                        'Ganancia bruta: S/ ${gananciaBruta.toStringAsFixed(2)}',
                     child: AnimatedCounter(
                       value: gananciaBruta,
                       formatter: (v) => 'S/ ${v.toStringAsFixed(2)}',
@@ -610,7 +639,8 @@ class GananciaBrutaCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Semantics(
-                    label: 'Margen bruto: ${margenPct.toStringAsFixed(1)} por ciento',
+                    label:
+                        'Margen bruto: ${margenPct.toStringAsFixed(1)} por ciento',
                     child: AnimatedCounter(
                       value: margenPct,
                       formatter: (v) => '${v.toStringAsFixed(1)}%',
@@ -627,15 +657,22 @@ class GananciaBrutaCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: (margenPct / 100).clamp(0.0, 1.0)),
+                  tween: Tween(
+                    begin: 0,
+                    end: (margenPct / 100).clamp(0.0, 1.0),
+                  ),
                   duration: const Duration(milliseconds: 700),
                   curve: Curves.easeOutCubic,
                   builder: (context, animatedValue, _) {
                     return LinearProgressIndicator(
                       value: animatedValue,
                       minHeight: 8,
-                      backgroundColor: AppColors.success.withValues(alpha: 0.15),
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
+                      backgroundColor: AppColors.success.withValues(
+                        alpha: 0.15,
+                      ),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.success,
+                      ),
                     );
                   },
                 ),
@@ -812,7 +849,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
         children: [
           BounceScale(
             onTap: () {
-              // TODO: Redirigir al inventario o expandir
+              // Redirigir al inventario o expandir
               setState(() => _expanded = !_expanded);
             },
             child: Padding(
@@ -877,7 +914,9 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                   ),
                   const SizedBox(width: 8),
                   Icon(
-                    _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    _expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
                     color: AppColors.textSecondary,
                     size: 20,
                   ),
@@ -1257,12 +1296,13 @@ class _SparklinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
-    final paint = Paint()
-      ..color = color.withValues(alpha: 0.4)
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final paint =
+        Paint()
+          ..color = color.withValues(alpha: 0.4)
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
     final path = Path();
     final maxData = data.reduce((a, b) => a > b ? a : b);
@@ -1273,31 +1313,40 @@ class _SparklinePainter extends CustomPainter {
     for (int i = 0; i < data.length; i++) {
       final x = i * stepX;
       // padding superior e inferior virtual (10%)
-      final y = size.height * 0.9 - ((data[i] - minData) / range) * (size.height * 0.8);
-      
+      final y =
+          size.height * 0.9 -
+          ((data[i] - minData) / range) * (size.height * 0.8);
+
       if (i == 0) {
         path.moveTo(x, y);
       } else {
         // Curve to make it smoother
         final prevX = (i - 1) * stepX;
-        final prevY = size.height * 0.9 - ((data[i - 1] - minData) / range) * (size.height * 0.8);
+        final prevY =
+            size.height * 0.9 -
+            ((data[i - 1] - minData) / range) * (size.height * 0.8);
         final cpX = (x + prevX) / 2;
         path.cubicTo(cpX, prevY, cpX, y, x, y);
       }
     }
 
-    final fillPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.0)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    
-    final fillPath = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
+    final fillPaint =
+        Paint()
+          ..style = PaintingStyle.fill
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withValues(alpha: 0.2),
+              color.withValues(alpha: 0.0),
+            ],
+          ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final fillPath =
+        Path.from(path)
+          ..lineTo(size.width, size.height)
+          ..lineTo(0, size.height)
+          ..close();
 
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(path, paint);

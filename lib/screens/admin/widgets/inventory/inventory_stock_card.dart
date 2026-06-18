@@ -26,20 +26,13 @@ class InventoryStockCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border:
-            item.isLowStock
-                ? Border.all(
-                  color: AppColors.warning.withValues(alpha: 0.4),
-                  width: 1.5,
-                )
-                : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -158,22 +151,9 @@ class InventoryStockCard extends StatelessWidget {
                         runSpacing: 4,
                         children: [
                           _PriceTag(
-                            label: 'Venta',
-                            value: 'S/ ${item.salePrice.toStringAsFixed(2)}',
+                            label: 'S/ ${item.salePrice.toStringAsFixed(2)}',
                             color: AppColors.primary,
                           ),
-                          _PriceTag(
-                            label: 'Costo',
-                            value: 'S/ ${item.unitCost.toStringAsFixed(2)}',
-                            color: AppColors.textSecondary,
-                          ),
-                          if (item.wholesalePrice != null)
-                            _PriceTag(
-                              label: 'Mayor×${item.wholesaleMinQty}',
-                              value:
-                                  'S/ ${item.wholesalePrice!.toStringAsFixed(2)}',
-                              color: AppColors.teal,
-                            ),
                         ],
                       ),
                     ],
@@ -183,31 +163,33 @@ class InventoryStockCard extends StatelessWidget {
                 const SizedBox(width: 10),
 
                 // ── Margen ──
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${item.margin.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 20,
-                        color:
-                            item.margin >= 30
-                                ? AppColors.success
-                                : item.margin >= 15
-                                ? AppColors.warning
-                                : AppColors.danger,
-                      ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (item.margin >= 30
+                            ? AppColors.success
+                            : item.margin >= 15
+                            ? AppColors.warning
+                            : AppColors.danger)
+                        .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${item.margin.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      color:
+                          item.margin >= 30
+                              ? AppColors.success
+                              : item.margin >= 15
+                              ? AppColors.warning
+                              : AppColors.danger,
                     ),
-                    const Text(
-                      'margen',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -278,12 +260,12 @@ class _StockBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 52,
-      height: 52,
+      width: 48,
+      height: 48,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
       child: Center(
         child: Column(
@@ -421,43 +403,25 @@ class _BatchMiniList extends StatelessWidget {
 
 class _PriceTag extends StatelessWidget {
   final String label;
-  final String value;
   final Color color;
 
-  const _PriceTag({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _PriceTag({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 10,
-              color: color.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
