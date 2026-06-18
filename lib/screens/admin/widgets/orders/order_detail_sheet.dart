@@ -46,14 +46,18 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     _provider = OrderDetailProvider(widget.order);
     _pointsUsedCtrl.text = _provider.pointsUsed.toString();
     _manualNameCtrl.text = widget.order.displayCustomerName.trim();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _provider.fetchData(_manualNameCtrl.text).then((_) {
         if (mounted) {
           setState(() {
-            _quantityControllers = _provider.items
-                .map((item) => TextEditingController(text: item.quantity.toString()))
-                .toList();
+            _quantityControllers =
+                _provider.items
+                    .map(
+                      (item) =>
+                          TextEditingController(text: item.quantity.toString()),
+                    )
+                    .toList();
           });
         }
       });
@@ -78,16 +82,27 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
     List<BatchAssignmentModel> batches;
     try {
-      batches = await _provider.fetchAvailableBatches(item.variantId ?? '', warehouseId);
+      batches = await _provider.fetchAvailableBatches(
+        item.variantId ?? '',
+        warehouseId,
+      );
     } catch (e) {
       if (!mounted) return;
-      AppSnackbar.show(context, message: 'Error cargando lotes: $e', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: 'Error cargando lotes: $e',
+        type: SnackbarType.error,
+      );
       return;
     }
 
     if (batches.isEmpty) {
       if (!mounted) return;
-      AppSnackbar.show(context, message: 'No hay lotes con stock para este producto.', type: SnackbarType.warning);
+      AppSnackbar.show(
+        context,
+        message: 'No hay lotes con stock para este producto.',
+        type: SnackbarType.warning,
+      );
       return;
     }
 
@@ -111,12 +126,13 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => BatchEditSheet(
-        productName: item.productName ?? 'Producto',
-        variantLabel: item.variantLabel,
-        totalRequired: item.quantity,
-        batches: batches,
-      ),
+      builder:
+          (_) => BatchEditSheet(
+            productName: item.productName ?? 'Producto',
+            variantLabel: item.variantLabel,
+            totalRequired: item.quantity,
+            batches: batches,
+          ),
     );
 
     if (result != null && mounted) {
@@ -128,37 +144,47 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     String notes = '';
     return showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(hint, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 12),
-            TextField(
-              maxLines: 3,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Ej. Producto dañado, cliente cambió de opinión...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(hint, style: const TextStyle(fontSize: 14)),
+                const SizedBox(height: 12),
+                TextField(
+                  maxLines: 3,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Ej. Producto dañado, cliente cambió de opinión...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onChanged: (val) => notes = val,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('Cancelar'),
               ),
-              onChanged: (val) => notes = val,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, notes),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.teal,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Continuar'),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, notes),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Continuar'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -166,23 +192,37 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     if (!mounted) return;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Stock Insuficiente', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('El stock varió y ya no hay disponibilidad para completar este pedido:\n\n${messages.join('\n')}'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendido')),
-        ],
-      ),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text(
+              'Stock Insuficiente',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'El stock varió y ya no hay disponibilidad para completar este pedido:\n\n${messages.join('\n')}',
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
     );
   }
 
   Future<void> _saveChanges(double pointsToSolesRatio) async {
     final isNowCancelled = _provider.currentStatus.toUpperCase() == 'CANCELLED';
     String? notesOverride;
-    
+
     if (isNowCancelled) {
-      notesOverride = await _showReasonDialog('Cancelar Pedido', 'Ingresa el motivo de la cancelación:');
+      notesOverride = await _showReasonDialog(
+        'Cancelar Pedido',
+        'Ingresa el motivo de la cancelación:',
+      );
       if (notesOverride == null) return;
     }
 
@@ -195,12 +235,20 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     if (!mounted) return;
 
     if (result.success) {
-      AppSnackbar.show(context, message: 'Cambios guardados correctamente', type: SnackbarType.success);
+      AppSnackbar.show(
+        context,
+        message: 'Cambios guardados correctamente',
+        type: SnackbarType.success,
+      );
       Navigator.pop(context, true);
     } else if (result.stockError) {
       _showStockErrorDialog(result.stockMessages);
     } else {
-      AppSnackbar.show(context, message: result.errorMessage ?? 'Error desconocido', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: result.errorMessage ?? 'Error desconocido',
+        type: SnackbarType.error,
+      );
     }
   }
 
@@ -208,58 +256,79 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     final result = await _provider.processReturn(notes);
     if (!mounted) return;
     if (result.success) {
-      AppSnackbar.show(context, message: 'Devolución procesada con éxito', type: SnackbarType.success);
+      AppSnackbar.show(
+        context,
+        message: 'Devolución procesada con éxito',
+        type: SnackbarType.success,
+      );
       Navigator.pop(context, true);
     } else {
-      AppSnackbar.show(context, message: result.errorMessage ?? 'Error procesando devolución', type: SnackbarType.error);
+      AppSnackbar.show(
+        context,
+        message: result.errorMessage ?? 'Error procesando devolución',
+        type: SnackbarType.error,
+      );
     }
   }
 
   Future<void> _confirmReturn() async {
-    final notes = await _showReasonDialog('Registrar Devolución', 'Ingresa el motivo de la devolución:');
+    final notes = await _showReasonDialog(
+      'Registrar Devolución',
+      'Ingresa el motivo de la devolución:',
+    );
     if (notes == null) return;
 
     if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.assignment_return_rounded, color: Colors.red.shade600),
-            const SizedBox(width: 8),
-            const Text('Confirmar Devolución', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text(
-          'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\n\n'
-          '• Stock de productos devuelto al almacén\n'
-          '• Monedas de fidelidad revertidas\n'
-          '• Deuda de crédito o cuenta ajustada\n\n'
-          '¿Deseas continuar?'
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            icon: const Icon(Icons.assignment_return_rounded, size: 18),
-            label: const Text('Confirmar'),
-            onPressed: () => Navigator.pop(ctx, true),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.assignment_return_rounded,
+                  color: Colors.red.shade600,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Confirmar Devolución',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Esta acción cancelará el pedido y revertirá todos los movimientos asociados:\n\n'
+              '• Stock de productos devuelto al almacén\n'
+              '• Monedas de fidelidad revertidas\n'
+              '• Deuda de crédito o cuenta ajustada\n\n'
+              '¿Deseas continuar?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.assignment_return_rounded, size: 18),
+                label: const Text('Confirmar'),
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true && mounted) {
       await _processReturn(notes.isNotEmpty ? notes : null);
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -273,24 +342,34 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
         builder: (context, provider, _) {
           final isEditing = provider.canToggleEdit;
           final isCompleted = provider.isCompleted;
-          final maxPtsUser = provider.selectedCustomerId != null
-              ? provider.profiles.firstWhere(
-                  (p) => p['id'] == provider.selectedCustomerId,
-                  orElse: () => {'wallet_balance': 0},
-                )['wallet_balance'] as int? ?? 0
-              : 0;
+          final maxPtsUser =
+              provider.selectedCustomerId != null
+                  ? provider.profiles.firstWhere(
+                            (p) => p['id'] == provider.selectedCustomerId,
+                            orElse: () => {'wallet_balance': 0},
+                          )['wallet_balance']
+                          as int? ??
+                      0
+                  : 0;
 
-          final subtotal = provider.items.fold(0.0, (sum, i) => sum + i.subtotal);
+          final subtotal = provider.items.fold(
+            0.0,
+            (sum, i) => sum + i.subtotal,
+          );
 
           List<Map<String, dynamic>> filteredProfiles = provider.profiles;
           if (_customerSearchCtrl.text.isNotEmpty) {
             final q = _customerSearchCtrl.text.trim().toLowerCase();
-            filteredProfiles = provider.profiles.where((p) {
-              final name = (p['full_name'] as String? ?? '').toLowerCase();
-              final doc = (p['document_number'] as String? ?? '').toLowerCase();
-              final phone = (p['phone'] as String? ?? '').toLowerCase();
-              return name.contains(q) || doc.contains(q) || phone.contains(q);
-            }).toList();
+            filteredProfiles =
+                provider.profiles.where((p) {
+                  final name = (p['full_name'] as String? ?? '').toLowerCase();
+                  final doc =
+                      (p['document_number'] as String? ?? '').toLowerCase();
+                  final phone = (p['phone'] as String? ?? '').toLowerCase();
+                  return name.contains(q) ||
+                      doc.contains(q) ||
+                      phone.contains(q);
+                }).toList();
           }
 
           String getCustomerLabel(String? customerId) {
@@ -299,12 +378,14 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
             }
             try {
-              final profile = provider.profiles.firstWhere((p) => p['id'] == customerId);
+              final profile = provider.profiles.firstWhere(
+                (p) => p['id'] == customerId,
+              );
               final name = (profile['full_name'] as String?)?.trim();
               if (name != null && name.isNotEmpty) return name;
             } catch (_) {}
-            return provider.order.displayCustomerName.isNotEmpty 
-                ? provider.order.displayCustomerName 
+            return provider.order.displayCustomerName.isNotEmpty
+                ? provider.order.displayCustomerName
                 : 'Cliente mostrador';
           }
 
@@ -335,191 +416,267 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                       ),
                     ),
                     Expanded(
-                      child: provider.isLoading
-                          ? const Padding(padding: EdgeInsets.all(16.0), child: OrderDetailSkeleton())
-                          : provider.hasError
+                      child:
+                          provider.isLoading
+                              ? const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: OrderDetailSkeleton(),
+                              )
+                              : provider.hasError
                               ? AppEmptyState(
-                                  icon: Icons.error_outline_rounded,
-                                  color: Colors.red,
-                                  title: 'Ocurrió un error al cargar el pedido',
-                                  message: 'Verifica tu conexión a internet o intenta nuevamente.',
-                                  action: ElevatedButton.icon(
-                                    onPressed: () => provider.fetchData(_manualNameCtrl.text),
-                                    icon: const Icon(Icons.refresh_rounded),
-                                    label: const Text('Reintentar'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.teal,
-                                      foregroundColor: Colors.white,
-                                    ),
+                                icon: Icons.error_outline_rounded,
+                                color: Colors.red,
+                                title: 'Ocurrió un error al cargar el pedido',
+                                message:
+                                    'Verifica tu conexión a internet o intenta nuevamente.',
+                                action: ElevatedButton.icon(
+                                  onPressed:
+                                      () => provider.fetchData(
+                                        _manualNameCtrl.text,
+                                      ),
+                                  icon: const Icon(Icons.refresh_rounded),
+                                  label: const Text('Reintentar'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.teal,
+                                    foregroundColor: Colors.white,
                                   ),
-                                )
+                                ),
+                              )
                               : ListView(
-                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                                  children: [
-                                    OrderDetailHeaderRow(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  24,
+                                ),
+                                children: [
+                                  OrderDetailHeaderRow(
+                                    orderId: provider.order.id,
+                                    isCompleted: isCompleted,
+                                    isEditing: _isEditing,
+                                    canToggleEdit: provider.canToggleEdit,
+                                    onToggleEditing: () {
+                                      if (_isEditing) {
+                                        provider.resetEditState();
+                                        _pointsUsedCtrl.text =
+                                            provider.pointsUsed.toString();
+                                        _manualNameCtrl.text =
+                                            provider.order.displayCustomerName
+                                                .trim();
+                                      }
+                                      setState(() {
+                                        _isEditing = !_isEditing;
+                                      });
+                                    },
+                                    onShare:
+                                        () => OrderPdfGenerator.shareTicket(
+                                          provider.order,
+                                          items: provider.items,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  OrderDetailStatusSection(
+                                    originalStatus: provider.order.status,
+                                    currentStatus: provider.currentStatus,
+                                    isEditing: _isEditing,
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        provider.updateStatus(val);
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  OrderDetailCustomerSection(
+                                    isEditing: _isEditing,
+                                    isCompleted: isCompleted,
+                                    hasManualName:
+                                        _manualNameCtrl.text.isNotEmpty,
+                                    manualNameController: _manualNameCtrl,
+                                    searchController: _customerSearchCtrl,
+                                    filteredProfiles: filteredProfiles,
+                                    selectedCustomerLabel: getCustomerLabel(
+                                      provider.selectedCustomerId,
+                                    ),
+                                    selectedCustomerId:
+                                        provider.selectedCustomerId,
+                                    onSearchChanged: () {
+                                      setState(() {}); // Minimal UI update
+                                    },
+                                    onSelectCustomer: (id) {
+                                      provider.selectCustomer(
+                                        id,
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                      );
+                                      _customerSearchCtrl.clear();
+                                    },
+                                    onClearSearch: () {
+                                      _customerSearchCtrl.clear();
+                                    },
+                                    onClearCustomer: () {
+                                      provider.selectCustomer(
+                                        null,
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                      );
+                                      _manualNameCtrl.text = '';
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  OrderDetailPaymentSection(
+                                    isEditing: _isEditing,
+                                    isCompleted: isCompleted,
+                                    accounts: provider.accounts,
+                                    currentPaymentMethod:
+                                        provider.paymentMethod,
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        provider.updatePaymentMethod(
+                                          val,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
+                                        if (val == 'CRÉDITO') {
+                                          _pointsUsedCtrl.text = '0';
+                                        }
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (provider.order.paymentStatus != 'PAID')
+                                    PaymentStatusSection(
                                       orderId: provider.order.id,
-                                      isCompleted: isCompleted,
-                                      isEditing: _isEditing,
-                                      canToggleEdit: provider.canToggleEdit,
-                                      onToggleEditing: () {
-                                        if (_isEditing) {
-                                          provider.resetEditState();
-                                          _pointsUsedCtrl.text = provider.pointsUsed.toString();
-                                          _manualNameCtrl.text = provider.order.displayCustomerName.trim();
-                                        }
-                                        setState(() {
-                                          _isEditing = !_isEditing;
-                                        });
-                                      },
-                                      onShare: () => OrderPdfGenerator.shareTicket(provider.order, items: provider.items),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    OrderDetailStatusSection(
-                                      originalStatus: provider.order.status,
-                                      currentStatus: provider.currentStatus,
-                                      isEditing: _isEditing,
-                                      onChanged: (val) {
-                                        if (val != null) {
-                                          provider.updateStatus(val);
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    OrderDetailCustomerSection(
-                                      isEditing: _isEditing,
-                                      isCompleted: isCompleted,
-                                      hasManualName: _manualNameCtrl.text.isNotEmpty,
-                                      manualNameController: _manualNameCtrl,
-                                      searchController: _customerSearchCtrl,
-                                      filteredProfiles: filteredProfiles,
-                                      selectedCustomerLabel: getCustomerLabel(provider.selectedCustomerId),
-                                      selectedCustomerId: provider.selectedCustomerId,
-                                      onSearchChanged: () {
-                                          setState(() {}); // Minimal UI update
-                                      },
-                                      onSelectCustomer: (id) {
-                                        provider.selectCustomer(id, pointsToSolesRatio, earningRate);
-                                        _customerSearchCtrl.clear();
-                                      },
-                                      onClearSearch: () {
-                                        _customerSearchCtrl.clear();
-                                      },
-                                      onClearCustomer: () {
-                                        provider.selectCustomer(null, pointsToSolesRatio, earningRate); 
-                                        _manualNameCtrl.text = '';
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    OrderDetailPaymentSection(
-                                      isEditing: _isEditing,
-                                      isCompleted: isCompleted,
+                                      paymentStatus:
+                                          provider.order.paymentStatus,
+                                      totalAmount: provider.order.totalAmount,
+                                      amountPaid: provider.order.amountPaid,
+                                      paymentMethod: provider.paymentMethod,
+                                      creditInfo: provider.creditInfo,
+                                      supabase: Supabase.instance.client,
                                       accounts: provider.accounts,
-                                      currentPaymentMethod: provider.paymentMethod,
-                                      onChanged: (val) {
-                                        if (val != null) {
-                                          provider.updatePaymentMethod(val, pointsToSolesRatio, earningRate);
-                                          if (val == 'CRÉDITO') {
-                                            _pointsUsedCtrl.text = '0';
-                                          }
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
-                                    if (provider.order.paymentStatus != 'PAID')
-                                      PaymentStatusSection(
-                                        orderId: provider.order.id,
-                                        paymentStatus: provider.order.paymentStatus,
-                                        totalAmount: provider.order.totalAmount,
-                                        amountPaid: provider.order.amountPaid,
-                                        paymentMethod: provider.paymentMethod,
-                                        creditInfo: provider.creditInfo,
-                                        supabase: Supabase.instance.client,
-                                        accounts: provider.accounts,
-                                        customerId: provider.selectedCustomerId,
-                                        pointsEarned: provider.pointsEarned,
-                                        onPaymentRegistered: () {
-                                          provider.wasModified = true;
-                                          provider.fetchData(_manualNameCtrl.text);
-                                        },
-                                      ),
-                                    const SizedBox(height: 16),
-                                    if (provider.selectedCustomerId != null && provider.selectedCustomerId!.isNotEmpty && provider.creditInfo != null) ...[
-                                      OrderDetailCreditSection(
-                                        creditInfo: provider.creditInfo!,
-                                        customerId: provider.selectedCustomerId!,
-                                      ),
-                                    ],
-                                    const SizedBox(height: 16),
-                                    OrderDetailItemsSection(
-                                      items: provider.items,
-                                      isLoading: provider.isLoading,
-                                      isEditing: _isEditing,
-                                      isLocked: isCompleted,
-                                      batchesByVariant: provider.batchesByVariant,
-                                      usesBatchesMap: provider.usesBatchesMap,
-                                      batchOverrides: provider.batchOverrides,
-                                      quantityControllers: _quantityControllers,
-                                      onDecrease: (idx) {
-                                        if (provider.items[idx].quantity > 1) {
-                                          provider.updateItemQuantity(idx, provider.items[idx].quantity - 1, pointsToSolesRatio, earningRate);
-                                          _quantityControllers[idx].text = provider.items[idx].quantity.toString();
-                                        }
-                                      },
-                                      onIncrease: (idx) {
-                                        provider.updateItemQuantity(idx, provider.items[idx].quantity + 1, pointsToSolesRatio, earningRate);
-                                        _quantityControllers[idx].text = provider.items[idx].quantity.toString();
-                                      },
-                                      onQuantityChanged: (idx, val) {
-                                        final qty = int.tryParse(val) ?? 1;
-                                        if (qty > 0) {
-                                          provider.updateItemQuantity(idx, qty, pointsToSolesRatio, earningRate);
-                                        }
-                                      },
-                                      onEditBatches: (item) => _showBatchEditSheet(item),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    if (config.getDouble('enable_loyalty_system', 1) == 1.0 &&
-                                        provider.selectedCustomerId != null &&
-                                        provider.selectedCustomerId!.isNotEmpty &&
-                                        provider.paymentMethod != 'CRÉDITO') ...[
-                                      OrderDetailPointsSection(
-                                        isEditing: _isEditing,
-                                        pointsUsed: provider.pointsUsed,
-                                        pointsUsedCtrl: _pointsUsedCtrl,
-                                        maxPointsAvailable: maxPtsUser,
-                                        pointsToSolesRatio: pointsToSolesRatio,
-                                        onPointsChanged: (val) {
-                                          final pts = int.tryParse(val) ?? 0;
-                                          provider.updatePointsUsed(pts <= maxPtsUser ? pts : maxPtsUser, pointsToSolesRatio, earningRate);
-                                          if (pts > maxPtsUser) {
-                                            _pointsUsedCtrl.text = maxPtsUser.toString();
-                                          }
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
-                                    ],
-                                    OrderDetailAuditSection(
-                                      order: provider.order,
-                                      updaterName: provider.updaterName,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    OrderDetailTotalSummarySection(
-                                      subtotal: subtotal,
-                                      pointsUsed: provider.pointsUsed,
+                                      customerId: provider.selectedCustomerId,
                                       pointsEarned: provider.pointsEarned,
-                                      pointsToSolesRatio: pointsToSolesRatio,
-                                      discountAmount: provider.order.discountAmount,
-                                      isCompleted: isCompleted && provider.order.paymentStatus == 'PAID',
+                                      onPaymentRegistered: () {
+                                        provider.wasModified = true;
+                                        provider.fetchData(
+                                          _manualNameCtrl.text,
+                                        );
+                                      },
+                                    ),
+                                  const SizedBox(height: 16),
+                                  if (provider.selectedCustomerId != null &&
+                                      provider.selectedCustomerId!.isNotEmpty &&
+                                      provider.creditInfo != null) ...[
+                                    OrderDetailCreditSection(
+                                      creditInfo: provider.creditInfo!,
+                                      customerId: provider.selectedCustomerId!,
                                     ),
                                   ],
-                                ),
+                                  const SizedBox(height: 16),
+                                  OrderDetailItemsSection(
+                                    items: provider.items,
+                                    isLoading: provider.isLoading,
+                                    isEditing: _isEditing,
+                                    isLocked: isCompleted,
+                                    batchesByVariant: provider.batchesByVariant,
+                                    usesBatchesMap: provider.usesBatchesMap,
+                                    batchOverrides: provider.batchOverrides,
+                                    quantityControllers: _quantityControllers,
+                                    onDecrease: (idx) {
+                                      if (provider.items[idx].quantity > 1) {
+                                        provider.updateItemQuantity(
+                                          idx,
+                                          provider.items[idx].quantity - 1,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
+                                        _quantityControllers[idx].text =
+                                            provider.items[idx].quantity
+                                                .toString();
+                                      }
+                                    },
+                                    onIncrease: (idx) {
+                                      provider.updateItemQuantity(
+                                        idx,
+                                        provider.items[idx].quantity + 1,
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                      );
+                                      _quantityControllers[idx].text =
+                                          provider.items[idx].quantity
+                                              .toString();
+                                    },
+                                    onQuantityChanged: (idx, val) {
+                                      final qty = int.tryParse(val) ?? 1;
+                                      if (qty > 0) {
+                                        provider.updateItemQuantity(
+                                          idx,
+                                          qty,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
+                                      }
+                                    },
+                                    onEditBatches:
+                                        (item) => _showBatchEditSheet(item),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (config.getDouble(
+                                            'enable_loyalty_system',
+                                            1,
+                                          ) ==
+                                          1.0 &&
+                                      provider.selectedCustomerId != null &&
+                                      provider.selectedCustomerId!.isNotEmpty &&
+                                      provider.paymentMethod != 'CRÉDITO') ...[
+                                    OrderDetailPointsSection(
+                                      isEditing: _isEditing,
+                                      pointsUsed: provider.pointsUsed,
+                                      pointsUsedCtrl: _pointsUsedCtrl,
+                                      maxPointsAvailable: maxPtsUser,
+                                      pointsToSolesRatio: pointsToSolesRatio,
+                                      onPointsChanged: (val) {
+                                        final pts = int.tryParse(val) ?? 0;
+                                        provider.updatePointsUsed(
+                                          pts <= maxPtsUser ? pts : maxPtsUser,
+                                          pointsToSolesRatio,
+                                          earningRate,
+                                        );
+                                        if (pts > maxPtsUser) {
+                                          _pointsUsedCtrl.text =
+                                              maxPtsUser.toString();
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  OrderDetailAuditSection(
+                                    order: provider.order,
+                                    updaterName: provider.updaterName,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  OrderDetailTotalSummarySection(
+                                    subtotal: subtotal,
+                                    pointsUsed: provider.pointsUsed,
+                                    pointsEarned: provider.pointsEarned,
+                                    pointsToSolesRatio: pointsToSolesRatio,
+                                    discountAmount:
+                                        provider.order.discountAmount,
+                                    isCompleted:
+                                        isCompleted &&
+                                        provider.order.paymentStatus == 'PAID',
+                                  ),
+                                ],
+                              ),
                     ),
                     if (!provider.isLoading && !provider.hasError)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                          border: Border(
+                            top: BorderSide(color: Colors.grey.shade200),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.05),
@@ -533,43 +690,100 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                             if (isEditing)
                               Expanded(
                                 child: ElevatedButton(
-                                  onPressed: provider.isSaving ? null : () => _saveChanges(pointsToSolesRatio),
+                                  onPressed:
+                                      provider.isSaving
+                                          ? null
+                                          : () =>
+                                              _saveChanges(pointsToSolesRatio),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  child: provider.isSaving
-                                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                      : const Text('Guardar Cambios', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  child:
+                                      provider.isSaving
+                                          ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                          : const Text(
+                                            'Guardar Cambios',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                 ),
                               )
                             else if (isCompleted)
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: provider.isReturning ? null : _confirmReturn,
+                                  onPressed:
+                                      provider.isReturning
+                                          ? null
+                                          : _confirmReturn,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red.shade50,
                                     foregroundColor: Colors.red.shade700,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(color: Colors.red.shade200),
+                                      side: BorderSide(
+                                        color: Colors.red.shade200,
+                                      ),
                                     ),
                                   ),
-                                  icon: provider.isReturning
-                                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
-                                      : const Icon(Icons.assignment_return_rounded),
-                                  label: const Text('Registrar Devolución', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  icon:
+                                      provider.isReturning
+                                          ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.red,
+                                            ),
+                                          )
+                                          : const Icon(
+                                            Icons.assignment_return_rounded,
+                                          ),
+                                  label: const Text(
+                                    'Registrar Devolución',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               )
                             else
                               Expanded(
                                 child: TextButton(
-                                  onPressed: () => Navigator.pop(context, provider.wasModified),
-                                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                                  child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  onPressed:
+                                      () => Navigator.pop(
+                                        context,
+                                        provider.wasModified,
+                                      ),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Cerrar',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                           ],
