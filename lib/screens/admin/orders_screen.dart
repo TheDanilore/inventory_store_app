@@ -552,8 +552,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             ),
                           ],
                           onChanged: (val) {
-                            if (val != null)
+                            if (val != null) {
                               provider.setPaymentStatusFilter(val);
+                            }
                           },
                         ),
                       ),
