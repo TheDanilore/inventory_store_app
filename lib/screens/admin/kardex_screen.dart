@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/kardex_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/kardex/kardex_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -31,12 +30,29 @@ class _KardexView extends StatefulWidget {
 }
 
 class _KardexViewState extends State<_KardexView> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<KardexProvider>().addListener(_onProviderError);
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<KardexProvider>().loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _onProviderError() {
@@ -64,16 +80,82 @@ class _KardexViewState extends State<_KardexView> {
     }
   }
 
+  void _showActionOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Registrar Movimiento',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.green.shade50,
+                      child: Icon(
+                        Icons.add_shopping_cart,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                    title: const Text('Ingreso de inventario'),
+                    subtitle: const Text('Registrar compras o retornos'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openEntryScreen(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.red.shade50,
+                      child: Icon(
+                        Icons.remove_circle_outline,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                    title: const Text('Salida de inventario'),
+                    subtitle: const Text('Registrar mermas o retiros manuales'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openExitScreen(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<KardexProvider>(
       builder: (context, provider, _) {
-        final start = provider.currentPage * KardexProvider.pageSize;
-        final end =
-            (start + KardexProvider.pageSize) > provider.totalCount
-                ? provider.totalCount
-                : (start + KardexProvider.pageSize);
-
         return AdminLayout(
           title: 'Kardex (Movimientos)',
           showBackButton: true,
@@ -96,42 +178,46 @@ class _KardexViewState extends State<_KardexView> {
                 color: Colors.white,
                 child: Row(
                   children: [
-                    // Dropdown de tipo
+                    // Chips de tipo
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: provider.typeFilter,
-                            isExpanded: true,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'ALL',
-                                child: Text('Todos'),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: const Text('Todos'),
+                                selected: provider.typeFilter == 'ALL',
+                                onSelected:
+                                    (val) => provider.setTypeFilter('ALL'),
                               ),
-                              DropdownMenuItem(
-                                value: 'ENTRY',
-                                child: Text('Ingresos'),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: const Text('Ingresos'),
+                                selected: provider.typeFilter == 'ENTRY',
+                                onSelected:
+                                    (val) => provider.setTypeFilter('ENTRY'),
                               ),
-                              DropdownMenuItem(
-                                value: 'EXIT',
-                                child: Text('Salidas'),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: const Text('Salidas'),
+                                selected: provider.typeFilter == 'EXIT',
+                                onSelected:
+                                    (val) => provider.setTypeFilter('EXIT'),
                               ),
-                              DropdownMenuItem(
-                                value: 'SALE',
-                                child: Text('Ventas'),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              if (val != null) {
-                                provider.setTypeFilter(val);
-                              }
-                            },
-                          ),
+                            ),
+                            ChoiceChip(
+                              label: const Text('Ventas'),
+                              selected: provider.typeFilter == 'SALE',
+                              onSelected:
+                                  (val) => provider.setTypeFilter('SALE'),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -181,95 +267,62 @@ class _KardexViewState extends State<_KardexView> {
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
                                   16,
-                                  8,
+                                  12,
                                   16,
                                   4,
                                 ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      'Mostrando ${provider.totalCount == 0 ? 0 : start + 1}-$end de ${provider.totalCount}',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 12,
-                                      ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '${provider.totalCount} movimientos encontrados',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    const Spacer(),
-                                    Text(
-                                      'Página ${provider.currentPage + 1} / ${provider.totalPages}',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
 
                               // LISTA DE TARJETAS
                               Expanded(
                                 child: ListView.builder(
+                                  controller: _scrollController,
                                   physics:
                                       const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.all(16),
-                                  itemCount: provider.movements.length,
+                                  padding: const EdgeInsets.all(
+                                    16,
+                                  ).copyWith(bottom: 80),
+                                  itemCount:
+                                      provider.movements.length +
+                                      (provider.isLoadingMore ? 1 : 0),
                                   itemBuilder: (context, index) {
+                                    if (index == provider.movements.length) {
+                                      return const Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 24,
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    }
                                     return KardexCard(
                                       item: provider.movements[index],
                                     );
                                   },
                                 ),
                               ),
-
-                              // CONTROLES DE PÁGINA
-                              if (provider.totalPages > 1)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    8,
-                                    16,
-                                    10,
-                                  ),
-                                  child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: provider.setPage,
-                                  ),
-                                ),
                             ],
                           ),
                         ),
               ),
             ],
           ),
-          floatingActionButton: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              FloatingActionButton.extended(
-                heroTag: 'fab_in',
-                onPressed: () => _openEntryScreen(context),
-                icon: const Icon(Icons.add_shopping_cart),
-                label: const Text(
-                  'Ingreso',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
-              ),
-              const SizedBox(height: 12),
-              FloatingActionButton.extended(
-                heroTag: 'fab_out',
-                onPressed: () => _openExitScreen(context),
-                icon: const Icon(Icons.remove_circle_outline),
-                label: const Text(
-                  'Salida',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                backgroundColor: Colors.red.shade600,
-                foregroundColor: Colors.white,
-              ),
-            ],
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showActionOptions(context),
+            icon: const Icon(Icons.add),
+            label: const Text('Movimiento'),
           ),
         );
       },

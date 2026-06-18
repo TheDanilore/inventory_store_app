@@ -28,13 +28,18 @@ class KardexProvider extends ChangeNotifier {
   String _typeFilter = 'ALL'; // 'ALL', 'ENTRY', 'EXIT', 'SALE'
   String get typeFilter => _typeFilter;
 
-  // Paginación
-  static const int pageSize = 8;
+  // Paginación y Scroll Infinito
+  static const int pageSize = 12;
   int _currentPage = 0;
   int get currentPage => _currentPage;
   int _totalCount = 0;
-  int get totalPages => _totalCount == 0 ? 1 : (_totalCount / pageSize).ceil();
   int get totalCount => _totalCount;
+
+  bool _hasMore = true;
+  bool get hasMore => _hasMore;
+
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
 
   KardexProvider() {
     _loadMovements();
@@ -50,6 +55,7 @@ class KardexProvider extends ChangeNotifier {
   void setDateRange(DateTimeRange? range) {
     _dateRange = range;
     _currentPage = 0;
+    _hasMore = true;
     _loadMovements();
   }
 
@@ -57,17 +63,21 @@ class KardexProvider extends ChangeNotifier {
     if (_typeFilter == type) return;
     _typeFilter = type;
     _currentPage = 0;
+    _hasMore = true;
     _loadMovements();
   }
 
-  void setPage(int page) {
-    if (page < 0 || page >= totalPages || page == _currentPage) return;
-    _currentPage = page;
-    _loadMovements();
+  Future<void> loadMore() async {
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+    _currentPage++;
+    notifyListeners();
+    await _loadMovements(isLoadMore: true);
   }
 
   Future<void> refresh() async {
     _currentPage = 0;
+    _hasMore = true;
     await _loadMovements();
   }
 
@@ -94,8 +104,10 @@ class KardexProvider extends ChangeNotifier {
     return query;
   }
 
-  Future<void> _loadMovements() async {
-    _isLoading = true;
+  Future<void> _loadMovements({bool isLoadMore = false}) async {
+    if (!isLoadMore) {
+      _isLoading = true;
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -123,20 +135,32 @@ class KardexProvider extends ChangeNotifier {
           .count(CountOption.exact);
 
       _totalCount = response.count;
-      _movements =
+
+      final newMovements =
           (response.data as List)
               .map((row) => KardexMovementModel.fromSupabaseRow(row))
               .toList();
+
+      if (isLoadMore) {
+        _movements.addAll(newMovements);
+      } else {
+        _movements = newMovements;
+      }
+
+      _hasMore = _movements.length < _totalCount;
     } catch (e) {
       debugPrint('Error loading kardex: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         _errorMessage = 'Sin conexión a internet.';
       } else {
         _errorMessage = 'Error al cargar kardex.';
       }
     } finally {
       _isLoading = false;
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
@@ -256,7 +280,9 @@ class KardexProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error exporting PDF: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         _errorMessage = 'Sin conexión a internet.';
       } else {
         _errorMessage = 'Error al exportar PDF.';
