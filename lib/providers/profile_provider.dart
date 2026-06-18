@@ -2,13 +2,32 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:inventory_store_app/shared/constants/app_roles.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
 
   ProfileProvider() {
+    _loadCache();
     _init();
+  }
+
+  Future<void> _loadCache() async {
+    final user = _supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedName = prefs.getString(
+          'profile_cache_full_name_${user.id}',
+        );
+        if (cachedName != null && cachedName.isNotEmpty) {
+          _fullName = cachedName;
+          _avatarUrl = prefs.getString('profile_cache_avatar_url_${user.id}');
+          _safeNotify();
+        }
+      } catch (_) {}
+    }
   }
 
   void _init() {
@@ -111,6 +130,22 @@ class ProfileProvider extends ChangeNotifier {
               ['DNI', 'RUC', 'CE', 'PASAPORTE'].contains(data['document_type'])
                   ? data['document_type']
                   : 'DNI';
+
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+              'profile_cache_full_name_${user.id}',
+              _fullName,
+            );
+            if (_avatarUrl != null) {
+              await prefs.setString(
+                'profile_cache_avatar_url_${user.id}',
+                _avatarUrl!,
+              );
+            } else {
+              await prefs.remove('profile_cache_avatar_url_${user.id}');
+            }
+          } catch (_) {}
         } else {
           _userRole = 'Cliente';
         }
@@ -193,6 +228,19 @@ class ProfileProvider extends ChangeNotifier {
       _documentNumber = docNum.trim();
       _avatarUrl = finalAvatarUrl;
       _imageBytes = null; // Limpiar
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_cache_full_name_${user.id}', _fullName);
+        if (_avatarUrl != null) {
+          await prefs.setString(
+            'profile_cache_avatar_url_${user.id}',
+            _avatarUrl!,
+          );
+        } else {
+          await prefs.remove('profile_cache_avatar_url_${user.id}');
+        }
+      } catch (_) {}
 
       return true;
     } catch (e) {
@@ -296,7 +344,9 @@ class ProfileProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error deleting account: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         return 'Sin conexión a internet.';
       }
       return 'Ocurrió un error inesperado al eliminar la cuenta.';

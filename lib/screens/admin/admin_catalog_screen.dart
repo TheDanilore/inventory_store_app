@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/providers/admin/admin_catalog_provider.dart';
@@ -244,6 +245,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               const double fabsBottomPadding = 54;
 
               final topBarSliver = SliverAppBar(
+                systemOverlayStyle: const SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                ),
                 backgroundColor: const Color(0xFFF7F8FC),
                 elevation: 0,
                 shadowColor: Colors.black.withValues(alpha: 0.06),

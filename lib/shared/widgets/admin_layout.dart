@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/shared/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -46,129 +47,139 @@ class AdminLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
-      endDrawer: showDrawerButton ? const AppDrawer(isAdmin: true) : null,
-      appBar:
-          showAppBar
-              ? AppBar(
-                backgroundColor: Colors.white,
-                elevation: 0,
-                shadowColor: Colors.black.withValues(alpha: 0.06),
-                surfaceTintColor: Colors.transparent,
-                titleSpacing: 0,
-                title: Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -0.3,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FC),
+        endDrawer: showDrawerButton ? const AppDrawer(isAdmin: true) : null,
+        appBar:
+            showAppBar
+                ? AppBar(
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  shadowColor: Colors.black.withValues(alpha: 0.06),
+                  surfaceTintColor: Colors.transparent,
+                  titleSpacing: 0,
+                  title: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.3,
+                      ),
                     ),
                   ),
-                ),
-                // Ajustamos el ancho dependiendo de cuántos botones hay realmente
-                leadingWidth: (showBackButton && showProfileButton) ? 104 : 60,
-                leading:
-                    (!showBackButton && !showProfileButton)
-                        ? const SizedBox.shrink()
-                        : Align(
-                          alignment:
-                              Alignment
-                                  .centerLeft, // <-- ANCLAJE FIJO A LA IZQUIERDA
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(width: 12), // <-- MARGEN CONSTANTE
-                              if (showBackButton)
-                                AdminAppBarIconButton(
-                                  icon: Icons.arrow_back_ios_new_rounded,
-                                  onTap: () => Navigator.maybePop(context),
-                                ),
-                              if (showBackButton && showProfileButton)
-                                const SizedBox(width: 8),
-                              if (showProfileButton)
-                                AdminProfileAvatar(
-                                  onTap: () => _openProfile(context),
-                                ),
-                            ],
-                          ),
-                        ),
-                actions: [
-                  if (showSettingsButton &&
-                      settingsActions != null &&
-                      settingsActions!.isNotEmpty) ...[
-                    AdminSettingsMenuButton(
-                      items: settingsActions!,
-                      onSelected: onSettingsSelected,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-
-                  if (showDrawerButton)
-                    Builder(
-                      builder:
-                          (context) => AdminAppBarIconButton(
-                            icon: Icons.menu_rounded,
-                            onTap: () => Scaffold.of(context).openEndDrawer(),
-                          ),
-                    ),
-
-                  const SizedBox(width: 12),
-                ],
-              )
-              : null,
-      body: SafeArea(
-        top: !showAppBar,
-        bottom: false,
-        child: Column(
-          children: [
-            // Offline banner — Animates its height layout size so it doesn't leave gaps
-            Consumer<NetworkProvider>(
-              builder: (context, network, child) {
-                return AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child:
-                      network.isOnline
-                          ? const SizedBox(width: double.infinity, height: 0)
-                          : Container(
-                            width: double.infinity,
-                            color: const Color(0xFFFF3B30),
-                            padding: const EdgeInsets.symmetric(vertical: 7),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                  // Ajustamos el ancho dependiendo de cuántos botones hay realmente
+                  leadingWidth:
+                      (showBackButton && showProfileButton) ? 104 : 60,
+                  leading:
+                      (!showBackButton && !showProfileButton)
+                          ? const SizedBox.shrink()
+                          : Align(
+                            alignment:
+                                Alignment
+                                    .centerLeft, // <-- ANCLAJE FIJO A LA IZQUIERDA
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.wifi_off_rounded,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Sin conexión a internet',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.2,
+                                const SizedBox(
+                                  width: 12,
+                                ), // <-- MARGEN CONSTANTE
+                                if (showBackButton)
+                                  AdminAppBarIconButton(
+                                    icon: Icons.arrow_back_ios_new_rounded,
+                                    onTap: () => Navigator.maybePop(context),
                                   ),
-                                ),
+                                if (showBackButton && showProfileButton)
+                                  const SizedBox(width: 8),
+                                if (showProfileButton)
+                                  AdminProfileAvatar(
+                                    onTap: () => _openProfile(context),
+                                  ),
                               ],
                             ),
                           ),
-                );
-              },
-            ),
-            Expanded(child: body),
-          ],
+                  actions: [
+                    if (showSettingsButton &&
+                        settingsActions != null &&
+                        settingsActions!.isNotEmpty) ...[
+                      AdminSettingsMenuButton(
+                        items: settingsActions!,
+                        onSelected: onSettingsSelected,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+
+                    if (showDrawerButton)
+                      Builder(
+                        builder:
+                            (context) => AdminAppBarIconButton(
+                              icon: Icons.menu_rounded,
+                              onTap: () => Scaffold.of(context).openEndDrawer(),
+                            ),
+                      ),
+
+                    const SizedBox(width: 12),
+                  ],
+                )
+                : null,
+        body: SafeArea(
+          top: !showAppBar,
+          bottom: false,
+          child: Column(
+            children: [
+              // Offline banner — Animates its height layout size so it doesn't leave gaps
+              Consumer<NetworkProvider>(
+                builder: (context, network, child) {
+                  return AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child:
+                        network.isOnline
+                            ? const SizedBox(width: double.infinity, height: 0)
+                            : Container(
+                              width: double.infinity,
+                              color: const Color(0xFFFF3B30),
+                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.wifi_off_rounded,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Sin conexión a internet',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                  );
+                },
+              ),
+              Expanded(child: body),
+            ],
+          ),
         ),
+        floatingActionButton: floatingActionButton,
+        bottomNavigationBar: bottomNavigationBar,
       ),
-      floatingActionButton: floatingActionButton,
-      bottomNavigationBar: bottomNavigationBar,
     );
   }
 }
