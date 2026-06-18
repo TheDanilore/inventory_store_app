@@ -33,7 +33,6 @@ class OrderDetailSheet extends StatefulWidget {
 }
 
 class _OrderDetailSheetState extends State<OrderDetailSheet> {
-  final TextEditingController _customerSearchCtrl = TextEditingController();
   final TextEditingController _pointsUsedCtrl = TextEditingController();
   final TextEditingController _manualNameCtrl = TextEditingController();
   List<TextEditingController> _quantityControllers = [];
@@ -66,7 +65,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
   @override
   void dispose() {
-    _customerSearchCtrl.dispose();
     _pointsUsedCtrl.dispose();
     _manualNameCtrl.dispose();
     for (final controller in _quantityControllers) {
@@ -357,20 +355,15 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             (sum, i) => sum + i.subtotal,
           );
 
-          List<Map<String, dynamic>> filteredProfiles = provider.profiles;
-          if (_customerSearchCtrl.text.isNotEmpty) {
-            final q = _customerSearchCtrl.text.trim().toLowerCase();
-            filteredProfiles =
-                provider.profiles.where((p) {
-                  final name = (p['full_name'] as String? ?? '').toLowerCase();
-                  final doc =
-                      (p['document_number'] as String? ?? '').toLowerCase();
-                  final phone = (p['phone'] as String? ?? '').toLowerCase();
-                  return name.contains(q) ||
-                      doc.contains(q) ||
-                      phone.contains(q);
-                }).toList();
-          }
+          final rawDiscount = provider.pointsUsed * pointsToSolesRatio;
+          final maxDiscount = subtotal * 0.5;
+          final appliedDiscount =
+              rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
+          final totalFinal =
+              subtotal - appliedDiscount - provider.order.discountAmount;
+          final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
+
+          List<Map<String, dynamic>> profiles = provider.profiles;
 
           String getCustomerLabel(String? customerId) {
             if (customerId == null) {
@@ -397,8 +390,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             },
             child: Container(
               height: MediaQuery.of(context).size.height * 0.9,
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: SafeArea(
@@ -492,26 +485,18 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                     hasManualName:
                                         _manualNameCtrl.text.isNotEmpty,
                                     manualNameController: _manualNameCtrl,
-                                    searchController: _customerSearchCtrl,
-                                    filteredProfiles: filteredProfiles,
+                                    profiles: profiles,
                                     selectedCustomerLabel: getCustomerLabel(
                                       provider.selectedCustomerId,
                                     ),
                                     selectedCustomerId:
                                         provider.selectedCustomerId,
-                                    onSearchChanged: () {
-                                      setState(() {}); // Minimal UI update
-                                    },
                                     onSelectCustomer: (id) {
                                       provider.selectCustomer(
                                         id,
                                         pointsToSolesRatio,
                                         earningRate,
                                       );
-                                      _customerSearchCtrl.clear();
-                                    },
-                                    onClearSearch: () {
-                                      _customerSearchCtrl.clear();
                                     },
                                     onClearCustomer: () {
                                       provider.selectCustomer(
@@ -687,8 +672,35 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                         ),
                         child: Row(
                           children: [
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Total',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    'S/ ${actualTotal.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             if (isEditing)
                               Expanded(
+                                flex: 5,
                                 child: ElevatedButton(
                                   onPressed:
                                       provider.isSaving
@@ -715,7 +727,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                             ),
                                           )
                                           : const Text(
-                                            'Guardar Cambios',
+                                            'Guardar',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -725,6 +737,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               )
                             else if (isCompleted)
                               Expanded(
+                                flex: 5,
                                 child: ElevatedButton.icon(
                                   onPressed:
                                       provider.isReturning
@@ -758,7 +771,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                             Icons.assignment_return_rounded,
                                           ),
                                   label: const Text(
-                                    'Registrar Devolución',
+                                    'Devolución',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -767,6 +780,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               )
                             else
                               Expanded(
+                                flex: 5,
                                 child: TextButton(
                                   onPressed:
                                       () => Navigator.pop(

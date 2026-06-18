@@ -111,17 +111,17 @@ class OrderDetailItemCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     item.variantLabel,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'SKU: ${item.sku ?? 'N/A'}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'P. unit: S/ ${item.appliedPrice.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
                   ),
 
                   if (canEditBatches) ...[
@@ -137,13 +137,13 @@ class OrderDetailItemCard extends StatelessWidget {
                           color:
                               hasBatchOverride && activeBatches.isNotEmpty
                                   ? AppColors.teal.withValues(alpha: 0.08)
-                                  : AppColors.amberLight.withValues(alpha: 0.5),
+                                  : Colors.orange.shade50,
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color:
                                 hasBatchOverride && activeBatches.isNotEmpty
                                     ? AppColors.teal.withValues(alpha: 0.3)
-                                    : AppColors.amber.withValues(alpha: 0.5),
+                                    : Colors.orange.shade300,
                           ),
                         ),
                         child: Row(
@@ -157,7 +157,7 @@ class OrderDetailItemCard extends StatelessWidget {
                               color:
                                   hasBatchOverride && activeBatches.isNotEmpty
                                       ? AppColors.teal
-                                      : AppColors.amber,
+                                      : Colors.orange.shade800,
                             ),
                             const SizedBox(width: 4),
                             if (hasBatchOverride && activeBatches.isNotEmpty)
@@ -179,12 +179,12 @@ class OrderDetailItemCard extends StatelessWidget {
                                 ),
                               )
                             else
-                              const Text(
+                              Text(
                                 'FEFO automático · Toca para editar',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: AppColors.amber,
-                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             const SizedBox(width: 4),
@@ -194,7 +194,7 @@ class OrderDetailItemCard extends StatelessWidget {
                               color:
                                   hasBatchOverride && activeBatches.isNotEmpty
                                       ? AppColors.teal
-                                      : AppColors.amber,
+                                      : Colors.orange.shade800,
                             ),
                           ],
                         ),
@@ -258,45 +258,65 @@ class OrderDetailItemCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (isEditing)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: onDecrease,
-                      ),
-                      GestureDetector(
-                        onTap: onQuantityTap,
-                        child: Container(
-                          width: 48,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(6),
-                            color: Colors.white,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: onDecrease,
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(24),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            quantityController.text,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            child: Icon(
+                              Icons.remove,
+                              size: 18,
+                              color: Colors.black87,
                             ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: onIncrease,
-                      ),
-                    ],
+                        GestureDetector(
+                          onTap: onQuantityTap,
+                          child: Container(
+                            constraints: const BoxConstraints(minWidth: 32),
+                            alignment: Alignment.center,
+                            child: Text(
+                              quantityController.text,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: onIncrease,
+                          borderRadius: const BorderRadius.horizontal(
+                            right: Radius.circular(24),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              size: 18,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   )
                 else
                   Text(
