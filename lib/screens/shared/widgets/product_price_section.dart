@@ -41,14 +41,27 @@ class ProductPriceSection extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 2),
-            Text(
-              effectivePrice.toStringAsFixed(2),
-              style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.w900,
-                color: AppColors.primary,
-                letterSpacing: -1.5,
-                height: 1.0,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.0, -0.2),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: FadeTransition(opacity: animation, child: child),
+                );
+              },
+              child: Text(
+                effectivePrice.toStringAsFixed(2),
+                key: ValueKey<double>(effectivePrice),
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                  letterSpacing: -1.5,
+                  height: 1.0,
+                ),
               ),
             ),
             if (isWholesale) ...[

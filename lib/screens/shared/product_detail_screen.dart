@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_admin_info_card.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_availability_card.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_batches_card.dart';
@@ -237,38 +238,52 @@ class _ProductDetailScreenContentState
   Future<void> _showQtyDialog() async {
     final ctrl = TextEditingController(text: '$_selectedQty');
     try {
-      await showDialog<void>(
+      await showModalBottomSheet<void>(
         context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
         builder:
-            (ctx) => Dialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+            (ctx) => Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
               ),
-              child: Padding(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                     const Text(
                       'Cantidad',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     Text(
-                      'Máx. $_effectiveStock',
+                      'Máx. $_effectiveStock disponibles',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: AppColors.textMuted,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.bg,
-                        borderRadius: BorderRadius.circular(AppColors.radius),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: TextField(
@@ -277,7 +292,7 @@ class _ProductDetailScreenContentState
                         autofocus: true,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 36,
+                          fontSize: 32,
                           fontWeight: FontWeight.w900,
                         ),
                         decoration: const InputDecoration(
@@ -286,44 +301,36 @@ class _ProductDetailScreenContentState
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text(
-                              'Cancelar',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final n = int.tryParse(ctrl.text.trim());
+                          if (n != null && n > 0) {
+                            provider.setSelectedQty(
+                              n.clamp(1, _effectiveStock),
+                            );
+                          }
+                          Navigator.pop(ctx);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Confirmar Cantidad',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final n = int.tryParse(ctrl.text.trim());
-                              if (n != null && n > 0) {
-                                provider.setSelectedQty(
-                                  n.clamp(1, _effectiveStock),
-                                );
-                              }
-                              Navigator.pop(ctx);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text(
-                              'OK',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -644,10 +651,105 @@ class _ProductDetailScreenContentState
       slivers: [
         SliverAppBar(
           expandedHeight: 340,
-          pinned: false,
+          pinned: true,
           stretch: true,
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           automaticallyImplyLeading: false,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 16.0, top: 8, bottom: 8),
+            child: CircleAvatar(
+              backgroundColor: Colors.white.withValues(alpha: 0.8),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: Colors.black87,
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
+          actions: [
+            if (isAdmin) ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withValues(alpha: 0.8),
+                  child: PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      size: 20,
+                      color: Colors.black87,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onSelected: (value) {
+                      if (value == 'export') {
+                        ProductPdfGenerator.shareProduct(
+                          product,
+                          variants: _variants,
+                          stockByVariant: _stockByVariant,
+                        );
+                      }
+                    },
+                    itemBuilder:
+                        (context) => [
+                          const PopupMenuItem(
+                            value: 'export',
+                            child: Text('Exportar PDF'),
+                          ),
+                        ],
+                  ),
+                ),
+              ),
+            ] else ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withValues(alpha: 0.8),
+                  child: Consumer<CartProvider>(
+                    builder: (context, cart, _) {
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 20,
+                              color: Colors.black87,
+                            ),
+                            onPressed: () => context.push('/customer/cart'),
+                          ),
+                          if (cart.itemCount > 0)
+                            Positioned(
+                              right: 2,
+                              top: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.accent,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '${cart.itemCount}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ],
           flexibleSpace: FlexibleSpaceBar(
             stretchModes: const [StretchMode.zoomBackground],
             background: ProductGallerySection(
@@ -674,11 +776,6 @@ class _ProductDetailScreenContentState
             delegate: SliverChildListDelegate([
               const SizedBox(height: 20),
 
-              if (_thumbnailVariants.isNotEmpty) ...[
-                _buildThumbnailRow(_thumbnailVariants),
-                const SizedBox(height: 20),
-              ],
-
               ProductTopSection(
                 name: product.name,
                 sku: _selectedVariant?.sku,
@@ -696,7 +793,21 @@ class _ProductDetailScreenContentState
                 baseWholesaleMinQty: _baseWholesaleMinQty,
                 selectedQty: _selectedQty,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+
+              if (_thumbnailVariants.isNotEmpty) ...[
+                const Text(
+                  'Modelos disponibles',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _buildThumbnailRow(_thumbnailVariants),
+                const SizedBox(height: 20),
+              ],
 
               if (_variants.isNotEmpty &&
                   _attributeKeys.isNotEmpty &&
@@ -757,21 +868,8 @@ class _ProductDetailScreenContentState
       return AdminLayout(
         title: product.name,
         showBackButton: true,
-        showSettingsButton: true,
-        settingsActions: [
-          const PopupMenuItem(value: 'export', child: Text('Exportar')),
-        ],
-        onSettingsSelected: (value) {
-          switch (value) {
-            case 'export':
-              ProductPdfGenerator.shareProduct(
-                product,
-                variants: _variants,
-                stockByVariant: _stockByVariant,
-              );
-              break;
-          }
-        },
+        showSettingsButton: false,
+        showAppBar: false,
         body: Container(color: AppColors.bg, child: content),
       );
     }
@@ -780,7 +878,8 @@ class _ProductDetailScreenContentState
       title: product.name,
       showBackButton: true,
       showBottomNav: false,
-      showCartIcon: true,
+      showCartIcon: false,
+      showAppBar: false,
       body: Container(color: AppColors.bg, child: content),
       bottomNavigationBar: ProductBottomBar(
         canBuy: _canBuy,
@@ -797,62 +896,59 @@ class _ProductDetailScreenContentState
   }
 
   Widget _buildThumbnailRow(List<ProductVariantModel> thumbs) {
-    final firstImg =
-        _galleryImages.isNotEmpty
-            ? _galleryImages.first.imageUrl
-            : product.primaryImageUrl;
-
-    return SizedBox(
-      height: 64,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
         children: [
           GestureDetector(
             onTap: () => provider.setShowVariantImage(false),
-            child: Container(
-              width: 64,
-              height: 64,
-              margin: const EdgeInsets.only(right: 10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color:
+                    !_showVariantImage
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.bg,
                 border: Border.all(
                   color:
                       !_showVariantImage ? AppColors.primary : AppColors.border,
-                  width: !_showVariantImage ? 2 : 1,
+                  width: 1.5,
                 ),
-                borderRadius: BorderRadius.circular(8),
-                image:
-                    firstImg != null
-                        ? DecorationImage(
-                          image: CachedNetworkImageProvider(firstImg),
-                          fit: BoxFit.cover,
-                        )
-                        : null,
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      bottomRight: Radius.circular(7),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.photo_library_rounded,
+                    size: 16,
+                    color:
+                        !_showVariantImage
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Por defecto',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          !_showVariantImage
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                      color:
+                          !_showVariantImage
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.photo_library_rounded,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                ),
+                ],
               ),
             ),
           ),
-
           ...thumbs.map((v) {
-            final imgUrl = _variantImageUrl(v) ?? product.primaryImageUrl;
+            final imgUrl = _variantImageUrl(v);
             final isSelected =
                 _showVariantImage &&
                 (_attributeKeys.length == 1
@@ -861,65 +957,50 @@ class _ProductDetailScreenContentState
 
             return GestureDetector(
               onTap: () => _selectVariant(v),
-              child: Container(
-                width: 64,
-                height: 64,
-                margin: const EdgeInsets.only(right: 10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.bg,
+                  color:
+                      isSelected
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : AppColors.bg,
                   border: Border.all(
                     color: isSelected ? AppColors.primary : AppColors.border,
-                    width: isSelected ? 2.5 : 1,
+                    width: 1.5,
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                  image:
-                      imgUrl != null
-                          ? DecorationImage(
-                            image: CachedNetworkImageProvider(imgUrl),
-                            fit: BoxFit.cover,
-                          )
-                          : null,
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                child:
-                    _attributeKeys.length == 1 && v.attributeMap.isNotEmpty
-                        ? Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 2,
-                              horizontal: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              borderRadius: const BorderRadius.vertical(
-                                bottom: Radius.circular(6),
-                              ),
-                            ),
-                            child: Builder(
-                              builder: (context) {
-                                final fullText = v.attributeMap.values.first;
-                                final displayText =
-                                    fullText.length > 8
-                                        ? '${fullText.substring(0, 7)}...'
-                                        : fullText;
-
-                                return Text(
-                                  displayText,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                );
-                              },
-                            ),
-                          ),
-                        )
-                        : null,
+                child: Row(
+                  children: [
+                    if (imgUrl != null) ...[
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppColors.border,
+                        backgroundImage: CachedNetworkImageProvider(imgUrl),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      _attributeKeys.length == 1 && v.attributeMap.isNotEmpty
+                          ? _fmt(v.attributeMap.values.first)
+                          : 'Opción',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color:
+                            isSelected
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }),

@@ -37,16 +37,18 @@ class ProductAdminInfoCard extends StatelessWidget {
     final projectedRetail = retailProfitUnit * effectiveStock;
     final projectedWholesale = wholesaleProfitUnit * effectiveStock;
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
         border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          collapsedIconColor: AppColors.slate,
+          iconColor: AppColors.slate,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          title: Row(
             children: [
               Container(
                 width: 30,
@@ -72,63 +74,72 @@ class ProductAdminInfoCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 12),
-          _AdminRow(
-            Icons.receipt_long_rounded,
-            const Color(0xFFF59E0B),
-            'Costo unitario',
-            'S/ ${cost.toStringAsFixed(2)}',
-          ),
-          const SizedBox(height: 8),
-          _AdminRow(
-            Icons.trending_up_rounded,
-            AppColors.success,
-            'G. Minorista (und)',
-            'S/ ${retailProfitUnit.toStringAsFixed(2)}',
-            badge: '${retailMargin.toStringAsFixed(1)}%',
-            valueColor: AppColors.success,
-          ),
-          if (wPrice != null) ...[
-            const SizedBox(height: 8),
-            _AdminRow(
-              Icons.people_rounded,
-              AppColors.primary,
-              'G. Mayorista (und)',
-              'S/ ${wholesaleProfitUnit.toStringAsFixed(2)}',
-              badge: '${wholesaleMargin.toStringAsFixed(1)}%',
-              valueColor: AppColors.primary,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 12),
+                  _AdminRow(
+                    Icons.receipt_long_rounded,
+                    const Color(0xFFF59E0B),
+                    'Costo unitario',
+                    'S/ ${cost.toStringAsFixed(2)}',
+                  ),
+                  const SizedBox(height: 8),
+                  _AdminRow(
+                    Icons.trending_up_rounded,
+                    AppColors.success,
+                    'G. Minorista (und)',
+                    'S/ ${retailProfitUnit.toStringAsFixed(2)}',
+                    badge: '${retailMargin.toStringAsFixed(1)}%',
+                    valueColor: AppColors.success,
+                  ),
+                  if (wPrice != null) ...[
+                    const SizedBox(height: 8),
+                    _AdminRow(
+                      Icons.people_rounded,
+                      AppColors.primary,
+                      'G. Mayorista (und)',
+                      'S/ ${wholesaleProfitUnit.toStringAsFixed(2)}',
+                      badge: '${wholesaleMargin.toStringAsFixed(1)}%',
+                      valueColor: AppColors.primary,
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  _AdminRow(
+                    Icons.warning_amber_rounded,
+                    AppColors.danger,
+                    'Pto. reorden',
+                    '$rPoint unds.',
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 12),
+                  _AdminRow(
+                    Icons.bar_chart_rounded,
+                    AppColors.teal,
+                    'Proy. Minorista',
+                    'S/ ${projectedRetail.toStringAsFixed(2)}',
+                    badge: 'Todo el stock',
+                  ),
+                  if (wPrice != null) ...[
+                    const SizedBox(height: 8),
+                    _AdminRow(
+                      Icons.bar_chart_rounded,
+                      AppColors.blue,
+                      'Proy. Mayorista',
+                      'S/ ${projectedWholesale.toStringAsFixed(2)}',
+                      badge: 'Todo el stock',
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
-          const SizedBox(height: 8),
-          _AdminRow(
-            Icons.warning_amber_rounded,
-            AppColors.danger,
-            'Pto. reorden',
-            '$rPoint unds.',
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 12),
-          _AdminRow(
-            Icons.bar_chart_rounded,
-            AppColors.teal,
-            'Proy. Minorista',
-            'S/ ${projectedRetail.toStringAsFixed(2)}',
-            badge: 'Todo el stock',
-          ),
-          if (wPrice != null) ...[
-            const SizedBox(height: 8),
-            _AdminRow(
-              Icons.bar_chart_rounded,
-              AppColors.blue,
-              'Proy. Mayorista',
-              'S/ ${projectedWholesale.toStringAsFixed(2)}',
-              badge: 'Todo el stock',
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
