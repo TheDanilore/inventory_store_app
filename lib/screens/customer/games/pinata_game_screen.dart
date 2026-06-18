@@ -114,11 +114,23 @@ class _PinataGameScreenState extends State<PinataGameScreen>
       if (!kIsWeb) {
         Vibration.vibrate(duration: 300, amplitude: 255);
       }
+      if (widget.profileId == 'offline') {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Modo sin conexión. Juegas por diversión.',
+            type: SnackbarType.info,
+          );
+          setState(() => _isSaving = false);
+        }
+        return;
+      }
       try {
         await context.read<WalletProvider>().processGameReward(
           points: _pointsEarned,
           movementType: 'MINI_GAME_PINATA',
-          description: 'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas',
+          description:
+              'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas',
         );
       } catch (e) {
         if (mounted) {

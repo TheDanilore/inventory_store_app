@@ -301,7 +301,7 @@ class PointsProvider extends ChangeNotifier {
   }
 
   Future<void> startBoxesRound(AppConfigProvider config) async {
-    if (_profileId == null || _isPlayingMiniGame || _isPreparingBoxes) {
+    if (_isPlayingMiniGame || _isPreparingBoxes) {
       return;
     }
 
@@ -335,7 +335,7 @@ class PointsProvider extends ChangeNotifier {
     WalletProvider? wallet,
   ]) async {
     final boxesLimit = config.getDouble('boxes_daily_limit', 1).round();
-    if (_profileId == null || _isPlayingMiniGame || !_boxesRoundReady) {
+    if (_isPlayingMiniGame || !_boxesRoundReady) {
       return null;
     }
     if (boxIndex < 0 || boxIndex >= _miniGameBoxes.length) return null;
@@ -345,7 +345,7 @@ class PointsProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     final todayDate = DateFormat('yyyy-MM-dd').format(now);
-    final isForFun = _boxesPlaysToday >= boxesLimit;
+    final isForFun = _boxesPlaysToday >= boxesLimit || _profileId == null;
     final reward = _miniGameBoxes[boxIndex];
 
     try {

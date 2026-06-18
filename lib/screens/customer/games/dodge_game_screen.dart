@@ -246,6 +246,17 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
     });
 
     if (_score > 0) {
+      if (widget.profileId == 'offline') {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Modo sin conexión. Juegas por diversión.',
+            type: SnackbarType.info,
+          );
+          setState(() => _isSaving = false);
+        }
+        return;
+      }
       try {
         await context.read<WalletProvider>().processGameReward(
           points: _score,

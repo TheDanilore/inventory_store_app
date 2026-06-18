@@ -176,7 +176,8 @@ class PointsMiniGameCard extends StatelessWidget {
                           locked
                               ? null
                               : () async {
-                                final wasForFun = !canPlay;
+                                final wasForFun =
+                                    !canPlay || provider.profileId == null;
                                 final picked = await context
                                     .read<PointsProvider>()
                                     .playBoxMiniGame(

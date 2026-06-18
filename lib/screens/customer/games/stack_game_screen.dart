@@ -194,11 +194,23 @@ class _StackGameScreenState extends State<StackGameScreen> {
       if (!kIsWeb) {
         Vibration.vibrate(duration: 200, amplitude: 255);
       }
+      if (widget.profileId == 'offline') {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Modo sin conexión. Juegas por diversión.',
+            type: SnackbarType.info,
+          );
+          setState(() => _isSaving = false);
+        }
+        return;
+      }
       try {
         await context.read<WalletProvider>().processGameReward(
           points: _score,
           movementType: 'MINI_GAME_STACK',
-          description: 'Torre de Cajas: $_score cajas apiladas. Ganó $_score monedas',
+          description:
+              'Torre de Cajas: $_score cajas apiladas. Ganó $_score monedas',
         );
       } catch (e) {
         if (mounted) {

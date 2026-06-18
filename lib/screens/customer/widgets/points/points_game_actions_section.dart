@@ -14,11 +14,12 @@ class PointsGameActionsSection extends StatelessWidget {
   Future<void> _playGame(BuildContext context, String path) async {
     final provider = context.read<PointsProvider>();
     final wallet = context.read<WalletProvider>();
-    if (provider.profileId == null) return;
 
-    final r = await context.push<int>('$path/${provider.profileId}');
+    final pId = provider.profileId ?? 'offline';
+
+    final r = await context.push<int>('$path/$pId');
     if (r != null && context.mounted) {
-      if (r > 0) {
+      if (r > 0 && provider.profileId != null) {
         final newBalance = (wallet.balance ?? 0) + r;
         try {
           await Supabase.instance.client
@@ -32,7 +33,7 @@ class PointsGameActionsSection extends StatelessWidget {
       }
 
       // Refresh points data after playing
-      if (context.mounted) {
+      if (context.mounted && provider.profileId != null) {
         await context.read<PointsProvider>().fetchPointsData(
           context.read<AppConfigProvider>(),
         );
