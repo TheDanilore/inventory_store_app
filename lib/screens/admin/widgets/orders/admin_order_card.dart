@@ -55,7 +55,13 @@ class AdminOrderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -167,8 +173,8 @@ class AdminOrderCard extends StatelessWidget {
                                 dateString,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -337,112 +343,43 @@ class AdminOrderCard extends StatelessWidget {
                   ),
                 ],
 
-                // ── Línea Separadora ─────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(color: Colors.grey.shade200, height: 1),
-                ),
-
-                // ── Botones de Acción Rápida ──────────────────────────────────
+                // ── Línea Separadora ───────────────────────                // ── Botones de Acción Rápida ──────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     // Imprimir Ticket (con animación si está generando)
-                    TextButton.icon(
+                    _AnimatedSoftButton(
                       onPressed:
                           isProcessing || isGeneratingPDF ? null : onPrint,
-                      icon:
-                          isGeneratingPDF
-                              ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : Icon(
-                                Icons.print_rounded,
-                                size: 18,
-                                color: Colors.grey.shade700,
-                              ),
-                      label: Text(
-                        isGeneratingPDF ? 'Generando...' : 'Ticket',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        backgroundColor: Colors.grey.shade100,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+                      icon: const Icon(Icons.print_rounded),
+                      label: 'Ticket',
+                      color: Colors.blueGrey.shade700,
+                      isLoading: isGeneratingPDF,
                     ),
                     const SizedBox(width: 8),
 
                     if (status == 'PENDING') ...[
                       // Botón Cancelar Borrador
-                      TextButton.icon(
+                      _AnimatedSoftButton(
                         onPressed:
                             isProcessing
                                 ? null
                                 : () => onUpdateStatus(order, 'CANCELLED'),
-                        icon: Icon(
-                          Icons.cancel_outlined,
-                          size: 18,
-                          color: Colors.red.shade600,
-                        ),
-                        label: Text(
-                          'Cancelar',
-                          style: TextStyle(
-                            color: Colors.red.shade600,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          backgroundColor: Colors.red.shade50,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                        icon: const Icon(Icons.cancel_outlined),
+                        label: 'Cancelar',
+                        color: Colors.red.shade700,
                       ),
                       const SizedBox(width: 8),
 
                       // Botón Completar
-                      ElevatedButton.icon(
+                      _AnimatedSoftButton(
                         onPressed:
                             isProcessing
                                 ? null
                                 : () => onUpdateStatus(order, 'COMPLETED'),
-                        icon: const Icon(
-                          Icons.check_circle_outline_rounded,
-                          size: 18,
-                        ),
-                        label: const Text(
-                          'Cobrar',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                        icon: const Icon(Icons.check_circle_outline_rounded),
+                        label: 'Cobrar',
+                        color: Colors.green.shade700,
                       ),
                     ],
                   ],
@@ -579,6 +516,114 @@ class _PaymentStatusTag extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Helpers: Botón Animado Tinted ──────────────────────────────────────────
+
+class _AnimatedSoftButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+  final Color color;
+  final bool isLoading;
+
+  const _AnimatedSoftButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.isLoading = false,
+  });
+
+  @override
+  State<_AnimatedSoftButton> createState() => _AnimatedSoftButtonState();
+}
+
+class _AnimatedSoftButtonState extends State<_AnimatedSoftButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDisabled = widget.onPressed == null || widget.isLoading;
+
+    return GestureDetector(
+      onTapDown: isDisabled ? null : (_) => _controller.forward(),
+      onTapUp:
+          isDisabled
+              ? null
+              : (_) {
+                _controller.reverse();
+                widget.onPressed!();
+              },
+      onTapCancel: isDisabled ? null : () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                isDisabled
+                    ? Colors.grey.shade100
+                    : widget.color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.isLoading)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: widget.color,
+                  ),
+                )
+              else
+                IconTheme(
+                  data: IconThemeData(
+                    size: 18,
+                    color: isDisabled ? Colors.grey.shade400 : widget.color,
+                  ),
+                  child: widget.icon,
+                ),
+              const SizedBox(width: 6),
+              Text(
+                widget.isLoading ? 'Procesando...' : widget.label,
+                style: TextStyle(
+                  color: isDisabled ? Colors.grey.shade500 : widget.color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

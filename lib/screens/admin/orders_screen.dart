@@ -9,7 +9,6 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/orders/admin_order_card.dart';
-import 'package:inventory_store_app/screens/admin/widgets/orders/orders_filter_dropdown.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/orders_provider.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
@@ -74,42 +73,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (newStatus == 'COMPLETED' &&
         (order.paymentMethod == 'POR ACORDAR' ||
             order.paymentMethod.trim().isEmpty)) {
-      await showDialog<void>(
-        context: context,
-        builder:
-            (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Método de pago pendiente',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              content: const Text(
-                'Este pedido tiene el método de pago como \'POR ACORDAR\'. '
-                'Abre el detalle del pedido y selecciona la cuenta o método '
-                'de cobro antes de completarlo.',
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Entendido'),
-                ),
-              ],
-            ),
-      );
-      return;
+      final selectedMethod = await _showPaymentMethodBottomSheet(order);
+      if (selectedMethod == null) return; // Cancelado por el usuario
+
+      // Actualizamos la orden temporalmente para mandarla a guardar con el nuevo método
+      order = order.copyWith(paymentMethod: selectedMethod);
     }
 
     // Diálogo de confirmación enriquecido
@@ -339,6 +307,102 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  Future<String?> _showPaymentMethodBottomSheet(OrderModel order) {
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (ctx) => Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Selecciona cómo pagó el cliente:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Monto a cobrar: S/ ${order.totalAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _PaymentOptionButton(
+                  label: 'EFECTIVO',
+                  icon: Icons.payments_outlined,
+                  onSelect: () => Navigator.pop(ctx, 'EFECTIVO'),
+                ),
+                const SizedBox(height: 12),
+                _PaymentOptionButton(
+                  label: 'YAPE',
+                  icon: Icons.phone_android_rounded,
+                  onSelect: () => Navigator.pop(ctx, 'YAPE'),
+                ),
+                const SizedBox(height: 12),
+                _PaymentOptionButton(
+                  label: 'PLIN',
+                  icon: Icons.phone_android_rounded,
+                  onSelect: () => Navigator.pop(ctx, 'PLIN'),
+                ),
+                const SizedBox(height: 12),
+                _PaymentOptionButton(
+                  label: 'TARJETA',
+                  icon: Icons.credit_card_rounded,
+                  onSelect: () => Navigator.pop(ctx, 'TARJETA'),
+                ),
+                const SizedBox(height: 12),
+                _PaymentOptionButton(
+                  label: 'CRÉDITO',
+                  icon: Icons.schedule_rounded,
+                  onSelect: () => Navigator.pop(ctx, 'CRÉDITO'),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required Function(bool) onSelected,
+  }) {
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      showCheckmark: false,
+      backgroundColor: Colors.white,
+      selectedColor: AppColors.primary.withValues(alpha: 0.1),
+      labelStyle: TextStyle(
+        color: isSelected ? AppColors.primary : Colors.grey.shade700,
+        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+        fontSize: 13,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.3)
+                  : Colors.grey.shade300,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    );
+  }
+
   // ─── BUILD ────────────────────────────────────────────────────────────────
 
   @override
@@ -417,60 +481,82 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
               // ── Filtros ─────────────────────────────────────────────────────
               SizedBox(
-                height: 40,
+                height: 48,
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
                   children: [
-                    OrdersFilterDropdown(
-                      value: provider.statusFilter,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'ALL',
-                          child: Text('Todos los estados'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'COMPLETED',
-                          child: Text('Completados'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'PENDING',
-                          child: Text('Borradores'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'CANCELLED',
-                          child: Text('Cancelados'),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          provider.setStatusFilter(val);
-                        }
-                      },
+                    _buildFilterChip(
+                      label: 'Todos',
+                      isSelected: provider.statusFilter == 'ALL',
+                      onSelected: (_) => provider.setStatusFilter('ALL'),
                     ),
                     const SizedBox(width: 8),
-                    OrdersFilterDropdown(
-                      value: provider.paymentStatusFilter,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'ALL',
-                          child: Text('Todos los cobros'),
+                    _buildFilterChip(
+                      label: 'Borradores',
+                      isSelected: provider.statusFilter == 'PENDING',
+                      onSelected: (_) => provider.setStatusFilter('PENDING'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'Completados',
+                      isSelected: provider.statusFilter == 'COMPLETED',
+                      onSelected: (_) => provider.setStatusFilter('COMPLETED'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'Cancelados',
+                      isSelected: provider.statusFilter == 'CANCELLED',
+                      onSelected: (_) => provider.setStatusFilter('CANCELLED'),
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: provider.paymentStatusFilter,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                          isDense: true,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            fontFamily: 'Nunito',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'ALL',
+                              child: Text('Cobros: Todos'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PAID',
+                              child: Text('Pagados'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PENDING',
+                              child: Text('Por cobrar'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PARTIAL',
+                              child: Text('Parciales'),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null)
+                              provider.setPaymentStatusFilter(val);
+                          },
                         ),
-                        DropdownMenuItem(value: 'PAID', child: Text('Pagados')),
-                        DropdownMenuItem(
-                          value: 'PENDING',
-                          child: Text('Por cobrar'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'PARTIAL',
-                          child: Text('Parciales'),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          provider.setPaymentStatusFilter(val);
-                        }
-                      },
+                      ),
                     ),
                     const SizedBox(width: 8),
                     DateFilterCalendar(
@@ -492,93 +578,110 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: () => provider.loadOrders(reset: true),
-                  child: Builder(
-                    builder: (context) {
-                      if (provider.isLoading) {
-                        return ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: 5,
-                          separatorBuilder:
-                              (_, _) => const SizedBox(height: 12),
-                          itemBuilder: (_, _) => const AppShimmer(height: 140),
-                        );
-                      }
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Builder(
+                      key: ValueKey(
+                        '${provider.isLoading}_${pageItems.length}_${provider.errorMessage}',
+                      ),
+                      builder: (context) {
+                        if (provider.isLoading) {
+                          return ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: 5,
+                            separatorBuilder:
+                                (_, _) => const SizedBox(height: 12),
+                            itemBuilder:
+                                (_, _) => const AppShimmer(height: 140),
+                          );
+                        }
 
-                      if (provider.errorMessage.isNotEmpty) {
-                        return _buildErrorState(provider.errorMessage);
-                      }
+                        if (provider.errorMessage.isNotEmpty) {
+                          return _buildErrorState(provider.errorMessage);
+                        }
 
-                      if (pageItems.isEmpty) {
-                        return _buildEmptyState();
-                      }
+                        if (pageItems.isEmpty) {
+                          return _buildEmptyState();
+                        }
 
-                      return Column(
-                        children: [
-                          // Contador
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Mostrando resultados',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  'Pág. ${provider.currentPage + 1} / $totalPages',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Lista paginada
-                          Expanded(
-                            child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                              itemCount: pageItems.length,
-                              separatorBuilder:
-                                  (_, _) => const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final order = pageItems[index];
-                                return AdminOrderCard(
-                                  order: order,
-                                  isProcessing: provider.isOrderProcessing(
-                                    order.id,
-                                  ),
-                                  isGeneratingPDF: provider.isGeneratingPDF(
-                                    order.id,
-                                  ),
-                                  onTap: () => _showOrderDetails(order),
-                                  onUpdateStatus:
-                                      (o, s) => _updateOrderStatus(o, s),
-                                  onPrint: () => _printOrderTicket(order),
-                                );
-                              },
-                            ),
-                          ),
-
-                          // Controles de Paginación
-                          if (totalPages > 1)
+                        return Column(
+                          children: [
+                            // Contador
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                              child: AdminPageBlocks(
-                                currentPage: provider.currentPage,
-                                totalPages: totalPages,
-                                onPageChanged: provider.goToPage,
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Mostrando resultados',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    'Pág. ${provider.currentPage + 1} / $totalPages',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                        ],
-                      );
-                    },
+
+                            // Lista paginada
+                            Expanded(
+                              child: ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  16,
+                                ),
+                                itemCount: pageItems.length,
+                                separatorBuilder:
+                                    (_, _) => const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final order = pageItems[index];
+                                  return AdminOrderCard(
+                                    order: order,
+                                    isProcessing: provider.isOrderProcessing(
+                                      order.id,
+                                    ),
+                                    isGeneratingPDF: provider.isGeneratingPDF(
+                                      order.id,
+                                    ),
+                                    onTap: () => _showOrderDetails(order),
+                                    onUpdateStatus:
+                                        (o, s) => _updateOrderStatus(o, s),
+                                    onPrint: () => _printOrderTicket(order),
+                                  );
+                                },
+                              ),
+                            ),
+
+                            // Controles de Paginación
+                            if (totalPages > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  14,
+                                  16,
+                                  8,
+                                ),
+                                child: AdminPageBlocks(
+                                  currentPage: provider.currentPage,
+                                  totalPages: totalPages,
+                                  onPageChanged: provider.goToPage,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -603,6 +706,51 @@ class _OrdersScreenState extends State<OrdersScreen> {
       icon: Icons.receipt_long_rounded,
       title: 'No se encontraron pedidos.',
       message: 'Intenta cambiar los filtros o la búsqueda.',
+    );
+  }
+}
+
+// ─── Helpers: Modal de Opciones de Pago ────────────────────────────────────
+
+class _PaymentOptionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onSelect;
+
+  const _PaymentOptionButton({
+    required this.label,
+    required this.icon,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onSelect,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.primary),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
