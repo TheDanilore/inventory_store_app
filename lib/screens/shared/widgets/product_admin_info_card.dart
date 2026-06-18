@@ -19,7 +19,6 @@ class ProductAdminInfoCard extends StatelessWidget {
             ? provider.selectedVariant!.unitCost!
             : provider.product.unitCost;
     final wPrice = provider.baseWholesalePrice;
-    final wMinQty = provider.baseWholesaleMinQty;
     final rPoint = provider.selectedVariant?.reorderPoint ?? 0;
 
     final retailProfitUnit = provider.effectivePrice - cost;
