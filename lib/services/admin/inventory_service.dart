@@ -10,14 +10,14 @@ class InventoryService {
   /// podríamos hacer una query a variants + batches.
   /// Para no sobrecargar, usaremos un enfoque mixto o rpc si existiera.
   /// Por ahora traemos la suma si es posible, o mantenemos un query ligero.
-  Future<Map<String, int>> getGeneralStockMetrics() async {
+  Future<Map<String, dynamic>> getGeneralStockMetrics() async {
     // Esto podría optimizarse en un Edge Function o RPC en el futuro.
     // Traeremos solo lo esencial para calcular.
     final response = await _supabase
         .from('product_variants')
         .select('''
-      id, reorder_point,
-      products!inner(stock_control, is_active),
+      id, reorder_point, unit_cost,
+      products!inner(stock_control, is_active, unit_cost),
       warehouse_stock_batches(available_quantity)
     ''')
         .eq('is_active', true)
@@ -25,11 +25,16 @@ class InventoryService {
 
     int totalStock = 0;
     int lowStockCount = 0;
+    double totalCost = 0.0;
     int totalVariants = (response as List).length;
 
     for (final raw in response) {
       final stockControl = raw['products']['stock_control'] as bool? ?? true;
       final reorderPoint = raw['reorder_point'] as int? ?? 3;
+
+      final double pUnitCost = (raw['products']['unit_cost'] as num?)?.toDouble() ?? 0.0;
+      final double vUnitCost = (raw['unit_cost'] as num?)?.toDouble() ?? 0.0;
+      final double finalCost = vUnitCost > 0 ? vUnitCost : pUnitCost;
 
       int variantStock = 0;
       final batches = raw['warehouse_stock_batches'] as List? ?? [];
@@ -39,8 +44,9 @@ class InventoryService {
 
       if (stockControl) {
         totalStock += variantStock;
+        totalCost += variantStock * finalCost;
         if (variantStock <= reorderPoint && variantStock > 0) {
-          lowStockCount++; // Consideramos bajo stock si está <= punto reorden pero > 0 (o <= 0 también? En el app anterior era <= reorderPoint)
+          lowStockCount++; 
         } else if (variantStock <= 0) {
           lowStockCount++;
         }
@@ -51,6 +57,7 @@ class InventoryService {
       'totalVariants': totalVariants,
       'totalStock': totalStock,
       'lowStockCount': lowStockCount,
+      'totalCost': totalCost,
     };
   }
 
@@ -91,8 +98,14 @@ class InventoryService {
         .eq('products.is_active', true);
 
     if (search.isNotEmpty) {
-      // Búsqueda en nombre de producto o SKU
-      query = query.or('sku.ilike.%$search%,products.name.ilike.%$search%');
+      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final pIds = (matchingProducts as List).map((e) => e['id']).toList();
+      
+      final orConditions = ['sku.ilike.%$search%'];
+      if (pIds.isNotEmpty) {
+        orConditions.add('product_id.in.(${pIds.join(',')})');
+      }
+      query = query.or(orConditions.join(','));
     }
 
     // Filtrar por categoría. El !inner ya está en products. Pero categories no tiene !inner aquí a menos que lo agreguemos.
@@ -278,7 +291,20 @@ class InventoryService {
         .eq('products.uses_batches', true);
 
     if (search.isNotEmpty) {
-      query = query.ilike('batch_number', '%$search%');
+      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final pIds = (matchingProducts as List).map((e) => e['id']).toList();
+      
+      final matchingVariants = await _supabase.from('product_variants').select('id').ilike('sku', '%$search%');
+      final vIds = (matchingVariants as List).map((e) => e['id']).toList();
+      
+      final orConditions = ['batch_number.ilike.%$search%'];
+      if (pIds.isNotEmpty) {
+        orConditions.add('product_id.in.(${pIds.join(',')})');
+      }
+      if (vIds.isNotEmpty) {
+        orConditions.add('variant_id.in.(${vIds.join(',')})');
+      }
+      query = query.or(orConditions.join(','));
     }
 
     final now = DateTime.now();
@@ -382,7 +408,20 @@ class InventoryService {
         .eq('products.uses_batches', true);
 
     if (search.isNotEmpty) {
-      query = query.ilike('batch_number', '%$search%');
+      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final pIds = (matchingProducts as List).map((e) => e['id']).toList();
+      
+      final matchingVariants = await _supabase.from('product_variants').select('id').ilike('sku', '%$search%');
+      final vIds = (matchingVariants as List).map((e) => e['id']).toList();
+      
+      final orConditions = ['batch_number.ilike.%$search%'];
+      if (pIds.isNotEmpty) {
+        orConditions.add('product_id.in.(${pIds.join(',')})');
+      }
+      if (vIds.isNotEmpty) {
+        orConditions.add('variant_id.in.(${vIds.join(',')})');
+      }
+      query = query.or(orConditions.join(','));
     }
 
     final response = await query;
@@ -435,7 +474,14 @@ class InventoryService {
         .eq('products.is_active', true);
 
     if (search.isNotEmpty) {
-      query = query.or('sku.ilike.%$search%,products.name.ilike.%$search%');
+      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final pIds = (matchingProducts as List).map((e) => e['id']).toList();
+      
+      final orConditions = ['sku.ilike.%$search%'];
+      if (pIds.isNotEmpty) {
+        orConditions.add('product_id.in.(${pIds.join(',')})');
+      }
+      query = query.or(orConditions.join(','));
     }
 
     String? catId;
@@ -473,7 +519,20 @@ class InventoryService {
         .eq('products.uses_batches', true);
 
     if (search.isNotEmpty) {
-      query = query.ilike('batch_number', '%$search%');
+      final matchingProducts = await _supabase.from('products').select('id').ilike('name', '%$search%');
+      final pIds = (matchingProducts as List).map((e) => e['id']).toList();
+      
+      final matchingVariants = await _supabase.from('product_variants').select('id').ilike('sku', '%$search%');
+      final vIds = (matchingVariants as List).map((e) => e['id']).toList();
+      
+      final orConditions = ['batch_number.ilike.%$search%'];
+      if (pIds.isNotEmpty) {
+        orConditions.add('product_id.in.(${pIds.join(',')})');
+      }
+      if (vIds.isNotEmpty) {
+        orConditions.add('variant_id.in.(${vIds.join(',')})');
+      }
+      query = query.or(orConditions.join(','));
     }
 
     final now = DateTime.now();

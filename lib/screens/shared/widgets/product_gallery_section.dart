@@ -38,8 +38,10 @@ class ProductGallerySection extends StatelessWidget {
         effectiveUrls.add(fallbackImageUrl!);
       }
       for (final img in images) {
-        if (fallbackImageUrl == null || img.imageUrl != fallbackImageUrl) {
-          effectiveUrls.add(img.imageUrl);
+        if (img.variantId == null || img.variantId!.isEmpty) {
+          if (fallbackImageUrl == null || img.imageUrl != fallbackImageUrl) {
+            effectiveUrls.add(img.imageUrl);
+          }
         }
       }
     }

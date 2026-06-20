@@ -24,6 +24,7 @@ class InventoryProvider extends ChangeNotifier {
   int globalTotalVariants = 0;
   int globalTotalStock = 0;
   int globalLowStockCount = 0;
+  double globalTotalCost = 0.0;
 
   // ── Tab 2: Lotes ──
   bool isLoadingBatches = true;
@@ -72,6 +73,7 @@ class InventoryProvider extends ChangeNotifier {
       globalTotalVariants = metrics['totalVariants'] ?? 0;
       globalTotalStock = metrics['totalStock'] ?? 0;
       globalLowStockCount = metrics['lowStockCount'] ?? 0;
+      globalTotalCost = (metrics['totalCost'] as num?)?.toDouble() ?? 0.0;
     } catch (e) {
       debugPrint('Error cargando métricas globales de stock: $e');
     }

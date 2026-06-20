@@ -705,6 +705,11 @@ class _ProductDetailScreenContentState
                 ),
               ),
             ] else ...[
+              if (!isAdmin)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
+                  child: _buildWishlistButton(),
+                ),
               Padding(
                 padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
                 child: CircleAvatar(
@@ -757,7 +762,7 @@ class _ProductDetailScreenContentState
               pageController: _pageController,
               selectedIndex: _selectedImageIndex,
               onPageChanged: _onGalleryChanged,
-              wishlistWidget: isAdmin ? null : _buildWishlistButton(),
+              wishlistWidget: null,
               variantImageOverrideUrl:
                   (_showVariantImage && _selectedVariant != null)
                       ? _selectedVariantImageUrl
@@ -1015,8 +1020,8 @@ class _ProductDetailScreenContentState
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withValues(alpha: 0.8),
+          shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.1),
@@ -1044,8 +1049,11 @@ class _ProductDetailScreenContentState
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _isWishlisted ? AppColors.danger : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color:
+              _isWishlisted
+                  ? AppColors.danger
+                  : Colors.white.withValues(alpha: 0.8),
+          shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),

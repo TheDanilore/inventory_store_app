@@ -58,9 +58,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               child: Row(
                 children: [
                   _MetricCard(
-                    label: 'Variantes',
-                    value: '${provider.globalTotalVariants}',
-                    icon: Icons.layers_rounded,
+                    label: 'Valor Inv.',
+                    value: 'S/ ${provider.globalTotalCost.toStringAsFixed(2)}',
+                    icon: Icons.monetization_on_rounded,
                     color: AppColors.primary,
                   ),
                   const SizedBox(width: 10),
