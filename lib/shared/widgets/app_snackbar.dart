@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 enum SnackbarType { success, error, warning, info }
@@ -62,9 +63,15 @@ class AppSnackbar {
     );
 
     if (type == SnackbarType.error) {
-      HapticFeedback.mediumImpact();
+      // Solo vibrar si no es web para evitar MissingPluginException
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 50, amplitude: 128);
+      }
     } else {
-      HapticFeedback.lightImpact();
+      // Solo vibrar si no es web para evitar MissingPluginException
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 50, amplitude: 128);
+      }
     }
 
     // Insertamos al inicio para que la más nueva tome la posición frontal

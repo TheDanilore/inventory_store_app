@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
@@ -142,7 +143,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          HapticFeedback.lightImpact();
+          // Solo vibrar si no es web para evitar MissingPluginException
+          if (!kIsWeb) {
+            Vibration.vibrate(duration: 50, amplitude: 128);
+          }
           await _loadAllData();
         },
         child:

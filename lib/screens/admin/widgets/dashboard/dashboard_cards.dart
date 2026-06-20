@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 /// Anima un valor numérico desde 0 hasta [value] cuando el widget aparece
@@ -1279,7 +1280,10 @@ class _BounceScaleState extends State<BounceScale>
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) {
         _controller.reverse();
-        HapticFeedback.lightImpact();
+        // Solo vibrar si no es web para evitar MissingPluginException
+        if (!kIsWeb) {
+          Vibration.vibrate(duration: 50, amplitude: 128);
+        }
         widget.onTap();
       },
       onTapCancel: () => _controller.reverse(),

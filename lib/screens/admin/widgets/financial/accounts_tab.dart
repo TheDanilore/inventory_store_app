@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/providers/admin/financial_accounts_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/financial/account_form_sheet.dart';
@@ -7,8 +10,34 @@ import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
-class AccountsTab extends StatelessWidget {
+class AccountsTab extends StatefulWidget {
   const AccountsTab({super.key});
+
+  @override
+  State<AccountsTab> createState() => _AccountsTabState();
+}
+
+class _AccountsTabState extends State<AccountsTab> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,68 +60,156 @@ class AccountsTab extends StatelessWidget {
               children: [
                 _GlobalBalanceCard(totalBalance: totalBalance),
                 Expanded(
-                  child: isLoading && accounts.isEmpty
-                      ? const _AccountsSkeleton()
-                      : accounts.isEmpty
-                          ? const AppEmptyState(icon: Icons.account_balance_wallet_rounded, title: 'Sin Cuentas', message: 'No hay cuentas financieras registradas.')
+                  child:
+                      isLoading && accounts.isEmpty
+                          ? const _AccountsSkeleton()
+                          : accounts.isEmpty
+                          ? const AppEmptyState(
+                            icon: Icons.account_balance_wallet_rounded,
+                            title: 'Sin Cuentas',
+                            message: 'No hay cuentas financieras registradas.',
+                          )
                           : RefreshIndicator(
-                              onRefresh: () async => provider.fetchAccounts(),
+                            onRefresh: () async => provider.fetchAccounts(),
+                            child: AnimationLimiter(
                               child: ListView(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                                controller: _scrollController,
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  80,
+                                ),
                                 children: [
                                   if (activeAccounts.isNotEmpty) ...[
                                     const Padding(
-                                      padding: EdgeInsets.only(bottom: 10, left: 4),
-                                      child: Text('CUENTAS ACTIVAS',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.textSecondary,
-                                            letterSpacing: 1.2,
-                                          )),
+                                      padding: EdgeInsets.only(
+                                        bottom: 10,
+                                        left: 4,
+                                      ),
+                                      child: Text(
+                                        'CUENTAS ACTIVAS',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textSecondary,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
                                     ),
-                                    ...activeAccounts.map((a) => Padding(
-                                          padding: const EdgeInsets.only(bottom: 10),
-                                          child: _AccountCard(
-                                            account: a,
-                                            onEdit: () => AccountFormSheet.show(context, account: a),
+                                    ...activeAccounts.asMap().entries.map(
+                                      (
+                                        entry,
+                                      ) => AnimationConfiguration.staggeredList(
+                                        position: entry.key,
+                                        duration: const Duration(
+                                          milliseconds: 375,
+                                        ),
+                                        child: SlideAnimation(
+                                          verticalOffset: 50.0,
+                                          child: FadeInAnimation(
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 10,
+                                              ),
+                                              child: _AccountCard(
+                                                account: entry.value,
+                                                onEdit:
+                                                    () => AccountFormSheet.show(
+                                                      context,
+                                                      account: entry.value,
+                                                    ),
+                                              ),
+                                            ),
                                           ),
-                                        )),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                   if (inactiveAccounts.isNotEmpty) ...[
                                     const SizedBox(height: 16),
                                     const Padding(
-                                      padding: EdgeInsets.only(bottom: 10, left: 4),
-                                      child: Text('CUENTAS INACTIVAS',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.textSecondary,
-                                            letterSpacing: 1.2,
-                                          )),
+                                      padding: EdgeInsets.only(
+                                        bottom: 10,
+                                        left: 4,
+                                      ),
+                                      child: Text(
+                                        'CUENTAS INACTIVAS',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textSecondary,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
                                     ),
-                                    ...inactiveAccounts.map((a) => Padding(
-                                          padding: const EdgeInsets.only(bottom: 10),
-                                          child: _AccountCard(
-                                            account: a,
-                                            onEdit: () => AccountFormSheet.show(context, account: a),
+                                    ...inactiveAccounts.asMap().entries.map(
+                                      (
+                                        entry,
+                                      ) => AnimationConfiguration.staggeredList(
+                                        position:
+                                            activeAccounts.length + entry.key,
+                                        duration: const Duration(
+                                          milliseconds: 375,
+                                        ),
+                                        child: SlideAnimation(
+                                          verticalOffset: 50.0,
+                                          child: FadeInAnimation(
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 10,
+                                              ),
+                                              child: _AccountCard(
+                                                account: entry.value,
+                                                onEdit:
+                                                    () => AccountFormSheet.show(
+                                                      context,
+                                                      account: entry.value,
+                                                    ),
+                                              ),
+                                            ),
                                           ),
-                                        )),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ],
                               ),
                             ),
+                          ),
                 ),
               ],
             ),
             Positioned(
               bottom: 24,
               right: 16,
-              child: FloatingActionButton(
+              child: FloatingActionButton.extended(
                 heroTag: 'fab_accounts',
-                onPressed: isLoading ? null : () => AccountFormSheet.show(context),
+                onPressed:
+                    isLoading
+                        ? null
+                        : () {
+                          // Solo vibrar si no es web para evitar MissingPluginException
+                          if (!kIsWeb) {
+                            Vibration.vibrate(duration: 50, amplitude: 128);
+                          }
+                          AccountFormSheet.show(context);
+                        },
                 backgroundColor: AppColors.primary,
-                child: const Icon(Icons.add_rounded, color: Colors.white),
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                label: AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  child:
+                      _isFabExtended
+                          ? const Text(
+                            'Nueva Cuenta',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                          : const SizedBox.shrink(),
+                ),
               ),
             ),
           ],
@@ -130,8 +247,15 @@ class _GlobalBalanceCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -140,11 +264,20 @@ class _GlobalBalanceCard extends StatelessWidget {
               children: [
                 Text(
                   'Balance total (Activas)',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   'S/ ${totalBalance.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
                 ),
               ],
             ),
@@ -165,22 +298,33 @@ class _AccountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isBank = account.type == 'BANCO';
     final isDigital = account.type == 'DIGITAL';
-    final iconColor = account.isActive
-        ? (isBank
-            ? const Color(0xFF0288D1)
-            : isDigital
+    final iconColor =
+        account.isActive
+            ? (isBank
+                ? const Color(0xFF0288D1)
+                : isDigital
                 ? const Color(0xFF8E24AA)
                 : AppColors.success)
-        : AppColors.textSecondary;
+            : AppColors.textSecondary;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: account.isActive ? Colors.white : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: account.isActive ? null : Border.all(color: AppColors.border),
-        boxShadow: account.isActive
-            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 2))]
-            : null,
+        border: Border.all(
+          color: account.isActive ? Colors.transparent : AppColors.border,
+        ),
+        boxShadow:
+            account.isActive
+                ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 15,
+                    spreadRadius: -2,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -195,10 +339,17 @@ class _AccountCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: account.isActive ? iconColor.withValues(alpha: 0.1) : AppColors.surfaceDark,
+                    color:
+                        account.isActive
+                            ? iconColor.withValues(alpha: 0.1)
+                            : AppColors.surfaceDark,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(_getIcon(account.type), color: iconColor, size: 24),
+                  child: Icon(
+                    _getIcon(account.type),
+                    color: iconColor,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -210,19 +361,29 @@ class _AccountCard extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
-                          color: account.isActive ? AppColors.textPrimary : AppColors.textSecondary,
+                          color:
+                              account.isActive
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.border,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           account.type,
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -236,7 +397,10 @@ class _AccountCard extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
-                        color: account.isActive ? AppColors.textPrimary : AppColors.textSecondary,
+                        color:
+                            account.isActive
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -245,7 +409,10 @@ class _AccountCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: account.isActive ? AppColors.success : AppColors.textSecondary,
+                        color:
+                            account.isActive
+                                ? AppColors.success
+                                : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -265,8 +432,6 @@ class _AccountCard extends StatelessWidget {
     return Icons.savings_rounded;
   }
 }
-
-
 
 class _AccountsSkeleton extends StatelessWidget {
   const _AccountsSkeleton();

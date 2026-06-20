@@ -1,6 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/account_movement_model.dart';
+import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/providers/admin/account_movements_provider.dart';
 import 'package:inventory_store_app/providers/admin/financial_accounts_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
@@ -11,8 +16,163 @@ import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
-class MovementsTab extends StatelessWidget {
+class MovementsTab extends StatefulWidget {
   const MovementsTab({super.key});
+
+  @override
+  State<MovementsTab> createState() => _MovementsTabState();
+}
+
+class _MovementsTabState extends State<MovementsTab> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _showFiltersSheet(BuildContext context, AccountMovementsProvider movProvider, List<FinancialAccountModel> accounts) {
+    // Solo vibrar si no es web para evitar MissingPluginException
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 50, amplitude: 128);
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('Filtros', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  const SizedBox(height: 16),
+                  const Text('Tipo de Movimiento', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: movProvider.filterType,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
+                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        items: const [
+                          DropdownMenuItem(value: 'Todos', child: Text('Todos los tipos')),
+                          DropdownMenuItem(value: 'INCOME', child: Text('Ingresos')),
+                          DropdownMenuItem(value: 'EXPENSE', child: Text('Egresos')),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            movProvider.setFilterType(v);
+                            Navigator.pop(ctx);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Cuenta Financiera', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: movProvider.filterAccountId,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
+                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        items: [
+                          const DropdownMenuItem(value: 'Todas', child: Text('Todas las cuentas')),
+                          ...accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) {
+                            movProvider.setFilterAccount(v);
+                            Navigator.pop(ctx);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Rango de Fechas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  const SizedBox(height: 8),
+                  DateFilterCalendar(
+                    dateRange: movProvider.dateFrom != null && movProvider.dateTo != null
+                        ? DateTimeRange(start: movProvider.dateFrom!, end: movProvider.dateTo!)
+                        : null,
+                    onDateRangeSelected: (picked) {
+                      movProvider.setDateRange(
+                        picked.start,
+                        DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
+                      );
+                      Navigator.pop(ctx);
+                    },
+                    onClear: () {
+                      movProvider.setDateRange(null, null);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,123 +191,70 @@ class MovementsTab extends StatelessWidget {
                   totalExpense: movProvider.totalExpense,
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: movProvider.filterType,
-                              isExpanded: true,
-                              icon: const Icon(Icons.filter_list_rounded, size: 18),
-                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-                              items: const [
-                                DropdownMenuItem(value: 'Todos', child: Text('Todos los tipos')),
-                                DropdownMenuItem(value: 'INCOME', child: Text('Ingresos')),
-                                DropdownMenuItem(value: 'EXPENSE', child: Text('Egresos')),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) movProvider.setFilterType(v);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: movProvider.filterAccountId,
-                              isExpanded: true,
-                              icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
-                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-                              items: [
-                                const DropdownMenuItem(value: 'Todas', child: Text('Todas las cuentas')),
-                                ...accounts.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) movProvider.setFilterAccount(v);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      DateFilterCalendar(
-                        dateRange: movProvider.dateFrom != null && movProvider.dateTo != null
-                            ? DateTimeRange(start: movProvider.dateFrom!, end: movProvider.dateTo!)
-                            : null,
-                        onDateRangeSelected: (picked) {
-                          movProvider.setDateRange(
-                            picked.start,
-                            DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
-                          );
-                        },
-                        onClear: () {
-                          movProvider.setDateRange(null, null);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       Expanded(
                         child: Container(
-                          height: 40,
+                          height: 48,
                           decoration: BoxDecoration(
                             color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.transparent),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              )
+                            ],
                           ),
                           child: TextField(
                             onChanged: (val) => movProvider.setSearchText(val),
                             decoration: InputDecoration(
-                              hintText: 'Buscar por descripción...',
-                              hintStyle: TextStyle(fontSize: 13, color: AppColors.textSecondary.withValues(alpha: 0.7)),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
+                              hintText: 'Buscar movimientos...',
+                              hintStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.8)),
+                              prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
                               border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Export Button
+                      // Filter Button
                       InkWell(
-                        onTap: () {
-                          // Implement Export to CSV here
-                        },
-                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _showFiltersSheet(context, movProvider, accounts),
+                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          height: 48,
+                          width: 48,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.transparent),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              )
+                            ],
                           ),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
-                              SizedBox(width: 6),
-                              Text('Exportar', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              const Icon(Icons.tune_rounded, size: 22, color: AppColors.textPrimary),
+                              if (movProvider.filterType != 'Todos' || movProvider.filterAccountId != 'Todas' || movProvider.dateFrom != null)
+                                Positioned(
+                                  top: 12,
+                                  right: 12,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -166,11 +273,23 @@ class MovementsTab extends StatelessWidget {
                                 Expanded(
                                   child: RefreshIndicator(
                                     onRefresh: () async => movProvider.fetchMovements(),
-                                    child: ListView.separated(
-                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                                      itemCount: movements.length,
-                                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                                      itemBuilder: (_, i) => _MovementCard(movement: movements[i]),
+                                    child: AnimationLimiter(
+                                      child: ListView.separated(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                                        itemCount: movements.length,
+                                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                                        itemBuilder: (_, i) => AnimationConfiguration.staggeredList(
+                                          position: i,
+                                          duration: const Duration(milliseconds: 375),
+                                          child: SlideAnimation(
+                                            verticalOffset: 50.0,
+                                            child: FadeInAnimation(
+                                              child: _MovementCard(movement: movements[i]),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -194,10 +313,21 @@ class MovementsTab extends StatelessWidget {
               right: 16,
               child: FloatingActionButton.extended(
                 heroTag: 'fab_movements',
-                onPressed: isLoading ? null : () => MovementFormSheet.show(context),
+                onPressed: isLoading ? null : () {
+                  // Solo vibrar si no es web para evitar MissingPluginException
+                  if (!kIsWeb) {
+                    Vibration.vibrate(duration: 50, amplitude: 128);
+                  }
+                  MovementFormSheet.show(context);
+                },
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
-                label: const Text('Registrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                label: AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  child: _isFabExtended 
+                      ? const Text('Registrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))
+                      : const SizedBox.shrink(),
+                ),
               ),
             ),
           ],
@@ -327,9 +457,17 @@ class _MovementCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Colors.transparent),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

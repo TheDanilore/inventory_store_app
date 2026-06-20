@@ -2,7 +2,6 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:go_router/go_router.dart';
@@ -196,8 +195,10 @@ class _ProductDetailScreenContentState
       sku: _selectedVariant?.sku,
       availableStock: _effectiveStock,
     );
-    if (!kIsWeb) Vibration.vibrate(duration: 50, amplitude: 128);
-    HapticFeedback.lightImpact();
+    // Solo vibrar si no es web para evitar MissingPluginException
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 50, amplitude: 128);
+    }
     _showSnack('¡Añadido al carrito!', isSuccess: true);
   }
 

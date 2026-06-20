@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -88,7 +89,10 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void _toggle(String title) {
-    HapticFeedback.lightImpact();
+    // Solo vibrar si no es web para evitar MissingPluginException
+    if (!kIsWeb) {
+      Vibration.vibrate(duration: 50, amplitude: 128);
+    }
     setState(() {
       if (_expanded.contains(title)) {
         _expanded.remove(title);
@@ -476,7 +480,10 @@ class _AppDrawerState extends State<AppDrawer> {
           splashColor: AppColors.primary.withValues(alpha: 0.15),
           hoverColor: AppColors.primaryLight,
           onTap: () {
-            HapticFeedback.lightImpact();
+            // Solo vibrar si no es web para evitar MissingPluginException
+            if (!kIsWeb) {
+              Vibration.vibrate(duration: 50, amplitude: 128);
+            }
             if (item.onTap != null) item.onTap!();
           },
           dense: true,
@@ -666,7 +673,10 @@ class _SubItemTile extends StatelessWidget {
           splashColor: AppColors.primary.withValues(alpha: 0.15),
           hoverColor: AppColors.primaryLight,
           onTap: () {
-            HapticFeedback.lightImpact();
+            // Solo vibrar si no es web para evitar MissingPluginException
+            if (!kIsWeb) {
+              Vibration.vibrate(duration: 50, amplitude: 128);
+            }
             item.onTap();
           },
           dense: true,

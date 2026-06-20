@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/cash_shift_model.dart';
 import 'package:inventory_store_app/providers/admin/cash_shifts_provider.dart';
@@ -12,8 +15,34 @@ import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
-class ShiftsTab extends StatelessWidget {
+class ShiftsTab extends StatefulWidget {
   const ShiftsTab({super.key});
+
+  @override
+  State<ShiftsTab> createState() => _ShiftsTabState();
+}
+
+class _ShiftsTabState extends State<ShiftsTab> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,18 +127,30 @@ class ShiftsTab extends StatelessWidget {
                                 Expanded(
                                   child: RefreshIndicator(
                                     onRefresh: () async => provider.fetchShifts(),
-                                    child: ListView.separated(
-                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                                      itemCount: shifts.length,
-                                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                                      itemBuilder: (_, i) => _ShiftCard(
-                                        shift: shifts[i],
-                                        onClose: shifts[i].status == 'OPEN' ? () async {
-                                          final expected = await provider.calcExpected(shifts[i].id, shifts[i].accountId ?? '', shifts[i].openingAmount);
-                                          if (context.mounted) {
-                                            CloseShiftSheet.show(context, shift: shifts[i], expectedAmount: expected);
-                                          }
-                                        } : null,
+                                    child: AnimationLimiter(
+                                      child: ListView.separated(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                                        itemCount: shifts.length,
+                                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                                        itemBuilder: (_, i) => AnimationConfiguration.staggeredList(
+                                          position: i,
+                                          duration: const Duration(milliseconds: 375),
+                                          child: SlideAnimation(
+                                            verticalOffset: 50.0,
+                                            child: FadeInAnimation(
+                                              child: _ShiftCard(
+                                                shift: shifts[i],
+                                                onClose: shifts[i].status == 'OPEN' ? () async {
+                                                  final expected = await provider.calcExpected(shifts[i].id, shifts[i].accountId ?? '', shifts[i].openingAmount);
+                                                  if (context.mounted) {
+                                                    CloseShiftSheet.show(context, shift: shifts[i], expectedAmount: expected);
+                                                  }
+                                                } : null,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -135,6 +176,10 @@ class ShiftsTab extends StatelessWidget {
               child: FloatingActionButton.extended(
                 heroTag: 'fab_shifts',
                 onPressed: isLoading ? null : () {
+                  // Solo vibrar si no es web para evitar MissingPluginException
+                  if (!kIsWeb) {
+                    Vibration.vibrate(duration: 50, amplitude: 128);
+                  }
                   final availableAccounts = provider.cajaAccounts.where((a) => !provider.openAccountIds.contains(a.id)).toList();
                   if (availableAccounts.isEmpty) {
                     AppSnackbar.show(context, message: 'Todas las cajas tienen turnos abiertos', type: SnackbarType.warning);
@@ -144,7 +189,12 @@ class ShiftsTab extends StatelessWidget {
                 },
                 backgroundColor: AppColors.success,
                 icon: const Icon(Icons.lock_open_rounded, color: Colors.white),
-                label: const Text('Abrir turno', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                label: AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  child: _isFabExtended 
+                      ? const Text('Abrir turno', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))
+                      : const SizedBox.shrink(),
+                ),
               ),
             ),
           ],
@@ -165,9 +215,17 @@ class _ActiveShiftBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.08),
+        color: AppColors.success.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: 0.1),
+            blurRadius: 15,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Row(
         children: [
@@ -253,10 +311,17 @@ class _ShiftCard extends StatelessWidget {
     final isOpen = shift.status == 'OPEN';
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isOpen ? AppColors.success.withValues(alpha: 0.5) : AppColors.border),
-        boxShadow: isOpen ? [BoxShadow(color: AppColors.success.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))] : null,
+        border: Border.all(color: Colors.transparent),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
