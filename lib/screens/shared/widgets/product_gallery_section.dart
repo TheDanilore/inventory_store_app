@@ -71,12 +71,7 @@ class ProductGallerySection extends StatelessWidget {
                     extra: {'imageUrls': effectiveUrls, 'initialIndex': index},
                   ),
               child: Padding(
-                padding: EdgeInsets.only(
-                  left: effectiveUrls.length > 1 && variantLabelOverride == null ? 72 : 16,
-                  right: 16,
-                  top: 16,
-                  bottom: 16,
-                ),
+                padding: const EdgeInsets.all(16),
                 child: CachedNetworkImage(
                   imageUrl: effectiveUrls[index],
                   fit: BoxFit.contain,
