@@ -422,7 +422,7 @@ class OrderDetailItemsSection extends StatelessWidget {
                             ? () => onQuantityTap!(index)
                             : null,
                     onEditBatches:
-                        onEditBatches != null
+                        (onEditBatches != null && !isLocked)
                             ? () => onEditBatches!(item)
                             : null,
                   );

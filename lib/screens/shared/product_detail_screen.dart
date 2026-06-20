@@ -930,7 +930,7 @@ class _ProductDetailScreenContentState
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Por defecto',
+                    'Galería',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight:

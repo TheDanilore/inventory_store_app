@@ -152,75 +152,31 @@ class ProductGallerySection extends StatelessWidget {
 
         if (effectiveUrls.length > 1 && variantLabelOverride == null)
           Positioned(
-            top: 20,
             bottom: 20,
-            left: 12,
-            child: Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(
-                    effectiveUrls.length,
-                    (i) => GestureDetector(
-                      onTap: () {
-                        if (pageController.hasClients) {
-                          pageController.animateToPage(
-                            i,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 48,
-                        height: 48,
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(
-                            color:
-                                i == selectedIndex
-                                    ? AppColors.primary
-                                    : AppColors.border,
-                            width: i == selectedIndex ? 2 : 1,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            if (i == selectedIndex)
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: CachedNetworkImage(
-                            imageUrl: effectiveUrls[i],
-                            fit: BoxFit.cover,
-                            placeholder:
-                                (context, url) => const Center(
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                            errorWidget:
-                                (_, _, _) => const Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 20,
-                                  color: AppColors.textMuted,
-                                ),
-                          ),
-                        ),
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                effectiveUrls.length,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: selectedIndex == i ? 18 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color:
+                        selectedIndex == i
+                            ? AppColors.primary
+                            : Colors.white.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
