@@ -795,7 +795,7 @@ class _ProductDetailScreenContentState
               ),
               const SizedBox(height: 24),
 
-              if (_thumbnailVariants.isNotEmpty) ...[
+              if (_variants.length > 1 && _thumbnailVariants.isNotEmpty) ...[
                 const Text(
                   'Modelos disponibles',
                   style: TextStyle(
