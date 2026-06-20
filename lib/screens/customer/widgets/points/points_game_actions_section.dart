@@ -75,14 +75,6 @@ class PointsGameActionsSection extends StatelessWidget {
     final dodgeLimit = config.getDouble('dodge_daily_limit', 1).round();
     final superSaltoLimit = config.getDouble('jump_daily_limit', 1).round();
 
-    final canPlayMemorama = provider.memoramaPlaysToday < memoramaLimit;
-    final canPlayCatcher = provider.catcherPlaysToday < catcherLimit;
-    final canPlayPinata = provider.pinataPlaysToday < pinataLimit;
-    final canPlayClaw = provider.clawPlaysToday < clawLimit;
-    final canPlayStack = provider.stackPlaysToday < stackLimit;
-    final canPlayDodge = provider.dodgePlaysToday < dodgeLimit;
-    final canPlaySuperSalto = provider.superSaltoPlaysToday < superSaltoLimit;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
