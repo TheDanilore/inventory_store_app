@@ -14,6 +14,7 @@ class WalletProvider extends ChangeNotifier {
   String? _error;
   
   StreamSubscription<AuthState>? _authSub;
+  RealtimeChannel? _walletChannel;
 
   int? get balance => _balance;
   bool get isLoading => _isLoading;
@@ -50,6 +51,7 @@ class WalletProvider extends ChangeNotifier {
       final balance = await _service.fetchBalance(user.id);
       if (_disposed) return;
       _balance = balance;
+      _listenToWalletChanges(user.id);
     } catch (e) {
       if (_disposed) return;
       debugPrint('Error loading wallet: $e');
@@ -73,7 +75,35 @@ class WalletProvider extends ChangeNotifier {
     _balance = null;
     _isLoading = false;
     _error = null;
+    _walletChannel?.unsubscribe();
+    _walletChannel = null;
     if (!_disposed) notifyListeners();
+  }
+
+  void _listenToWalletChanges(String userId) {
+    _walletChannel?.unsubscribe();
+    _walletChannel = _supabase
+        .channel('public:profiles_wallet_$userId')
+        .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'profiles',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'auth_user_id',
+              value: userId,
+            ),
+            callback: (payload) {
+              final newRow = payload.newRecord;
+              if (newRow.isNotEmpty && !_disposed) {
+                 final newBalance = (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
+                 if (_balance != newBalance) {
+                     _balance = newBalance;
+                     notifyListeners();
+                 }
+              }
+            })
+        .subscribe();
   }
 
   /// Permite incrementar o decrementar el saldo localmente (ej. tras ganar un minijuego)
@@ -120,6 +150,7 @@ class WalletProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _authSub?.cancel();
+    _walletChannel?.unsubscribe();
     super.dispose();
   }
 

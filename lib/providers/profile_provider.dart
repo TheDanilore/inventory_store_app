@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
+  RealtimeChannel? _profileChannel;
 
   ProfileProvider() {
     _loadCache();
@@ -99,6 +100,7 @@ class ProfileProvider extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _profileChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -146,6 +148,8 @@ class ProfileProvider extends ChangeNotifier {
               await prefs.remove('profile_cache_avatar_url_${user.id}');
             }
           } catch (_) {}
+          
+          _listenToProfileChanges(user.id);
         } else {
           _userRole = 'Cliente';
         }
@@ -157,6 +161,36 @@ class ProfileProvider extends ChangeNotifier {
 
     _isLoading = false;
     _safeNotify();
+  }
+
+  void _listenToProfileChanges(String userId) {
+    _profileChannel?.unsubscribe();
+    _profileChannel = _supabase
+        .channel('public:profiles_realtime_$userId')
+        .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'profiles',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'auth_user_id',
+              value: userId,
+            ),
+            callback: (payload) {
+              final newRow = payload.newRecord;
+              if (newRow.isNotEmpty && !_disposed) {
+                 _userRole = newRow['role'] == AppRoles.admin ? 'Administrador' : 'Cliente';
+                 _fullName = newRow['full_name'] ?? '';
+                 _phone = newRow['phone'] ?? '';
+                 _documentNumber = newRow['document_number'] ?? '';
+                 _avatarUrl = newRow['avatar_url'];
+                 _documentType = ['DNI', 'RUC', 'CE', 'PASAPORTE'].contains(newRow['document_type'])
+                     ? newRow['document_type']
+                     : 'DNI';
+                 _safeNotify();
+              }
+            })
+        .subscribe();
   }
 
   Future<bool> saveProfile({
@@ -272,6 +306,8 @@ class ProfileProvider extends ChangeNotifier {
     _isLoading = true;
     _safeNotify();
     try {
+      _profileChannel?.unsubscribe();
+      _profileChannel = null;
       await _supabase.auth.signOut();
     } finally {
       _isLoading = false;

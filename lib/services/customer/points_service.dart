@@ -68,14 +68,18 @@ class PointsService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<void> claimDailyCheckin({
+  Future<int> claimDailyCheckin({
     required String profileId,
     required String todayDate,
     required int reward,
-    required int newBalance,
     required int streakDay,
     required String description,
   }) async {
+    // 1. Fetch current balance safely
+    final profile = await _supabase.from('profiles').select('wallet_balance').eq('id', profileId).single();
+    final currentBalance = (profile['wallet_balance'] as num?)?.toInt() ?? 0;
+    final newBalance = currentBalance + reward;
+
     // Insert en daily_checkins
     await _supabase.from('daily_checkins').insert({
       'profile_id': profileId,
@@ -98,15 +102,21 @@ class PointsService {
         .from('profiles')
         .update({'wallet_balance': newBalance})
         .eq('id', profileId);
+        
+    return newBalance;
   }
 
-  Future<void> recordMiniGamePlay({
+  Future<int> recordMiniGamePlay({
     required String profileId,
     required int reward,
-    required int newBalance,
     required String movementType,
     required String description,
   }) async {
+    // 1. Fetch current balance safely
+    final profile = await _supabase.from('profiles').select('wallet_balance').eq('id', profileId).single();
+    final currentBalance = (profile['wallet_balance'] as num?)?.toInt() ?? 0;
+    final newBalance = currentBalance + reward;
+
     await _supabase.from('wallet_movements').insert({
       'profile_id': profileId,
       'points': reward,
@@ -119,5 +129,7 @@ class PointsService {
         .from('profiles')
         .update({'wallet_balance': newBalance})
         .eq('id', profileId);
+        
+    return newBalance;
   }
 }

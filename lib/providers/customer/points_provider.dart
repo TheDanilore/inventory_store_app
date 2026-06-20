@@ -10,6 +10,8 @@ class PointsProvider extends ChangeNotifier {
   final PointsService _service = PointsService();
   final SupabaseClient _supabase = Supabase.instance.client;
   final Random _random = Random();
+  RealtimeChannel? _walletChannel;
+  bool _disposed = false;
 
   bool _isLoading = true;
   bool _isLoadingMore = false;
@@ -216,10 +218,36 @@ class PointsProvider extends ChangeNotifier {
       _hasMoreMovements = _movements.length == _movementsLimit;
 
       _isLoading = false;
+      
+      // Suscribirse a cambios en la tabla profiles para wallet_balance
+      _walletChannel?.unsubscribe();
+      _walletChannel = _supabase
+          .channel('public:profiles_points_${user.id}')
+          .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'profiles',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'auth_user_id',
+                value: user.id,
+              ),
+              callback: (payload) {
+                final newRow = payload.newRecord;
+                if (newRow.isNotEmpty && !_disposed) {
+                   final newBalance = (newRow['wallet_balance'] as num?)?.toInt() ?? 0;
+                   if (_currentBalance != newBalance) {
+                       _currentBalance = newBalance;
+                       notifyListeners();
+                   }
+                }
+              })
+          .subscribe();
+          
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
       debugPrint('Error loading points: $e');
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
@@ -271,12 +299,10 @@ class PointsProvider extends ChangeNotifier {
     final rewardForToday = rewardForStreakDay(nextStreakDay);
 
     try {
-      final newBalance = _currentBalance + rewardForToday;
-      await _service.claimDailyCheckin(
+      final newBalance = await _service.claimDailyCheckin(
         profileId: _profileId!,
         todayDate: todayDate,
         reward: rewardForToday,
-        newBalance: newBalance,
         streakDay: nextStreakDay,
         description: 'Check-in diario del $todayDate',
       );
@@ -350,11 +376,9 @@ class PointsProvider extends ChangeNotifier {
 
     try {
       if (!isForFun) {
-        final newBalance = _currentBalance + reward;
-        await _service.recordMiniGamePlay(
+        final newBalance = await _service.recordMiniGamePlay(
           profileId: _profileId!,
           reward: reward,
-          newBalance: newBalance,
           movementType: 'MINI_GAME_BOXES',
           description: 'Juego de cajas del $todayDate',
         );
@@ -381,5 +405,12 @@ class PointsProvider extends ChangeNotifier {
       _isPlayingMiniGame = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _walletChannel?.unsubscribe();
+    super.dispose();
   }
 }

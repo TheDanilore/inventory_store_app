@@ -1048,6 +1048,7 @@ class _ProductDetailScreenContentState
         duration: const Duration(milliseconds: 200),
         width: 40,
         height: 40,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color:
               _isWishlisted
