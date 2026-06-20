@@ -53,7 +53,7 @@ class CustomerLayout extends StatelessWidget {
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
-            onTap: () => context.push('/customer/points'),
+            onTap: () => context.go('/customer/points'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -195,7 +195,7 @@ class CustomerLayout extends StatelessWidget {
               if (onTabSelected != null) {
                 onTabSelected!(1);
               } else {
-                context.push('/customer/cart');
+                context.go('/customer/cart');
               }
             },
             child: Container(
