@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 enum SnackbarType { success, error, warning, info }
@@ -58,6 +60,12 @@ class AppSnackbar {
       iconData: iconData,
       duration: duration,
     );
+
+    if (type == SnackbarType.error) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
 
     // Insertamos al inicio para que la más nueva tome la posición frontal
     _queue.insert(0, newSnackbar);
@@ -166,8 +174,9 @@ class _AnimatedSnackbarWidget extends StatefulWidget {
 }
 
 class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
+  late AnimationController _progressController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
@@ -181,6 +190,10 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
+    );
+    _progressController = AnimationController(
+      vsync: this,
+      duration: widget.item.duration,
     );
 
     _fadeAnimation = CurvedAnimation(
@@ -197,13 +210,10 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   }
 
   void _startAutoDismissTimer(Duration duration) {
-    // Solo la tarjeta del frente descuenta su tiempo de vida de forma automática
     if (widget.index == 0) {
-      Future.delayed(duration, () async {
-        if (mounted &&
-            !_isDismissedBySwipe &&
-            !_isBeingPressed &&
-            widget.index == 0) {
+      _progressController.duration = duration;
+      _progressController.reverse(from: _progressController.value == 0 ? 1.0 : _progressController.value).then((_) async {
+        if (mounted && !_isDismissedBySwipe && !_isBeingPressed && widget.index == 0) {
           await _controller.reverse();
           widget.onDismissed();
         }
@@ -221,7 +231,10 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   }
 
   void _handleTapDown() {
-    if (widget.index == 0) setState(() => _isBeingPressed = true);
+    if (widget.index == 0) {
+      setState(() => _isBeingPressed = true);
+      _progressController.stop();
+    }
   }
 
   void _handleTapUpOrCancel() {
@@ -233,6 +246,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
   @override
   void dispose() {
     _controller.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -272,44 +286,72 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                     _isDismissedBySwipe = true;
                     widget.onDismissed();
                   },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          widget
-                              .item
-                              .backgroundColor, // Tus colores originales intactos
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: (12 - (widget.index * 2)).toDouble(),
-                          offset: Offset(0, (4 + widget.index).toDouble()),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          widget.item.iconData,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            widget.item.message,
-                            style: const TextStyle(
-                              color: Colors.white, // Tu texto blanco original
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: widget.item.backgroundColor.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 1,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: (12 - (widget.index * 2)).toDouble(),
+                              offset: Offset(0, (4 + widget.index).toDouble()),
+                            ),
+                          ],
                         ),
-                      ],
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    widget.item.iconData,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      widget.item.message,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (widget.index == 0)
+                              AnimatedBuilder(
+                                animation: _progressController,
+                                builder: (context, child) {
+                                  return LinearProgressIndicator(
+                                    value: _progressController.value,
+                                    backgroundColor: Colors.transparent,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white.withValues(alpha: 0.4),
+                                    ),
+                                    minHeight: 3,
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

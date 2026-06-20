@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -87,6 +88,7 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   void _toggle(String title) {
+    HapticFeedback.lightImpact();
     setState(() {
       if (_expanded.contains(title)) {
         _expanded.remove(title);
@@ -437,27 +439,48 @@ class _AppDrawerState extends State<AppDrawer> {
             : currentPath.startsWith(item.routePath);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: ListTile(
-        leading: Icon(
-          item.icon,
-          color: active ? AppColors.primary : AppColors.textSecondary,
-          size: 22,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: active
+              ? const Border(
+                  left: BorderSide(
+                    color: AppColors.primary,
+                    width: 4,
+                  ),
+                )
+              : null,
         ),
-        title: Text(
-          item.title,
-          style: TextStyle(
-            color: active ? AppColors.primary : AppColors.textPrimary,
-            fontSize: 15,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+        child: ListTile(
+          leading: Icon(
+            item.icon,
+            color: active ? AppColors.primary : AppColors.textSecondary.withValues(alpha: 0.8),
+            size: 22,
           ),
+          title: Text(
+            item.title,
+            style: TextStyle(
+              color: active ? AppColors.primary : AppColors.textPrimary.withValues(alpha: 0.9),
+              fontSize: 15,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+          tileColor: active ? AppColors.primary.withValues(alpha: 0.1) : null,
+          trailing: item.trailing,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(
+              right: const Radius.circular(12),
+              left: active ? const Radius.circular(8) : const Radius.circular(12),
+            ),
+          ),
+          splashColor: AppColors.primary.withValues(alpha: 0.15),
+          hoverColor: AppColors.primaryLight,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            if (item.onTap != null) item.onTap!();
+          },
+          dense: true,
         ),
-        tileColor: active ? AppColors.primary.withValues(alpha: 0.08) : null,
-        trailing: item.trailing,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        splashColor: AppColors.primary.withValues(alpha: 0.1),
-        hoverColor: AppColors.primaryLight,
-        onTap: item.onTap,
-        dense: true,
       ),
     );
   }
@@ -603,32 +626,53 @@ class _SubItemTile extends StatelessWidget {
     final active = currentPath.startsWith(item.routePath);
     return Padding(
       padding: const EdgeInsets.only(left: 8, right: 0, top: 2, bottom: 2),
-      child: ListTile(
-        leading: Icon(
-          item.icon,
-          color:
-              active
-                  ? AppColors.primary
-                  : AppColors.primary.withValues(alpha: 0.55),
-          size: 20,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: active
+              ? const Border(
+                  left: BorderSide(
+                    color: AppColors.primary,
+                    width: 3,
+                  ),
+                )
+              : null,
         ),
-        title: Text(
-          item.title,
-          style: TextStyle(
-            color: active ? AppColors.primary : AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+        child: ListTile(
+          leading: Icon(
+            item.icon,
+            color:
+                active
+                    ? AppColors.primary
+                    : AppColors.primary.withValues(alpha: 0.7),
+            size: 20,
           ),
+          title: Text(
+            item.title,
+            style: TextStyle(
+              color: active ? AppColors.primary : AppColors.textPrimary.withValues(alpha: 0.9),
+              fontSize: 14,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+          tileColor: active ? AppColors.primary.withValues(alpha: 0.1) : null,
+          trailing: item.trailing,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(
+              right: const Radius.circular(10),
+              left: active ? const Radius.circular(6) : const Radius.circular(10),
+            ),
+          ),
+          splashColor: AppColors.primary.withValues(alpha: 0.15),
+          hoverColor: AppColors.primaryLight,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            item.onTap();
+          },
+          dense: true,
+          minLeadingWidth: 20,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         ),
-        tileColor: active ? AppColors.primary.withValues(alpha: 0.08) : null,
-        trailing: item.trailing,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        splashColor: AppColors.primary.withValues(alpha: 0.1),
-        hoverColor: AppColors.primaryLight,
-        onTap: item.onTap,
-        dense: true,
-        minLeadingWidth: 20,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       ),
     );
   }
