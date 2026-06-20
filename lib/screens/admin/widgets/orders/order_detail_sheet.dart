@@ -562,7 +562,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                     items: provider.items,
                                     isLoading: provider.isLoading,
                                     isEditing: _isEditing,
-                                    isLocked: isCompleted || provider.currentStatus.toUpperCase() == 'CANCELLED',
+                                    isLocked: isCompleted || 
+                                              provider.currentStatus.toUpperCase() == 'CANCELLED' || 
+                                              provider.currentStatus.toUpperCase() == 'DEVUELTO',
                                     batchesByVariant: provider.batchesByVariant,
                                     usesBatchesMap: provider.usesBatchesMap,
                                     batchOverrides: provider.batchOverrides,

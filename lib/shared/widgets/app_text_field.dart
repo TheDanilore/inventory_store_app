@@ -50,6 +50,7 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey.shade500),
         prefixText: prefixText,
         labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
         prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 22),

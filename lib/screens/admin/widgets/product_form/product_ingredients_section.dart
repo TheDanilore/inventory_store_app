@@ -98,9 +98,15 @@ class ProductIngredientsSection extends StatelessWidget {
               ],
             ),
           ),
-          if (provider.ingredientsEnabled) ...[
-            const SizedBox(height: 14),
-            if (provider.ingredientRows.isEmpty)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: provider.ingredientsEnabled ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 14),
+                if (provider.ingredientRows.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -247,7 +253,9 @@ class ProductIngredientsSection extends StatelessWidget {
                 ),
               ),
             ),
-          ],
+              ],
+            ) : const SizedBox.shrink(),
+          ),
         ],
       ),
     );

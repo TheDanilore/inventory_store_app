@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -121,38 +122,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                             padding: const EdgeInsets.all(16.0),
                             sliver: SliverList(
                               delegate: SliverChildListDelegate([
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        provider.isSaving
-                                            ? null
-                                            : () => _guardar(context),
-                                    icon: const Icon(
-                                      Icons.save_rounded,
-                                      size: 20,
-                                    ),
-                                    label: Text(
-                                      isEdit ? 'Actualizar' : 'Guardar',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.success,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 2,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
                                 const ProductImagesSection(),
                                 const SizedBox(height: 16),
                                 const ProductBasicInfoSection(),
@@ -283,41 +252,53 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                               ),
                             ),
 
-                          SliverPadding(
-                            padding: const EdgeInsets.all(16.0),
-                            sliver: SliverToBoxAdapter(
-                              child: Column(
-                                children: [
-                                  const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: AppPrimaryButton(
-                                      label:
-                                          isEdit
-                                              ? 'Actualizar Producto'
-                                              : 'Guardar Producto',
-                                      onPressed:
-                                          provider.isSaving
-                                              ? null
-                                              : () => _guardar(context),
-                                      backgroundColor: AppColors.success,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 32),
-                                ],
-                              ),
-                            ),
-                          ),
+                          const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
                         ],
                       ),
                     ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ClipRRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                          child: Container(
+                            padding: const EdgeInsets.only(
+                              left: 16,
+                              right: 16,
+                              top: 16,
+                              bottom: 32,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.grey.withValues(alpha: 0.2),
+                                ),
+                              ),
+                            ),
+                            child: AppPrimaryButton(
+                              label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
+                              onPressed: provider.isSaving ? null : () => _guardar(context),
+                              backgroundColor: AppColors.success,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     if (provider.isSaving)
-                      Container(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
+                      Positioned.fill(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                          child: Container(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            ),
                           ),
                         ),
                       ),

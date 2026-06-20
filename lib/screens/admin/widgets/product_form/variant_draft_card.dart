@@ -30,6 +30,7 @@ class VariantDraftCard extends StatefulWidget {
 
 class _VariantDraftCardState extends State<VariantDraftCard> {
   final List<_AttributeSelection> _selectedAttributes = [];
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -171,73 +172,104 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── CABECERA ────────────────────────────────────────────────────
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        isActive
-                            ? AppColors.primary.withValues(alpha: 0.1)
-                            : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Variante #${widget.index + 1}${isActive ? '' : ' (Inactiva)'}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _isExpanded = !_isExpanded;
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
                       color:
-                          isActive ? AppColors.primary : Colors.grey.shade500,
+                          isActive
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Variante #${widget.index + 1}${isActive ? '' : ' (Inactiva)'}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color:
+                            isActive ? AppColors.primary : Colors.grey.shade500,
+                      ),
                     ),
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: widget.onDuplicate,
-                  icon: const Icon(
-                    Icons.copy_rounded,
-                    color: AppColors.primary,
-                    size: 20,
+                  if (!_isExpanded && widget.draft.priceCtrl.text.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'S/ ${widget.draft.priceCtrl.text}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  Transform.scale(
+                    scale: 0.85,
+                    child: Switch(
+                      value: isActive,
+                      onChanged: widget.onActiveChanged,
+                      activeThumbColor: AppColors.success,
+                    ),
                   ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert_rounded, color: Colors.grey),
+                    onSelected: (value) {
+                      if (value == 'duplicate') widget.onDuplicate();
+                      if (value == 'delete') widget.onRemove();
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'duplicate',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy_rounded, size: 20, color: AppColors.primary),
+                            SizedBox(width: 8),
+                            Text('Duplicar'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                            SizedBox(width: 8),
+                            Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  tooltip: 'Duplicar variante',
-                ),
-                Transform.scale(
-                  scale: 0.85,
-                  child: Switch(
-                    value: isActive,
-                    onChanged: widget.onActiveChanged,
-                    activeThumbColor: AppColors.success,
+                  Icon(
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: Colors.grey.shade500,
                   ),
-                ),
-                const SizedBox(width: 2),
-                IconButton(
-                  onPressed: widget.onRemove,
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
-                    size: 20,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
-                  ),
-                  tooltip: 'Eliminar variante',
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // ── FILA 1: SKU + Punto de Reorden ─────────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: _isExpanded ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  // ── FILA 1: SKU + Punto de Reorden ─────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -460,6 +492,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                 ],
               ),
             ),
+                ],
+              ) : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),
@@ -512,7 +547,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             child: Text(
               'Sin especificaciones (Ej: Color, Talla, Material...)',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: Colors.grey.shade500,
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),

@@ -179,12 +179,16 @@ class OrderDetailItemCard extends StatelessWidget {
                                 ),
                               )
                             else
-                              Text(
-                                'FEFO automático · Toca para editar',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.orange.shade800,
-                                  fontWeight: FontWeight.w700,
+                              Flexible(
+                                child: Text(
+                                  'FEFO automático · Toca para editar',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             const SizedBox(width: 4),
