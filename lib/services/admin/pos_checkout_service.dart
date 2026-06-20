@@ -130,62 +130,60 @@ class PosCheckoutService {
     List<Map<String, dynamic>> batchUpdates = [];
     List<Map<String, dynamic>> movementInserts = [];
 
-    if (!isDraft) {
-      for (final item in pos.items.values) {
-        final safeVariantId = item.variantId!;
-        final cartKey = item.cartKey;
+    for (final item in pos.items.values) {
+      final safeVariantId = item.variantId!;
+      final cartKey = item.cartKey;
 
-        List<({String id, int take, int available, String batchNumber})>
-        segments = [];
+      List<({String id, int take, int available, String batchNumber})>
+      segments = [];
 
-        final batchAssigned = getBatchOverride?.call(pos, cartKey);
-        if (batchAssigned != null && batchAssigned.isNotEmpty) {
-          final overrides = batchAssigned;
-          final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
-          if (totalAssigned != item.quantity) {
-            throw Exception(
-              'La asignación de lotes para "${item.product.name}" '
-              'suma $totalAssigned pero la cantidad vendida es ${item.quantity}.',
-            );
-          }
-          for (final b in overrides) {
-            if (b.assigned > 0) {
-              segments.add((
-                id: b.batchId,
-                take: b.assigned,
-                available: b.available,
-                batchNumber: b.batchNumber,
-              ));
-            }
-          }
-        } else {
-          final batches = await _supabase
-              .from('warehouse_stock_batches')
-              .select('id, available_quantity, batch_number, expiry_date')
-              .eq('variant_id', safeVariantId)
-              .eq('warehouse_id', pos.selectedWarehouseId!)
-              .gt('available_quantity', 0)
-              .order('expiry_date', ascending: true, nullsFirst: false);
-
-          int remaining = item.quantity;
-          for (final batch in (batches as List)) {
-            if (remaining <= 0) break;
-            final int available = (batch['available_quantity'] as num).toInt();
-            final int take = (remaining > available) ? available : remaining;
+      final batchAssigned = getBatchOverride?.call(pos, cartKey);
+      if (batchAssigned != null && batchAssigned.isNotEmpty) {
+        final overrides = batchAssigned;
+        final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
+        if (totalAssigned != item.quantity) {
+          throw 'La asignación de lotes para "${item.product.name}" '
+              'suma $totalAssigned pero la cantidad vendida es ${item.quantity}.';
+        }
+        for (final b in overrides) {
+          if (b.assigned > 0) {
             segments.add((
-              id: batch['id'] as String,
-              take: take,
-              available: available,
-              batchNumber: batch['batch_number'] as String,
+              id: b.batchId,
+              take: b.assigned,
+              available: b.available,
+              batchNumber: b.batchNumber,
             ));
-            remaining -= take;
-          }
-
-          if (remaining > 0) {
-            throw Exception('Stock insuficiente para "${item.product.name}"');
           }
         }
+      } else {
+        final batches = await _supabase
+            .from('warehouse_stock_batches')
+            .select('id, available_quantity, batch_number, expiry_date')
+            .eq('variant_id', safeVariantId)
+            .eq('warehouse_id', pos.selectedWarehouseId!)
+            .gt('available_quantity', 0)
+            .order('expiry_date', ascending: true, nullsFirst: false);
 
+        int remaining = item.quantity;
+        for (final batch in (batches as List)) {
+          if (remaining <= 0) break;
+          final int available = (batch['available_quantity'] as num).toInt();
+          final int take = (remaining > available) ? available : remaining;
+          segments.add((
+            id: batch['id'] as String,
+            take: take,
+            available: available,
+            batchNumber: batch['batch_number'] as String,
+          ));
+          remaining -= take;
+        }
+
+        if (remaining > 0) {
+          throw 'Stock insuficiente para "${item.product.name}"';
+        }
+      }
+
+      if (!isDraft) {
         for (final seg in segments) {
           batchUpdates.add({
             'id': seg.id,
@@ -201,7 +199,7 @@ class PosCheckoutService {
             'unit_cost': item.unitCost,
             'reason': 'SALE',
             'notes':
-                'Venta POS - ${pos.paymentMethod} · Lote: ${seg.batchNumber}',
+                'Venta POS - ${pos.paymentMethod} • Lote: ${seg.batchNumber}',
             'created_by': currentProfileId,
           });
         }
