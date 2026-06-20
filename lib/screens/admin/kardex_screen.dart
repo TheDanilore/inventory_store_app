@@ -9,6 +9,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 
 class KardexScreen extends StatelessWidget {
   const KardexScreen({super.key});
@@ -30,28 +31,16 @@ class _KardexView extends StatefulWidget {
 }
 
 class _KardexViewState extends State<_KardexView> {
-  final ScrollController _scrollController = ScrollController();
-
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<KardexProvider>().addListener(_onProviderError);
     });
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      context.read<KardexProvider>().loadMore();
-    }
-  }
-
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -222,16 +211,14 @@ class _KardexViewState extends State<_KardexView> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: DateFilterCalendar(
-                        dateRange: provider.dateRange,
-                        onDateRangeSelected: (picked) {
-                          provider.setDateRange(picked);
-                        },
-                        onClear: () {
-                          provider.setDateRange(null);
-                        },
-                      ),
+                    DateFilterCalendar(
+                      dateRange: provider.dateRange,
+                      onDateRangeSelected: (picked) {
+                        provider.setDateRange(picked);
+                      },
+                      onClear: () {
+                        provider.setDateRange(null);
+                      },
                     ),
                     if (provider.dateRange != null) ...[
                       const SizedBox(width: 8),
@@ -287,32 +274,25 @@ class _KardexViewState extends State<_KardexView> {
                               // LISTA DE TARJETAS
                               Expanded(
                                 child: ListView.builder(
-                                  controller: _scrollController,
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.all(
-                                    16,
-                                  ).copyWith(bottom: 80),
-                                  itemCount:
-                                      provider.movements.length +
-                                      (provider.isLoadingMore ? 1 : 0),
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.all(16).copyWith(bottom: 16),
+                                  itemCount: provider.movements.length,
                                   itemBuilder: (context, index) {
-                                    if (index == provider.movements.length) {
-                                      return const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 24,
-                                        ),
-                                        child: Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      );
-                                    }
                                     return KardexCard(
                                       item: provider.movements[index],
                                     );
                                   },
                                 ),
                               ),
+                              if (provider.totalPages > 1)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 80, top: 16),
+                                  child: AdminPageBlocks(
+                                    currentPage: provider.currentPage,
+                                    totalPages: provider.totalPages,
+                                    onPageChanged: (page) => provider.changePage(page),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -321,8 +301,10 @@ class _KardexViewState extends State<_KardexView> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _showActionOptions(context),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
-            label: const Text('Movimiento'),
+            label: const Text('Movimiento', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         );
       },

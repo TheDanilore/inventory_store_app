@@ -34,12 +34,8 @@ class KardexProvider extends ChangeNotifier {
   int get currentPage => _currentPage;
   int _totalCount = 0;
   int get totalCount => _totalCount;
-
-  bool _hasMore = true;
-  bool get hasMore => _hasMore;
-
-  bool _isLoadingMore = false;
-  bool get isLoadingMore => _isLoadingMore;
+  
+  int get totalPages => (_totalCount / pageSize).ceil();
 
   KardexProvider() {
     _loadMovements();
@@ -55,7 +51,6 @@ class KardexProvider extends ChangeNotifier {
   void setDateRange(DateTimeRange? range) {
     _dateRange = range;
     _currentPage = 0;
-    _hasMore = true;
     _loadMovements();
   }
 
@@ -63,21 +58,17 @@ class KardexProvider extends ChangeNotifier {
     if (_typeFilter == type) return;
     _typeFilter = type;
     _currentPage = 0;
-    _hasMore = true;
     _loadMovements();
   }
 
-  Future<void> loadMore() async {
-    if (_isLoading || _isLoadingMore || !_hasMore) return;
-    _isLoadingMore = true;
-    _currentPage++;
-    notifyListeners();
-    await _loadMovements(isLoadMore: true);
+  void changePage(int newPage) {
+    if (newPage < 0 || newPage >= totalPages || newPage == _currentPage) return;
+    _currentPage = newPage;
+    _loadMovements();
   }
 
   Future<void> refresh() async {
     _currentPage = 0;
-    _hasMore = true;
     await _loadMovements();
   }
 
@@ -104,10 +95,8 @@ class KardexProvider extends ChangeNotifier {
     return query;
   }
 
-  Future<void> _loadMovements({bool isLoadMore = false}) async {
-    if (!isLoadMore) {
-      _isLoading = true;
-    }
+  Future<void> _loadMovements() async {
+    _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
@@ -136,18 +125,10 @@ class KardexProvider extends ChangeNotifier {
 
       _totalCount = response.count;
 
-      final newMovements =
+      _movements =
           (response.data as List)
               .map((row) => KardexMovementModel.fromSupabaseRow(row))
               .toList();
-
-      if (isLoadMore) {
-        _movements.addAll(newMovements);
-      } else {
-        _movements = newMovements;
-      }
-
-      _hasMore = _movements.length < _totalCount;
     } catch (e) {
       debugPrint('Error loading kardex: $e');
       final errStr = e.toString().toLowerCase();
@@ -160,7 +141,6 @@ class KardexProvider extends ChangeNotifier {
       }
     } finally {
       _isLoading = false;
-      _isLoadingMore = false;
       notifyListeners();
     }
   }
