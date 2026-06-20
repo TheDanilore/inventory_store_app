@@ -89,7 +89,9 @@ class KardexProvider extends ChangeNotifier {
     } else if (_typeFilter == 'EXIT') {
       query = query.not('inventory_exit_id', 'is', null);
     } else if (_typeFilter == 'SALE') {
-      query = query.not('order_id', 'is', null);
+      query = query.not('order_id', 'is', null).neq('reason', 'RETURN');
+    } else if (_typeFilter == 'RETURN') {
+      query = query.not('order_id', 'is', null).eq('reason', 'RETURN');
     }
 
     return query;
@@ -241,7 +243,7 @@ class KardexProvider extends ChangeNotifier {
                         '${m.productName} ${m.attrsText != 'Única' ? '(${m.attrsText})' : ''} ${m.sku != null ? '\nSKU: ${m.sku}' : ''}',
                         m.warehouseName,
                         m.movement.previousStock.toString(),
-                        '${m.isEntry ? '+' : ''}${m.movement.quantity}',
+                        '${(m.isEntry || m.isReturn) ? '+' : ''}${m.movement.quantity}',
                         m.movement.newStock.toString(),
                       ];
                     }).toList(),
@@ -281,6 +283,8 @@ class KardexProvider extends ChangeNotifier {
         return 'Salidas';
       case 'SALE':
         return 'Ventas';
+      case 'RETURN':
+        return 'Devoluciones';
       default:
         return 'Todos los movimientos';
     }

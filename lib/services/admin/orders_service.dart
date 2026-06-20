@@ -407,11 +407,12 @@ class OrdersService {
       await revertLoyaltyPoints(orderId: orderId, customerId: origCustomerId);
     }
 
-    // Actualizar la orden a CANCELLED
+    // Actualizar la orden a CANCELLED o RETURNED
+    final newStatus = status == 'COMPLETED' ? 'RETURNED' : 'CANCELLED';
     await _supabase
         .from('orders')
         .update({
-          'status': 'CANCELLED',
+          'status': newStatus,
           'payment_status': 'PAID',
           'amount_paid': 0,
         })

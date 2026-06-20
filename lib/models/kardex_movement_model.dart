@@ -21,7 +21,9 @@ class KardexMovementModel {
     this.imageUrl,
   });
 
-  bool get isSale => movement.orderId != null;
+  bool get isReturn => movement.orderId != null && movement.reason.toUpperCase() == 'RETURN';
+
+  bool get isSale => movement.orderId != null && !isReturn;
 
   bool get isEntry {
     return movement.inventoryEntryId != null ||
@@ -33,6 +35,7 @@ class KardexMovementModel {
   }
 
   String get movementType {
+    if (isReturn) return 'DEVOLUCIÓN';
     if (isSale) return 'VENTA';
     if (isEntry) return 'INGRESO';
     if (isExit) return 'SALIDA';

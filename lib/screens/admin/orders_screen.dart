@@ -113,6 +113,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Future<bool?> _showConfirmDialog(OrderModel order, String newStatus) {
     final isCompleting = newStatus == 'COMPLETED';
     final isCancelling = newStatus == 'CANCELLED';
+    final isReturning = newStatus == 'RETURNED';
     final isCredit = order.paymentMethod == 'CRÉDITO';
     final pendingPoints = order.pointsEarned;
 
@@ -148,7 +149,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isCompleting ? 'Confirmar cobro' : 'Cancelar pedido',
+                    isCompleting ? 'Confirmar cobro' : (isReturning ? 'Devolver pedido' : 'Cancelar pedido'),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 17,
@@ -248,11 +249,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ),
                 ],
-                if (isCancelling) ...[
+                if (isCancelling || isReturning) ...[
                   const SizedBox(height: 10),
-                  const Text(
-                    'Esta acción no se puede deshacer. El stock NO se reintegrará automáticamente si ya fue descontado.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  Text(
+                    isReturning 
+                      ? 'Se reintegrará el stock y se reembolsará el pago. Esta acción no se puede deshacer.'
+                      : 'Esta acción no se puede deshacer. El stock NO se reintegrará automáticamente si ya fue descontado.',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ],
@@ -279,7 +282,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: Text(
-                  isCompleting ? 'Confirmar cobro' : 'Sí, cancelar',
+                  isCompleting ? 'Confirmar cobro' : (isReturning ? 'Sí, devolver' : 'Sí, cancelar'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -508,6 +511,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       label: 'Cancelados',
                       isSelected: provider.statusFilter == 'CANCELLED',
                       onSelected: (_) => provider.setStatusFilter('CANCELLED'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'Devueltos',
+                      isSelected: provider.statusFilter == 'RETURNED',
+                      onSelected: (_) => provider.setStatusFilter('RETURNED'),
                     ),
                     const SizedBox(width: 16),
                     Container(

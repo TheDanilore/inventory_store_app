@@ -425,6 +425,12 @@ class _StatusTag extends StatelessWidget {
         label = 'CANCELADO';
         icon = Icons.cancel_rounded;
         break;
+      case 'RETURNED':
+        bgColor = Colors.blue.shade50;
+        textColor = Colors.blue.shade700;
+        label = 'DEVUELTO';
+        icon = Icons.rotate_left_rounded;
+        break;
       default:
         bgColor = Colors.grey.shade100;
         textColor = Colors.grey.shade700;

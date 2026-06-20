@@ -42,6 +42,7 @@ class _KardexCardState extends State<KardexCard> {
         upperType.contains('SALE') ||
         upperType.contains('VENTA') ||
         upperType.contains('ORDER');
+    bool isReturn = upperType.contains('DEV') || upperType.contains('RETURN');
 
     Color bgColor = isEntry ? Colors.green.shade50 : Colors.red.shade50;
     Color textColor = isEntry ? Colors.green.shade700 : Colors.red.shade700;
@@ -51,6 +52,10 @@ class _KardexCardState extends State<KardexCard> {
       bgColor = Colors.blue.shade50;
       textColor = Colors.blue.shade700;
       label = 'VENTA';
+    } else if (isReturn) {
+      bgColor = Colors.purple.shade50;
+      textColor = Colors.purple.shade700;
+      label = 'DEVOLUCIÓN';
     }
 
     return Container(
@@ -78,11 +83,11 @@ class _KardexCardState extends State<KardexCard> {
     final movementType = widget.item.movementType;
 
     final iconColor =
-        widget.item.isEntry
-            ? Colors.green
+        (widget.item.isEntry || widget.item.isReturn)
+            ? (widget.item.isReturn ? Colors.purple : Colors.green)
             : (widget.item.isSale ? Colors.blue : Colors.red);
     final iconData =
-        widget.item.isEntry ? Icons.arrow_downward : Icons.arrow_upward;
+        (widget.item.isEntry || widget.item.isReturn) ? Icons.arrow_downward : Icons.arrow_upward;
 
     final hasDetails =
         (widget.item.referenceId != null) ||
@@ -268,7 +273,7 @@ class _KardexCardState extends State<KardexCard> {
                           Icon(iconData, color: iconColor, size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            '${widget.item.isEntry ? '+' : ''}${move.quantity}',
+                            '${(widget.item.isEntry || widget.item.isReturn) ? '+' : ''}${move.quantity}',
                             style: TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 18,

@@ -206,6 +206,15 @@ class _KardexViewState extends State<_KardexView> {
                               onSelected:
                                   (val) => provider.setTypeFilter('SALE'),
                             ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: ChoiceChip(
+                                label: const Text('Devoluciones'),
+                                selected: provider.typeFilter == 'RETURN',
+                                onSelected:
+                                    (val) => provider.setTypeFilter('RETURN'),
+                              ),
+                            ),
                           ],
                         ),
                       ),

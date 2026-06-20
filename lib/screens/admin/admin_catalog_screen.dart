@@ -350,7 +350,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ],
               );
 
-              final headerHeight = provider.searchByIngredient ? 165.0 : 108.0;
+              final headerHeight = provider.searchByIngredient ? 175.0 : 115.0;
 
               final headerSliver = SliverPersistentHeader(
                 pinned: true,

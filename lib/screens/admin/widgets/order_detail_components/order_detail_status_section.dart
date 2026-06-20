@@ -22,7 +22,7 @@ class OrderDetailStatusSection extends StatelessWidget {
     if (originalStatus.toUpperCase() == 'PENDING') {
       options = ['PENDING', 'COMPLETED', 'CANCELLED'];
     } else if (originalStatus.toUpperCase() == 'COMPLETED') {
-      options = ['COMPLETED', 'CANCELLED'];
+      options = ['COMPLETED', 'RETURNED'];
     } else {
       options = [originalStatus.toUpperCase()];
     }
@@ -42,6 +42,10 @@ class OrderDetailStatusSection extends StatelessWidget {
         case 'CANCELLED':
           badgeColor = Colors.red;
           label = 'CANCELADO';
+          break;
+        case 'RETURNED':
+          badgeColor = Colors.purple;
+          label = 'DEVUELTO';
           break;
         default:
           badgeColor = Colors.grey;
@@ -107,6 +111,9 @@ class OrderDetailStatusSection extends StatelessWidget {
               } else if (s == 'CANCELLED') {
                 label = '❌  CANCELAR PEDIDO';
                 itemColor = Colors.red.shade700;
+              } else if (s == 'RETURNED') {
+                label = '🔄  DEVOLVER PEDIDO (REEMBOLSO)';
+                itemColor = Colors.purple.shade700;
               }
 
               return DropdownMenuItem(

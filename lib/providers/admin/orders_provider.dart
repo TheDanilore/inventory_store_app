@@ -205,7 +205,7 @@ class OrdersProvider extends ChangeNotifier {
           pointsUsed: order.pointsUsed,
           pointsEarned: order.pointsEarned,
         );
-      } else if (newStatus == 'CANCELLED') {
+      } else if (newStatus == 'CANCELLED' || newStatus == 'RETURNED') {
         await _ordersService.cancelOrder(
           orderId: order.id,
           customerId: order.customerId,
