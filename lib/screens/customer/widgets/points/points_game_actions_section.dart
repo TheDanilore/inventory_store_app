@@ -11,15 +11,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class PointsGameActionsSection extends StatelessWidget {
   const PointsGameActionsSection({super.key});
 
-  Future<void> _playGame(BuildContext context, String path) async {
+  Future<void> _playGame(BuildContext context, String path, {bool forFun = false}) async {
     final provider = context.read<PointsProvider>();
     final wallet = context.read<WalletProvider>();
 
-    final pId = provider.profileId ?? 'offline';
+    final pId = forFun ? 'offline' : (provider.profileId ?? 'offline');
 
     final r = await context.push<int>('$path/$pId');
     if (r != null && context.mounted) {
-      if (r > 0 && provider.profileId != null) {
+      if (!forFun && r > 0 && provider.profileId != null) {
         final newBalance = (wallet.balance ?? 0) + r;
         try {
           await Supabase.instance.client
@@ -42,12 +42,13 @@ class PointsGameActionsSection extends StatelessWidget {
   }
 
   Widget _buildGameTile({
+    required BuildContext context,
     required String title,
     required String emoji,
     required int plays,
     required int limit,
     required Color color,
-    required VoidCallback? onPlay,
+    required String path,
   }) {
     final active = plays < limit;
     return _GameTile(
@@ -57,7 +58,7 @@ class PointsGameActionsSection extends StatelessWidget {
       limit: limit,
       color: color,
       active: active,
-      onPlay: onPlay,
+      onPlay: () => _playGame(context, path, forFun: !active),
     );
   }
 
@@ -134,81 +135,67 @@ class PointsGameActionsSection extends StatelessWidget {
 
           // Game tiles grid
           _buildGameTile(
+            context: context,
             title: 'Memorama',
             emoji: '🃏',
             plays: provider.memoramaPlaysToday,
             limit: memoramaLimit,
             color: PointsDS.teal,
-            onPlay:
-                canPlayMemorama
-                    ? () => _playGame(context, '/customer/games/memorama')
-                    : null,
+            path: '/customer/games/memorama',
           ),
           _buildGameTile(
+            context: context,
             title: 'Lluvia de Monedas',
             emoji: '🌧️',
             plays: provider.catcherPlaysToday,
             limit: catcherLimit,
             color: const Color(0xFFE5A93C),
-            onPlay:
-                canPlayCatcher
-                    ? () => _playGame(context, '/customer/games/coin-catcher')
-                    : null,
+            path: '/customer/games/coin-catcher',
           ),
           _buildGameTile(
+            context: context,
             title: 'Piñata',
             emoji: '🪅',
             plays: provider.pinataPlaysToday,
             limit: pinataLimit,
             color: const Color(0xFFE05C41),
-            onPlay:
-                canPlayPinata
-                    ? () => _playGame(context, '/customer/games/pinata')
-                    : null,
+            path: '/customer/games/pinata',
           ),
           _buildGameTile(
+            context: context,
             title: 'Máquina de Garra',
             emoji: '🕹️',
             plays: provider.clawPlaysToday,
             limit: clawLimit,
             color: const Color(0xFFB26CFF),
-            onPlay:
-                canPlayClaw
-                    ? () => _playGame(context, '/customer/games/claw-machine')
-                    : null,
+            path: '/customer/games/claw-machine',
           ),
           _buildGameTile(
+            context: context,
             title: 'Torre de Cajas',
             emoji: '📦',
             plays: provider.stackPlaysToday,
             limit: stackLimit,
             color: const Color(0xFF4E79FF),
-            onPlay:
-                canPlayStack
-                    ? () => _playGame(context, '/customer/games/stack')
-                    : null,
+            path: '/customer/games/stack',
           ),
           _buildGameTile(
+            context: context,
             title: 'Esquiva y Atrapa',
             emoji: '🏃',
             plays: provider.dodgePlaysToday,
             limit: dodgeLimit,
             color: const Color(0xFF3E7DD1),
-            onPlay:
-                canPlayDodge
-                    ? () => _playGame(context, '/customer/games/dodge')
-                    : null,
+            path: '/customer/games/dodge',
           ),
           _buildGameTile(
+            context: context,
             title: 'Super Salto',
             emoji: '👟',
             plays: provider.superSaltoPlaysToday,
             limit: superSaltoLimit,
             color: const Color(0xFF6A5AE0),
-            onPlay:
-                canPlaySuperSalto
-                    ? () => _playGame(context, '/customer/games/super-salto')
-                    : null,
+            path: '/customer/games/super-salto',
           ),
         ],
       ),
@@ -249,7 +236,7 @@ class _GameTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: active ? onPlay : null,
+          onTap: onPlay,
           borderRadius: BorderRadius.circular(PointsDS.radius),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -294,13 +281,15 @@ class _GameTile extends StatelessWidget {
                           Icon(
                             active
                                 ? Icons.play_arrow_rounded
-                                : Icons.check_circle_rounded,
+                                : Icons.info_outline_rounded,
                             size: 14,
                             color: active ? color : PointsDS.textMuted,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '$plays / $limit jugadas hoy',
+                            active 
+                                ? '$plays / $limit jugadas hoy' 
+                                : 'Límite alcanzado',
                             style: TextStyle(
                               color:
                                   active
@@ -337,12 +326,22 @@ class _GameTile extends StatelessWidget {
                     ),
                   )
                 else
-                  const Text(
-                    'Mañana',
-                    style: TextStyle(
-                      color: PointsDS.textMuted,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: PointsDS.textMuted.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Por diversión',
+                      style: TextStyle(
+                        color: PointsDS.textMuted,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
               ],

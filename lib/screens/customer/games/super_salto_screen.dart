@@ -8,6 +8,8 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_loading.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:inventory_store_app/providers/customer/points_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:vibration/vibration.dart';
 
@@ -503,10 +505,20 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
-                        if (_score > 0) {
-                          _claimAndRestart();
-                        } else {
+                        if (_score == 0) {
                           _startGame();
+                        } else {
+                          // Verificar límite antes de reiniciar
+                          final limit = context.read<AppConfigProvider>().getDouble('jump_daily_limit', 1).round();
+                          final played = context.read<PointsProvider>().superSaltoPlaysToday;
+                          final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
+                          
+                          if (canPlayAgain) {
+                            _claimAndRestart();
+                          } else {
+                            // Si no puede jugar de nuevo, solo mostramos el snackbar de reclamado y cerramos
+                            _claimRewardAndExit();
+                          }
                         }
                       },
                       style: OutlinedButton.styleFrom(
@@ -514,7 +526,20 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                         side: BorderSide(color: AppColors.primary, width: 2),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: Text(_score > 0 ? 'Reclamar y Jugar de Nuevo' : 'Volver a Intentar', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: Builder(
+                        builder: (context) {
+                          final limit = context.read<AppConfigProvider>().getDouble('jump_daily_limit', 1).round();
+                          final played = context.read<PointsProvider>().superSaltoPlaysToday;
+                          final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
+
+                          return Text(
+                            _score > 0 
+                                ? (canPlayAgain ? 'Reclamar y Jugar de Nuevo' : 'Reclamar y Salir') 
+                                : 'Volver a Intentar', 
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)
+                          );
+                        }
+                      ),
                     ),
                   ),
                 ]
