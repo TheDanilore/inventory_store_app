@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import 'package:inventory_store_app/models/purchase_order_model.dart';
 import 'package:inventory_store_app/providers/admin/purchase_orders_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/purchase_orders/po_detail_sheet.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -27,6 +29,7 @@ class PurchaseOrdersScreen extends StatefulWidget {
 class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   final _searchCtrl = TextEditingController();
   bool _hasDraft = false;
+  Timer? _debounce;
 
   static const _statusLabels = {
     'Todos': 'Todos',
@@ -68,6 +71,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -228,62 +232,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           showBackButton: true,
           body: Column(
             children: [
-              // ── Borrador ──────────────────────────────────────────────────
-              if (_hasDraft)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: InkWell(
-                    onTap: () async {
-                      final result = await context.push<bool>(
-                        '/admin/purchase-order-form',
-                      );
-                      if (result == true && context.mounted) {
-                        context.read<PurchaseOrdersProvider>().loadOrders();
-                      }
-                      _checkDraft();
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.edit_note_rounded,
-                            color: Color(0xFFD97706),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Tienes una orden en progreso.',
-                              style: TextStyle(
-                                color: Color(0xFFD97706),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Continuar',
-                            style: TextStyle(
-                              color: const Color(0xFFD97706),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
               // ── Resumen ───────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -327,8 +275,19 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           child: _SearchField(
                             controller: _searchCtrl,
                             hint: 'Buscar proveedor, documento...',
-                            onSubmitted: (v) => provider.setSearchText(v),
+                            onChanged: (v) {
+                              _debounce?.cancel();
+                              _debounce = Timer(
+                                const Duration(milliseconds: 300),
+                                () => provider.setSearchText(v),
+                              );
+                            },
+                            onSubmitted: (v) {
+                              _debounce?.cancel();
+                              provider.setSearchText(v);
+                            },
                             onClear: () {
+                              _debounce?.cancel();
                               _searchCtrl.clear();
                               provider.setSearchText('');
                             },
@@ -381,9 +340,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
               // ── Lista ─────────────────────────────────────────────────────
               Expanded(
-                child:
-                    provider.isLoading
-                        ? ListView.separated(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  child: provider.isLoading
+                      ? ListView.separated(
+                          key: const ValueKey('loading'),
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                           itemCount: 5,
                           separatorBuilder:
@@ -395,75 +358,82 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                 borderRadius: 14,
                               ),
                         )
-                        : filtered.isEmpty
-                        ? AppEmptyState(
-                          icon: Icons.shopping_cart_outlined,
-                          title: 'Sin Resultados',
-                          message: 'Sin resultados para los filtros aplicados',
-                        )
-                        : Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                              child: Row(
-                                children: [
-                                  const Spacer(),
-                                  Text(
-                                    'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                      : filtered.isEmpty
+                          ? AppEmptyState(
+                              key: const ValueKey('empty'),
+                              icon: Icons.shopping_cart_outlined,
+                              title: 'Sin Resultados',
+                              message:
+                                  'Sin resultados para los filtros aplicados',
+                            )
+                          : Column(
+                              key: ValueKey(
+                                '${provider.statusFilter}_${provider.currentPage}',
                               ),
-                            ),
-                            Expanded(
-                              child: RefreshIndicator(
-                                color: AppColors.primary,
-                                onRefresh:
-                                    () => provider.loadOrders(reset: true),
-                                child: ListView.separated(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    0,
+                              children: [
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                                  child: Row(
+                                    children: [
+                                      const Spacer(),
+                                      Text(
+                                        'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  itemCount: filtered.length,
-                                  separatorBuilder:
-                                      (_, _) => const SizedBox(height: 10),
-                                  itemBuilder:
-                                      (_, i) => POCard(
-                                        po: filtered[i],
-                                        onTap:
-                                            () => _showDetail(
+                                ),
+                                Expanded(
+                                  child: RefreshIndicator(
+                                    color: AppColors.primary,
+                                    onRefresh:
+                                        () => provider.loadOrders(reset: true),
+                                    child: ListView.separated(
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        0,
+                                        16,
+                                        0,
+                                      ),
+                                      itemCount: filtered.length,
+                                      separatorBuilder:
+                                          (_, _) => const SizedBox(height: 10),
+                                      itemBuilder:
+                                          (_, i) => POCard(
+                                            po: filtered[i],
+                                            onTap: () => _showDetail(
                                               context,
                                               filtered[i],
                                             ),
-                                      ),
+                                          ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                if (provider.totalPages > 1)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      14,
+                                      16,
+                                      8,
+                                    ),
+                                    child: AdminPageBlocks(
+                                      currentPage: provider.currentPage,
+                                      totalPages: provider.totalPages,
+                                      onPageChanged:
+                                          (p) => provider.goToPage(p),
+                                    ),
+                                  ),
+                              ],
                             ),
-                            if (provider.totalPages > 1)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  14,
-                                  16,
-                                  8,
-                                ),
-                                child: AdminPageBlocks(
-                                  currentPage: provider.currentPage,
-                                  totalPages: provider.totalPages,
-                                  onPageChanged: (p) => provider.goToPage(p),
-                                ),
-                              ),
-                          ],
-                        ),
+                ),
               ),
             ],
           ),
@@ -509,21 +479,22 @@ class _SummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(height: 4),
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 5),
           Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.w900,
-              fontSize: 13,
+              fontSize: 14,
               color: color,
             ),
             maxLines: 1,
@@ -532,8 +503,8 @@ class _SummaryTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 9,
-              color: color.withValues(alpha: 0.7),
+              fontSize: 11,
+              color: color.withValues(alpha: 0.75),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -546,6 +517,7 @@ class _SummaryTile extends StatelessWidget {
 class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
+  final ValueChanged<String>? onChanged;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
 
@@ -554,11 +526,13 @@ class _SearchField extends StatelessWidget {
     required this.hint,
     required this.onSubmitted,
     required this.onClear,
+    this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) => TextField(
     controller: controller,
+    onChanged: onChanged,
     onSubmitted: onSubmitted,
     textInputAction: TextInputAction.search,
     decoration: InputDecoration(
@@ -573,7 +547,7 @@ class _SearchField extends StatelessWidget {
               )
               : null,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+      contentPadding: const EdgeInsets.symmetric(vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -593,13 +567,22 @@ class _DateRangeButton extends StatelessWidget {
     required this.onTap,
     required this.onClear,
   });
+
+  String _formatRange(DateTimeRange range) {
+    final fmt = DateFormat('d MMM', 'es');
+    return '${fmt.format(range.start)} – ${fmt.format(range.end)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasDate = dateRange != null;
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color:
               hasDate
@@ -619,17 +602,35 @@ class _DateRangeButton extends StatelessWidget {
               size: 18,
               color: hasDate ? AppColors.primary : AppColors.textSecondary,
             ),
-            if (hasDate) ...[
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: onClear,
-                child: const Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: hasDate
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatRange(dateRange!),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: onClear,
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),
