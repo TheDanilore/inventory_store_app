@@ -102,6 +102,7 @@ class CatalogHeader extends StatelessWidget {
                 onTap: () => onToggleIngredientSearch(!searchByIngredient),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
+                  width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 7,

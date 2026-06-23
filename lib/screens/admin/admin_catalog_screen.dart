@@ -324,24 +324,28 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   minHeight: headerMinHeight,
                   maxHeight: headerMaxHeight,
                   child: ClipRect(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CatalogHeader(
-                          searchController: _searchCtrl,
-                          isExporting: provider.isLoadingAction,
-                          onExport: () => _exportCatalogPdf(provider),
-                          onSearchChanged: provider.setSearchTerm,
-                          searchByIngredient: provider.searchByIngredient,
-                          onToggleIngredientSearch:
-                              provider.toggleSearchByIngredient,
-                        ),
-                        if (provider.isLoadingAction)
-                          const LinearProgressIndicator(
-                            color: AppColors.teal,
-                            minHeight: 2,
+                    child: OverflowBox(
+                      alignment: Alignment.topCenter,
+                      maxHeight: double.infinity,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CatalogHeader(
+                            searchController: _searchCtrl,
+                            isExporting: provider.isLoadingAction,
+                            onExport: () => _exportCatalogPdf(provider),
+                            onSearchChanged: provider.setSearchTerm,
+                            searchByIngredient: provider.searchByIngredient,
+                            onToggleIngredientSearch:
+                                provider.toggleSearchByIngredient,
                           ),
-                      ],
+                          if (provider.isLoadingAction)
+                            const LinearProgressIndicator(
+                              color: AppColors.teal,
+                              minHeight: 2,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
