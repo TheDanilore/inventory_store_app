@@ -14,16 +14,20 @@ class CartCheckoutService {
   }
 
   Future<String?> getActiveWarehouseId() async {
-    final warehouseResp = await _supabase
-        .from('warehouses')
-        .select('id')
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
+    final warehouseResp =
+        await _supabase
+            .from('warehouses')
+            .select('id')
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
     return warehouseResp?['id'];
   }
 
-  Future<Map<String, int>> fetchStockForVariants(String warehouseId, List<String> variantIds) async {
+  Future<Map<String, int>> fetchStockForVariants(
+    String warehouseId,
+    List<String> variantIds,
+  ) async {
     if (variantIds.isEmpty) return {};
 
     final stockResp = await _supabase
@@ -52,35 +56,38 @@ class CartCheckoutService {
     required List<CartItemModel> itemsToBuy,
   }) async {
     // 1. Crear Orden
-    final orderResp = await _supabase
-        .from('orders')
-        .insert({
-          'customer_id': customerId,
-          'total_amount': totalAmount,
-          'points_used': pointsUsed,
-          'points_earned': pointsEarned,
-          'total_profit': totalProfit,
-          'payment_method': 'POR ACORDAR',
-          'status': 'PENDING',
-          'warehouse_id': warehouseId,
-        })
-        .select('id')
-        .single();
+    final orderResp =
+        await _supabase
+            .from('orders')
+            .insert({
+              'customer_id': customerId,
+              'total_amount': totalAmount,
+              'points_used': pointsUsed,
+              'points_earned': pointsEarned,
+              'total_profit': totalProfit,
+              'payment_method': 'POR ACORDAR',
+              'status': 'PENDING',
+              'payment_status': 'PENDING',
+              'warehouse_id': warehouseId,
+            })
+            .select('id')
+            .single();
 
     final orderId = orderResp['id'];
 
     // 2. Insertar items
-    final itemsToInsert = itemsToBuy.map((item) {
-      return {
-        'order_id': orderId,
-        'product_id': item.product.id,
-        'variant_id': item.variantId,
-        'quantity': item.quantity,
-        'unit_cost': item.unitCost,
-        'applied_price': item.unitPrice,
-        'net_profit': (item.unitPrice - item.unitCost) * item.quantity,
-      };
-    }).toList();
+    final itemsToInsert =
+        itemsToBuy.map((item) {
+          return {
+            'order_id': orderId,
+            'product_id': item.product.id,
+            'variant_id': item.variantId,
+            'quantity': item.quantity,
+            'unit_cost': item.unitCost,
+            'applied_price': item.unitPrice,
+            'net_profit': (item.unitPrice - item.unitCost) * item.quantity,
+          };
+        }).toList();
 
     await _supabase.from('order_items').insert(itemsToInsert);
 

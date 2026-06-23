@@ -38,7 +38,7 @@ class OrderModel {
     this.pointsUsed = 0,
     this.pointsEarned = 0,
     this.customerName = '',
-    this.paymentStatus = 'PAID',
+    this.paymentStatus = 'PENDING',
     this.amountPaid = 0.00,
     this.dueDate,
     this.createdBy,
@@ -72,7 +72,7 @@ class OrderModel {
       pointsUsed: (json['points_used'] as num? ?? 0).toInt(),
       pointsEarned: (json['points_earned'] as num? ?? 0).toInt(),
       customerName: json['customer_name'] as String? ?? '',
-      paymentStatus: json['payment_status'] as String? ?? 'PAID',
+      paymentStatus: json['payment_status'] as String? ?? 'PENDING',
       amountPaid: (json['amount_paid'] as num? ?? 0.00).toDouble(),
       dueDate:
           json['due_date'] != null

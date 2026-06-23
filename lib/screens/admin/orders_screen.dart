@@ -149,7 +149,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isCompleting ? 'Confirmar cobro' : (isReturning ? 'Devolver pedido' : 'Cancelar pedido'),
+                    isCompleting
+                        ? 'Confirmar cobro'
+                        : (isReturning ? 'Devolver pedido' : 'Cancelar pedido'),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 17,
@@ -252,9 +254,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 if (isCancelling || isReturning) ...[
                   const SizedBox(height: 10),
                   Text(
-                    isReturning 
-                      ? 'Se reintegrará el stock y se reembolsará el pago. Esta acción no se puede deshacer.'
-                      : 'Esta acción no se puede deshacer. El stock NO se reintegrará automáticamente si ya fue descontado.',
+                    isReturning
+                        ? 'Se reintegrará el stock y se reembolsará el pago. Esta acción no se puede deshacer.'
+                        : 'Esta acción no se puede deshacer. El stock NO se reintegrará automáticamente si ya fue descontado.',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -282,7 +284,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: Text(
-                  isCompleting ? 'Confirmar cobro' : (isReturning ? 'Sí, devolver' : 'Sí, cancelar'),
+                  isCompleting
+                      ? 'Confirmar cobro'
+                      : (isReturning ? 'Sí, devolver' : 'Sí, cancelar'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
