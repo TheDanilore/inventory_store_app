@@ -190,6 +190,49 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     );
   }
 
+  /// Construye los items del menú de configuración para evitar duplicación.
+  List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogProvider provider) {
+    return [
+      if (provider.filterIsActive == null || provider.filterIsActive == true)
+        const PopupMenuItem(
+          value: 'filter_inactive',
+          child: Text('Ver Inactivos'),
+        ),
+      if (provider.filterIsActive == null || provider.filterIsActive == false)
+        const PopupMenuItem(value: 'filter_all', child: Text('Ver Todos')),
+      const PopupMenuItem(value: 'export', child: Text('Exportar')),
+      const PopupMenuItem(value: 'sync', child: Text('Forzar Sincronización')),
+    ];
+  }
+
+  Future<void> _handleMenuSelection(
+    String value,
+    AdminCatalogProvider provider,
+    BuildContext ctx,
+  ) async {
+    switch (value) {
+      case 'filter_inactive':
+        provider.setFilterIsActive(false);
+        break;
+      case 'filter_all':
+        provider.setFilterIsActive(null);
+        break;
+      case 'export':
+        await _exportCatalogPdf(provider);
+        break;
+      case 'sync':
+        await provider.forceSync();
+        if (ctx.mounted) {
+          AppSnackbar.show(
+            ctx,
+            message: 'Sincronización completada.',
+            type: SnackbarType.success,
+          );
+        }
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AdminCatalogProvider>(
@@ -197,48 +240,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         return AdminLayout(
           title: 'Catálogo',
           showSettingsButton: true,
-          settingsActions: [
-            if (provider.filterIsActive == null ||
-                provider.filterIsActive == true)
-              const PopupMenuItem(
-                value: 'filter_inactive',
-                child: Text('Ver Inactivos'),
-              ),
-            if (provider.filterIsActive == null ||
-                provider.filterIsActive == false)
-              const PopupMenuItem(
-                value: 'filter_all',
-                child: Text('Ver Todos'),
-              ),
-            const PopupMenuItem(value: 'export', child: Text('Exportar')),
-            const PopupMenuItem(
-              value: 'sync',
-              child: Text('Forzar Sincronización'),
-            ),
-          ],
-          onSettingsSelected: (value) async {
-            switch (value) {
-              case 'filter_inactive':
-                provider.setFilterIsActive(false);
-                break;
-              case 'filter_all':
-                provider.setFilterIsActive(null);
-                break;
-              case 'export':
-                await _exportCatalogPdf(provider);
-                break;
-              case 'sync':
-                await provider.forceSync();
-                if (context.mounted) {
-                  AppSnackbar.show(
-                    context,
-                    message: 'Sincronización completada.',
-                    type: SnackbarType.success,
-                  );
-                }
-                break;
-            }
-          },
+          settingsActions: _buildMenuItems(provider),
+          onSettingsSelected:
+              (value) => _handleMenuSelection(value, provider, context),
           showAppBar: false,
           body: Builder(
             builder: (context) {
@@ -292,51 +296,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ),
                 actions: [
                   AdminSettingsMenuButton(
-                    items: [
-                      if (provider.filterIsActive == null ||
-                          provider.filterIsActive == true)
-                        const PopupMenuItem(
-                          value: 'filter_inactive',
-                          child: Text('Ver Inactivos'),
-                        ),
-                      if (provider.filterIsActive == null ||
-                          provider.filterIsActive == false)
-                        const PopupMenuItem(
-                          value: 'filter_all',
-                          child: Text('Ver Todos'),
-                        ),
-                      const PopupMenuItem(
-                        value: 'export',
-                        child: Text('Exportar'),
-                      ),
-                      const PopupMenuItem(
-                        value: 'sync',
-                        child: Text('Forzar Sincronización'),
-                      ),
-                    ],
-                    onSelected: (value) async {
-                      switch (value) {
-                        case 'filter_inactive':
-                          provider.setFilterIsActive(false);
-                          break;
-                        case 'filter_all':
-                          provider.setFilterIsActive(null);
-                          break;
-                        case 'export':
-                          await _exportCatalogPdf(provider);
-                          break;
-                        case 'sync':
-                          await provider.forceSync();
-                          if (context.mounted) {
-                            AppSnackbar.show(
-                              context,
-                              message: 'Sincronización completada.',
-                              type: SnackbarType.success,
-                            );
-                          }
-                          break;
-                      }
-                    },
+                    items: _buildMenuItems(provider),
+                    onSelected:
+                        (value) =>
+                            _handleMenuSelection(value, provider, context),
                   ),
                   const SizedBox(width: 8),
                   Builder(
@@ -350,13 +313,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 ],
               );
 
-              final headerHeight = provider.searchByIngredient ? 175.0 : 115.0;
+              // Header colapsable: se reduce a solo el search bar al scrollear
+              final headerMaxHeight =
+                  provider.searchByIngredient ? 175.0 : 115.0;
+              const double headerMinHeight = 60.0;
 
               final headerSliver = SliverPersistentHeader(
                 pinned: true,
                 delegate: _CatalogHeaderDelegate(
-                  minHeight: headerHeight,
-                  maxHeight: headerHeight,
+                  minHeight: headerMinHeight,
+                  maxHeight: headerMaxHeight,
                   child: Column(
                     children: [
                       CatalogHeader(
@@ -549,7 +515,34 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return child;
+    // Calcula la opacidad del contenido expandido al colapsar
+    final expandRatio =
+        maxHeight > minHeight
+            ? (1.0 - shrinkOffset / (maxHeight - minHeight)).clamp(0.0, 1.0)
+            : 1.0;
+
+    return Opacity(
+      opacity: 1.0, // el contenedor siempre visible
+      child: SizedBox.expand(
+        child: Stack(
+          children: [
+            // El child normal (siempre visible con opacidad 1 para el search)
+            child,
+            // Overlay que oscurece las partes expandibles cuando está colapsado
+            if (expandRatio < 1.0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    color: Colors.white.withValues(
+                      alpha: (1.0 - expandRatio) * 0.0,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

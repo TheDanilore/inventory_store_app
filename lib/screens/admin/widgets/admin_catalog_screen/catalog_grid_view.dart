@@ -11,7 +11,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final int currentPage;
   final ValueChanged<int> onPageChanged;
   final void Function(ProductModel) onSale;
-  final void Function(ProductModel) onToggleActive;
+  final Future<void> Function(ProductModel) onToggleActive;
   final void Function(ProductModel) onEdit;
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
