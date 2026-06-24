@@ -48,280 +48,214 @@ class SupplierCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onEdit,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  backgroundColor:
-                      supplier.isActive
-                          ? AppColors.tealLight
-                          : Colors.grey.shade200,
-                  child: Text(
-                    supplier.name.isNotEmpty
-                        ? supplier.name.substring(0, 1).toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      color:
-                          supplier.isActive ? AppColors.tealDark : Colors.grey,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        supplier.name,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Avatar
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor:
+                          supplier.isActive
+                              ? AppColors.tealLight
+                              : Colors.grey.shade100,
+                      child: Text(
+                        supplier.name.isNotEmpty
+                            ? supplier.name.substring(0, 1).toUpperCase()
+                            : '?',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
                           color:
                               supplier.isActive
-                                  ? AppColors.textPrimary
-                                  : AppColors.textMuted,
-                          decoration:
-                              supplier.isActive
-                                  ? null
-                                  : TextDecoration.lineThrough,
+                                  ? AppColors.tealDark
+                                  : Colors.grey.shade400,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
                         ),
                       ),
-                      if (supplier.taxId != null && supplier.taxId!.isNotEmpty)
-                        Text(
-                          'RUC / ID: ${supplier.taxId}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        supplier.isActive
-                            ? AppColors.successLight
-                            : AppColors.dangerLight,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    supplier.isActive ? 'ACTIVO' : 'INACTIVO',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          supplier.isActive
-                              ? AppColors.success
-                              : AppColors.danger,
                     ),
-                  ),
-                ),
-              ],
-            ),
+                    const SizedBox(width: 12),
 
-            // Detalles de contacto y acciones rápidas
-            if (supplier.contactName != null ||
-                supplier.phone != null ||
-                supplier.email != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.bg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    if (supplier.contactName != null &&
-                        supplier.contactName!.isNotEmpty)
-                      _InfoRow(
-                        icon: Icons.person_rounded,
-                        text: supplier.contactName!,
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    // Fila de acciones rápidas para contacto
-                    Row(
-                      children: [
-                        if (supplier.phone != null &&
-                            supplier.phone!.isNotEmpty) ...[
-                          Expanded(
-                            child: _ContactActionChip(
-                              icon: Icons.phone_rounded,
-                              label: supplier.phone!,
-                              onTap: _callPhone,
-                              color: Colors.blue,
+                    // Nombres y RUC
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            supplier.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  supplier.isActive
+                                      ? AppColors.textPrimary
+                                      : AppColors.textMuted,
+                              decoration:
+                                  supplier.isActive
+                                      ? null
+                                      : TextDecoration.lineThrough,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          _ContactActionChip(
-                            icon:
-                                Icons
-                                    .message_rounded, // Usaremos este icono como genérico para WA
-                            label: 'WA',
-                            onTap: _openWhatsApp,
-                            color: Colors.green,
-                          ),
+                          if (supplier.taxId != null &&
+                              supplier.taxId!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'RUC / ID: ${supplier.taxId}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ],
-                        if (supplier.phone != null &&
-                            supplier.email != null &&
-                            supplier.phone!.isNotEmpty &&
-                            supplier.email!.isNotEmpty)
-                          const SizedBox(width: 8),
-                        if (supplier.email != null &&
-                            supplier.email!.isNotEmpty)
-                          Expanded(
-                            child: _ContactActionChip(
-                              icon: Icons.email_rounded,
-                              label: supplier.email!,
-                              onTap: _sendEmail,
-                              color: Colors.orange,
-                            ),
-                          ),
-                      ],
+                      ),
+                    ),
+
+                    // Switch Estado
+                    Tooltip(
+                      message: supplier.isActive ? 'Desactivar' : 'Activar',
+                      child: Switch(
+                        value: supplier.isActive,
+                        onChanged: (_) => onToggleStatus(),
+                        activeThumbColor: AppColors.success,
+                        activeTrackColor: AppColors.successLight,
+                        inactiveThumbColor: Colors.grey.shade400,
+                        inactiveTrackColor: Colors.grey.shade200,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
 
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
+                // Contacto (Quick Actions)
+                if (supplier.contactName != null ||
+                    supplier.phone != null ||
+                    supplier.email != null) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      // Nombre de Contacto
+                      if (supplier.contactName != null &&
+                          supplier.contactName!.isNotEmpty)
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.person_rounded,
+                                size: 16,
+                                color: AppColors.textMuted,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  supplier.contactName!,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const Spacer(),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton.icon(
-                  onPressed: onToggleStatus,
-                  icon: Icon(
-                    supplier.isActive
-                        ? Icons.block_rounded
-                        : Icons.check_circle_rounded,
-                    size: 16,
-                    color:
-                        supplier.isActive
-                            ? AppColors.danger
-                            : AppColors.success,
+                      // Quick Action Buttons
+                      if (supplier.phone != null &&
+                          supplier.phone!.isNotEmpty) ...[
+                        _QuickActionButton(
+                          icon: Icons.phone_rounded,
+                          color: Colors.blue,
+                          tooltip: 'Llamar a ${supplier.phone}',
+                          onTap: _callPhone,
+                        ),
+                        const SizedBox(width: 8),
+                        _QuickActionButton(
+                          icon: Icons.message_rounded,
+                          color: Colors.green,
+                          tooltip: 'WhatsApp',
+                          onTap: _openWhatsApp,
+                        ),
+                      ],
+                      if (supplier.email != null &&
+                          supplier.email!.isNotEmpty) ...[
+                        if (supplier.phone != null &&
+                            supplier.phone!.isNotEmpty)
+                          const SizedBox(width: 8),
+                        _QuickActionButton(
+                          icon: Icons.email_rounded,
+                          color: Colors.orange,
+                          tooltip: 'Enviar correo a ${supplier.email}',
+                          onTap: _sendEmail,
+                        ),
+                      ],
+                    ],
                   ),
-                  label: Text(
-                    supplier.isActive ? 'Desactivar' : 'Activar',
-                    style: TextStyle(
-                      color:
-                          supplier.isActive
-                              ? AppColors.danger
-                              : AppColors.success,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: onEdit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.tealLight,
-                    foregroundColor: AppColors.tealDark,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.edit_rounded, size: 16),
-                  label: const Text('Editar'),
-                ),
+                ],
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
+class _QuickActionButton extends StatelessWidget {
   final IconData icon;
-  final String text;
-  const _InfoRow({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: AppColors.textMuted),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ContactActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
   final Color color;
+  final VoidCallback onTap;
+  final String tooltip;
 
-  const _ContactActionChip({
+  const _QuickActionButton({
     required this.icon,
-    required this.label,
-    required this.onTap,
     required this.color,
+    required this.onTap,
+    required this.tooltip,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: 0.1),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 44, // Excelente touch target
+            height: 44,
+            alignment: Alignment.center,
+            child: Icon(icon, color: color, size: 20),
+          ),
         ),
       ),
     );

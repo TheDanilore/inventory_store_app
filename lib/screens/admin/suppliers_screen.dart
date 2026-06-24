@@ -101,8 +101,18 @@ class _SuppliersViewState extends State<_SuppliersView> {
             children: [
               // ── Buscador ──
               Container(
-                color: Colors.white,
-                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(100),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: (val) => _onSearchChanged(val, provider),
@@ -113,9 +123,9 @@ class _SuppliersViewState extends State<_SuppliersView> {
                       color: AppColors.textMuted,
                     ),
                     filled: true,
-                    fillColor: AppColors.bg,
+                    fillColor: Colors.white,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(100),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
