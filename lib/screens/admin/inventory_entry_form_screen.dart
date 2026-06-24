@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as dart_ui;
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/inventory_entry_form_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/inventory_entries/add_entry_product_sheet.dart';
@@ -406,9 +407,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                         const SizedBox(height: 12),
                                         DropdownButtonFormField<String>(
                                           initialValue: provider.paymentMode,
-                                          icon: const Icon(
-                                            Icons.expand_more_rounded,
-                                          ),
+                                          icon: const Icon(Icons.expand_more_rounded),
                                           decoration: _dropdownDecoration(
                                             'Tipo de Operación',
                                             icon: Icons.money_rounded,
@@ -416,74 +415,50 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                           items: const [
                                             DropdownMenuItem(
                                               value: 'CONTADO',
-                                              child: Text(
-                                                'Pago al Contado',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
+                                              child: Text('Pago al Contado', style: TextStyle(fontWeight: FontWeight.w600)),
                                             ),
                                             DropdownMenuItem(
                                               value: 'CREDITO',
-                                              child: Text(
-                                                'Compra al Crédito',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppColors.primary,
-                                                ),
-                                              ),
+                                              child: Text('Compra al Crédito', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
                                             ),
                                             DropdownMenuItem(
                                               value: 'AJUSTE',
-                                              child: Text(
-                                                'Ajuste / Sin Costo',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                ),
-                                              ),
+                                              child: Text('Ajuste / Sin Costo', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                                             ),
                                           ],
                                           onChanged: (v) {
-                                            if (v != null) {
-                                              provider.setPaymentMode(v);
-                                            }
+                                            if (v != null) provider.setPaymentMode(v);
                                           },
                                         ),
-                                        if (provider.paymentMode ==
-                                            'CONTADO') ...[
-                                          const SizedBox(height: 12),
-                                          DropdownButtonFormField<String>(
-                                            initialValue:
-                                                provider.selectedAccountId,
-                                            isExpanded: true,
-                                            icon: const Icon(
-                                              Icons.expand_more_rounded,
-                                            ),
-                                            decoration: _dropdownDecoration(
-                                              'Cuenta a debitar',
-                                              icon:
-                                                  Icons
-                                                      .account_balance_wallet_rounded,
-                                            ),
-                                            items:
-                                                provider.accounts.map((acc) {
-                                                  return DropdownMenuItem(
-                                                    value: acc.id,
-                                                    child: Text(
-                                                      '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 13,
+                                        AnimatedSize(
+                                          duration: const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                          alignment: Alignment.topCenter,
+                                          child: provider.paymentMode == 'CONTADO' 
+                                            ? Padding(
+                                                padding: const EdgeInsets.only(top: 12),
+                                                child: DropdownButtonFormField<String>(
+                                                  initialValue: provider.selectedAccountId,
+                                                  isExpanded: true,
+                                                  icon: const Icon(Icons.expand_more_rounded),
+                                                  decoration: _dropdownDecoration(
+                                                    'Cuenta a debitar',
+                                                    icon: Icons.account_balance_wallet_rounded,
+                                                  ),
+                                                  items: provider.accounts.map((acc) {
+                                                    return DropdownMenuItem(
+                                                      value: acc.id,
+                                                      child: Text(
+                                                        '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
+                                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                                                       ),
-                                                    ),
-                                                  );
-                                                }).toList(),
-                                            onChanged: provider.setAccount,
-                                          ),
-                                        ],
+                                                    );
+                                                  }).toList(),
+                                                  onChanged: provider.setAccount,
+                                                ),
+                                              )
+                                            : const SizedBox.shrink(),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -497,13 +472,15 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const _SectionTitle(
-                                            icon: Icons.inventory_2_rounded,
-                                            title: 'Productos a Ingresar',
+                                          const Expanded(
+                                            child: _SectionTitle(
+                                              icon: Icons.inventory_2_rounded,
+                                              title: 'Productos a Ingresar',
+                                            ),
                                           ),
+                                          const SizedBox(width: 8),
                                           Row(
                                             children: [
                                               if (provider.items.isNotEmpty &&
@@ -517,81 +494,59 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                                   tooltip: 'Descartar borrador',
                                                   onPressed: _handleClearDraft,
                                                 ),
-                                              TextButton.icon(
-                                                onPressed:
-                                                    () => _showAddProductSheet(
-                                                      context,
-                                                    ),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .add_circle_outline_rounded,
-                                                  size: 18,
+                                              FilledButton.tonalIcon(
+                                                onPressed: () => _showAddProductSheet(context),
+                                                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                                                label: const Text('Agregar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                                  foregroundColor: AppColors.primary,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                                 ),
-                                                label: const Text('Agregar'),
                                               ),
                                             ],
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 12),
-                                      if (provider.items.isEmpty)
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color: AppColors.border,
-                                              style: BorderStyle.solid,
-                                            ),
-                                          ),
-                                          child: const Column(
-                                            children: [
-                                              Icon(
-                                                Icons.widgets_outlined,
-                                                size: 48,
-                                                color: AppColors.textHint,
-                                              ),
-                                              SizedBox(height: 12),
-                                              Text(
-                                                'Agrega productos al almacén.',
-                                                style: TextStyle(
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                  fontWeight: FontWeight.w500,
+                                        AnimatedSize(
+                                          duration: const Duration(milliseconds: 300),
+                                          curve: Curves.easeOut,
+                                          child: provider.items.isEmpty
+                                            ? Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(24),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.background,
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  border: Border.all(color: AppColors.border, style: BorderStyle.solid),
                                                 ),
-                                                textAlign: TextAlign.center,
+                                                child: const Column(
+                                                  children: [
+                                                    Icon(Icons.widgets_outlined, size: 48, color: AppColors.textHint),
+                                                    SizedBox(height: 12),
+                                                    Text(
+                                                      'Agrega productos al almacén.',
+                                                      style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                                                      textAlign: TextAlign.center,
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            : ListView.builder(
+                                                shrinkWrap: true,
+                                                physics: const NeverScrollableScrollPhysics(),
+                                                itemCount: provider.items.length,
+                                                itemBuilder: (context, index) {
+                                                  return POFormItemTile(
+                                                    item: provider.items[index],
+                                                    onUpdateQuantity: (newQty) {
+                                                      provider.updateItemQuantity(index, newQty);
+                                                    },
+                                                    onRemove: () => provider.removeItem(index),
+                                                  );
+                                                },
                                               ),
-                                            ],
-                                          ),
-                                        )
-                                      else
-                                        ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          itemCount: provider.items.length,
-                                          itemBuilder: (context, index) {
-                                            return POFormItemTile(
-                                              item: provider.items[index],
-                                              onEditQuantity:
-                                                  () =>
-                                                      _mostrarDialogoCantidadItem(
-                                                        context,
-                                                        index,
-                                                        provider
-                                                            .items[index]
-                                                            .quantity,
-                                                      ),
-                                              onRemove:
-                                                  () => provider.removeItem(
-                                                    index,
-                                                  ),
-                                            );
-                                          },
                                         ),
                                       if (provider.items.isNotEmpty) ...[
                                         const SizedBox(height: 16),
@@ -665,27 +620,19 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                               decoration: InputDecoration(
                                                 labelText: 'Número / Serie',
                                                 filled: true,
-                                                fillColor: AppColors.background,
+                                                fillColor: AppColors.surface,
                                                 border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(14),
-                                                  borderSide: const BorderSide(
-                                                    color: AppColors.border,
-                                                  ),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  borderSide: const BorderSide(color: AppColors.border),
                                                 ),
-                                                enabledBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            14,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color:
-                                                                AppColors
-                                                                    .border,
-                                                          ),
-                                                    ),
+                                                enabledBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  borderSide: const BorderSide(color: AppColors.border),
+                                                ),
+                                                focusedBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -732,58 +679,46 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 100), // padding inferior
+                                // Bottom padding removido gracias a Stack/bottomNavigationBar
                               ],
                             ),
                           ),
                         ),
 
-                        // ── BOTÓN FIJO ──────────────────────────────
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, -4),
+                        // ── BOTÓN FIJO (Glassmorphism) ──────────────────────────────
+                        ClipRRect(
+                          child: BackdropFilter(
+                            filter: dart_ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
                               ),
-                            ],
-                          ),
-                          child: SafeArea(
-                            top: false,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        provider.items.isEmpty
-                                            ? null
-                                            : _handleSave,
-                                    icon: const Icon(
-                                      Icons.check_circle_outline_rounded,
-                                    ),
-                                    label: const Text(
-                                      'Confirmar Ingreso',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                              child: SafeArea(
+                                top: false,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: provider.items.isEmpty ? null : _handleSave,
+                                        icon: const Icon(Icons.check_circle_outline_rounded),
+                                        label: const Text(
+                                          'Confirmar Ingreso',
+                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          backgroundColor: AppColors.primary,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                          elevation: 0,
+                                        ),
                                       ),
                                     ),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      backgroundColor: AppColors.primary,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
@@ -795,80 +730,24 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  Future<void> _mostrarDialogoCantidadItem(
-    BuildContext context,
-    int index,
-    double cantidadActual,
-  ) async {
-    final qtyCtrl = TextEditingController(
-      text: cantidadActual.toStringAsFixed(0),
-    );
-    final provider = context.read<InventoryEntryFormProvider>();
-
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Cantidad a ingresar',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  final newQty = double.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null) {
-                    provider.updateItemQuantity(index, newQty);
-                  }
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Guardar'),
-              ),
-            ],
-          ),
-    );
-    qtyCtrl.dispose();
-  }
-
   InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
       filled: true,
-      fillColor: AppColors.background,
-      prefixIcon:
-          icon != null ? Icon(icon, color: AppColors.textHint, size: 20) : null,
+      fillColor: AppColors.surface,
+      prefixIcon: icon != null ? Icon(icon, color: AppColors.primary, size: 20) : null,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
     );
   }
@@ -918,12 +797,15 @@ class _SectionTitle extends StatelessWidget {
           child: Icon(icon, color: AppColors.primary, size: 20),
         ),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+        Flexible(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -948,46 +830,48 @@ class _DatePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPick,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.textHint, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                value == null
-                    ? label
-                    : '${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
-                style: TextStyle(
-                  color:
-                      value == null
-                          ? AppColors.textSecondary
-                          : AppColors.textPrimary,
-                  fontWeight:
-                      value == null ? FontWeight.normal : FontWeight.w600,
-                  fontSize: 14,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onPick,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value == null
+                      ? label
+                      : '${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
+                  style: TextStyle(
+                    color: value == null ? AppColors.textSecondary : AppColors.textPrimary,
+                    fontWeight: value == null ? FontWeight.normal : FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ),
-            if (value != null)
-              GestureDetector(
-                onTap: onClear,
-                child: const Icon(
-                  Icons.close_rounded,
-                  color: AppColors.textHint,
-                  size: 18,
+              if (value != null)
+                Tooltip(
+                  message: 'Limpiar fecha',
+                  child: GestureDetector(
+                    onTap: onClear,
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.textHint,
+                      size: 20,
+                    ),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

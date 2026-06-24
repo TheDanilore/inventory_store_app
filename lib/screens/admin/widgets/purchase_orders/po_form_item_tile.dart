@@ -6,13 +6,13 @@ import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class POFormItemTile extends StatelessWidget {
   final EntryItemUI item;
-  final VoidCallback onEditQuantity;
+  final ValueChanged<double> onUpdateQuantity;
   final VoidCallback onRemove;
 
   const POFormItemTile({
     super.key,
     required this.item,
-    required this.onEditQuantity,
+    required this.onUpdateQuantity,
     required this.onRemove,
   });
 
@@ -64,6 +64,63 @@ class POFormItemTile extends StatelessWidget {
     );
     if (confirm == true) onRemove();
   }
+
+  Future<void> _showQuantityDialog(
+    BuildContext context,
+  ) async {
+    final qtyCtrl = TextEditingController(
+      text: item.quantity.toStringAsFixed(0),
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text(
+              'Cantidad a pedir',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: TextField(
+              controller: qtyCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  final newQty = double.tryParse(qtyCtrl.text.trim());
+                  if (newQty != null) {
+                    onUpdateQuantity(newQty);
+                  }
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('Guardar'),
+              ),
+            ],
+          ),
+    );
+    qtyCtrl.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -199,41 +256,38 @@ class POFormItemTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Botón editar cantidad con ripple y semántica
-              Semantics(
-                label: 'Editar cantidad, actualmente $quantityText',
-                button: true,
-                child: InkWell(
-                  onTap: onEditQuantity,
+              // Stepper inline para editar cantidad
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _StepperButton(
+                      icon: Icons.remove_rounded,
+                      onTap: item.quantity > 1 ? () => onUpdateQuantity(item.quantity - 1) : null,
                     ),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          quantityText,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                          ),
+                    InkWell(
+                      onTap: () => _showQuantityDialog(context),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 32),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        child: Text(
+                          quantityText.replaceAll('x', ''),
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.edit_rounded,
-                          size: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    _StepperButton(
+                      icon: Icons.add_rounded,
+                      onTap: () => onUpdateQuantity(item.quantity + 1),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -289,4 +343,30 @@ class _ImagePlaceholder extends StatelessWidget {
       size: 24,
     ),
   );
+}
+
+class _StepperButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _StepperButton({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Icon(
+            icon, 
+            size: 18, 
+            color: onTap == null ? AppColors.textHint : AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
 }

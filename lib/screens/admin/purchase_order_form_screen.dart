@@ -110,65 +110,6 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     }
   }
 
-  Future<void> _mostrarDialogoCantidadItem(
-    BuildContext context,
-    int index,
-    double cantidadActual,
-  ) async {
-    final qtyCtrl = TextEditingController(
-      text: cantidadActual.toStringAsFixed(0),
-    );
-    final provider = context.read<PurchaseOrderFormProvider>();
-
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Cantidad a pedir',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  final newQty = double.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null) {
-                    provider.updateItemQuantity(index, newQty);
-                  }
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Guardar'),
-              ),
-            ],
-          ),
-    );
-    qtyCtrl.dispose();
-  }
-
   Future<void> _handleSave() async {
     final provider = context.read<PurchaseOrderFormProvider>();
     final success = await provider.saveOrder(
@@ -418,10 +359,13 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const _SectionTitle(
-                                            icon: Icons.inventory_2_rounded,
-                                            title: 'Productos a Pedir',
+                                          const Expanded(
+                                            child: _SectionTitle(
+                                              icon: Icons.inventory_2_rounded,
+                                              title: 'Productos a Pedir',
+                                            ),
                                           ),
+                                          const SizedBox(width: 8),
                                           Row(
                                             children: [
                                               TextButton.icon(
@@ -573,14 +517,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                           itemBuilder: (context, index) {
                                             return POFormItemTile(
                                               item: provider.items[index],
-                                              onEditQuantity:
-                                                  () =>
-                                                      _mostrarDialogoCantidadItem(
-                                                        context,
+                                              onUpdateQuantity:
+                                                  (newQty) =>
+                                                      provider.updateItemQuantity(
                                                         index,
-                                                        provider
-                                                            .items[index]
-                                                            .quantity,
+                                                        newQty,
                                                       ),
                                               onRemove:
                                                   () => provider.removeItem(
@@ -990,12 +931,15 @@ class _SectionTitle extends StatelessWidget {
     children: [
       Icon(icon, size: 20, color: AppColors.textPrimary),
       const SizedBox(width: 8),
-      Text(
-        title,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textPrimary,
+      Flexible(
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     ],
