@@ -53,6 +53,17 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(

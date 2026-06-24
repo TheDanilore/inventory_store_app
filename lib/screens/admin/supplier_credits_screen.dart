@@ -147,98 +147,100 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                       ),
                       const SizedBox(height: 16),
 
-                      // Buscador
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: TextField(
-                          controller: _searchCtrl,
-                          onChanged: provider.setSearchQuery,
-                          decoration: InputDecoration(
-                            hintText: 'Buscar por proveedor o RUC...',
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              color: AppColors.textMuted,
-                            ),
-                            suffixIcon:
-                                _searchCtrl.text.isNotEmpty
-                                    ? IconButton(
-                                      icon: const Icon(
-                                        Icons.clear,
-                                        color: AppColors.textMuted,
-                                      ),
-                                      onPressed: () {
-                                        _searchCtrl.clear();
-                                        provider.setSearchQuery('');
-                                      },
-                                    )
-                                    : null,
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Tabs
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: TabBar(
-                            controller: _tabCtrl,
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            dividerColor: Colors.transparent,
-                            indicator: BoxDecoration(
-                              color: Colors.blue.shade700,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            labelColor: Colors.white,
-                            unselectedLabelColor: AppColors.textMuted,
-                            tabs: [
-                              const Tab(text: 'Todas'),
-                              Tab(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text('Por Pagar'),
-                                    if (provider.debtCount > 0) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 1,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.danger,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
+                      // Buscador y Tabs integrados
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _searchCtrl,
+                              onChanged: provider.setSearchQuery,
+                              decoration: InputDecoration(
+                                hintText: 'Buscar por proveedor o RUC...',
+                                prefixIcon: const Icon(
+                                  Icons.search_rounded,
+                                  color: AppColors.textMuted,
+                                ),
+                                suffixIcon:
+                                    _searchCtrl.text.isNotEmpty
+                                        ? IconButton(
+                                          icon: const Icon(
+                                            Icons.clear_rounded,
+                                            color: AppColors.textMuted,
                                           ),
-                                        ),
-                                        child: Text(
-                                          '${provider.debtCount}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                          onPressed: () {
+                                            _searchCtrl.clear();
+                                            provider.setSearchQuery('');
+                                          },
+                                        )
+                                        : null,
+                                filled: true,
+                                fillColor: AppColors.bg,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 14,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.bg,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TabBar(
+                                controller: _tabCtrl,
+                                indicatorSize: TabBarIndicatorSize.tab,
+                                dividerColor: Colors.transparent,
+                                indicator: BoxDecoration(
+                                  color: Colors.blue.shade700,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                labelColor: Colors.white,
+                                unselectedLabelColor: AppColors.textMuted,
+                                tabs: [
+                                  const Tab(text: 'Todas'),
+                                  Tab(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Text('Por Pagar'),
+                                        if (provider.debtCount > 0) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.danger,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              '${provider.debtCount}',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
