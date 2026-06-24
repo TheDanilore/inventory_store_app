@@ -998,8 +998,8 @@ class _ProductDetailScreenContentState
                       const SizedBox(width: 8),
                     ],
                     Text(
-                      _attributeKeys.length == 1 && v.attributeMap.isNotEmpty
-                          ? _fmt(v.attributeMap.values.first)
+                      v.attributeMap.isNotEmpty
+                          ? v.attributeMap.values.map((e) => _fmt(e)).join(' / ')
                           : 'Opción',
                       style: TextStyle(
                         fontSize: 13,
