@@ -39,13 +39,10 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
   Future<void> _fetchExistingBatches(String variantId) async {
     if (widget.warehouseId == null) {
-      debugPrint('[Batches] warehouseId es null — no se buscan lotes');
+      
       return;
     }
     try {
-      debugPrint(
-        '[Batches] Buscando lotes: variantId=$variantId, warehouseId=${widget.warehouseId}',
-      );
       final response = await Supabase.instance.client
           .from('warehouse_stock_batches')
           .select('*')
@@ -56,10 +53,6 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
           .order('expiry_date', ascending: true, nullsFirst: false)
           .order('created_at', ascending: true);
 
-      debugPrint('[Batches] Respuesta de Supabase: ${response.length} lotes encontrados');
-      for (final b in response) {
-        debugPrint('  -> batch_number=${b["batch_number"]}, qty=${b["available_quantity"]}');
-      }
 
       if (mounted) {
         setState(() {

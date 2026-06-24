@@ -166,226 +166,257 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           showBackButton: true,
           body: Column(
             children: [
-              // ── Borrador ──────────────────────────────────────────────────
-              if (_hasDraft)
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.3),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_document, color: AppColors.warning),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Tienes un borrador de entrada en progreso.',
-                          style: TextStyle(
-                            color: AppColors.warning,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final result = await context.push<bool>(
-                            '/admin/inventory-entry-form',
-                          );
-                          _checkDraft();
-                          if (result == true && context.mounted) {
-                            context.read<InventoryEntriesProvider>().init();
-                          }
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.warning,
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Continuar',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // ── Resumen ──────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Row(
-                  children: [
-                    _SummaryChip(
-                      label: 'Página actual',
-                      value: '${provider.entries.length}',
-                      icon: Icons.move_to_inbox_rounded,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    _SummaryChip(
-                      label: 'Inversión (pág)',
-                      value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-                      icon: Icons.payments_rounded,
-                      color: AppColors.teal,
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Filtros ───────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SearchField(
-                            controller: _searchCtrl,
-                            hint: 'Buscar proveedor o comprobante...',
-                            onChanged: (v) {},
-                            onSubmitted: (v) => provider.setSearchQuery(v),
-                            onClear: () {
-                              _searchCtrl.clear();
-                              provider.setSearchQuery('');
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        DateFilterCalendar(
-                          dateRange: provider.dateRange,
-                          onDateRangeSelected: provider.setDateRange,
-                          onClear: () => provider.setDateRange(null),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children:
-                            provider.availableWarehouses.map((w) {
-                              final sel = provider.warehouseFilter == w;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: FilterChip(
-                                  label: Text(w),
-                                  selected: sel,
-                                  onSelected:
-                                      (_) => provider.setWarehouseFilter(w),
-                                  selectedColor: AppColors.primary.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  checkmarkColor: AppColors.primary,
-                                  labelStyle: TextStyle(
-                                    fontWeight:
-                                        sel ? FontWeight.w700 : FontWeight.w500,
-                                    fontSize: 12,
-                                    color:
-                                        sel
-                                            ? AppColors.primary
-                                            : AppColors.textSecondary,
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () => provider.loadEntries(page: 0),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // ── Borrador ──────────────────────────────────────────
+                      if (_hasDraft)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.1),
+                              border: Border.all(
+                                color: AppColors.warning.withValues(alpha: 0.3),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.edit_document,
+                                  color: AppColors.warning,
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    'Tienes un borrador de entrada en progreso.',
+                                    style: TextStyle(
+                                      color: AppColors.warning,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
-                              );
-                            }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 6),
-
-              // ── Lista ─────────────────────────────────────────────────────
-              Expanded(
-                child:
-                    provider.isLoading
-                        ? const _EntriesSkeleton()
-                        : provider.entries.isEmpty
-                        ? AppEmptyState(
-                          icon: Icons.inbox_outlined,
-                          title: 'Sin Resultados',
-                          message:
-                              provider.searchQuery.isEmpty &&
-                                      provider.dateRange == null &&
-                                      provider.warehouseFilter == 'Todos'
-                                  ? 'No hay entradas registradas'
-                                  : 'Sin resultados para los filtros aplicados',
-                        )
-                        : Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                              child: Row(
-                                children: [
-                                  const Spacer(),
-                                  Text(
-                                    'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                FilledButton.tonal(
+                                  onPressed: () async {
+                                    final result = await context.push<bool>(
+                                      '/admin/inventory-entry-form',
+                                    );
+                                    _checkDraft();
+                                    if (result == true && context.mounted) {
+                                      context
+                                          .read<InventoryEntriesProvider>()
+                                          .init();
+                                    }
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.warning
+                                        .withValues(alpha: 0.2),
+                                    foregroundColor: AppColors.warning,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 0,
                                     ),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text(
+                                    'Continuar',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // ── Resumen ──────────────────────────────────────────
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: Row(
+                            children: [
+                              _SummaryChip(
+                                label: 'Página actual',
+                                value: '${provider.entries.length}',
+                                icon: Icons.move_to_inbox_rounded,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 10),
+                              _SummaryChip(
+                                label: 'Inversión (pág)',
+                                value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+                                icon: Icons.payments_rounded,
+                                color: AppColors.teal,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── Filtros ───────────────────────────────────────────
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _SearchField(
+                                      controller: _searchCtrl,
+                                      hint: 'Buscar proveedor o comprobante...',
+                                      onChanged: (v) {},
+                                      onSubmitted:
+                                          (v) => provider.setSearchQuery(v),
+                                      onClear: () {
+                                        _searchCtrl.clear();
+                                        provider.setSearchQuery('');
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  DateFilterCalendar(
+                                    dateRange: provider.dateRange,
+                                    onDateRangeSelected: provider.setDateRange,
+                                    onClear: () => provider.setDateRange(null),
                                   ),
                                 ],
                               ),
-                            ),
-                            Expanded(
-                              child: RefreshIndicator(
-                                color: AppColors.primary,
-                                onRefresh: () => provider.loadEntries(page: 0),
-                                child: ListView.separated(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    0,
-                                  ),
-                                  itemCount: provider.entries.length,
-                                  separatorBuilder:
-                                      (_, _) => const SizedBox(height: 10),
-                                  itemBuilder:
-                                      (_, i) => _EntryCard(
-                                        entry: provider.entries[i],
-                                        onTap:
-                                            () => _loadItemsAndShowDetail(
-                                              context,
-                                              provider.entries[i],
+                              const SizedBox(height: 12),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children:
+                                      provider.availableWarehouses.map((w) {
+                                        final sel =
+                                            provider.warehouseFilter == w;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 200,
                                             ),
+                                            child: FilterChip(
+                                              label: Text(w),
+                                              selected: sel,
+                                              onSelected:
+                                                  (_) => provider
+                                                      .setWarehouseFilter(w),
+                                              selectedColor: AppColors.primary
+                                                  .withValues(alpha: 0.15),
+                                              checkmarkColor: AppColors.primary,
+                                              backgroundColor:
+                                                  AppColors.surface,
+                                              side: BorderSide(
+                                                color:
+                                                    sel
+                                                        ? Colors.transparent
+                                                        : Colors.grey.shade300,
+                                              ),
+                                              labelStyle: TextStyle(
+                                                fontWeight:
+                                                    sel
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w500,
+                                                fontSize: 12,
+                                                color:
+                                                    sel
+                                                        ? AppColors.primary
+                                                        : AppColors
+                                                            .textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── Lista ─────────────────────────────────────────────
+                      if (provider.isLoading)
+                        const SliverPadding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverToBoxAdapter(child: _EntriesSkeleton()),
+                        )
+                      else if (provider.entries.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: AppEmptyState(
+                            icon: Icons.inbox_outlined,
+                            title: 'Sin Resultados',
+                            message:
+                                provider.searchQuery.isEmpty &&
+                                        provider.dateRange == null &&
+                                        provider.warehouseFilter == 'Todos'
+                                    ? 'No hay entradas registradas'
+                                    : 'Sin resultados para los filtros aplicados',
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _EntryCard(
+                                  entry: provider.entries[i],
+                                  onTap:
+                                      () => _loadItemsAndShowDetail(
+                                        context,
+                                        provider.entries[i],
                                       ),
                                 ),
                               ),
+                              childCount: provider.entries.length,
                             ),
-                            if (provider.totalPages > 1)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  14,
-                                  16,
-                                  8,
-                                ),
-                                child: AdminPageBlocks(
-                                  currentPage: provider.currentPage,
-                                  totalPages: provider.totalPages,
-                                  onPageChanged: provider.goToPage,
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
+                    ],
+                  ),
+                ),
               ),
+
+              // ── Paginación anclada al fondo ───────────────────────────────
+              if (provider.totalPages > 1 && !provider.isLoading)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: AdminPageBlocks(
+                      currentPage: provider.currentPage,
+                      totalPages: provider.totalPages,
+                      onPageChanged: provider.goToPage,
+                    ),
+                  ),
+                ),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
@@ -394,7 +425,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                 '/admin/inventory-entry-form',
               );
               if (result == true) {
-                provider.loadEntries(page: 0); // Refrescar en la misma pantalla
+                provider.loadEntries(page: 0);
               }
               _checkDraft();
             },
@@ -402,7 +433,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
             backgroundColor:
                 _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-            foregroundColor: _hasDraft ? Colors.white : Colors.white,
+            foregroundColor: Colors.white,
+            elevation: 4,
           ),
         );
       },
@@ -427,112 +459,130 @@ class _EntryCard extends StatelessWidget {
         entry.documentNumber != null &&
         entry.documentNumber!.isNotEmpty;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200), // AppColors.border equivalente
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.move_to_inbox_rounded,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.move_to_inbox_rounded,
-                      color: AppColors.primary,
-                      size: 20,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.supplierName ?? 'Sin proveedor',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            entry.createdAt != null
+                                ? fmt.format(entry.createdAt!.toLocal())
+                                : '',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          entry.supplierName ?? 'Sin proveedor',
+                          'S/ ${entry.totalAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: AppColors.primary,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 2),
                         Text(
-                          entry.createdAt != null
-                              ? fmt.format(entry.createdAt!.toLocal())
-                              : '',
+                          '${entry.itemCount} producto${entry.itemCount != 1 ? 's' : ''}',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'S/ ${entry.totalAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      Text(
-                        '${entry.itemCount} producto${entry.itemCount != 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
-                  _Pill(
-                    icon: Icons.warehouse_rounded,
-                    label: entry.warehouseName ?? 'Sin almacén',
-                  ),
-                  if (hasDoc)
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
                     _Pill(
-                      icon: Icons.receipt_long_rounded,
-                      label: '${entry.documentType} ${entry.documentNumber}',
-                      color: AppColors.teal,
+                      icon: Icons.warehouse_rounded,
+                      label: entry.warehouseName ?? 'Sin almacén',
+                      color:
+                          AppColors
+                              .textPrimary, // Texto más oscuro para contraste
+                      bgColor: Colors.grey.shade200,
                     ),
-                  if (entry.purchaseOrderId != null)
-                    _Pill(
-                      icon: Icons.link_rounded,
-                      label: 'Orden de compra',
-                      color: Colors.purple.shade400,
-                    ),
-                ],
-              ),
-            ],
+                    if (hasDoc)
+                      _Pill(
+                        icon: Icons.receipt_long_rounded,
+                        label: '${entry.documentType} ${entry.documentNumber}',
+                        color: AppColors.teal,
+                        bgColor: AppColors.teal.withValues(alpha: 0.15),
+                      ),
+                    if (entry.purchaseOrderId != null)
+                      _Pill(
+                        icon: Icons.link_rounded,
+                        label: 'Orden de compra',
+                        color: Colors.purple.shade700,
+                        bgColor: Colors.purple.shade400.withValues(alpha: 0.15),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -559,15 +609,16 @@ class _SummaryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,15 +627,15 @@ class _SummaryChip extends StatelessWidget {
                   value,
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
-                    fontSize: 15,
+                    fontSize: 16,
                     color: color,
                   ),
                 ),
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 10,
-                    color: color.withValues(alpha: 0.7),
+                    fontSize: 11,
+                    color: color.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -624,13 +675,18 @@ class _SearchField extends StatelessWidget {
       suffixIcon:
           controller.text.isNotEmpty
               ? IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18),
+                tooltip: 'Borrar búsqueda',
+                icon: const Icon(Icons.clear_rounded, size: 20),
                 onPressed: onClear,
               )
               : null,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12),
       border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
       ),
@@ -643,29 +699,34 @@ class _SearchField extends StatelessWidget {
 class _Pill extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color? color;
-  const _Pill({required this.icon, required this.label, this.color});
+  final Color color;
+  final Color bgColor;
+  const _Pill({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.bgColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.1),
+        color: bgColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: c),
-          const SizedBox(width: 4),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
-              color: c,
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -679,58 +740,56 @@ class _EntriesSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: 6,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
+    return Column(
+      children: List.generate(
+        6,
+        (index) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey.shade100),
           ),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const AppShimmer(width: 40, height: 40, borderRadius: 10),
-                  const SizedBox(width: 10),
+                  const AppShimmer(width: 44, height: 44, borderRadius: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        AppShimmer(width: 120, height: 14, borderRadius: 4),
-                        SizedBox(height: 6),
-                        AppShimmer(width: 80, height: 10, borderRadius: 4),
+                        AppShimmer(width: 140, height: 16, borderRadius: 4),
+                        SizedBox(height: 8),
+                        AppShimmer(width: 90, height: 12, borderRadius: 4),
                       ],
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: const [
-                      AppShimmer(width: 60, height: 16, borderRadius: 4),
-                      SizedBox(height: 6),
-                      AppShimmer(width: 40, height: 10, borderRadius: 4),
+                      AppShimmer(width: 70, height: 18, borderRadius: 4),
+                      SizedBox(height: 8),
+                      AppShimmer(width: 50, height: 12, borderRadius: 4),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               Row(
                 children: const [
-                  AppShimmer(width: 80, height: 20, borderRadius: 8),
-                  SizedBox(width: 6),
-                  AppShimmer(width: 100, height: 20, borderRadius: 8),
+                  AppShimmer(width: 90, height: 24, borderRadius: 8),
+                  SizedBox(width: 8),
+                  AppShimmer(width: 120, height: 24, borderRadius: 8),
                 ],
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
