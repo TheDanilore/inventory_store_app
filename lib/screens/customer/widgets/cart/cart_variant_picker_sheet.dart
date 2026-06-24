@@ -15,12 +15,16 @@ class CartVariantPickerSheet extends StatefulWidget {
   final CartProvider cart;
   final ProductModel product;
   final CartItemModel? existingCartItem;
+  final int initialQuantity;
+  final ValueChanged<ProductVariantModel>? onVariantSelected;
 
   const CartVariantPickerSheet({
     super.key,
     required this.cart,
     required this.product,
     this.existingCartItem,
+    this.initialQuantity = 1,
+    this.onVariantSelected,
   });
 
   @override
@@ -166,7 +170,14 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
               : () {
                 if (!kIsWeb) Vibration.vibrate(duration: 50, amplitude: 128);
 
-                final int quantity = widget.existingCartItem?.quantity ?? 1;
+                final int quantity =
+                    widget.existingCartItem?.quantity ?? widget.initialQuantity;
+
+                if (widget.onVariantSelected != null) {
+                  widget.onVariantSelected!(variant);
+                  Navigator.pop(context);
+                  return;
+                }
 
                 // Si estamos cambiando una variante desde el carrito
                 if (widget.existingCartItem != null &&

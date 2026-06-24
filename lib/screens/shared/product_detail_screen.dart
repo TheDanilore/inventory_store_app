@@ -24,7 +24,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_gallery_section.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_top_section.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_price_section.dart';
-import 'package:inventory_store_app/screens/shared/widgets/product_variant_selector.dart';
+import 'package:inventory_store_app/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_bottom_bar.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_input_field.dart';
 import 'package:inventory_store_app/screens/shared/widgets/product_description_card.dart';
@@ -46,11 +46,12 @@ class ProductDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ProductDetailProvider(
-        product: product, 
-        isAdmin: isAdmin,
-        initialVariantId: initialVariantId,
-      ),
+      create:
+          (_) => ProductDetailProvider(
+            product: product,
+            isAdmin: isAdmin,
+            initialVariantId: initialVariantId,
+          ),
       child: const _ProductDetailScreenContent(),
     );
   }
@@ -102,10 +103,7 @@ class _ProductDetailScreenContentState
   int get _selectedQty => providerWatch.selectedQty;
   int get _selectedImageIndex => providerWatch.selectedImageIndex;
   String? get _selectedVariantId => providerWatch.selectedVariantId;
-  Map<String, String> get _selectedAttributes =>
-      providerWatch.selectedAttributes;
 
-  String? get _selectedVariantIdSafe => providerWatch.selectedVariantId;
   ProductVariantModel? get _selectedVariant => providerWatch.selectedVariant;
   double get _baseSalePrice => providerWatch.baseSalePrice;
   double? get _baseWholesalePrice => providerWatch.baseWholesalePrice;
@@ -115,11 +113,7 @@ class _ProductDetailScreenContentState
   bool get _isActive => providerWatch.isActive;
   bool get _canBuy => providerWatch.canBuy;
   List<String> get _attributeKeys => providerWatch.attributeKeys;
-  Map<String, List<String>> get _attributeOptions =>
-      providerWatch.attributeOptions;
   String? get _selectedVariantImageUrl => providerWatch.selectedVariantImageUrl;
-  bool _isOptionEnabled(String key, String value) =>
-      providerWatch.isOptionEnabled(key, value);
   List<ProductImageModel> get _galleryImages => providerWatch.images;
   String? _variantImageUrl(ProductVariantModel variant) =>
       providerWatch.variantImageUrl(variant);
@@ -172,23 +166,29 @@ class _ProductDetailScreenContentState
     provider.setPage(index);
   }
 
-  void _selectAttribute(String key, String value) {
-    provider.selectAttribute(key, value);
-  }
-
   // ─── CART & REVIEWS ───────────────────────────────────────────────────────
 
   void _addToCart() {
-    if (_variants.isNotEmpty && _selectedVariantIdSafe == null) {
-      _showSnack('Selecciona una opción.');
-      return;
-    }
-    if (_effectiveStock <= 0) {
+    if (_effectiveStock <= 0 && _variants.isEmpty) {
       _showSnack('Sin stock.');
       return;
     }
-    if (_selectedQty > _effectiveStock) {
+    if (_variants.isEmpty && _selectedQty > _effectiveStock) {
       _showSnack('Cantidad mayor al stock.');
+      return;
+    }
+    if (_variants.isNotEmpty) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder:
+            (context) => CartVariantPickerSheet(
+              cart: Provider.of<CartProvider>(context, listen: false),
+              product: product,
+              initialQuantity: _selectedQty,
+            ),
+      );
       return;
     }
     Provider.of<CartProvider>(context, listen: false).addItem(
@@ -821,19 +821,48 @@ class _ProductDetailScreenContentState
                 const SizedBox(height: 20),
               ],
 
-              if (_variants.isNotEmpty &&
-                  _attributeKeys.isNotEmpty &&
-                  !(_attributeKeys.length == 1 &&
-                      _thumbnailVariants.isNotEmpty)) ...[
-                ProductVariantSelector(
-                  attributeKeys: _attributeKeys,
-                  attributeOptions: _attributeOptions,
-                  selectedAttributes: _selectedAttributes,
-                  formatLabel: _fmt,
-                  isOptionEnabled: _isOptionEnabled,
-                  onSelect: _selectAttribute,
+              if (_variants.isNotEmpty) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Opciones',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _selectedVariant?.label ?? 'Selecciona un modelo',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textSecondary,
+                  ),
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder:
+                          (context) => CartVariantPickerSheet(
+                            cart: Provider.of<CartProvider>(
+                              context,
+                              listen: false,
+                            ),
+                            product: product,
+                            onVariantSelected: (variant) {
+                              _selectVariant(variant);
+                            },
+                          ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
               ],
 
               if (isAdmin) ProductAvailabilityCard(),
@@ -999,7 +1028,9 @@ class _ProductDetailScreenContentState
                     ],
                     Text(
                       v.attributeMap.isNotEmpty
-                          ? v.attributeMap.values.map((e) => _fmt(e)).join(' / ')
+                          ? v.attributeMap.values
+                              .map((e) => _fmt(e))
+                              .join(' / ')
                           : 'Opción',
                       style: TextStyle(
                         fontSize: 13,
