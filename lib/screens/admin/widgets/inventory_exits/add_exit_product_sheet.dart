@@ -98,7 +98,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
     return (_selectedBatch!['available_quantity'] as num).toDouble();
   }
 
-  Future<void> _mostrarDialogoCantidadModal() async {
+  Future<void> _showQuantityDialog() async {
     if (_maxAvailable <= 0) return;
 
     final qtyCtrl = TextEditingController(text: _quantity.toStringAsFixed(0));
@@ -502,7 +502,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                         : null,
                 onRemove:
                     _quantity > 1 ? () => setState(() => _quantity--) : null,
-                onTapValue: _mostrarDialogoCantidadModal,
+                onTapValue: _showQuantityDialog,
               ),
               const SizedBox(height: 8),
               Center(

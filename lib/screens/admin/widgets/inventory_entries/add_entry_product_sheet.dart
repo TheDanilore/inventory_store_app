@@ -156,7 +156,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     }
   }
 
-  Future<void> _mostrarDialogoCantidadModal() async {
+  Future<void> _showQuantityDialog() async {
     final qtyCtrl = TextEditingController(text: _quantity.toStringAsFixed(0));
     await showDialog<void>(
       context: context,
@@ -585,7 +585,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                 onAdd: () => setState(() => _quantity++),
                 onRemove:
                     _quantity > 1 ? () => setState(() => _quantity--) : null,
-                onTapValue: _mostrarDialogoCantidadModal,
+                onTapValue: _showQuantityDialog,
               ),
             ],
 

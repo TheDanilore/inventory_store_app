@@ -232,6 +232,60 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           showBackButton: true,
           body: Column(
             children: [
+              // ── Borrador ──────────────────────────────────────────────────
+              if (_hasDraft)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.3),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.edit_document,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Tienes un borrador de compra en progreso.',
+                          style: TextStyle(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          final result = await context.push<bool>(
+                            '/admin/purchase-order-form',
+                          );
+                          _checkDraft();
+                          if (result == true && context.mounted) {
+                            context.read<PurchaseOrdersProvider>().loadOrders();
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.warning.withValues(
+                            alpha: 0.2,
+                          ),
+                          foregroundColor: AppColors.warning,
+                        ),
+                        child: const Text('Continuar'),
+                      ),
+                    ],
+                  ),
+                ),
+
               // ── Resumen ───────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

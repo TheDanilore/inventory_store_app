@@ -236,7 +236,7 @@ class _ProductDetailScreenContentState
     );
   }
 
-  Future<void> _showQtyDialog() async {
+  Future<void> _showQuantityDialog() async {
     final ctrl = TextEditingController(text: '$_selectedQty');
     try {
       await showModalBottomSheet<void>(
@@ -895,7 +895,7 @@ class _ProductDetailScreenContentState
         selectedQty: _selectedQty,
         onDecrement: () => provider.setSelectedQty(_selectedQty - 1),
         onIncrement: () => provider.setSelectedQty(_selectedQty + 1),
-        onQtyTap: _showQtyDialog,
+        onQtyTap: _showQuantityDialog,
         onAddToCart: _addToCart,
       ),
     );

@@ -59,7 +59,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
     });
   }
 
-  Future<void> _mostrarDialogoCantidad(
+  Future<void> _showQuantityDialog(
     BuildContext context,
     int index,
     BatchAssignmentModel b,
@@ -419,7 +419,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                             ),
                             GestureDetector(
                               onTap:
-                                  () => _mostrarDialogoCantidad(
+                                  () => _showQuantityDialog(
                                     context,
                                     index,
                                     b,

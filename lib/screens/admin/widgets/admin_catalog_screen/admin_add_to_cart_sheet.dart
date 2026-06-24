@@ -78,7 +78,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
   bool get _canSell =>
       _selectedVariant != null && (!_hasStockControl || _currentStock > 0);
 
-  Future<void> _showQtyDialog(
+  Future<void> _showQuantityDialog(
     BuildContext context,
     int current,
     int maxStock,
@@ -329,7 +329,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => _showQtyDialog(context, _quantity, stock),
+                      onTap: () => _showQuantityDialog(context, _quantity, stock),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Text(

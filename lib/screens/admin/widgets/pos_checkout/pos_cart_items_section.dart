@@ -87,7 +87,7 @@ class PosCartItemRow extends StatelessWidget {
     required this.onShowBatchEditSheet,
   });
 
-  Future<void> _mostrarDialogoCantidad(BuildContext context) async {
+  Future<void> _showQuantityDialog(BuildContext context) async {
     final qtyCtrl = TextEditingController(text: item.quantity.toString());
 
     await showDialog<void>(
@@ -313,7 +313,7 @@ class PosCartItemRow extends StatelessWidget {
                           Material(
                             color: AppColors.tealLight.withValues(alpha: 0.3),
                             child: InkWell(
-                              onTap: () => _mostrarDialogoCantidad(context),
+                              onTap: () => _showQuantityDialog(context),
                               child: Container(
                                 constraints: const BoxConstraints(minWidth: 28),
                                 alignment: Alignment.center,

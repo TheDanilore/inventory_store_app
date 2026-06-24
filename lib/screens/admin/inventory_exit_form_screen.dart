@@ -60,7 +60,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     }
   }
 
-  Future<void> _mostrarDialogoCantidadItem(
+  Future<void> _showQuantityDialog(
     int index,
     double cantidadActual,
     double maxAvailable,
@@ -879,7 +879,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ? () => provider.updateQuantity(index, item.quantity - 1)
                     : null,
             onTapValue:
-                () => _mostrarDialogoCantidadItem(
+                () => _showQuantityDialog(
                   index,
                   item.quantity,
                   maxAvailable,
