@@ -76,10 +76,21 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Future<void> _showAddProductSheet(BuildContext context) async {
     final provider = context.read<PurchaseOrderFormProvider>();
 
+    // Validar que se haya seleccionado un proveedor primero
+    if (provider.selectedSupplierId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Selecciona un proveedor antes de agregar productos.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    // Validar que se haya seleccionado un almacén de destino
     if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Por favor, selecciona un almacén de destino primero.',
+        message: 'Selecciona un almacén de destino antes de agregar productos.',
         type: SnackbarType.warning,
       );
       return;
@@ -315,7 +326,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // ── Datos de la Orden ──────────────────────────────
+                                // ── 1. Datos de la Orden ─────────────────────
                                 _SectionCard(
                                   child: Column(
                                     crossAxisAlignment:
@@ -384,28 +395,225 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                         onChanged: provider.setWarehouse,
                                       ),
                                       const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _DatePickerField(
-                                              label: 'Fecha Vencimiento',
-                                              value: provider.dueDate,
-                                              onPick:
-                                                  () => _pickDueDate(context),
-                                              onClear:
-                                                  () =>
-                                                      provider.setDueDate(null),
-                                              icon: Icons.event_rounded,
-                                            ),
-                                          ),
-                                        ],
+                                      _DatePickerField(
+                                        label: 'Fecha Vencimiento (Opcional)',
+                                        value: provider.dueDate,
+                                        onPick: () => _pickDueDate(context),
+                                        onClear:
+                                            () => provider.setDueDate(null),
+                                        icon: Icons.event_rounded,
                                       ),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(height: 16),
 
-                                // ── Finanzas ──────────────────────────────
+                                // ── 2. Productos a Pedir ─────────────────────
+                                _SectionCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const _SectionTitle(
+                                            icon: Icons.inventory_2_rounded,
+                                            title: 'Productos a Pedir',
+                                          ),
+                                          Row(
+                                            children: [
+                                              TextButton.icon(
+                                                onPressed:
+                                                    () => _showAddProductSheet(
+                                                      context,
+                                                    ),
+                                                icon: const Icon(
+                                                  Icons
+                                                      .add_circle_outline_rounded,
+                                                  size: 18,
+                                                ),
+                                                label: const Text('Agregar'),
+                                              ),
+                                              // Menú secundario solo cuando hay items
+                                              if (provider.items.isNotEmpty)
+                                                PopupMenuButton<String>(
+                                                  tooltip: 'Más opciones',
+                                                  icon: const Icon(
+                                                    Icons.more_vert_rounded,
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                  ),
+                                                  onSelected: (value) {
+                                                    if (value == 'clear') {
+                                                      _handleClearDraft();
+                                                    }
+                                                  },
+                                                  itemBuilder:
+                                                      (_) => [
+                                                        const PopupMenuItem(
+                                                          value: 'clear',
+                                                          child: Row(
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .delete_sweep_rounded,
+                                                                color:
+                                                                    AppColors
+                                                                        .danger,
+                                                                size: 18,
+                                                              ),
+                                                              SizedBox(
+                                                                width: 8,
+                                                              ),
+                                                              Text(
+                                                                'Descartar todo',
+                                                                style: TextStyle(
+                                                                  color:
+                                                                      AppColors
+                                                                          .danger,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (provider.items.isEmpty)
+                                        // Empty state mejorado con CTA prominente
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 28,
+                                            horizontal: 16,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.background,
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.border,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.add_shopping_cart_rounded,
+                                                size: 52,
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.25),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              const Text(
+                                                'Tu orden está vacía',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              const Text(
+                                                'Agrega los productos que necesitas pedir a tu proveedor',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                  fontSize: 13,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 18),
+                                              OutlinedButton.icon(
+                                                onPressed:
+                                                    () => _showAddProductSheet(
+                                                      context,
+                                                    ),
+                                                icon: const Icon(
+                                                  Icons.add_rounded,
+                                                  size: 18,
+                                                ),
+                                                label: const Text(
+                                                  'Agregar primer producto',
+                                                ),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      AppColors.primary,
+                                                  side: const BorderSide(
+                                                    color: AppColors.primary,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 20,
+                                                        vertical: 12,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        ListView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          itemCount: provider.items.length,
+                                          itemBuilder: (context, index) {
+                                            return POFormItemTile(
+                                              item: provider.items[index],
+                                              onEditQuantity:
+                                                  () =>
+                                                      _mostrarDialogoCantidadItem(
+                                                        context,
+                                                        index,
+                                                        provider
+                                                            .items[index]
+                                                            .quantity,
+                                                      ),
+                                              onRemove:
+                                                  () => provider.removeItem(
+                                                    index,
+                                                  ),
+                                            );
+                                          },
+                                        ),
+                                      // Resumen con animación de expansión suave
+                                      AnimatedSize(
+                                        duration: const Duration(
+                                          milliseconds: 350,
+                                        ),
+                                        curve: Curves.easeInOut,
+                                        child:
+                                            provider.items.isEmpty
+                                                ? const SizedBox.shrink()
+                                                : Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 16,
+                                                      ),
+                                                  child: POFormSummaryCard(
+                                                    items: provider.items,
+                                                  ),
+                                                ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // ── 3. Condiciones de Pago ───────────────────
                                 _SectionCard(
                                   child: Column(
                                     crossAxisAlignment:
@@ -546,119 +754,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // ── Productos ──────────────────────────────
-                                _SectionCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const _SectionTitle(
-                                            icon: Icons.inventory_2_rounded,
-                                            title: 'Productos a Pedir',
-                                          ),
-                                          Row(
-                                            children: [
-                                              if (provider.items.isNotEmpty)
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    Icons.delete_sweep_rounded,
-                                                    color: AppColors.danger,
-                                                  ),
-                                                  tooltip: 'Descartar borrador',
-                                                  onPressed: _handleClearDraft,
-                                                ),
-                                              TextButton.icon(
-                                                onPressed:
-                                                    () => _showAddProductSheet(
-                                                      context,
-                                                    ),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .add_circle_outline_rounded,
-                                                  size: 18,
-                                                ),
-                                                label: const Text('Agregar'),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      if (provider.items.isEmpty)
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color: AppColors.border,
-                                              style: BorderStyle.solid,
-                                            ),
-                                          ),
-                                          child: const Column(
-                                            children: [
-                                              Icon(
-                                                Icons.shopping_basket_outlined,
-                                                size: 48,
-                                                color: AppColors.textHint,
-                                              ),
-                                              SizedBox(height: 12),
-                                              Text(
-                                                'Agrega productos a la orden de compra.',
-                                                style: TextStyle(
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      else
-                                        ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          itemCount: provider.items.length,
-                                          itemBuilder: (context, index) {
-                                            return POFormItemTile(
-                                              item: provider.items[index],
-                                              onEditQuantity:
-                                                  () =>
-                                                      _mostrarDialogoCantidadItem(
-                                                        context,
-                                                        index,
-                                                        provider
-                                                            .items[index]
-                                                            .quantity,
-                                                      ),
-                                              onRemove:
-                                                  () => provider.removeItem(
-                                                    index,
-                                                  ),
-                                            );
-                                          },
-                                        ),
-                                      if (provider.items.isNotEmpty) ...[
-                                        const SizedBox(height: 16),
-                                        POFormSummaryCard(
-                                          items: provider.items,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // ── Documento y Notas ───────────────────────
+                                // ── 4. Documento y Notas ─────────────────────
                                 _SectionCard(
                                   child: Column(
                                     crossAxisAlignment:
@@ -785,7 +881,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 100), // padding inferior
+                                const SizedBox(height: 24), // padding inferior
                               ],
                             ),
                           ),

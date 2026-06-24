@@ -38,16 +38,28 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   final PurchaseOrdersService _service = PurchaseOrdersService();
 
   Future<void> _fetchExistingBatches(String variantId) async {
-    if (widget.warehouseId == null) return;
+    if (widget.warehouseId == null) {
+      debugPrint('[Batches] warehouseId es null — no se buscan lotes');
+      return;
+    }
     try {
+      debugPrint(
+        '[Batches] Buscando lotes: variantId=$variantId, warehouseId=${widget.warehouseId}',
+      );
       final response = await Supabase.instance.client
           .from('warehouse_stock_batches')
           .select('*')
           .eq('variant_id', variantId)
           .eq('warehouse_id', widget.warehouseId!)
-          .gt('available_quantity', 0)
+          // NOTA: NO filtramos por available_quantity > 0 en una orden de compra.
+          // El usuario puede reabastecer un lote que ya tiene stock 0.
           .order('expiry_date', ascending: true, nullsFirst: false)
           .order('created_at', ascending: true);
+
+      debugPrint('[Batches] Respuesta de Supabase: ${response.length} lotes encontrados');
+      for (final b in response) {
+        debugPrint('  -> batch_number=${b["batch_number"]}, qty=${b["available_quantity"]}');
+      }
 
       if (mounted) {
         setState(() {
@@ -58,7 +70,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
         });
       }
     } catch (e) {
-      debugPrint('Error al obtener lotes: $e');
+      debugPrint('[Batches] Error al obtener lotes: $e');
     }
   }
 
@@ -494,38 +506,79 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                   _ProductThumbnail(imageUrl: currentImageUrl, size: 64),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: TextField(
-                      controller: _costCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d+\.?\d{0,2}'),
-                        ),
-                      ],
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                      decoration: InputDecoration(
-                        labelText: 'Costo de Compra (S/)',
-                        labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.background,
-                        prefixText: 'S/ ',
-                        prefixStyle: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                      ),
+                    child: Builder(
+                      builder: (context) {
+                        final cost =
+                            double.tryParse(_costCtrl.text.trim()) ?? 0.0;
+                        final isZeroCost = cost == 0.0;
+                        return TextField(
+                          controller: _costCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,2}'),
+                            ),
+                          ],
+                          onChanged: (_) => setState(() {}),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                          decoration: InputDecoration(
+                            labelText: 'Costo de Compra (S/)',
+                            labelStyle: TextStyle(
+                              color:
+                                  isZeroCost
+                                      ? const Color(0xFFF59E0B)
+                                      : AppColors.textSecondary,
+                            ),
+                            // Advertencia visual si el costo es 0
+                            helperText:
+                                isZeroCost
+                                    ? '⚠ Verifica el costo — está en S/ 0.00'
+                                    : null,
+                            helperStyle: const TextStyle(
+                              color: Color(0xFFF59E0B),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.background,
+                            prefixText: 'S/ ',
+                            prefixStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color:
+                                    isZeroCost
+                                        ? const Color(0xFFF59E0B)
+                                        : AppColors.border,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color:
+                                    isZeroCost
+                                        ? const Color(0xFFF59E0B)
+                                        : AppColors.border,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color:
+                                    isZeroCost
+                                        ? const Color(0xFFF59E0B)
+                                        : AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -535,7 +588,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
               const _FieldLabel('Cantidad'),
               const SizedBox(height: 8),
               _HorizontalStepper(
-                value: _quantity.toInt(),
+                value: _quantity,
                 onAdd: () => setState(() => _quantity++),
                 onRemove:
                     _quantity > 1 ? () => setState(() => _quantity--) : null,
@@ -731,7 +784,7 @@ class _FieldLabel extends StatelessWidget {
 }
 
 class _HorizontalStepper extends StatelessWidget {
-  final int value;
+  final double value;
   final VoidCallback onAdd;
   final VoidCallback? onRemove;
   final VoidCallback onTapValue;
@@ -741,6 +794,10 @@ class _HorizontalStepper extends StatelessWidget {
     this.onRemove,
     required this.onTapValue,
   });
+
+  /// Muestra la cantidad con decimales solo si no es entera.
+  String get _displayValue =>
+      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
 
   @override
   Widget build(BuildContext context) {
@@ -753,10 +810,14 @@ class _HorizontalStepper extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _QtyButton(
-            icon: Icons.remove_rounded,
-            enabled: onRemove != null,
-            onTap: onRemove ?? () {},
+          Semantics(
+            label: 'Disminuir cantidad',
+            button: true,
+            child: _QtyButton(
+              icon: Icons.remove_rounded,
+              enabled: onRemove != null,
+              onTap: onRemove ?? () {},
+            ),
           ),
           Expanded(
             child: Material(
@@ -766,20 +827,41 @@ class _HorizontalStepper extends StatelessWidget {
                 onTap: onTapValue,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    value.toString(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                  // AnimatedSwitcher con curva elástica para feedback visual al cambiar valor
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder:
+                        (child, animation) => ScaleTransition(
+                          scale: CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.elasticOut,
+                          ),
+                          child: child,
+                        ),
+                    child: Text(
+                      _displayValue,
+                      key: ValueKey(_displayValue),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          _QtyButton(icon: Icons.add_rounded, enabled: true, onTap: onAdd),
+          Semantics(
+            label: 'Aumentar cantidad',
+            button: true,
+            child: _QtyButton(
+              icon: Icons.add_rounded,
+              enabled: true,
+              onTap: onAdd,
+            ),
+          ),
         ],
       ),
     );
@@ -871,12 +953,14 @@ class _QtyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(10),
+      splashColor: AppColors.primary.withValues(alpha: 0.18),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        width: 44,
-        height: 44,
+        width: 48, // mínimo 48dp según Material Design
+        height: 48,
         decoration: BoxDecoration(
           color:
               enabled

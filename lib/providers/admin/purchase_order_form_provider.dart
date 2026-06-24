@@ -110,7 +110,6 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
         return a.name.compareTo(b.name);
       });
 
-      if (_warehouses.isNotEmpty) _selectedWarehouseId = _warehouses.first.id;
       if (_accounts.isNotEmpty) {
         _selectedAccountId = _accounts.first.id;
         await _checkActiveShift(_selectedAccountId!);
