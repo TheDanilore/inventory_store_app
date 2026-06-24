@@ -162,7 +162,7 @@ class SupplierCreditsService {
         .from('purchase_orders')
         .select('id, total_amount, amount_paid, payment_status, created_at')
         .eq('supplier_id', supplierId)
-        .eq('payment_method', 'CRÉDITO')
+        .eq('payment_method', 'CREDITO')
         .inFilter('payment_status', ['PENDING', 'PARTIAL'])
         .inFilter('status', ['COMPLETED', 'RECEIVED'])
         .order('created_at', ascending: true);
@@ -229,7 +229,7 @@ class SupplierCreditsService {
   }) async {
     // 1. Registro movimiento
     await _supabase.from('supplier_credit_movements').insert({
-      'credit_id': account.creditId,
+      'supplier_credit_id': account.creditId,
       if (selectedOrderId != null) 'order_id': selectedOrderId,
       'movement_type': 'PAYMENT',
       'amount': amount,
