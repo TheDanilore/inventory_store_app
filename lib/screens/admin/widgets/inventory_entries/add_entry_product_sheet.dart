@@ -31,6 +31,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   DateTime? _expiryDate;
   List<WarehouseStockBatchModel> _existingBatches = [];
   List<ProductVariantModel> _availableVariants = [];
+  // Clave única para forzar la reconstrucción del widget Autocomplete de lotes
+  // cuando cambia el producto/variante, reseteando su controller interno.
+  Key _batchAutocompleteKey = UniqueKey();
 
   final PurchaseOrdersService _service = PurchaseOrdersService();
 
@@ -83,6 +86,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _expiryDate = null;
       _existingBatches = [];
       _availableVariants = [];
+      // Resetear el Autocomplete de lotes al cambiar de producto
+      _batchAutocompleteKey = UniqueKey();
       if (val != null) {
         _costCtrl.text = val.unitCost.toStringAsFixed(2);
       } else {
@@ -116,6 +121,13 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                   return ProductVariantModel.fromJson(v);
                 }).toList();
           });
+
+          // FIX BUG #1: Si el producto NO tiene variantes extras (variante única/default),
+          // el DropdownButtonFormField no se muestra y _onVariantChanged nunca se llama.
+          // En ese caso, tomamos el id de la única variante disponible y cargamos los lotes.
+          if (_availableVariants.length == 1 && val.usesBatches) {
+            await _fetchExistingBatches(_availableVariants.first.id);
+          }
         }
       } catch (e) {
         debugPrint('Error fetching variants: $e');
@@ -128,11 +140,15 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _selectedVariant = val;
       final cost = _effectiveCost(variant: val, product: _selectedProduct);
       _costCtrl.text = cost.toStringAsFixed(2);
-
-      if (val != null && _selectedProduct?.usesBatches == true) {
-        _fetchExistingBatches(val.id);
-      }
+      // Resetear lotes y campo al cambiar de variante
+      _existingBatches = [];
+      _batchCtrl.clear();
+      _batchAutocompleteKey = UniqueKey();
     });
+
+    if (val != null && _selectedProduct?.usesBatches == true) {
+      _fetchExistingBatches(val.id);
+    }
   }
 
   Future<void> _mostrarDialogoCantidadModal() async {
@@ -531,10 +547,16 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
             // Lote (solo si el producto lo requiere)
             if (usesBatches) ...[
+              // FIX BUG #3: _batchAutocompleteKey fuerza la reconstrucción del Autocomplete
+              // cuando cambia el producto/variante, evitando que el controller interno
+              // quede desincronizado con _batchCtrl tras un setState.
               Autocomplete<WarehouseStockBatchModel>(
+                key: _batchAutocompleteKey,
                 optionsBuilder: (TextEditingValue textEditingValue) {
+                  // FIX BUG #2: Si el campo está vacío, mostrar TODOS los lotes existentes
+                  // en lugar de retornar vacío. Así el usuario ve las opciones al hacer focus.
                   if (textEditingValue.text.isEmpty) {
-                    return const Iterable<WarehouseStockBatchModel>.empty();
+                    return _existingBatches;
                   }
                   return _existingBatches.where(
                     (option) => option.batchNumber.toLowerCase().contains(
@@ -555,13 +577,31 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                     onChanged: (value) => _batchCtrl.text = value,
                     decoration: InputDecoration(
                       labelText: 'Nº de Lote (Obligatorio)',
-                      hintText: 'Ej: LOTE-2024-001 o busca uno...',
+                      hintText:
+                          _existingBatches.isEmpty
+                              ? 'Ej: LOTE-2024-001'
+                              : 'Escribe o toca para ver lotes existentes...',
                       filled: true,
                       fillColor: AppColors.background,
                       prefixIcon: const Icon(
                         Icons.qr_code_scanner,
                         color: AppColors.textHint,
                       ),
+                      // Indicador visual de que hay lotes disponibles
+                      suffixIcon:
+                          _existingBatches.isNotEmpty
+                              ? Tooltip(
+                                message:
+                                    '${_existingBatches.length} lote(s) existente(s) en este almacén',
+                                child: Icon(
+                                  Icons.layers_rounded,
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  size: 20,
+                                ),
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: AppColors.border),
@@ -587,9 +627,12 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                       elevation: 4.0,
                       borderRadius: BorderRadius.circular(14),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(
+                        constraints: BoxConstraints(
                           maxHeight: 220,
-                          maxWidth: 300,
+                          // FIX: usar el ancho disponible de la pantalla en lugar de hardcodear 300
+                          maxWidth:
+                              MediaQuery.of(context).size.width -
+                              48, // 48 = padding horizontal del sheet
                         ),
                         child: ListView.builder(
                           padding: EdgeInsets.zero,
@@ -599,8 +642,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                             final option = options.elementAt(index);
                             final dateStr =
                                 option.expiryDate != null
-                                    ? "${option.expiryDate!.day}/${option.expiryDate!.month}/${option.expiryDate!.year}"
-                                    : "Sin vencimiento";
+                                    ? '${option.expiryDate!.day.toString().padLeft(2, '0')}/${option.expiryDate!.month.toString().padLeft(2, '0')}/${option.expiryDate!.year}'
+                                    : 'Sin vencimiento';
                             return ListTile(
                               leading: const Icon(
                                 Icons.tag,
@@ -614,7 +657,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                               ),
                               subtitle: Text('Vence: $dateStr'),
                               trailing: Text(
-                                'Stock: ${option.availableQuantity}',
+                                'Stock: ${option.availableQuantity.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
