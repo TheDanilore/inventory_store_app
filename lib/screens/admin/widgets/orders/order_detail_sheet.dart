@@ -390,8 +390,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             },
             child: Container(
               height: MediaQuery.of(context).size.height * 0.9,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+              decoration: const BoxDecoration(
+                color: AppColors.background,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: SafeArea(
@@ -403,7 +403,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                         width: 40,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: AppColors.border,
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -660,9 +660,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border(
-                            top: BorderSide(color: Colors.grey.shade200),
+                          color: AppColors.surface,
+                          border: const Border(
+                            top: BorderSide(color: AppColors.border),
                           ),
                           boxShadow: [
                             BoxShadow(
@@ -680,11 +680,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
+                                  const Text(
                                     'Total',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: AppColors.textSecondary,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -693,115 +693,128 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.teal,
+                                      color: AppColors.teal,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 12),
-                            if (isEditing)
-                              Expanded(
-                                flex: 5,
-                                child: ElevatedButton(
-                                  onPressed:
-                                      provider.isSaving
-                                          ? null
-                                          : () =>
-                                              _saveChanges(pointsToSolesRatio),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
+                            Expanded(
+                              flex: 5,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 280),
+                                transitionBuilder:
+                                    (child, animation) => FadeTransition(
+                                      opacity: animation,
+                                      child: child,
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child:
-                                      provider.isSaving
-                                          ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
+                                child:
+                                    isEditing
+                                        ? ElevatedButton(
+                                          key: const ValueKey('save'),
+                                          onPressed:
+                                              provider.isSaving
+                                                  ? null
+                                                  : () => _saveChanges(
+                                                    pointsToSolesRatio,
+                                                  ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.primary,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
                                             ),
-                                          )
-                                          : const Text(
-                                            'Guardar',
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child:
+                                              provider.isSaving
+                                                  ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.white,
+                                                        ),
+                                                  )
+                                                  : const Text(
+                                                    'Guardar',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                        )
+                                        : isCompleted
+                                        ? ElevatedButton.icon(
+                                          key: const ValueKey('return'),
+                                          onPressed:
+                                              provider.isReturning
+                                                  ? null
+                                                  : _confirmReturn,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red.shade50,
+                                            foregroundColor:
+                                                Colors.red.shade700,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              side: BorderSide(
+                                                color: Colors.red.shade200,
+                                              ),
+                                            ),
+                                          ),
+                                          icon:
+                                              provider.isReturning
+                                                  ? const SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.red,
+                                                        ),
+                                                  )
+                                                  : const Icon(
+                                                    Icons
+                                                        .assignment_return_rounded,
+                                                  ),
+                                          label: const Text(
+                                            'Devolución',
                                             style: TextStyle(
-                                              color: Colors.white,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                ),
-                              )
-                            else if (isCompleted)
-                              Expanded(
-                                flex: 5,
-                                child: ElevatedButton.icon(
-                                  onPressed:
-                                      provider.isReturning
-                                          ? null
-                                          : _confirmReturn,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red.shade50,
-                                    foregroundColor: Colors.red.shade700,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                        color: Colors.red.shade200,
-                                      ),
-                                    ),
-                                  ),
-                                  icon:
-                                      provider.isReturning
-                                          ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.red,
+                                        )
+                                        : TextButton(
+                                          key: const ValueKey('close'),
+                                          onPressed:
+                                              () => Navigator.pop(
+                                                context,
+                                                provider.wasModified,
+                                              ),
+                                          style: TextButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
                                             ),
-                                          )
-                                          : const Icon(
-                                            Icons.assignment_return_rounded,
                                           ),
-                                  label: const Text(
-                                    'Devolución',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              Expanded(
-                                flex: 5,
-                                child: TextButton(
-                                  onPressed:
-                                      () => Navigator.pop(
-                                        context,
-                                        provider.wasModified,
-                                      ),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Cerrar',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
+                                          child: const Text(
+                                            'Cerrar',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
                               ),
+                            ),
                           ],
                         ),
                       ),

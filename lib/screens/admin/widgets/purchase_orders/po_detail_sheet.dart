@@ -1,11 +1,15 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/purchase_order_model.dart';
 import 'package:inventory_store_app/models/purchase_order_item_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/shared/widgets/app_confirm_dialog.dart';
+import 'package:inventory_store_app/shared/widgets/detail_sheet_header.dart';
+import 'package:inventory_store_app/shared/widgets/financial_summary_card.dart';
+import 'package:inventory_store_app/shared/widgets/product_item_card.dart';
 
 class PODetailSheet extends StatefulWidget {
   final PurchaseOrderModel po;
@@ -84,6 +88,23 @@ class _PODetailSheetState extends State<PODetailSheet> {
     }
   }
 
+  /// Confirmación de cancelación con feedback háptico y diálogo.
+  Future<void> _confirmCancelOrder() async {
+    HapticFeedback.heavyImpact();
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Anular Orden',
+      message:
+          '¿Estás seguro de que deseas anular esta orden de compra? Esta acción no se puede deshacer.',
+      confirmText: 'Sí, anular',
+      cancelText: 'Cancelar',
+      confirmColor: AppColors.danger,
+    );
+    if (confirmed == true && mounted) {
+      await _handleUpdateStatus('CANCELLED');
+    }
+  }
+
   Color _statusColor(String status) {
     switch (status) {
       case 'PENDING':
@@ -122,7 +143,6 @@ class _PODetailSheetState extends State<PODetailSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
-      padding: const EdgeInsets.only(top: 12),
       decoration: const BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -132,98 +152,77 @@ class _PODetailSheetState extends State<PODetailSheet> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              // ── Header animado compartido ──────────────────────────
+              DetailSheetHeader(
+                title: 'Detalle de Orden',
+                trailing: StatusPill(
+                  label: _statusLabel(widget.po.status),
+                  color: _statusColor(widget.po.status),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Detalle de Orden',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    _Pill(
-                      icon: Icons.circle,
-                      label: _statusLabel(widget.po.status),
-                      color: _statusColor(widget.po.status),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Content
+              // ── Contenido scrolleable ──────────────────────────────
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Acciones Adicionales (PDF, etc.)
+                      // Exportar PDF
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton.icon(
-                            onPressed:
-                                _isProcessingAction
-                                    ? null
-                                    : () {
-                                      AppSnackbar.show(
-                                        context,
-                                        message: 'Función de PDF próximamente',
-                                        type: SnackbarType.info,
-                                      );
-                                    },
-                            icon: const Icon(
-                              Icons.picture_as_pdf_rounded,
-                              size: 18,
-                              color: AppColors.primary,
-                            ),
-                            label: const Text(
-                              'Exportar PDF',
-                              style: TextStyle(
+                          Tooltip(
+                            message: 'Exportar orden en PDF',
+                            child: TextButton.icon(
+                              onPressed:
+                                  _isProcessingAction
+                                      ? null
+                                      : () {
+                                        AppSnackbar.show(
+                                          context,
+                                          message:
+                                              'Función de PDF próximamente',
+                                          type: SnackbarType.info,
+                                        );
+                                      },
+                              icon: const Icon(
+                                Icons.picture_as_pdf_rounded,
+                                size: 18,
                                 color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
+                              ),
+                              label: const Text(
+                                'Exportar PDF',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
 
-                      // Card Proveedor y Finanzas
+                      // ── Card Proveedor y Finanzas ──────────────────
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Label PROVEEDOR con contraste mejorado
                             const Text(
                               'PROVEEDOR',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textHint,
+                                color: AppColors.textSecondary,
+                                letterSpacing: 0.3,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -232,6 +231,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             const Divider(height: 24, color: AppColors.border),
@@ -246,7 +246,8 @@ class _PODetailSheetState extends State<PODetailSheet> {
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.textHint,
+                                        color: AppColors.textSecondary,
+                                        letterSpacing: 0.3,
                                       ),
                                     ),
                                     Text(
@@ -254,6 +255,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                   ],
@@ -266,7 +268,8 @@ class _PODetailSheetState extends State<PODetailSheet> {
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.textHint,
+                                        color: AppColors.textSecondary,
+                                        letterSpacing: 0.3,
                                       ),
                                     ),
                                     Text(
@@ -276,6 +279,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                   ],
@@ -283,98 +287,43 @@ class _PODetailSheetState extends State<PODetailSheet> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'TOTAL',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textHint,
-                                        ),
-                                      ),
-                                      Text(
-                                        'S/ ${widget.po.totalAmount.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'PAGADO',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textHint,
-                                        ),
-                                      ),
-                                      Text(
-                                        'S/ ${widget.po.amountPaid.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.success,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      const Text(
-                                        'DEUDA',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textHint,
-                                        ),
-                                      ),
-                                      Text(
-                                        'S/ ${widget.po.pending.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color:
-                                              widget.po.pending > 0
-                                                  ? AppColors.danger
-                                                  : AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+
+                            // ── Card financiera con animación de conteo ──
+                            FinancialSummaryCard(
+                              columns: [
+                                FinancialColumn(
+                                  label: 'TOTAL',
+                                  amount: widget.po.totalAmount,
+                                  amountColor: AppColors.primary,
+                                ),
+                                FinancialColumn(
+                                  label: 'PAGADO',
+                                  amount: widget.po.amountPaid,
+                                  amountColor: AppColors.success,
+                                ),
+                                FinancialColumn(
+                                  label: 'DEUDA',
+                                  amount: widget.po.pending,
+                                  amountColor:
+                                      widget.po.pending > 0
+                                          ? AppColors.danger
+                                          : AppColors.textSecondary,
+                                  alignment: CrossAxisAlignment.end,
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 20),
 
-                      // Lista de Items
+                      // ── Lista de Items ─────────────────────────────
                       const Text(
                         'Productos Solicitados',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -396,177 +345,66 @@ class _PODetailSheetState extends State<PODetailSheet> {
                         )
                       else if (_items == null || _items!.isEmpty)
                         const Text(
-                          'No hay productos',
+                          'No hay productos en esta orden.',
                           style: TextStyle(color: AppColors.textMuted),
                         )
                       else
-                        ..._items!.map(
-                          (item) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              children: [
-                                // Miniatura
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child:
-                                      item.imageUrl != null
-                                          ? CachedNetworkImage(
-                                            imageUrl: item.imageUrl!,
-                                            width: 52,
-                                            height: 52,
-                                            fit: BoxFit.cover,
-                                            memCacheWidth: 104,
-                                            placeholder:
-                                                (_, _) => AppShimmer(
-                                                  width: 52,
-                                                  height: 52,
-                                                  borderRadius: 8,
-                                                ),
-                                            errorWidget:
-                                                (_, _, _) =>
-                                                    const _ImagePlaceholder(),
-                                          )
-                                          : const _ImagePlaceholder(),
-                                ),
-                                const SizedBox(width: 12),
-                                // Info
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.productName ?? '—',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (item.variantAttrs != 'Única')
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 2,
-                                          ),
-                                          child: Text(
-                                            item.variantAttrs,
-                                            style: const TextStyle(
-                                              color: AppColors.textSecondary,
-                                              fontSize: 11,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color:
-                                              item.fullyReceived
-                                                  ? AppColors.success
-                                                  : AppColors.warning,
-                                        ),
-                                      ),
-                                    ],
+                        ...List.generate(_items!.length, (index) {
+                          final item = _items![index];
+                          final isFullyReceived = item.fullyReceived;
+                          final progress =
+                              item.quantityOrdered > 0
+                                  ? item.quantityReceived / item.quantityOrdered
+                                  : 0.0;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ProductItemCard(
+                              imageUrl: item.imageUrl,
+                              productName: item.productName ?? '—',
+                              variantLabel: item.variantAttrs,
+                              // Progress bar de recepción (Mejora #4)
+                              progressWidget: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: progress.clamp(0.0, 1.0),
+                                      backgroundColor: AppColors.border,
+                                      color:
+                                          isFullyReceived
+                                              ? AppColors.success
+                                              : AppColors.warning,
+                                      minHeight: 4,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'S/ ${item.subtotal.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14,
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          isFullyReceived
+                                              ? AppColors.success
+                                              : AppColors.warning,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                      const SizedBox(height: 24),
-
-                      // Acciones Administrativas
-                      if (widget.po.status == 'PENDING') ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                ],
+                              ),
+                              trailing: ItemPriceTrailing(
+                                text: 'S/ ${item.subtotal.toStringAsFixed(2)}',
+                              ),
+                              animationDelay: Duration(
+                                milliseconds: 60 * index,
                               ),
                             ),
-                            onPressed:
-                                _isProcessingAction
-                                    ? null
-                                    : () => _handleUpdateStatus('SENT'),
-                            child: const Text(
-                              'Marcar como ENVIADA',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                          );
+                        }),
 
-                      if (widget.po.status == 'SENT' ||
-                          widget.po.status == 'PARTIAL') ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.inventory_rounded, size: 20),
-                            label: const Text(
-                              'Recepcionar Mercadería',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed:
-                                _isProcessingAction ? null : widget.onReceive,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-
-                      if (widget.po.status != 'CANCELLED' &&
-                          widget.po.status != 'RECEIVED')
-                        Center(
-                          child: TextButton(
-                            onPressed:
-                                _isProcessingAction
-                                    ? null
-                                    : () => _handleUpdateStatus('CANCELLED'),
-                            child: const Text(
-                              'Anular Orden',
-                              style: TextStyle(
-                                color: AppColors.danger,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      const SizedBox(height: 32),
+                      // Espacio para el sticky footer
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
@@ -574,68 +412,173 @@ class _PODetailSheetState extends State<PODetailSheet> {
             ],
           ),
 
+          // ── Overlay de carga (mejorado: barra en vez de overlay total) ──
           if (_isProcessingAction)
-            Positioned.fill(
-              child: Container(
-                color: Colors.white.withValues(alpha: 0.5),
-                child: const Center(child: CircularProgressIndicator()),
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                color: AppColors.primary,
+                backgroundColor: AppColors.border,
               ),
             ),
+
+          // ── Sticky Footer con AnimatedSwitcher ────────────────────
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _StickyFooter(
+              status: widget.po.status,
+              isProcessing: _isProcessingAction,
+              onReceive: widget.onReceive,
+              onMarkSent: () => _handleUpdateStatus('SENT'),
+              onCancel: _confirmCancelOrder,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ImagePlaceholder extends StatelessWidget {
-  const _ImagePlaceholder();
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 52,
-    height: 52,
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: const Icon(
-      Icons.image_not_supported_outlined,
-      size: 22,
-      color: AppColors.textHint,
-    ),
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Sticky Footer con AnimatedSwitcher
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _Pill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? color;
+class _StickyFooter extends StatelessWidget {
+  final String status;
+  final bool isProcessing;
+  final VoidCallback onReceive;
+  final VoidCallback onMarkSent;
+  final VoidCallback onCancel;
 
-  const _Pill({required this.icon, required this.label, this.color});
+  const _StickyFooter({
+    required this.status,
+    required this.isProcessing,
+    required this.onReceive,
+    required this.onMarkSent,
+    required this.onCancel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.textSecondary;
+    // Sin acciones disponibles: no renderizar footer
+    final showCancel = status != 'CANCELLED' && status != 'RECEIVED';
+    final showReceive = status == 'SENT' || status == 'PARTIAL';
+    final showMarkSent = status == 'PENDING';
+
+    if (!showCancel && !showReceive && !showMarkSent) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 10, color: c),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: c,
-              fontWeight: FontWeight.w800,
-            ),
+        color: AppColors.background,
+        border: Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Botón de acción primaria con AnimatedSwitcher
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder:
+                (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.15),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+            child: _buildPrimaryButton(context),
+          ),
+
+          // Botón destructivo siempre debajo
+          if (showCancel) ...[
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: isProcessing ? null : onCancel,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: Text(
+                  'Anular Orden',
+                  style: TextStyle(
+                    color:
+                        isProcessing ? AppColors.textMuted : AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
+  }
+
+  Widget _buildPrimaryButton(BuildContext context) {
+    if (status == 'SENT' || status == 'PARTIAL') {
+      return SizedBox(
+        key: const ValueKey('receive'),
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.inventory_rounded, size: 20),
+          label: const Text(
+            'Recepcionar Mercadería',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: isProcessing ? null : onReceive,
+        ),
+      );
+    }
+
+    if (status == 'PENDING') {
+      return SizedBox(
+        key: const ValueKey('markSent'),
+        width: double.infinity,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: isProcessing ? null : onMarkSent,
+          child: const Text(
+            'Marcar como ENVIADA',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    // RECEIVED o CANCELLED: sin acción primaria
+    return const SizedBox.shrink(key: ValueKey('none'));
   }
 }
