@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
@@ -27,8 +25,6 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
 
   Future<void> _handleAddToCart() async {
     if (_isAdding) return;
-
-    if (!kIsWeb) Vibration.vibrate(duration: 50, amplitude: 128);
 
     setState(() => _isAdding = true);
     try {
