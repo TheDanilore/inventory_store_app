@@ -249,6 +249,7 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
   Future<void> clearDraft() async {
     _items.clear();
     _selectedSupplierId = null;
+    _selectedWarehouseId = null; // Resetear almacén para no contaminar la próxima sesión
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_draftKey);
     notifyListeners();
@@ -409,30 +410,38 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
       try {
         final data = jsonDecode(str) as Map<String, dynamic>;
 
-        if (data['supplier_id'] != null &&
-            _suppliers.any((s) => s['id'] == data['supplier_id'])) {
-          _selectedSupplierId = data['supplier_id'];
-        }
-        if (data['warehouse_id'] != null &&
-            _warehouses.any((w) => w.id == data['warehouse_id'])) {
-          _selectedWarehouseId = data['warehouse_id'];
-        }
-
         final itemsList = data['items'] as List;
-        _items =
-            itemsList.map((i) {
-              return EntryItemUI(
-                product: ProductModel.fromJson(i['product']),
-                variant: ProductVariantModel.fromJson(i['variant']),
-                quantity: (i['quantity'] as num).toDouble(),
-                unitCost: (i['unit_cost'] as num).toDouble(),
-                batchNumber: i['batch_number'] as String? ?? 'DEFAULT',
-                expiryDate:
-                    i['expiry_date'] != null
-                        ? DateTime.tryParse(i['expiry_date'])
-                        : null,
-              );
-            }).toList();
+
+        // Solo restaurar proveedor y almacén si había ítems en el borrador.
+        // Esto evita que un draft "fantasma" (sin ítems) preseleccione el almacén.
+        if (itemsList.isNotEmpty) {
+          if (data['supplier_id'] != null &&
+              _suppliers.any((s) => s['id'] == data['supplier_id'])) {
+            _selectedSupplierId = data['supplier_id'];
+          }
+          if (data['warehouse_id'] != null &&
+              _warehouses.any((w) => w.id == data['warehouse_id'])) {
+            _selectedWarehouseId = data['warehouse_id'];
+          }
+
+          _items =
+              itemsList.map((i) {
+                return EntryItemUI(
+                  product: ProductModel.fromJson(i['product']),
+                  variant: ProductVariantModel.fromJson(i['variant']),
+                  quantity: (i['quantity'] as num).toDouble(),
+                  unitCost: (i['unit_cost'] as num).toDouble(),
+                  batchNumber: i['batch_number'] as String? ?? 'DEFAULT',
+                  expiryDate:
+                      i['expiry_date'] != null
+                          ? DateTime.tryParse(i['expiry_date'])
+                          : null,
+                );
+              }).toList();
+        } else {
+          // Borrador vacío — borrarlo para no interferir en futuras sesiones
+          await prefs.remove(_draftKey);
+        }
       } catch (e) {
         debugPrint('Error loading draft: $e');
       }
