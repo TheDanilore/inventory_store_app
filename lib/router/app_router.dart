@@ -74,7 +74,12 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
 class _ProductLoader extends StatefulWidget {
   final String productId;
   final bool isAdmin;
-  const _ProductLoader({required this.productId, required this.isAdmin});
+  final String? initialVariantId;
+  const _ProductLoader({
+    required this.productId,
+    required this.isAdmin,
+    this.initialVariantId,
+  });
 
   @override
   State<_ProductLoader> createState() => _ProductLoaderState();
@@ -110,6 +115,7 @@ class _ProductLoaderState extends State<_ProductLoader> {
         return ProductDetailScreen(
           product: snapshot.data!,
           isAdmin: widget.isAdmin,
+          initialVariantId: widget.initialVariantId,
         );
       },
     );
@@ -456,14 +462,23 @@ class AppRouter {
               path: 'product/:id',
               builder: (context, state) {
                 final productId = state.pathParameters['id'];
+                final variantId = state.uri.queryParameters['variantId'];
                 final product = state.extra as ProductModel?;
                 if (product != null) {
-                  return ProductDetailScreen(product: product, isAdmin: true);
+                  return ProductDetailScreen(
+                    product: product,
+                    isAdmin: true,
+                    initialVariantId: variantId,
+                  );
                 }
                 if (productId == null) {
                   return const Scaffold(body: Center(child: Text('Error')));
                 }
-                return _ProductLoader(productId: productId, isAdmin: true);
+                return _ProductLoader(
+                  productId: productId,
+                  isAdmin: true,
+                  initialVariantId: variantId,
+                );
               },
             ),
           ],
@@ -561,14 +576,23 @@ class AppRouter {
               path: 'product/:id',
               builder: (context, state) {
                 final productId = state.pathParameters['id'];
+                final variantId = state.uri.queryParameters['variantId'];
                 final product = state.extra as ProductModel?;
                 if (product != null) {
-                  return ProductDetailScreen(product: product, isAdmin: false);
+                  return ProductDetailScreen(
+                    product: product,
+                    isAdmin: false,
+                    initialVariantId: variantId,
+                  );
                 }
                 if (productId == null) {
                   return const Scaffold(body: Center(child: Text('Error')));
                 }
-                return _ProductLoader(productId: productId, isAdmin: false);
+                return _ProductLoader(
+                  productId: productId,
+                  isAdmin: false,
+                  initialVariantId: variantId,
+                );
               },
             ),
           ],
@@ -579,6 +603,7 @@ class AppRouter {
           path: '/product/:id',
           builder: (context, state) {
             final productId = state.pathParameters['id'];
+            final variantId = state.uri.queryParameters['variantId'];
             final product = state.extra as ProductModel?;
             // Usamos el authProvider capturado en el closure (no context.read)
             // para evitar dependencia del contexto en rutas compartidas.
@@ -586,7 +611,11 @@ class AppRouter {
             final isAdmin = role == AppRoles.admin;
 
             if (product != null) {
-              return ProductDetailScreen(product: product, isAdmin: isAdmin);
+              return ProductDetailScreen(
+                product: product,
+                isAdmin: isAdmin,
+                initialVariantId: variantId,
+              );
             }
 
             if (productId == null || productId.isEmpty) {
@@ -597,7 +626,11 @@ class AppRouter {
               );
             }
 
-            return _ProductLoader(productId: productId, isAdmin: isAdmin);
+            return _ProductLoader(
+              productId: productId,
+              isAdmin: isAdmin,
+              initialVariantId: variantId,
+            );
           },
         ),
         GoRoute(

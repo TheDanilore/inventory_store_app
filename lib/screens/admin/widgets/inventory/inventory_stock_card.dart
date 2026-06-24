@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/models/inventory_stock_models.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
 
 class InventoryStockCard extends StatelessWidget {
   final InventoryStockItem item;
@@ -31,268 +32,269 @@ class InventoryStockCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 15,
+            blurRadius: 10,
             offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── CACHED IMAGE ──
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
-                    child:
-                        item.imageUrl != null && item.imageUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                              imageUrl: item.imageUrl!,
-                              fit: BoxFit.cover,
-                              placeholder:
-                                  (context, url) => Container(
-                                    color: Colors.grey.shade50,
-                                    child: const Center(
-                                      child: SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () {
+            context.push(
+              '/admin/product/${item.productId}?variantId=${item.variantId}',
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── CACHED IMAGE ──
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child:
+                            item.imageUrl != null && item.imageUrl!.isNotEmpty
+                                ? CachedNetworkImage(
+                                  imageUrl: item.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder:
+                                      (context, url) => Container(
+                                        color: Colors.grey.shade50,
+                                        child: const Center(
+                                          child: SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                  errorWidget:
+                                      (context, url, error) => Container(
+                                        color: Colors.grey.shade50,
+                                        child: Icon(
+                                          Icons.broken_image_outlined,
+                                          size: 20,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                      ),
+                                )
+                                : Container(
+                                  color: Colors.grey.shade50,
+                                  child: Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 22,
+                                    color: Colors.grey.shade400,
                                   ),
-                              errorWidget:
-                                  (context, url, error) => Container(
-                                    color: Colors.grey.shade50,
-                                    child: Icon(
-                                      Icons.broken_image_outlined,
-                                      size: 20,
-                                      color: Colors.grey.shade400,
-                                    ),
+                                ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    const SizedBox(width: 12),
+
+                    // ── Info principal ──
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.productName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    height: 1.2,
                                   ),
-                            )
-                            : Container(
-                              color: Colors.grey.shade50,
-                              child: Icon(
-                                Icons.inventory_2_outlined,
-                                size: 22,
-                                color: Colors.grey.shade400,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
+                              const SizedBox(width: 8),
+                              // Compact Stock Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: stockColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${item.stock}',
+                                      style: TextStyle(
+                                        color: stockColor,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      'uds.',
+                                      style: TextStyle(
+                                        color: stockColor.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            [
+                              item.category,
+                              if (item.attrsText.isNotEmpty &&
+                                  item.attrsText != 'Única')
+                                item.attrsText,
+                              if (item.sku != null && item.sku!.isNotEmpty)
+                                'SKU: ${item.sku}',
+                            ].join(' · '),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
                             ),
-                  ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Precios y Margen y Bajo Stock
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _PriceTag(
+                                label:
+                                    'S/ ${item.salePrice.toStringAsFixed(2)}',
+                                color: AppColors.primary,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (item.margin >= 30
+                                          ? AppColors.success
+                                          : item.margin >= 15
+                                          ? AppColors.warning
+                                          : AppColors.danger)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${item.margin.toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 10,
+                                    color:
+                                        item.margin >= 30
+                                            ? AppColors.success
+                                            : item.margin >= 15
+                                            ? AppColors.warning
+                                            : AppColors.danger,
+                                  ),
+                                ),
+                              ),
+                              if (item.isLowStock)
+                                const _Badge(
+                                  label: 'Bajo stock',
+                                  color: AppColors.warning,
+                                  icon: Icons.warning_amber_rounded,
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
+              ),
 
-                // ── Stock badge ──
-                _StockBadge(stock: item.stock, color: stockColor),
-                const SizedBox(width: 12),
-
-                // ── Info principal ──
-                Expanded(
+              if (item.stockControl)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.productName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                height: 1.2,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (item.isLowStock) ...[
-                            const SizedBox(width: 6),
-                            const _Badge(
-                              label: '⚠ Bajo stock',
-                              color: AppColors.warning,
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        [
-                          item.category,
-                          if (item.attrsText.isNotEmpty &&
-                              item.attrsText != 'Única')
-                            item.attrsText,
-                          if (item.sku != null && item.sku!.isNotEmpty)
-                            'SKU: ${item.sku}',
-                        ].join(' · '),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: stockRatio,
+                          backgroundColor: stockColor.withValues(alpha: 0.12),
+                          valueColor: AlwaysStoppedAnimation(stockColor),
+                          minHeight: 5,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Precios
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _PriceTag(
-                            label: 'S/ ${item.salePrice.toStringAsFixed(2)}',
-                            color: AppColors.primary,
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(width: 10),
+              if (item.usesBatches && item.batches.isNotEmpty)
+                _BatchMiniList(batches: item.batches),
 
-                // ── Margen ──
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (item.margin >= 30
-                            ? AppColors.success
-                            : item.margin >= 15
-                            ? AppColors.warning
-                            : AppColors.danger)
-                        .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${item.margin.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      color:
-                          item.margin >= 30
-                              ? AppColors.success
-                              : item.margin >= 15
-                              ? AppColors.warning
-                              : AppColors.danger,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.flag_outlined,
+                      size: 12,
+                      color: AppColors.textSecondary,
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          if (item.stockControl)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: stockRatio,
-                      backgroundColor: stockColor.withValues(alpha: 0.12),
-                      valueColor: AlwaysStoppedAnimation(stockColor),
-                      minHeight: 5,
+                    const SizedBox(width: 4),
+                    Text(
+                      'Reorden: ${item.reorderPoint} uds.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                ],
+                    const Spacer(),
+                    if (item.usesBatches)
+                      _Badge(
+                        icon: Icons.batch_prediction_rounded,
+                        label:
+                            '${item.batches.length} lote${item.batches.length != 1 ? 's' : ''}',
+                        color: AppColors.primary,
+                      ),
+                  ],
+                ),
               ),
-            ),
-
-          if (item.usesBatches && item.batches.isNotEmpty)
-            _BatchMiniList(batches: item.batches),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.flag_outlined,
-                  size: 12,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Reorden: ${item.reorderPoint} uds.',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const Spacer(),
-                if (item.usesBatches)
-                  _Badge(
-                    icon: Icons.batch_prediction_rounded,
-                    label:
-                        '${item.batches.length} lote${item.batches.length != 1 ? 's' : ''}',
-                    color: AppColors.primary,
-                  ),
-              ],
-            ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StockBadge extends StatelessWidget {
-  final int stock;
-  final Color color;
-
-  const _StockBadge({required this.stock, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$stock',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w900,
-                fontSize:
-                    stock > 999
-                        ? 11
-                        : stock > 99
-                        ? 14
-                        : 18,
-              ),
-            ),
-            Text(
-              'uds.',
-              style: TextStyle(
-                color: color.withValues(alpha: 0.7),
-                fontSize: 8,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ),
       ),
     );

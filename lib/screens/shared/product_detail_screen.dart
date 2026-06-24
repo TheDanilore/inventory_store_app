@@ -34,17 +34,23 @@ import 'package:inventory_store_app/screens/shared/widgets/product_ingredients_c
 class ProductDetailScreen extends StatelessWidget {
   final ProductModel product;
   final bool isAdmin;
+  final String? initialVariantId;
 
   const ProductDetailScreen({
     super.key,
     required this.product,
     this.isAdmin = false,
+    this.initialVariantId,
   });
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ProductDetailProvider(product: product, isAdmin: isAdmin),
+      create: (_) => ProductDetailProvider(
+        product: product, 
+        isAdmin: isAdmin,
+        initialVariantId: initialVariantId,
+      ),
       child: const _ProductDetailScreenContent(),
     );
   }

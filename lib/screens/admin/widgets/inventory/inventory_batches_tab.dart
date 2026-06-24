@@ -116,11 +116,16 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: Container(
-                height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(100),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: TextField(
                   controller: _searchCtrl,
@@ -170,10 +175,13 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                         const SizedBox(width: 4),
                       ],
                     ),
-                    border: InputBorder.none,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(100),
+                      borderSide: BorderSide.none,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 14,
                     ),
                   ),
                 ),
@@ -283,22 +291,17 @@ class _StatusChip extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? color : AppColors.surface,
+              color: selected ? color : Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: selected ? color : AppColors.border,
-                width: selected ? 1.5 : 1,
-              ),
-              boxShadow:
-                  selected
-                      ? [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                      : null,
+              boxShadow: [
+                BoxShadow(
+                  color: (selected ? color : Colors.black).withValues(
+                    alpha: selected ? 0.3 : 0.03,
+                  ),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: [

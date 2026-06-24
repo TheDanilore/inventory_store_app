@@ -10,6 +10,7 @@ class ProductDetailProvider extends ChangeNotifier {
 
   final ProductModel product;
   final bool isAdmin;
+  final String? initialVariantId;
 
   bool isLoadingExtra = true;
   bool isWishlistLoading = true;
@@ -40,7 +41,14 @@ class ProductDetailProvider extends ChangeNotifier {
 
   double averageRating = 0.0;
 
-  ProductDetailProvider({required this.product, required this.isAdmin}) {
+  ProductDetailProvider({
+    required this.product, 
+    required this.isAdmin,
+    this.initialVariantId,
+  }) {
+    if (initialVariantId != null) {
+      selectedVariantId = initialVariantId;
+    }
     _initData();
   }
 
@@ -159,25 +167,35 @@ class ProductDetailProvider extends ChangeNotifier {
         variantSummaries = summaries;
       }
 
-      if (variants.isNotEmpty && selectedVariantId == null) {
-        ProductVariantModel? firstWithStock;
-        for (final v in variants) {
-          int stock = 0;
-          for (final row in warehouseStocks) {
-            if (row['variant_id'] == v.id) {
-              stock += ((row['available_quantity'] as num?)?.toInt() ?? 0);
+      if (variants.isNotEmpty) {
+        ProductVariantModel? toSelect;
+        
+        if (selectedVariantId != null) {
+          try {
+            toSelect = variants.firstWhere((v) => v.id == selectedVariantId);
+          } catch (_) {}
+        }
+
+        if (toSelect == null) {
+          ProductVariantModel? firstWithStock;
+          for (final v in variants) {
+            int stock = 0;
+            for (final row in warehouseStocks) {
+              if (row['variant_id'] == v.id) {
+                stock += ((row['available_quantity'] as num?)?.toInt() ?? 0);
+              }
+            }
+            if (stock > 0) {
+              firstWithStock = v;
+              break;
             }
           }
-          if (stock > 0) {
-            firstWithStock = v;
-            break;
-          }
+          toSelect = firstWithStock ?? variants.first;
         }
-        firstWithStock ??= variants.first;
 
-        selectedVariantId = firstWithStock.id;
+        selectedVariantId = toSelect.id;
         selectedAttributes.clear();
-        firstWithStock.attributeMap.forEach((k, val) {
+        toSelect.attributeMap.forEach((k, val) {
           selectedAttributes[k] = val;
         });
       }

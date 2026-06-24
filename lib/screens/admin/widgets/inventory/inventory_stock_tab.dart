@@ -111,23 +111,22 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
             // ── Filtro de Categorías (Pills) ──
             if (provider.categories.isNotEmpty)
-              Container(
-                height: 38,
-                margin: const EdgeInsets.only(top: 12),
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: provider.categories.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final cat = provider.categories[index];
-                    final isSelected = cat == provider.stockCategoryFilter;
-                    return _CategoryPill(
-                      label: cat,
-                      isSelected: isSelected,
-                      onTap: () => provider.setStockCategory(cat),
-                    );
-                  },
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Row(
+                  children:
+                      provider.categories.map((cat) {
+                        final isSelected = cat == provider.stockCategoryFilter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _CategoryPill(
+                            label: cat,
+                            isSelected: isSelected,
+                            onTap: () => provider.setStockCategory(cat),
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
 
@@ -228,9 +227,17 @@ class _MetricCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
-          color: highlight ? color : AppColors.surface,
+          color: highlight ? color : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: highlight ? color : AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: (highlight ? color : Colors.black).withValues(
+                alpha: highlight ? 0.3 : 0.03,
+              ),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,11 +298,16 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44,
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         controller: controller,
@@ -330,10 +342,13 @@ class _SearchField extends StatelessWidget {
               const SizedBox(width: 4),
             ],
           ),
-          border: InputBorder.none,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(100),
+            borderSide: BorderSide.none,
+          ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 12,
+            vertical: 14,
           ),
         ),
       ),
@@ -363,11 +378,8 @@ class _CategoryPill extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.surface,
+            color: isSelected ? AppColors.primary : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-            ),
             boxShadow:
                 isSelected
                     ? [
