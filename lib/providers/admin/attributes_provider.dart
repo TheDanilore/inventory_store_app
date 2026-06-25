@@ -203,4 +203,56 @@ class AttributesProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> deleteAttribute(
+    BuildContext context,
+    String attributeId,
+    String attributeName,
+  ) async {
+    if (_isSaving) return;
+
+    _isSaving = true;
+    notifyListeners();
+
+    try {
+      await _supabase.from('attributes').delete().eq('id', attributeId);
+      await fetchAttributes();
+
+      if (context.mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Propiedad "$attributeName" eliminada',
+          type: SnackbarType.success,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting attribute: $e');
+      if (context.mounted) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('foreign key violation') ||
+            errStr.contains('violates foreign key constraint')) {
+          AppSnackbar.show(
+            context,
+            message:
+                'No puedes borrar "$attributeName" porque hay productos que usan esta propiedad.',
+            type: SnackbarType.error,
+            duration: const Duration(seconds: 4),
+          );
+        } else {
+          String msg = 'Error al eliminar la propiedad.';
+          if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+            msg = 'Sin conexión a internet.';
+          }
+          AppSnackbar.show(
+            context,
+            message: msg,
+            type: SnackbarType.error,
+          );
+        }
+      }
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
 }
