@@ -6,12 +6,14 @@ class PointsBalanceHeroCard extends StatelessWidget {
   final int currentBalance;
   final String hundredCoinsValue;
   final int currentStreak;
+  final GlobalKey? balanceKey;
 
   const PointsBalanceHeroCard({
     super.key,
     required this.currentBalance,
     required this.hundredCoinsValue,
     required this.currentStreak,
+    this.balanceKey,
   });
 
   @override
@@ -86,6 +88,7 @@ class PointsBalanceHeroCard extends StatelessWidget {
                 children: [
                   Text(
                     '$currentBalance',
+                    key: balanceKey,
                     style: const TextStyle(
                       fontSize: 52,
                       fontWeight: FontWeight.w900,

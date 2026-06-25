@@ -3,6 +3,7 @@ import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_balance_hero_card.dart';
+import 'package:inventory_store_app/screens/customer/widgets/points/flying_coin_overlay.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_daily_checkin_card.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_design_tokens.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_game_actions_section.dart';
@@ -20,6 +21,9 @@ class PointsScreen extends StatefulWidget {
 }
 
 class _PointsScreenState extends State<PointsScreen> {
+  final GlobalKey _balanceKey = GlobalKey();
+  final GlobalKey _claimButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +37,40 @@ class _PointsScreenState extends State<PointsScreen> {
     await context.read<PointsProvider>().fetchPointsData(config);
   }
 
+  void _playCoinFlyAnimation(GlobalKey startKey) {
+    final startBox = startKey.currentContext?.findRenderObject() as RenderBox?;
+    final balanceBox =
+        _balanceKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (startBox != null && balanceBox != null) {
+      final startOffset = startBox.localToGlobal(
+        startBox.size.center(Offset.zero),
+      );
+      final endOffset = balanceBox.localToGlobal(
+        balanceBox.size.center(Offset.zero),
+      );
+
+      OverlayEntry? entry;
+      entry = OverlayEntry(
+        builder:
+            (context) => FlyingCoinOverlay(
+              startOffset: startOffset,
+              endOffset: endOffset,
+              onComplete: () {
+                entry?.remove();
+              },
+            ),
+      );
+      Overlay.of(context).insert(entry);
+    }
+  }
+
+  void _handleClaim(PointsProvider provider) {
+    if (provider.hasTodayCheckin || provider.isClaimingCheckin) return;
+    _playCoinFlyAnimation(_claimButtonKey);
+    provider.claimDailyCheckin(context.read<WalletProvider>());
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomerLayout(
@@ -40,7 +78,7 @@ class _PointsScreenState extends State<PointsScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
-      showWalletChip: true,
+      showWalletChip: false,
       body: Consumer<PointsProvider>(
         builder: (context, provider, child) {
           final config = context.watch<AppConfigProvider>();
@@ -89,6 +127,7 @@ class _PointsScreenState extends State<PointsScreen> {
                                 children: [
                                   // 1. Hero balance card
                                   PointsBalanceHeroCard(
+                                    balanceKey: _balanceKey,
                                     currentBalance: provider.currentBalance,
                                     hundredCoinsValue: hundredCoinsValue,
                                     currentStreak: provider.currentStreak,
@@ -106,6 +145,7 @@ class _PointsScreenState extends State<PointsScreen> {
 
                                         // 2. Check-in diario
                                         PointsDailyCheckinCard(
+                                          claimButtonKey: _claimButtonKey,
                                           hundredCoinsValue: hundredCoinsValue,
                                           claimMessage: claimMessage,
                                           streakPreviewLabel:
@@ -117,10 +157,7 @@ class _PointsScreenState extends State<PointsScreen> {
                                               provider.hasTodayCheckin,
                                           isClaimingCheckin:
                                               provider.isClaimingCheckin,
-                                          onClaim:
-                                              () => provider.claimDailyCheckin(
-                                                context.read<WalletProvider>(),
-                                              ),
+                                          onClaim: () => _handleClaim(provider),
                                         ),
                                         const SizedBox(height: 16),
 
@@ -129,7 +166,9 @@ class _PointsScreenState extends State<PointsScreen> {
                                         const SizedBox(height: 16),
 
                                         // 4. Mini-juego cajas
-                                        const PointsMiniGameCard(),
+                                        PointsMiniGameCard(
+                                          onCoinFly: _playCoinFlyAnimation,
+                                        ),
                                         const SizedBox(height: 16),
 
                                         // 5. Historial

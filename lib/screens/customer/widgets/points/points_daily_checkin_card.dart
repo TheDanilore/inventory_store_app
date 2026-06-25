@@ -10,6 +10,7 @@ class PointsDailyCheckinCard extends StatelessWidget {
   final bool hasTodayCheckin;
   final bool isClaimingCheckin;
   final VoidCallback onClaim;
+  final GlobalKey? claimButtonKey;
 
   const PointsDailyCheckinCard({
     super.key,
@@ -21,6 +22,7 @@ class PointsDailyCheckinCard extends StatelessWidget {
     required this.hasTodayCheckin,
     required this.isClaimingCheckin,
     required this.onClaim,
+    this.claimButtonKey,
   });
 
   @override
@@ -49,7 +51,10 @@ class PointsDailyCheckinCard extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: hasTodayCheckin ? PointsDS.successLight : PointsDS.goldLight,
+                      color:
+                          hasTodayCheckin
+                              ? PointsDS.successLight
+                              : PointsDS.goldLight,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -73,8 +78,12 @@ class PointsDailyCheckinCard extends StatelessWidget {
               ),
               _StatusPill(
                 label: hasTodayCheckin ? 'COMPLETADO' : 'PENDIENTE',
-                color: hasTodayCheckin ? PointsDS.successDark : PointsDS.goldDark,
-                bgColor: hasTodayCheckin ? PointsDS.successLight : PointsDS.goldLight,
+                color:
+                    hasTodayCheckin ? PointsDS.successDark : PointsDS.goldDark,
+                bgColor:
+                    hasTodayCheckin
+                        ? PointsDS.successLight
+                        : PointsDS.goldLight,
               ),
             ],
           ),
@@ -97,9 +106,7 @@ class PointsDailyCheckinCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: PointsDS.bg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: PointsDS.border,
-              ),
+              border: Border.all(color: PointsDS.border),
             ),
             child: Row(
               children: [
@@ -108,7 +115,9 @@ class PointsDailyCheckinCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        hasTodayCheckin ? 'Próxima recompensa' : 'Recompensa de hoy',
+                        hasTodayCheckin
+                            ? 'Próxima recompensa'
+                            : 'Recompensa de hoy',
                         style: const TextStyle(
                           color: PointsDS.textMuted,
                           fontSize: 12,
@@ -145,33 +154,41 @@ class PointsDailyCheckinCard extends StatelessWidget {
                 ),
                 // Botón
                 ElevatedButton(
-                  onPressed: (hasTodayCheckin || isClaimingCheckin) ? null : onClaim,
+                  key: claimButtonKey,
+                  onPressed:
+                      (hasTodayCheckin || isClaimingCheckin) ? null : onClaim,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: hasTodayCheckin ? PointsDS.bg : PointsDS.gold,
-                    foregroundColor: hasTodayCheckin ? PointsDS.textMuted : Colors.white,
+                    backgroundColor:
+                        hasTodayCheckin ? PointsDS.bg : PointsDS.gold,
+                    foregroundColor:
+                        hasTodayCheckin ? PointsDS.textMuted : Colors.white,
                     elevation: hasTodayCheckin ? 0 : 4,
                     shadowColor: PointsDS.gold.withValues(alpha: 0.4),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: isClaimingCheckin
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                  child:
+                      isClaimingCheckin
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : Text(
+                            hasTodayCheckin ? 'Vuelve mañana' : 'Reclamar',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
-                        )
-                      : Text(
-                          hasTodayCheckin ? 'Vuelve mañana' : 'Reclamar',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
                 ),
               ],
             ),

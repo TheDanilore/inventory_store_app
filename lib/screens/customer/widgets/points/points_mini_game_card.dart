@@ -5,8 +5,17 @@ import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/points/points_design_tokens.dart';
 import 'package:provider/provider.dart';
 
-class PointsMiniGameCard extends StatelessWidget {
-  const PointsMiniGameCard({super.key});
+class PointsMiniGameCard extends StatefulWidget {
+  final void Function(GlobalKey startKey)? onCoinFly;
+
+  const PointsMiniGameCard({super.key, this.onCoinFly});
+
+  @override
+  State<PointsMiniGameCard> createState() => _PointsMiniGameCardState();
+}
+
+class _PointsMiniGameCardState extends State<PointsMiniGameCard> {
+  final List<GlobalKey> _boxKeys = List.generate(3, (_) => GlobalKey());
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +178,7 @@ class PointsMiniGameCard extends StatelessWidget {
                     provider.lastBoxesReward != null;
 
                 return Expanded(
+                  key: _boxKeys[index],
                   child: Padding(
                     padding: EdgeInsets.only(left: index == 0 ? 0 : 8),
                     child: GestureDetector(
@@ -185,18 +195,26 @@ class PointsMiniGameCard extends StatelessWidget {
                                       config,
                                       context.read<WalletProvider>(),
                                     );
-                                if (picked != null && wasForFun) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          '¡Sacaste $picked monedas! (Modo diversión)',
+                                if (picked != null) {
+                                  if (wasForFun) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '¡Sacaste $picked monedas! (Modo diversión)',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor: PointsDS.teal,
+                                          duration: const Duration(seconds: 2),
                                         ),
-                                        behavior: SnackBarBehavior.floating,
-                                        backgroundColor: PointsDS.teal,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
+                                      );
+                                    }
+                                  } else {
+                                    if (widget.onCoinFly != null) {
+                                      widget.onCoinFly!(_boxKeys[index]);
+                                    }
                                   }
                                 }
                               },
