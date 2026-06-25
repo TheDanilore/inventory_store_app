@@ -17,6 +17,7 @@ class CartVariantPickerSheet extends StatefulWidget {
   final CartItemModel? existingCartItem;
   final int initialQuantity;
   final ValueChanged<ProductVariantModel>? onVariantSelected;
+  final String? selectedVariantId;
 
   const CartVariantPickerSheet({
     super.key,
@@ -25,6 +26,7 @@ class CartVariantPickerSheet extends StatefulWidget {
     this.existingCartItem,
     this.initialQuantity = 1,
     this.onVariantSelected,
+    this.selectedVariantId,
   });
 
   @override
@@ -163,6 +165,8 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
     final int variantStock = _stockByVariant[variant.id] ?? 0;
     final bool isAgotado = widget.product.stockControl && variantStock <= 0;
 
+    final bool isSelected = variant.id == widget.selectedVariantId;
+
     return InkWell(
       onTap:
           isAgotado
@@ -214,7 +218,12 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
         opacity: isAgotado ? 0.5 : 1.0,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            color:
+                isSelected ? AppColors.primary.withValues(alpha: 0.05) : null,
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: isSelected ? 2.0 : 1.0,
+            ),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(

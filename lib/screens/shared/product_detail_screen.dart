@@ -117,11 +117,6 @@ class _ProductDetailScreenContentState
   List<ProductImageModel> get _galleryImages => providerWatch.images;
   String? _variantImageUrl(ProductVariantModel variant) =>
       providerWatch.variantImageUrl(variant);
-  String? get _effectiveImageUrl =>
-      providerWatch.selectedVariantImageUrl ??
-      (providerWatch.images.isNotEmpty
-          ? providerWatch.images[0].imageUrl
-          : product.primaryImageUrl);
   String _fmt(String value) {
     final n = value.replaceAll('_', ' ').trim();
     if (n.isEmpty) return value;
@@ -169,37 +164,52 @@ class _ProductDetailScreenContentState
   // ─── CART & REVIEWS ───────────────────────────────────────────────────────
 
   void _addToCart() {
-    if (_effectiveStock <= 0 && _variants.isEmpty) {
-      _showSnack('Sin stock.');
-      return;
-    }
-    if (_variants.isEmpty && _selectedQty > _effectiveStock) {
-      _showSnack('Cantidad mayor al stock.');
-      return;
-    }
-    if (_variants.isNotEmpty) {
+    final qty = provider.selectedQty;
+    final stock = provider.effectiveStock;
+    final variants = provider.variants;
+    final selectedVariant = provider.selectedVariant;
+    final effectivePrice = provider.effectivePrice;
+
+    final String? effectiveImageUrl =
+        provider.selectedVariantImageUrl ??
+        (provider.images.isNotEmpty
+            ? provider.images[0].imageUrl
+            : product.primaryImageUrl);
+
+    if (variants.isNotEmpty && selectedVariant == null) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
-            (context) => CartVariantPickerSheet(
-              cart: Provider.of<CartProvider>(context, listen: false),
+            (sheetContext) => CartVariantPickerSheet(
+              cart: Provider.of<CartProvider>(sheetContext, listen: false),
               product: product,
-              initialQuantity: _selectedQty,
+              initialQuantity: qty,
+              selectedVariantId: provider.selectedVariantId,
             ),
       );
       return;
     }
+
+    if (stock <= 0) {
+      _showSnack('Sin stock.');
+      return;
+    }
+    if (qty > stock) {
+      _showSnack('Cantidad mayor al stock.');
+      return;
+    }
+
     Provider.of<CartProvider>(context, listen: false).addItem(
       product,
-      quantity: _selectedQty,
-      variantId: _selectedVariant?.id,
-      variantLabel: _selectedVariant?.label,
-      unitPrice: _effectivePrice,
-      imageUrl: _effectiveImageUrl,
-      sku: _selectedVariant?.sku,
-      availableStock: _effectiveStock,
+      quantity: qty,
+      variantId: selectedVariant?.id,
+      variantLabel: selectedVariant?.label,
+      unitPrice: effectivePrice,
+      imageUrl: effectiveImageUrl,
+      sku: selectedVariant?.sku,
+      availableStock: stock,
     );
     // Solo vibrar si no es web para evitar MissingPluginException
     if (!kIsWeb) {
@@ -807,60 +817,158 @@ class _ProductDetailScreenContentState
               ),
               const SizedBox(height: 24),
 
-              if (_variants.length > 1 && _thumbnailVariants.isNotEmpty) ...[
-                const Text(
-                  'Modelos disponibles',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _buildThumbnailRow(_thumbnailVariants),
-                const SizedBox(height: 20),
-              ],
-
               if (_variants.isNotEmpty) ...[
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Opciones',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    _selectedVariant?.label ?? 'Selecciona un modelo',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textSecondary,
-                  ),
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder:
-                          (context) => CartVariantPickerSheet(
-                            cart: Provider.of<CartProvider>(
-                              context,
-                              listen: false,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      final currentVariantId = provider.selectedVariantId;
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder:
+                            (sheetContext) => CartVariantPickerSheet(
+                              cart: Provider.of<CartProvider>(
+                                sheetContext,
+                                listen: false,
+                              ),
+                              product: product,
+                              selectedVariantId: currentVariantId,
+                              onVariantSelected: (variant) {
+                                _selectVariant(variant);
+                              },
                             ),
-                            product: product,
-                            onVariantSelected: (variant) {
-                              _selectVariant(variant);
-                            },
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Opciones',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedVariant?.label ??
+                                            'Selecciona un modelo',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (_thumbnailVariants.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    child: Row(
+                                      children:
+                                          _thumbnailVariants.take(6).map((v) {
+                                            final imgUrl = _variantImageUrl(v);
+                                            final isSelected =
+                                                _selectedVariantId == v.id;
+                                            return Container(
+                                              width: 40,
+                                              height: 40,
+                                              margin: const EdgeInsets.only(
+                                                right: 8,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                border: Border.all(
+                                                  color:
+                                                      isSelected
+                                                          ? AppColors.primary
+                                                          : AppColors.border,
+                                                  width: isSelected ? 2 : 1,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                child:
+                                                    imgUrl != null
+                                                        ? CachedNetworkImage(
+                                                          imageUrl: imgUrl,
+                                                          fit: BoxFit.cover,
+                                                          placeholder:
+                                                              (
+                                                                context,
+                                                                url,
+                                                              ) => Container(
+                                                                color:
+                                                                    AppColors
+                                                                        .border,
+                                                              ),
+                                                          errorWidget:
+                                                              (
+                                                                context,
+                                                                url,
+                                                                error,
+                                                              ) => Container(
+                                                                color:
+                                                                    AppColors
+                                                                        .border,
+                                                              ),
+                                                        )
+                                                        : Container(
+                                                          color:
+                                                              AppColors.border,
+                                                        ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                    );
-                  },
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Text(
+                                'Más',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right,
+                                color: AppColors.textSecondary,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
               ],
@@ -932,122 +1040,6 @@ class _ProductDetailScreenContentState
         onIncrement: () => provider.setSelectedQty(_selectedQty + 1),
         onQtyTap: _showQuantityDialog,
         onAddToCart: _addToCart,
-      ),
-    );
-  }
-
-  Widget _buildThumbnailRow(List<ProductVariantModel> thumbs) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => provider.setShowVariantImage(false),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color:
-                    !_showVariantImage
-                        ? AppColors.primary.withValues(alpha: 0.1)
-                        : AppColors.bg,
-                border: Border.all(
-                  color:
-                      !_showVariantImage ? AppColors.primary : AppColors.border,
-                  width: 1.5,
-                ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.photo_library_rounded,
-                    size: 16,
-                    color:
-                        !_showVariantImage
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Galería',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight:
-                          !_showVariantImage
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                      color:
-                          !_showVariantImage
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ...thumbs.map((v) {
-            final imgUrl = _variantImageUrl(v);
-            final isSelected =
-                _showVariantImage &&
-                (_attributeKeys.length == 1
-                    ? _selectedVariantId == v.id
-                    : _selectedVariantImageUrl == _variantImageUrl(v));
-
-            return GestureDetector(
-              onTap: () => _selectVariant(v),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      isSelected
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.bg,
-                  border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.border,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    if (imgUrl != null) ...[
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: AppColors.border,
-                        backgroundImage: CachedNetworkImageProvider(imgUrl),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      v.attributeMap.isNotEmpty
-                          ? v.attributeMap.values
-                              .map((e) => _fmt(e))
-                              .join(' / ')
-                          : 'Opción',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color:
-                            isSelected
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
       ),
     );
   }

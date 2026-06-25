@@ -131,6 +131,7 @@ class CartItemCard extends StatelessWidget {
                               cart: cart,
                               product: product,
                               existingCartItem: item,
+                              selectedVariantId: item.variantId,
                             ),
                       );
                     },
