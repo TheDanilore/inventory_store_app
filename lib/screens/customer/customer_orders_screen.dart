@@ -73,54 +73,74 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          await provider.fetchOrders(reset: true);
-        },
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (provider.isBackgroundLoading)
-                      _buildBackgroundSyncIndicator(),
-
-                    _buildHeaderBanner(provider.orders.length),
-                    const SizedBox(height: 16),
-                    _buildSearchBar(),
-                    const SizedBox(height: 16),
-                    _buildFilters(provider),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
-
-            // Body
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              sliver: _buildBody(provider),
-            ),
-
-            // Bottom Loading Indicator
-            if (provider.isLoadingMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () async {
+              await provider.fetchOrders(reset: true);
+            },
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (provider.isBackgroundLoading)
+                          _buildBackgroundSyncIndicator(),
+                        _buildHeaderBanner(provider.orders.length),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          ],
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickyFiltersDelegate(
+                    child: Container(
+                      color: AppColors.background,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildSearchBar(),
+                          const SizedBox(height: 12),
+                          _buildFilters(provider),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Body
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: _buildBody(provider),
+                ),
+
+                // Bottom Loading Indicator
+                if (provider.isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -227,7 +247,13 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         controller: _searchController,
@@ -390,5 +416,36 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
         );
       }, childCount: provider.orders.length),
     );
+  }
+}
+
+class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _StickyFiltersDelegate({required this.child});
+
+  @override
+  double get minExtent => 114.0;
+
+  @override
+  double get maxExtent => 114.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Material(
+      elevation: overlapsContent ? 6 : 0,
+      shadowColor: AppColors.primary.withValues(alpha: 0.15),
+      color: AppColors.background,
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return true;
   }
 }
