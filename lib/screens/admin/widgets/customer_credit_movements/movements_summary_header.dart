@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class MovementsSummaryHeader extends StatelessWidget {
   final String customerName;
@@ -22,23 +21,32 @@ class MovementsSummaryHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAtRisk = debtPercent >= 0.8;
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final primaryContainer = theme.colorScheme.primaryContainer;
 
-    return Container(
+    // Si está en riesgo, colores más oscuros/intensos para contraste
+    final riskColor1 = Colors.red.shade800;
+    final riskColor2 = Colors.red.shade600;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors:
               isAtRisk
-                  ? [Colors.red.shade700, Colors.red.shade500]
-                  : [AppColors.teal, AppColors.tealDark],
+                  ? [riskColor1, riskColor2]
+                  : [primaryColor, primaryContainer.withValues(alpha: 0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: (isAtRisk ? Colors.red : AppColors.teal).withValues(
+            color: (isAtRisk ? Colors.red : primaryColor).withValues(
               alpha: 0.3,
             ),
             blurRadius: 12,
@@ -65,7 +73,7 @@ class MovementsSummaryHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,8 +91,9 @@ class MovementsSummaryHeader extends StatelessWidget {
                     Text(
                       'Cuenta de crédito',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -92,14 +101,15 @@ class MovementsSummaryHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Deuda actual destacada
           Text(
             'Deuda actual',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 2),
@@ -107,47 +117,60 @@ class MovementsSummaryHeader extends StatelessWidget {
             'S/ ${currentDebt.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
               letterSpacing: -1,
             ),
           ),
 
           // Barra de progreso
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: debtPercent,
-              backgroundColor: Colors.white.withValues(alpha: 0.25),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              minHeight: 6,
+          const SizedBox(height: 16),
+          Semantics(
+            label:
+                'Crédito utilizado: ${(debtPercent * 100).toInt()}% de un límite de S/ ${creditLimit.toStringAsFixed(2)}',
+            value: '${(debtPercent * 100).toInt()} por ciento',
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: debtPercent,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${(debtPercent * 100).toStringAsFixed(0)}% usado',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Límite: S/ ${creditLimit.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${(debtPercent * 100).toStringAsFixed(0)}% usado',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 11,
-                ),
-              ),
-              Text(
-                'Límite: S/ ${creditLimit.toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
 
+          const SizedBox(height: 20),
+          Divider(color: Colors.white.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
-          const Divider(color: Colors.white24),
-          const SizedBox(height: 12),
 
           // Fila: Total cargado vs total pagado
           Row(
@@ -157,7 +180,10 @@ class MovementsSummaryHeader extends StatelessWidget {
                   label: 'Total cargado',
                   value: 'S/ ${totalCharged.toStringAsFixed(2)}',
                   icon: Icons.arrow_upward_rounded,
-                  color: Colors.orange.shade200,
+                  color:
+                      isAtRisk
+                          ? Colors.white
+                          : Colors.orange.shade100, // Mejor contraste
                 ),
               ),
               const SizedBox(width: 12),
@@ -166,7 +192,10 @@ class MovementsSummaryHeader extends StatelessWidget {
                   label: 'Total pagado',
                   value: 'S/ ${totalPaid.toStringAsFixed(2)}',
                   icon: Icons.arrow_downward_rounded,
-                  color: Colors.green.shade200,
+                  color:
+                      isAtRisk
+                          ? Colors.white
+                          : Colors.green.shade100, // Mejor contraste
                 ),
               ),
             ],
@@ -193,15 +222,18 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
+        color: Colors.black.withValues(
+          alpha: 0.15,
+        ), // Fondo oscuro para mejor contraste
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,17 +241,21 @@ class _StatChip extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 10,
+                    color: Colors.white.withValues(alpha: 0.9), // Más opaco
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   value,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

@@ -29,17 +29,26 @@ class DateDivider extends StatelessWidget {
 
     return Row(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textMuted,
-            letterSpacing: 0.5,
+        const Expanded(child: Divider(color: AppColors.surface)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        const Expanded(child: Divider()),
+        const Expanded(child: Divider(color: AppColors.surface)),
       ],
     );
   }

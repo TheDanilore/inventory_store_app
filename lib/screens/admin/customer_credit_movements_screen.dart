@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/admin/customer_credit_movements_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
 import 'widgets/customer_credit_movements/movements_summary_header.dart';
@@ -53,145 +52,249 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
     return AdminLayout(
       title: 'Historial de Crédito',
       showBackButton: true,
-      settingsActions: const [
-        PopupMenuItem(value: 'filter', child: Text('Filtrar por fecha')),
-        PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
+      settingsActions: [
+        const PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
       ],
       onSettingsSelected: (value) {
-        if (value == 'export') {
-          if (!provider.isExporting) provider.exportToPdf();
-        } else if (value == 'filter') {
-          _showFilterSheet(context, provider);
+        if (value == 'export' && !provider.isExporting) {
+          provider.exportToPdf();
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Generando PDF...')));
         }
       },
-      body:
-          provider.isLoading
-              ? const _MovementsShimmer()
-              : Column(
-                children: [
-                  if (provider.isExporting)
-                    const LinearProgressIndicator(minHeight: 3),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child:
+              provider.isLoading
+                  ? const _MovementsShimmer()
+                  : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isTablet = constraints.maxWidth >= 700;
 
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: provider.loadData,
-                      child: CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          // Encabezado con resumen
-                          SliverToBoxAdapter(
-                            child: MovementsSummaryHeader(
-                              customerName: provider.customerName,
-                              currentDebt: provider.currentDebt,
-                              creditLimit: provider.creditLimit,
-                              debtPercent: debtPercent,
-                              totalCharged: provider.totalCharged,
-                              totalPaid: provider.totalPaid,
-                            ),
-                          ),
-
-                          // Etiqueta de Filtro activo
-                          if (provider.dateFilter != 'all')
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Chip(
-                                      label: Text(
-                                        provider.dateFilter == '30_days'
-                                            ? 'Últimos 30 días'
-                                            : 'Este mes',
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                      deleteIcon: const Icon(
-                                        Icons.close,
-                                        size: 14,
-                                      ),
-                                      onDeleted:
-                                          () => provider.setDateFilter('all'),
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                  ],
+                      if (isTablet) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Panel Izquierdo: Resumen Fijo
+                            SizedBox(
+                              width: 350,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: MovementsSummaryHeader(
+                                  customerName: provider.customerName,
+                                  currentDebt: provider.currentDebt,
+                                  creditLimit: provider.creditLimit,
+                                  debtPercent: debtPercent,
+                                  totalCharged: provider.totalCharged,
+                                  totalPaid: provider.totalPaid,
                                 ),
                               ),
                             ),
-
-                          // Lista de movimientos
-                          if (provider.movements.isEmpty)
-                            const SliverFillRemaining(
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.receipt_long_outlined,
-                                      size: 56,
-                                      color: Colors.grey,
-                                    ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'Sin movimientos en este periodo',
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate((
-                                  context,
-                                  index,
-                                ) {
-                                  final movement = provider.movements[index];
-                                  final showDateLabel =
-                                      index == 0 ||
-                                      !_sameDay(
-                                        movement.createdAt,
-                                        provider.movements[index - 1].createdAt,
-                                      );
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (showDateLabel) ...[
-                                        const SizedBox(height: 16),
-                                        DateDivider(date: movement.createdAt),
-                                        const SizedBox(height: 8),
-                                      ],
-                                      MovementCard(movement: movement),
-                                      const SizedBox(height: 8),
-                                    ],
-                                  );
-                                }, childCount: provider.movements.length),
+                            // Panel Derecho: Lista de Movimientos Scrollable
+                            Expanded(
+                              child: _buildMainContent(
+                                context,
+                                provider,
+                                isTablet: true,
                               ),
                             ),
-                        ],
-                      ),
+                          ],
+                        );
+                      }
+
+                      // Mobile: Todo en un Scroll
+                      return _buildMainContent(
+                        context,
+                        provider,
+                        isTablet: false,
+                        debtPercent: debtPercent,
+                      );
+                    },
+                  ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent(
+    BuildContext context,
+    CustomerCreditMovementsProvider provider, {
+    required bool isTablet,
+    double? debtPercent,
+  }) {
+    return Column(
+      children: [
+        if (provider.isExporting) const LinearProgressIndicator(minHeight: 3),
+
+        // Filtros Rápidos
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.filter_list_rounded,
+                size: 20,
+                color: Colors.grey,
+              ),
+              const SizedBox(width: 12),
+              _FilterChip(
+                label: 'Todo',
+                isSelected: provider.dateFilter == 'all',
+                onSelected: () => provider.setDateFilter('all'),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Este mes',
+                isSelected: provider.dateFilter == 'this_month',
+                onSelected: () => provider.setDateFilter('this_month'),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Últimos 30 días',
+                isSelected: provider.dateFilter == '30_days',
+                onSelected: () => provider.setDateFilter('30_days'),
+              ),
+            ],
+          ),
+        ),
+
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: provider.loadData,
+            color: Theme.of(context).colorScheme.primary,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // En móvil, el header va dentro del scroll
+                if (!isTablet && debtPercent != null)
+                  SliverToBoxAdapter(
+                    child: MovementsSummaryHeader(
+                      customerName: provider.customerName,
+                      currentDebt: provider.currentDebt,
+                      creditLimit: provider.creditLimit,
+                      debtPercent: debtPercent,
+                      totalCharged: provider.totalCharged,
+                      totalPaid: provider.totalPaid,
                     ),
                   ),
 
-                  // Paginación
-                  if (provider.totalPages > 1)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                      child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: provider.setPage,
+                // Lista de movimientos
+                if (provider.movements.isEmpty)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long_outlined,
+                                size: 56,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              provider.dateFilter != 'all'
+                                  ? 'Sin movimientos en este periodo'
+                                  : 'Esta cuenta aún no tiene movimientos',
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (provider.dateFilter != 'all')
+                              TextButton.icon(
+                                onPressed: () => provider.setDateFilter('all'),
+                                icon: const Icon(Icons.clear_all),
+                                label: const Text('Ver todo el historial'),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                ],
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final movement = provider.movements[index];
+                        final showDateLabel =
+                            index == 0 ||
+                            !_sameDay(
+                              movement.createdAt,
+                              provider.movements[index - 1].createdAt,
+                            );
+
+                        return TweenAnimationBuilder<double>(
+                          duration: Duration(
+                            milliseconds: 300 + (index * 40).clamp(0, 400),
+                          ),
+                          curve: Curves.easeOutCubic,
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          builder: (context, value, child) {
+                            return Transform.translate(
+                              offset: Offset(0, 20 * (1 - value)),
+                              child: Opacity(opacity: value, child: child),
+                            );
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (showDateLabel) ...[
+                                const SizedBox(height: 16),
+                                DateDivider(date: movement.createdAt),
+                                const SizedBox(height: 12),
+                              ],
+                              MovementCard(movement: movement),
+                              const SizedBox(height: 12),
+                            ],
+                          ),
+                        );
+                      }, childCount: provider.movements.length),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        // Paginación fija al fondo (nunca se oculta por el scroll)
+        if (provider.totalPages > 1)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: AdminPageBlocks(
+                currentPage: provider.currentPage,
+                totalPages: provider.totalPages,
+                onPageChanged: provider.setPage,
               ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -199,72 +302,36 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
+}
 
-  void _showFilterSheet(
-    BuildContext context,
-    CustomerCreditMovementsProvider provider,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onSelected;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ActionChip(
+      label: Text(label),
+      backgroundColor:
+          isSelected ? theme.colorScheme.primary : Colors.grey.shade100,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 13,
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Text(
-                    'Filtrar por fecha',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.date_range),
-                  title: const Text('Últimos 30 días'),
-                  trailing:
-                      provider.dateFilter == '30_days'
-                          ? const Icon(Icons.check, color: AppColors.primary)
-                          : null,
-                  onTap: () {
-                    provider.setDateFilter('30_days');
-                    Navigator.pop(ctx);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.calendar_month),
-                  title: const Text('Este mes'),
-                  trailing:
-                      provider.dateFilter == 'this_month'
-                          ? const Icon(Icons.check, color: AppColors.primary)
-                          : null,
-                  onTap: () {
-                    provider.setDateFilter('this_month');
-                    Navigator.pop(ctx);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.all_inclusive),
-                  title: const Text('Todos los movimientos'),
-                  trailing:
-                      provider.dateFilter == 'all'
-                          ? const Icon(Icons.check, color: AppColors.primary)
-                          : null,
-                  onTap: () {
-                    provider.setDateFilter('all');
-                    Navigator.pop(ctx);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      side: BorderSide(
+        color: isSelected ? theme.colorScheme.primary : Colors.grey.shade300,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onPressed: onSelected,
     );
   }
 }
@@ -274,24 +341,37 @@ class _MovementsShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: AppShimmer(height: 180, borderRadius: 20),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: 5,
-            itemBuilder:
-                (_, _) => const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: AppShimmer(height: 80, borderRadius: 14),
-                ),
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth >= 700;
+
+        final headerShimmer = Container(
+          margin: const EdgeInsets.all(16.0),
+          child: const AppShimmer(height: 230, borderRadius: 20),
+        );
+
+        final listShimmer = ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: 6,
+          itemBuilder:
+              (_, _) => const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: AppShimmer(height: 88, borderRadius: 16),
+              ),
+        );
+
+        if (isTablet) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 350, child: headerShimmer),
+              Expanded(child: listShimmer),
+            ],
+          );
+        }
+
+        return Column(children: [headerShimmer, Expanded(child: listShimmer)]);
+      },
     );
   }
 }
