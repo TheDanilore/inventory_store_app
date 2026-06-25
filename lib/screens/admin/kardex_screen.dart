@@ -112,7 +112,10 @@ class _KardexViewState extends State<_KardexView> {
                         color: Colors.green.shade700,
                       ),
                     ),
-                    title: const Text('Ingreso de inventario'),
+                    title: const Text(
+                      'Ingreso de inventario',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: const Text('Registrar compras o retornos'),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -127,7 +130,10 @@ class _KardexViewState extends State<_KardexView> {
                         color: Colors.red.shade700,
                       ),
                     ),
-                    title: const Text('Salida de inventario'),
+                    title: const Text(
+                      'Salida de inventario',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     subtitle: const Text('Registrar mermas o retiros manuales'),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -138,6 +144,32 @@ class _KardexViewState extends State<_KardexView> {
               ),
             ),
           ),
+    );
+  }
+
+  Widget _buildFilterChip(KardexProvider provider, String label, String value) {
+    final isSelected = provider.typeFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        child: FilterChip(
+          label: Text(label),
+          selected: isSelected,
+          onSelected: (_) => provider.setTypeFilter(value),
+          selectedColor: AppColors.primary.withValues(alpha: 0.15),
+          checkmarkColor: AppColors.primary,
+          backgroundColor: AppColors.surface,
+          side: BorderSide(
+            color: isSelected ? Colors.transparent : Colors.grey.shade300,
+          ),
+          labelStyle: TextStyle(
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 12,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 
@@ -159,153 +191,149 @@ class _KardexViewState extends State<_KardexView> {
           },
           body: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                color: Colors.white,
-                child: Row(
-                  children: [
-                    // Chips de tipo
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: const Text('Todos'),
-                                selected: provider.typeFilter == 'ALL',
-                                onSelected:
-                                    (val) => provider.setTypeFilter('ALL'),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: const Text('Ingresos'),
-                                selected: provider.typeFilter == 'ENTRY',
-                                onSelected:
-                                    (val) => provider.setTypeFilter('ENTRY'),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ChoiceChip(
-                                label: const Text('Salidas'),
-                                selected: provider.typeFilter == 'EXIT',
-                                onSelected:
-                                    (val) => provider.setTypeFilter('EXIT'),
-                              ),
-                            ),
-                            ChoiceChip(
-                              label: const Text('Ventas'),
-                              selected: provider.typeFilter == 'SALE',
-                              onSelected:
-                                  (val) => provider.setTypeFilter('SALE'),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: ChoiceChip(
-                                label: const Text('Devoluciones'),
-                                selected: provider.typeFilter == 'RETURN',
-                                onSelected:
-                                    (val) => provider.setTypeFilter('RETURN'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    DateFilterCalendar(
-                      dateRange: provider.dateRange,
-                      onDateRangeSelected: (picked) {
-                        provider.setDateRange(picked);
-                      },
-                      onClear: () {
-                        provider.setDateRange(null);
-                      },
-                    ),
-                    if (provider.dateRange != null) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.clear, color: Colors.red),
-                        onPressed: () {
-                          provider.setDateRange(null);
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // --- LISTADO DE MOVIMIENTOS ---
               Expanded(
-                child:
-                    provider.isLoading
-                        ? const KardexSkeleton()
-                        : provider.movements.isEmpty
-                        ? const AppEmptyState(
-                          icon: Icons.history,
-                          title: 'No hay movimientos',
-                          message:
-                              'Aún no se han registrado ingresos o salidas de inventario en estas fechas.',
-                        )
-                        : RefreshIndicator(
-                          onRefresh: provider.refresh,
-                          color: AppColors.primary,
-                          child: Column(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: provider.refresh,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // --- HEADER Y FILTROS ---
+                      SliverToBoxAdapter(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          color: Colors.white,
+                          child: Row(
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  4,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '${provider.totalCount} movimientos encontrados',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // LISTA DE TARJETAS
                               Expanded(
-                                child: ListView.builder(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.all(16).copyWith(bottom: 16),
-                                  itemCount: provider.movements.length,
-                                  itemBuilder: (context, index) {
-                                    return KardexCard(
-                                      item: provider.movements[index],
-                                    );
-                                  },
-                                ),
-                              ),
-                              if (provider.totalPages > 1)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 80, top: 16),
-                                  child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: (page) => provider.changePage(page),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      _buildFilterChip(
+                                        provider,
+                                        'Todos',
+                                        'ALL',
+                                      ),
+                                      _buildFilterChip(
+                                        provider,
+                                        'Ingresos',
+                                        'ENTRY',
+                                      ),
+                                      _buildFilterChip(
+                                        provider,
+                                        'Salidas',
+                                        'EXIT',
+                                      ),
+                                      _buildFilterChip(
+                                        provider,
+                                        'Ventas',
+                                        'SALE',
+                                      ),
+                                      _buildFilterChip(
+                                        provider,
+                                        'Devoluciones',
+                                        'RETURN',
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              ),
+                              const SizedBox(width: 8),
+                              DateFilterCalendar(
+                                dateRange: provider.dateRange,
+                                onDateRangeSelected: (picked) {
+                                  provider.setDateRange(picked);
+                                },
+                                onClear: () {
+                                  provider.setDateRange(null);
+                                },
+                              ),
                             ],
                           ),
                         ),
+                      ),
+
+                      // --- CONTEO ---
+                      if (!provider.isLoading && provider.movements.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '${provider.totalCount} movimientos encontrados',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // --- LISTADO ---
+                      if (provider.isLoading && provider.movements.isEmpty)
+                        const SliverPadding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverToBoxAdapter(child: KardexSkeleton()),
+                        )
+                      else if (provider.movements.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: AppEmptyState(
+                            icon: Icons.history,
+                            title: 'No hay movimientos',
+                            message:
+                                'Aún no se han registrado ingresos o salidas de inventario en estas fechas.',
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              return KardexCard(
+                                item: provider.movements[index],
+                              );
+                            }, childCount: provider.movements.length),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
+
+              // --- PAGINACIÓN ANCLADA ---
+              if (provider.totalPages > 1 && !provider.isLoading)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: AdminPageBlocks(
+                      currentPage: provider.currentPage,
+                      totalPages: provider.totalPages,
+                      onPageChanged: (page) => provider.changePage(page),
+                    ),
+                  ),
+                ),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
@@ -313,7 +341,10 @@ class _KardexViewState extends State<_KardexView> {
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
-            label: const Text('Movimiento', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Movimiento',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         );
       },
