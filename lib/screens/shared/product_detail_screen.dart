@@ -885,7 +885,9 @@ class _ProductDetailScreenContentState
                                     child: Row(
                                       children:
                                           _thumbnailVariants.take(6).map((v) {
-                                            final imgUrl = _variantImageUrl(v);
+                                            final imgUrl =
+                                                _variantImageUrl(v) ??
+                                                product.primaryImageUrl;
                                             final isSelected =
                                                 _selectedVariantId == v.id;
                                             return Container(
@@ -909,7 +911,8 @@ class _ProductDetailScreenContentState
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 child:
-                                                    imgUrl != null
+                                                    (imgUrl != null &&
+                                                            imgUrl.isNotEmpty)
                                                         ? CachedNetworkImage(
                                                           imageUrl: imgUrl,
                                                           fit: BoxFit.cover,
