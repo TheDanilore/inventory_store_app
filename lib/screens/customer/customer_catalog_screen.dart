@@ -137,134 +137,146 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           RefreshIndicator(
             onRefresh: provider.refreshProducts,
             color: AppColors.primary,
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-                // --- Banners ---
-                if (!provider.isSearchMode && provider.searchTerm.isEmpty) ...[
-                  const SliverToBoxAdapter(child: CatalogWelcomeBanner()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  const SliverToBoxAdapter(child: CatalogPromoBanner()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                ],
+                    // --- Banners ---
+                    if (!provider.isSearchMode &&
+                        provider.searchTerm.isEmpty) ...[
+                      const SliverToBoxAdapter(child: CatalogWelcomeBanner()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      const SliverToBoxAdapter(child: CatalogPromoBanner()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ],
 
-                // --- Search Bar (Sticky) ---
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickySearchDelegate(
-                    child: const CatalogSearchBar(),
-                  ),
-                ),
-
-                // --- Categories ---
-                if (!provider.isSearchMode && provider.searchTerm.isEmpty) ...[
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Categorías',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    // --- Search Bar (Sticky) ---
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _StickySearchDelegate(
+                        child: const CatalogSearchBar(),
                       ),
                     ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  const SliverToBoxAdapter(child: CatalogCategoryList()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                  // Titulo de Todos los productos
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Todos los Productos',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                if (provider.searchTerm.isNotEmpty ||
-                    provider.isSearchMode) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      child: Text(
-                        provider.searchTerm.isEmpty
-                            ? 'Busquedas recientes'
-                            : 'Resultados',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                // --- Historial de Búsqueda ---
-                if (provider.isSearchMode && provider.searchTerm.isEmpty) ...[
-                  SliverToBoxAdapter(
-                    child:
-                        provider.searchHistory.isEmpty
-                            ? Padding(
-                              padding: const EdgeInsets.all(32),
-                              child: Center(
-                                child: Text(
-                                  'No hay búsquedas recientes',
-                                  style: TextStyle(color: Colors.grey.shade500),
-                                ),
-                              ),
-                            )
-                            : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: provider.searchHistory.length,
-                              itemBuilder: (context, index) {
-                                final term = provider.searchHistory[index];
-                                return ListTile(
-                                  leading: const Icon(
-                                    Icons.history,
-                                    color: Colors.grey,
-                                  ),
-                                  title: Text(term),
-                                  onTap: () {
-                                    provider.setSearchMode(false);
-                                    provider.setSearchTerm(term);
-                                  },
-                                );
-                              },
+                    // --- Categories ---
+                    if (!provider.isSearchMode &&
+                        provider.searchTerm.isEmpty) ...[
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Categorías',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
-                  ),
-                  SliverToBoxAdapter(
-                    child:
-                        provider.searchHistory.isNotEmpty
-                            ? TextButton(
-                              onPressed: provider.clearSearchHistory,
-                              child: const Text('Limpiar historial'),
-                            )
-                            : const SizedBox.shrink(),
-                  ),
-                ]
-                // --- Product Grid ---
-                else ...[
-                  SliverToBoxAdapter(
-                    child: CatalogProductGrid(onAddToCart: _handleAddToCart),
-                  ),
-                ],
-              ],
+                          ),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      const SliverToBoxAdapter(child: CatalogCategoryList()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                      // Titulo de Todos los productos
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Todos los Productos',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    if (provider.searchTerm.isNotEmpty ||
+                        provider.isSearchMode) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          child: Text(
+                            provider.searchTerm.isEmpty
+                                ? 'Busquedas recientes'
+                                : 'Resultados',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // --- Historial de Búsqueda ---
+                    if (provider.isSearchMode &&
+                        provider.searchTerm.isEmpty) ...[
+                      SliverToBoxAdapter(
+                        child:
+                            provider.searchHistory.isEmpty
+                                ? Padding(
+                                  padding: const EdgeInsets.all(32),
+                                  child: Center(
+                                    child: Text(
+                                      'No hay búsquedas recientes',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                : ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: provider.searchHistory.length,
+                                  itemBuilder: (context, index) {
+                                    final term = provider.searchHistory[index];
+                                    return ListTile(
+                                      leading: const Icon(
+                                        Icons.history,
+                                        color: Colors.grey,
+                                      ),
+                                      title: Text(term),
+                                      onTap: () {
+                                        provider.setSearchMode(false);
+                                        provider.setSearchTerm(term);
+                                      },
+                                    );
+                                  },
+                                ),
+                      ),
+                      SliverToBoxAdapter(
+                        child:
+                            provider.searchHistory.isNotEmpty
+                                ? TextButton(
+                                  onPressed: provider.clearSearchHistory,
+                                  child: const Text('Limpiar historial'),
+                                )
+                                : const SizedBox.shrink(),
+                      ),
+                    ]
+                    // --- Product Grid ---
+                    else ...[
+                      SliverToBoxAdapter(
+                        child: CatalogProductGrid(
+                          onAddToCart: _handleAddToCart,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
 

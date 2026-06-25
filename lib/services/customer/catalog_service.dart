@@ -60,7 +60,7 @@ class CatalogService {
       final pid = row['product_id'] as String?;
       final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
       if (pid != null) {
-        map[pid] = stock;
+        map[pid] = (map[pid] ?? 0) + stock;
       }
     }
     return map;

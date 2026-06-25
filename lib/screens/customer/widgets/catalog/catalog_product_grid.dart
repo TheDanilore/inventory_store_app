@@ -20,8 +20,8 @@ class CatalogProductGrid extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 220,
           childAspectRatio: 0.58,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
@@ -80,24 +80,28 @@ class CatalogProductGrid extends StatelessWidget {
 
     return Column(
       children: [
-        GridView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.58,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          child: GridView.builder(
+            key: ValueKey(provider.products.length),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 220,
+              childAspectRatio: 0.58,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: provider.products.length,
+            itemBuilder: (context, index) {
+              final product = provider.products[index];
+              return CatalogProductCard(
+                product: product,
+                onAddToCart: onAddToCart,
+              );
+            },
           ),
-          itemCount: provider.products.length,
-          itemBuilder: (context, index) {
-            final product = provider.products[index];
-            return CatalogProductCard(
-              product: product,
-              onAddToCart: onAddToCart,
-            );
-          },
         ),
         if (provider.isLoadingProducts && !provider.isInitialLoad)
           const Padding(
