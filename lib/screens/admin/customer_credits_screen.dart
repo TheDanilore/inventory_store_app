@@ -91,154 +91,201 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
       ),
       body: Consumer<CustomerCreditsProvider>(
         builder: (context, provider, _) {
-          return Column(
-            children: [
-              // Métricas Globales
-              if (!provider.isLoading)
-                GlobalStatsBar(
-                  totalDebt: provider.totalDebt,
-                  activeAccounts: provider.activeAccounts,
-                  suspendedAccounts: provider.suspendedAccounts,
-                  maxedOutAccounts: provider.maxedOutAccounts,
-                ),
-
-              // Barra de Búsqueda y Tabs
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _searchCtrl,
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar cliente, DNI o teléfono...',
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          color: AppColors.textMuted,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.bg,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        labelColor: Colors.white,
-                        unselectedLabelColor: AppColors.textMuted,
-                        indicator: BoxDecoration(
-                          color: AppColors.teal,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        padding: const EdgeInsets.all(4),
-                        tabs: [
-                          const Tab(text: 'Todas'),
-                          Tab(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('Con Deuda'),
-                                if (provider.accounts.any(
-                                  (a) => a.currentDebt > 0 && a.isActive,
-                                )) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.danger,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '${provider.accounts.where((a) => a.currentDebt > 0 && a.isActive).length}',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 850),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: AppColors.teal,
+                      onRefresh: () async => provider.fetchPage(),
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          if (!provider.isLoading)
+                            SliverToBoxAdapter(
+                              child: GlobalStatsBar(
+                                totalDebt: provider.totalDebt,
+                                activeAccounts: provider.activeAccounts,
+                                suspendedAccounts: provider.suspendedAccounts,
+                                maxedOutAccounts: provider.maxedOutAccounts,
+                              ),
+                            ),
+                          SliverToBoxAdapter(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                              child: Column(
+                                children: [
+                                  TextField(
+                                    controller: _searchCtrl,
+                                    onChanged: _onSearchChanged,
+                                    decoration: InputDecoration(
+                                      hintText: 'Buscar cliente, DNI o teléfono...',
+                                      prefixIcon: const Icon(
+                                        Icons.search_rounded,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      filled: true,
+                                      fillColor: AppColors.bg,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 14,
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bg,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: TabBar(
+                                      controller: _tabController,
+                                      labelColor: Colors.white,
+                                      unselectedLabelColor: AppColors.textMuted,
+                                      indicator: BoxDecoration(
+                                        color: AppColors.teal,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      indicatorSize: TabBarIndicatorSize.tab,
+                                      dividerColor: Colors.transparent,
+                                      padding: const EdgeInsets.all(4),
+                                      tabs: [
+                                        const Tab(text: 'Todas'),
+                                        Tab(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Text('Con Deuda'),
+                                              if (provider.accounts.any(
+                                                (a) => a.currentDebt > 0 && a.isActive,
+                                              )) ...[
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 1,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.danger,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Text(
+                                                    '${provider.accounts.where((a) => a.currentDebt > 0 && a.isActive).length}',
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
-                              ],
+                              ),
                             ),
                           ),
+                          if (provider.isLoading && provider.accounts.isEmpty)
+                            const SliverToBoxAdapter(
+                              child: _CustomerCreditsSkeleton(),
+                            )
+                          else if (provider.errorMessage.isNotEmpty &&
+                              provider.accounts.isEmpty)
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: AppEmptyState(
+                                icon: Icons.error_outline_rounded,
+                                color: AppColors.danger,
+                                title: 'Error',
+                                message: provider.errorMessage,
+                              ),
+                            )
+                          else if (provider.accounts.isEmpty)
+                            const SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: AppEmptyState(
+                                icon: Icons.credit_card_off_rounded,
+                                title: 'No se encontraron cuentas',
+                                message:
+                                    'Puedes crear una nueva línea de crédito\nusando el botón superior.',
+                              ),
+                            )
+                          else
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final account = provider.accounts[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: CreditAccountCard(
+                                        account: account,
+                                        onTap: () => _showAccountOptions(
+                                          context,
+                                          account,
+                                          provider,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  childCount: provider.accounts.length,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                  ],
-                ),
-              ),
-
-              // Lista o Carga
-              Expanded(
-                child:
-                    provider.isLoading && provider.accounts.isEmpty
-                        ? const _CustomerCreditsSkeleton()
-                        : provider.errorMessage.isNotEmpty &&
-                            provider.accounts.isEmpty
-                        ? AppEmptyState(
-                          icon: Icons.error_outline_rounded,
-                          color: AppColors.danger,
-                          title: 'Error',
-                          message: provider.errorMessage,
-                        )
-                        : provider.accounts.isEmpty
-                        ? const AppEmptyState(
-                          icon: Icons.credit_card_off_rounded,
-                          title: 'No se encontraron cuentas',
-                          message:
-                              'Puedes crear una nueva línea de crédito\nusando el botón superior.',
-                        )
-                        : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          itemCount: provider.accounts.length,
-                          separatorBuilder:
-                              (_, _) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final account = provider.accounts[index];
-                            return CreditAccountCard(
-                              account: account,
-                              onTap:
-                                  () => _showAccountOptions(
-                                    context,
-                                    account,
-                                    provider,
-                                  ),
-                            );
-                          },
-                        ),
-              ),
-
-              if (!provider.isLoading && provider.totalPages > 1)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                  child: AdminPageBlocks(
-                    currentPage: provider.currentPage,
-                    totalPages: provider.totalPages,
-                    onPageChanged: (page) => provider.setPage(page),
                   ),
-                ),
-            ],
+                  if (!provider.isLoading && provider.totalPages > 1)
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: AdminPageBlocks(
+                          currentPage: provider.currentPage,
+                          totalPages: provider.totalPages,
+                          onPageChanged: (page) => provider.setPage(page),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           );
         },
       ),
@@ -282,7 +329,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                   Icons.history_rounded,
                   color: AppColors.teal,
                 ),
-                title: const Text('Ver historial de movimientos'),
+                title: const Text('Ver historial de movimientos', style: TextStyle(fontWeight: FontWeight.w700)),
                 onTap: () {
                   Navigator.pop(ctx);
                   context
@@ -302,7 +349,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                   Icons.payments_rounded,
                   color: AppColors.success,
                 ),
-                title: const Text('Registrar Pago / Abono'),
+                title: const Text('Registrar Pago / Abono', style: TextStyle(fontWeight: FontWeight.w700)),
                 enabled: account.isActive && account.currentDebt > 0,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -322,7 +369,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
               ),
               ListTile(
                 leading: const Icon(Icons.edit_rounded, color: AppColors.teal),
-                title: const Text('Editar Límite de Crédito'),
+                title: const Text('Editar Límite de Crédito', style: TextStyle(fontWeight: FontWeight.w700)),
                 onTap: () {
                   Navigator.pop(ctx);
                   showModalBottomSheet(
@@ -347,6 +394,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                 ),
                 title: Text(
                   account.isActive ? 'Suspender Línea' : 'Reactivar Línea',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 onTap: () async {
                   Navigator.pop(ctx);
