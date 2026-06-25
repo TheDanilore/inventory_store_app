@@ -135,38 +135,43 @@ class CartItemCard extends StatelessWidget {
                             ),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              item.variantLabel!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade800,
-                                fontWeight: FontWeight.w600,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                item.variantLabel!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -239,7 +244,7 @@ class CartItemCard extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _stepperButton(
+              _StepperButton(
                 icon: Icons.add_rounded,
                 bgColor: const Color(0xFF1E1E2D),
                 iconColor: Colors.white,
@@ -266,7 +271,7 @@ class CartItemCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _stepperButton(
+              _StepperButton(
                 icon: Icons.remove_rounded,
                 bgColor: const Color(0xFFFFF0F2),
                 iconColor: const Color(0xFFE53935),
@@ -293,23 +298,53 @@ class CartItemCard extends StatelessWidget {
       child: Icon(Icons.image_outlined, size: 24, color: Colors.grey.shade400),
     );
   }
+}
 
-  Widget _stepperButton({
-    required IconData icon,
-    required Color bgColor,
-    required Color iconColor,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: Icon(icon, size: 18, color: iconColor),
+class _StepperButton extends StatefulWidget {
+  final IconData icon;
+  final Color bgColor;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _StepperButton({
+    required this.icon,
+    required this.bgColor,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_StepperButton> createState() => _StepperButtonState();
+}
+
+class _StepperButtonState extends State<_StepperButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.90 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          // Hitbox más grande (44x44) pero se ve del mismo tamaño
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          color: Colors.transparent,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: widget.bgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(widget.icon, size: 20, color: widget.iconColor),
+          ),
         ),
       ),
     );
