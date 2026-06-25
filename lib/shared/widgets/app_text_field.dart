@@ -16,6 +16,9 @@ class AppTextField extends StatelessWidget {
   final String? hintText;
   final String? prefixText;
   final List<TextInputFormatter>? inputFormatters;
+  final TextCapitalization textCapitalization;
+  final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
 
   const AppTextField({
     super.key,
@@ -33,6 +36,9 @@ class AppTextField extends StatelessWidget {
     this.hintText,
     this.prefixText,
     this.inputFormatters,
+    this.textCapitalization = TextCapitalization.none,
+    this.textInputAction,
+    this.focusNode,
   });
 
   @override
@@ -46,6 +52,9 @@ class AppTextField extends StatelessWidget {
       onChanged: onChanged,
       maxLines: maxLines,
       readOnly: readOnly,
+      textCapitalization: textCapitalization,
+      textInputAction: textInputAction,
+      focusNode: focusNode,
       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
