@@ -47,90 +47,72 @@ class CatalogGridScrollView extends StatelessWidget {
     final end = (start + pageSize) > total ? total : (start + pageSize);
     final pageItems = products.sublist(start, end);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        int crossAxisCount;
-        double aspectRatio;
-
-        if (constraints.maxWidth >= 1024) {
-          crossAxisCount = 5;
-          aspectRatio = 1.0;
-        } else if (constraints.maxWidth >= 600) {
-          crossAxisCount = 3;
-          aspectRatio = 0.85;
-        } else {
-          crossAxisCount = 2;
-          aspectRatio = 0.80;
-        }
-
-        return CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            topBarSliver,
-            headerSliver,
-            if (chipsSliver != null) chipsSliver!,
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Row(
-                  children: [
-                    Text(
-                      'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'Pág. ${safeCurrentPage + 1} / $totalPages',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        topBarSliver,
+        headerSliver,
+        if (chipsSliver != null) chipsSliver!,
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                Text(
+                  'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: aspectRatio,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
+                const Spacer(),
+                Text(
+                  'Pág. ${safeCurrentPage + 1} / $totalPages',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final product = pageItems[index];
-                  return AdminProductCard(
-                    product: product,
-                    onSale: () => onSale(product),
-                    onToggleActive: () => onToggleActive(product),
-                    onEdit: () => onEdit(product),
-                    highlightIngredient:
-                        searchByIngredient
-                            ? matchedIngredients[product.id]
-                            : null,
-                  );
-                }, childCount: pageItems.length),
-              ),
+              ],
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(8, 0, 8, 10 + bottomPadding),
-                child: AdminPageBlocks(
-                  currentPage: safeCurrentPage,
-                  totalPages: totalPages,
-                  onPageChanged: onPageChanged,
-                ),
-              ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 220,
+              mainAxisExtent: 280,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
             ),
-          ],
-        );
-      },
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final product = pageItems[index];
+              return AdminProductCard(
+                product: product,
+                onSale: () => onSale(product),
+                onToggleActive: () => onToggleActive(product),
+                onEdit: () => onEdit(product),
+                highlightIngredient:
+                    searchByIngredient
+                        ? matchedIngredients[product.id]
+                        : null,
+              );
+            }, childCount: pageItems.length),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(8, 0, 8, 10 + bottomPadding),
+            child: AdminPageBlocks(
+              currentPage: safeCurrentPage,
+              totalPages: totalPages,
+              onPageChanged: onPageChanged,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
