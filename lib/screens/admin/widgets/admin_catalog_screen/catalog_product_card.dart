@@ -78,7 +78,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
               ),
           onLongPress: () {
             HapticFeedback.mediumImpact();
-            // TODO: Podría abrir un modal o bottomSheet de acciones secundarias
+            // Podría abrir un modal o bottomSheet de acciones secundarias
           },
           child: Ink(
             decoration: BoxDecoration(
