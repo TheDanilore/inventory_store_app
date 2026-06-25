@@ -200,222 +200,233 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
           key: _formKey,
           child: IgnorePointer(
             ignoring: _isSaving,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Header banner ─────────────────────────────────────
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, Color(0xFF0F3460)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.25),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Tu dirección sin errores',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.4,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Proporciona la calle y número para un delivery exitoso.',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  fontSize: 12,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ── Header banner ─────────────────────────────────────
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, Color(0xFF0F3460)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.20),
+                              blurRadius: 30,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.map_outlined,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // ── Selects + referencia ──────────────────────────────
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.06),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Departamento
-                        _buildDropdownField(
-                          label: 'Departamento',
-                          icon: Icons.location_city_outlined,
-                          value: _selectedDepartment,
-                          items: PeruData.departments,
-                          onChanged:
-                              (v) => setState(() {
-                                _selectedDepartment = v;
-                                _selectedProvince = null;
-                                _selectedDistrict = null;
-                              }),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Provincia
-                        _buildDropdownField(
-                          label: 'Provincia',
-                          icon: Icons.apartment_outlined,
-                          value: _selectedProvince,
-                          items: PeruData.provincesOf(_selectedDepartment),
-                          enabled: _selectedDepartment != null,
-                          onChanged:
-                              (v) => setState(() {
-                                _selectedProvince = v;
-                                _selectedDistrict = null;
-                              }),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Distrito
-                        _buildDropdownField(
-                          label: 'Distrito',
-                          icon: Icons.place_outlined,
-                          value: _selectedDistrict,
-                          items: PeruData.districtsOf(_selectedProvince),
-                          enabled: _selectedProvince != null,
-                          onChanged:
-                              (v) => setState(() => _selectedDistrict = v),
-                        ),
-
-                        const SizedBox(height: 24),
-                        const Divider(height: 1, color: AppColors.border),
-                        const SizedBox(height: 18),
-
-                        // Dirección exacta
-                        _buildTextField(
-                          controller: _streetCtrl,
-                          label: 'Dirección exacta (Calle/Av/Jr + Número) *',
-                          icon: Icons.add_road_outlined,
-                          hint: 'Ej: Av. Larco 123',
-                          requiredField: true,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Referencia
-                        _buildTextField(
-                          controller: _referenceCtrl,
-                          label: 'Referencia (opcional)',
-                          icon: Icons.signpost_outlined,
-                          hint: 'Ej: Frente al parque, puerta azul',
-                          requiredField: false,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // ── Cobertura + preview ───────────────────────────────
-                  if (_selectedDistrict != null) ...[
-                    _buildCoverageChip(isCovered),
-                    const SizedBox(height: 10),
-                  ],
-
-                  if (preview != null) ...[
-                    _buildPreviewCard(preview),
-                    const SizedBox(height: 10),
-                  ],
-
-                  const SizedBox(height: 4),
-
-                  // ── Botón guardar ─────────────────────────────────────
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed:
-                          (_isSaving || !isComplete || !isCovered)
-                              ? null
-                              : _saveAddress,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        disabledBackgroundColor: AppColors.background,
-                        disabledForegroundColor: AppColors.textHint,
-                      ),
-                      child:
-                          _isSaving
-                              ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                              : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.check_rounded, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Guardar dirección',
+                                  const Text(
+                                    'Tu dirección sin errores',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Proporciona la calle y número para un delivery exitoso.',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                      fontSize: 12,
+                                      height: 1.4,
                                     ),
                                   ),
                                 ],
                               ),
-                    ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.map_outlined,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── Selects + referencia ──────────────────────────────
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.04),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Departamento
+                            _buildDropdownField(
+                              label: 'Departamento',
+                              icon: Icons.location_city_outlined,
+                              value: _selectedDepartment,
+                              items: PeruData.departments,
+                              onChanged:
+                                  (v) => setState(() {
+                                    _selectedDepartment = v;
+                                    _selectedProvince = null;
+                                    _selectedDistrict = null;
+                                  }),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Provincia
+                            _buildDropdownField(
+                              label: 'Provincia',
+                              icon: Icons.apartment_outlined,
+                              value: _selectedProvince,
+                              items: PeruData.provincesOf(_selectedDepartment),
+                              enabled: _selectedDepartment != null,
+                              onChanged:
+                                  (v) => setState(() {
+                                    _selectedProvince = v;
+                                    _selectedDistrict = null;
+                                  }),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Distrito
+                            _buildDropdownField(
+                              label: 'Distrito',
+                              icon: Icons.place_outlined,
+                              value: _selectedDistrict,
+                              items: PeruData.districtsOf(_selectedProvince),
+                              enabled: _selectedProvince != null,
+                              onChanged:
+                                  (v) => setState(() => _selectedDistrict = v),
+                            ),
+
+                            const SizedBox(height: 24),
+                            const Divider(height: 1, color: AppColors.border),
+                            const SizedBox(height: 18),
+
+                            // Dirección exacta
+                            _buildTextField(
+                              controller: _streetCtrl,
+                              label:
+                                  'Dirección exacta (Calle/Av/Jr + Número) *',
+                              icon: Icons.add_road_outlined,
+                              hint: 'Ej: Av. Larco 123',
+                              requiredField: true,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Referencia
+                            _buildTextField(
+                              controller: _referenceCtrl,
+                              label: 'Referencia (opcional)',
+                              icon: Icons.signpost_outlined,
+                              hint: 'Ej: Frente al parque, puerta azul',
+                              requiredField: false,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // ── Cobertura + preview ───────────────────────────────
+                      if (_selectedDistrict != null) ...[
+                        _buildCoverageChip(isCovered),
+                        const SizedBox(height: 10),
+                      ],
+
+                      if (preview != null) ...[
+                        _buildPreviewCard(preview),
+                        const SizedBox(height: 10),
+                      ],
+
+                      const SizedBox(height: 4),
+
+                      // ── Botón guardar ─────────────────────────────────────
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed:
+                              (_isSaving || !isComplete || !isCovered)
+                                  ? null
+                                  : _saveAddress,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            foregroundColor: Colors.white,
+                            elevation: 6,
+                            shadowColor: AppColors.success.withValues(
+                              alpha: 0.4,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            disabledBackgroundColor: AppColors.background,
+                            disabledForegroundColor: AppColors.textHint,
+                          ),
+                          child:
+                              _isSaving
+                                  ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.check_rounded, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Guardar dirección',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

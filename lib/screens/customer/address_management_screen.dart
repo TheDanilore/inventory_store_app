@@ -130,23 +130,28 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: false,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: provider.loadAddresses,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildHeaderBanner(provider),
-              ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: provider.loadAddresses,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildHeaderBanner(provider),
+                  ),
+                ),
+
+                _buildBody(provider),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
             ),
-
-            _buildBody(provider),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
+          ),
         ),
       ),
     );
@@ -165,9 +170,9 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.28),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: AppColors.primary.withValues(alpha: 0.20),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -286,7 +291,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    elevation: 0,
+                    elevation: 6,
+                    shadowColor: AppColors.primary.withValues(alpha: 0.4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
