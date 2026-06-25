@@ -208,7 +208,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                           ),
                         ),
                       ),
-                      TextButton(
+                      FilledButton.tonal(
                         onPressed: () async {
                           final result = await context.push<bool>(
                             '/admin/inventory-exit-form',
@@ -218,11 +218,16 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                             context.read<InventoryExitsProvider>().initLoad();
                           }
                         },
-                        style: TextButton.styleFrom(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.warning.withValues(
+                            alpha: 0.2,
+                          ),
                           foregroundColor: AppColors.warning,
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 0,
+                          ),
+                          visualDensity: VisualDensity.compact,
                         ),
                         child: const Text(
                           'Continuar',
@@ -233,144 +238,144 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                   ),
                 ),
 
-              // ── Resumen ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Row(
-                  children: [
-                    _SummaryTile(
-                      label: 'Salidas',
-                      value: '${provider.exits.length}',
-                      icon: Icons.output_rounded,
-                      color: AppColors.danger,
-                    ),
-                    const SizedBox(width: 8),
-                    _SummaryTile(
-                      label: 'Costo Total',
-                      value: 'S/ ${totalCost.toStringAsFixed(2)}',
-                      icon: Icons.money_off_rounded,
-                      color: Colors.orange.shade700,
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Filtros ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SearchField(
-                        controller: _searchCtrl,
-                        hint: 'Buscar motivo o notas...',
-                        onChanged: provider.updateSearch,
-                        onClear: () {
-                          _searchCtrl.clear();
-                          provider.updateSearch('');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    DateFilterCalendar(
-                      dateRange: provider.dateRange,
-                      onDateRangeSelected: provider.updateDateRange,
-                      onClear: () => provider.updateDateRange(null),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Lista ──
               Expanded(
-                child:
-                    provider.isLoading && provider.exits.isEmpty
-                        ? const KardexSkeleton()
-                        : provider.errorMessage != null &&
-                            provider.exits.isEmpty
-                        ? Center(
-                          child: Text(
-                            provider.errorMessage!,
-                            style: const TextStyle(color: AppColors.danger),
-                            textAlign: TextAlign.center,
+                child: RefreshIndicator(
+                  color: AppColors.danger,
+                  onRefresh: () => provider.loadExits(isRefresh: true),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // ── Resumen ──
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: Row(
+                            children: [
+                              _SummaryTile(
+                                label: 'Salidas',
+                                value: '${provider.exits.length}',
+                                icon: Icons.output_rounded,
+                                color: AppColors.danger,
+                              ),
+                              const SizedBox(width: 8),
+                              _SummaryTile(
+                                label: 'Costo Total',
+                                value: 'S/ ${totalCost.toStringAsFixed(2)}',
+                                icon: Icons.money_off_rounded,
+                                color: Colors.orange.shade700,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── Filtros ──
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _SearchField(
+                                  controller: _searchCtrl,
+                                  hint: 'Buscar motivo o notas...',
+                                  onChanged: provider.updateSearch,
+                                  onClear: () {
+                                    _searchCtrl.clear();
+                                    provider.updateSearch('');
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              DateFilterCalendar(
+                                dateRange: provider.dateRange,
+                                onDateRangeSelected: provider.updateDateRange,
+                                onClear: () => provider.updateDateRange(null),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── Lista ──
+                      if (provider.isLoading && provider.exits.isEmpty)
+                        const SliverPadding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverToBoxAdapter(child: KardexSkeleton()),
+                        )
+                      else if (provider.errorMessage != null &&
+                          provider.exits.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Text(
+                              provider.errorMessage!,
+                              style: const TextStyle(color: AppColors.danger),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         )
-                        : provider.exits.isEmpty
-                        ? AppEmptyState(
-                          icon: Icons.inventory_2_outlined,
-                          title: 'Sin Resultados',
-                          message:
-                              provider.searchQuery.isEmpty &&
-                                      provider.dateRange == null
-                                  ? 'No hay salidas registradas'
-                                  : 'Sin resultados para los filtros',
+                      else if (provider.exits.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: AppEmptyState(
+                            icon: Icons.inventory_2_outlined,
+                            title: 'Sin Resultados',
+                            message:
+                                provider.searchQuery.isEmpty &&
+                                        provider.dateRange == null
+                                    ? 'No hay salidas registradas'
+                                    : 'Sin resultados para los filtros',
+                          ),
                         )
-                        : Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                              child: Row(
-                                children: [
-                                  const Spacer(),
-                                  Text(
-                                    'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: RefreshIndicator(
-                                color: AppColors.danger,
-                                onRefresh:
-                                    () => provider.loadExits(isRefresh: true),
-                                child: ListView.separated(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    0,
-                                  ),
-                                  itemCount: provider.exits.length,
-                                  separatorBuilder:
-                                      (_, _) => const SizedBox(height: 10),
-                                  itemBuilder:
-                                      (_, i) => _ExitCard(
-                                        exitData: provider.exits[i],
-                                        onTap:
-                                            () => _loadItemsAndShowDetail(
-                                              context,
-                                              provider.exits[i],
-                                            ),
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _ExitCard(
+                                  exitData: provider.exits[i],
+                                  onTap:
+                                      () => _loadItemsAndShowDetail(
+                                        context,
+                                        provider.exits[i],
                                       ),
                                 ),
                               ),
+                              childCount: provider.exits.length,
                             ),
-                            if (provider.totalPages > 1)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  14,
-                                  16,
-                                  8,
-                                ),
-                                child: AdminPageBlocks(
-                                  currentPage: provider.currentPage,
-                                  totalPages: provider.totalPages,
-                                  onPageChanged: provider.changePage,
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
+                    ],
+                  ),
+                ),
               ),
+
+              // ── Paginación anclada al fondo ──
+              if (provider.totalPages > 1 && !provider.isLoading)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: AdminPageBlocks(
+                      currentPage: provider.currentPage,
+                      totalPages: provider.totalPages,
+                      onPageChanged: provider.changePage,
+                    ),
+                  ),
+                ),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
@@ -419,8 +424,8 @@ class _ExitCard extends StatelessWidget {
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
               offset: const Offset(0, 4),
             ),
           ],
@@ -485,11 +490,12 @@ class _ExitCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text(
-                      'Costo de salida',
+                      'COSTO DE SALIDA',
                       style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textHint,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     Text(
@@ -589,8 +595,7 @@ class _SearchField extends StatelessWidget {
                 onPressed: onClear,
               )
               : null,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
