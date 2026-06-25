@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class CatalogPosCartButton extends StatelessWidget {
   final int itemCount;
@@ -37,7 +36,7 @@ class CatalogPosCartButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AppColors.teal.withValues(alpha: 0.4),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),

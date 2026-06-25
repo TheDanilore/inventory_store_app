@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_product_card.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
@@ -61,7 +60,7 @@ class CatalogGridScrollView extends StatelessWidget {
                 Text(
                   'Mostrando ${total == 0 ? 0 : start + 1}-$end de $total',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 13, // Aumentado a 13px (prominente)
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
@@ -70,7 +69,7 @@ class CatalogGridScrollView extends StatelessWidget {
                 Text(
                   'Pág. ${safeCurrentPage + 1} / $totalPages',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11, // Reducido a 11px (secundario)
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -102,15 +101,10 @@ class CatalogGridScrollView extends StatelessWidget {
             }, childCount: pageItems.length),
           ),
         ),
+        // La paginación (AdminPageBlocks) fue extraída a la pantalla principal
+        // para estar anclada abajo fuera del scroll.
         SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 10 + bottomPadding),
-            child: AdminPageBlocks(
-              currentPage: safeCurrentPage,
-              totalPages: totalPages,
-              onPageChanged: onPageChanged,
-            ),
-          ),
+          child: SizedBox(height: bottomPadding),
         ),
       ],
     );

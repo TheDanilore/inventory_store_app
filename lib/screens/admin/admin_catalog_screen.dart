@@ -12,6 +12,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
 
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_header.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_category_chips.dart';
@@ -142,42 +143,54 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   ) async {
     if (provider.isLoadingAction) return;
     final willActivate = !product.isActive;
+    final service = CatalogService();
 
-    final confirm = await CatalogDialogs.showToggleProductActiveDialog(
-      context,
-      product,
-    );
-
-    if (confirm == true) {
-      provider.setLoadingAction(true);
-      try {
-        final service = CatalogService();
-        await service.setProductActive(
-          productId: product.id,
-          isActive: willActivate,
+    provider.setLoadingAction(true);
+    try {
+      await service.setProductActive(
+        productId: product.id,
+        isActive: willActivate,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              willActivate
+                  ? '${product.name} ha sido activado'
+                  : '${product.name} ha sido desactivado',
+            ),
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Deshacer',
+              onPressed: () async {
+                provider.setLoadingAction(true);
+                try {
+                  await service.setProductActive(
+                    productId: product.id,
+                    isActive: !willActivate,
+                  );
+                  if (mounted) await provider.refreshProducts();
+                } catch (_) {
+                } finally {
+                  if (mounted) provider.setLoadingAction(false);
+                }
+              },
+            ),
+          ),
         );
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message:
-                willActivate
-                    ? 'Producto activado exitosamente'
-                    : 'Producto desactivado exitosamente',
-            type: willActivate ? SnackbarType.success : SnackbarType.warning,
-          );
-          await provider.refreshProducts();
-        }
-      } catch (e) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Error: $e',
-            type: SnackbarType.error,
-          );
-        }
-      } finally {
-        if (mounted) provider.setLoadingAction(false);
+        await provider.refreshProducts();
       }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) provider.setLoadingAction(false);
     }
   }
 
@@ -190,16 +203,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     );
   }
 
-  /// Construye los items del menú de configuración para evitar duplicación.
   List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogProvider provider) {
     return [
-      if (provider.filterIsActive == null || provider.filterIsActive == true)
-        const PopupMenuItem(
-          value: 'filter_inactive',
-          child: Text('Ver Inactivos'),
-        ),
-      if (provider.filterIsActive == null || provider.filterIsActive == false)
-        const PopupMenuItem(value: 'filter_all', child: Text('Ver Todos')),
       const PopupMenuItem(value: 'export', child: Text('Exportar')),
       const PopupMenuItem(value: 'sync', child: Text('Forzar Sincronización')),
     ];
@@ -211,12 +216,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     BuildContext ctx,
   ) async {
     switch (value) {
-      case 'filter_inactive':
-        provider.setFilterIsActive(false);
-        break;
-      case 'filter_all':
-        provider.setFilterIsActive(null);
-        break;
       case 'export':
         await _exportCatalogPdf(provider);
         break;
@@ -247,6 +246,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           body: Builder(
             builder: (context) {
               const double fabsBottomPadding = 54;
+              
+              Widget mainContent = Builder(
+                builder: (context) {
 
               final topBarSliver = SliverAppBar(
                 systemOverlayStyle: const SystemUiOverlayStyle(
@@ -359,13 +361,15 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           categories: provider.categories,
                           selectedCategoryId: provider.selectedCategoryId,
                           onSelected: provider.setCategory,
+                          filterIsActive: provider.filterIsActive,
+                          onStatusSelected: provider.setFilterIsActive,
                         ),
                       )
                       : null;
 
               if (provider.isLoading) {
                 return RefreshIndicator(
-                  color: AppColors.teal,
+                  color: Theme.of(context).colorScheme.primary,
                   onRefresh: () async => provider.refreshProducts(),
                   child: CustomScrollView(
                     slivers: [
@@ -399,7 +403,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
               if (provider.error != null && provider.products.isEmpty) {
                 return RefreshIndicator(
-                  color: AppColors.teal,
+                  color: Theme.of(context).colorScheme.primary,
                   onRefresh: () async => provider.refreshProducts(),
                   child: CustomScrollView(
                     slivers: [
@@ -416,7 +420,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
               if (provider.products.isEmpty && !provider.isLoading) {
                 return RefreshIndicator(
-                  color: AppColors.teal,
+                  color: Theme.of(context).colorScheme.primary,
                   onRefresh: () async => provider.refreshProducts(),
                   child: CustomScrollView(
                     slivers: [
@@ -435,7 +439,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               }
 
               return RefreshIndicator(
-                color: AppColors.teal,
+                color: Theme.of(context).colorScheme.primary,
                 onRefresh: () async => provider.refreshProducts(),
                 child: CatalogGridScrollView(
                   products: provider.products,
@@ -462,7 +466,41 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   },
                 ),
               );
-            },
+            });
+            
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  children: [
+                    Expanded(child: mainContent),
+                    if (provider.products.isNotEmpty && provider.totalPages > 1)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, -4),
+                            )
+                          ],
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: AdminPageBlocks(
+                            currentPage: provider.currentPage,
+                            totalPages: provider.totalPages,
+                            onPageChanged: provider.setPage,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
           ),
           floatingActionButton: Column(
             mainAxisSize: MainAxisSize.min,
@@ -522,33 +560,8 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    // Calcula la opacidad del contenido expandido al colapsar
-    final expandRatio =
-        maxHeight > minHeight
-            ? (1.0 - shrinkOffset / (maxHeight - minHeight)).clamp(0.0, 1.0)
-            : 1.0;
-
-    return Opacity(
-      opacity: 1.0, // el contenedor siempre visible
-      child: SizedBox.expand(
-        child: Stack(
-          children: [
-            // El child normal (siempre visible con opacidad 1 para el search)
-            child,
-            // Overlay que oscurece las partes expandibles cuando está colapsado
-            if (expandRatio < 1.0)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Container(
-                    color: Colors.white.withValues(
-                      alpha: (1.0 - expandRatio) * 0.0,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return SizedBox.expand(
+      child: child,
     );
   }
 

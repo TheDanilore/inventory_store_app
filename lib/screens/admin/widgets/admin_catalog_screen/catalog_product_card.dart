@@ -63,8 +63,12 @@ class _AdminProductCardState extends State<AdminProductCard> {
         duration: const Duration(milliseconds: 150),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppColors.radius),
-          splashColor: AppColors.teal.withValues(alpha: 0.08),
-          highlightColor: AppColors.teal.withValues(alpha: 0.04),
+          splashColor: Theme.of(
+            context,
+          ).colorScheme.primary.withValues(alpha: 0.08),
+          highlightColor: Theme.of(
+            context,
+          ).colorScheme.primary.withValues(alpha: 0.04),
           onHighlightChanged:
               (isPressed) => setState(() => _isCardPressed = isPressed),
           onTap:
@@ -72,6 +76,10 @@ class _AdminProductCardState extends State<AdminProductCard> {
                 '/admin/product/${widget.product.id}',
                 extra: widget.product,
               ),
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            // TODO: Podría abrir un modal o bottomSheet de acciones secundarias
+          },
           child: Ink(
             decoration: BoxDecoration(
               color: isDesactivado ? const Color(0xFFF8FAFC) : Colors.white,
@@ -124,15 +132,18 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                             .imageUrl,
                                     fit: BoxFit.cover,
                                     placeholder:
-                                        (_, _) => const ColoredBox(
-                                          color: Color(0xFFF1F5F9),
+                                        (_, _) => ColoredBox(
+                                          color: const Color(0xFFF1F5F9),
                                           child: Center(
                                             child: SizedBox(
                                               width: 24,
                                               height: 24,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: AppColors.teal,
+                                                color:
+                                                    Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
                                               ),
                                             ),
                                           ),
@@ -230,31 +241,36 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         Positioned(
                           top: 8,
                           right: 8,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _stockBadgeColor(
-                                widget.product.totalStock,
+                          child: Semantics(
+                            label:
+                                '${widget.product.totalStock} unidades en stock',
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
                               ),
-                              borderRadius: BorderRadius.circular(6),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
+                              decoration: BoxDecoration(
+                                color: _stockBadgeColor(
+                                  widget.product.totalStock,
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              '${widget.product.totalStock}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                                borderRadius: BorderRadius.circular(6),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                '${widget.product.totalStock}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize:
+                                      11, // Aumentado de 10 a 11 para legibilidad
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
@@ -303,7 +319,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             children: [
                               const Icon(
                                 Icons.science_rounded,
-                                size: 9,
+                                size: 11, // Aumentado de 9 a 11
                                 color: Color(0xFF059669),
                               ),
                               const SizedBox(width: 3),
@@ -311,7 +327,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 child: Text(
                                   widget.highlightIngredient!,
                                   style: const TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 11, // Aumentado de 9 a 11
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF065F46),
                                   ),
@@ -354,7 +370,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         icon: Icons.point_of_sale_rounded,
                         label: 'Vender',
                         enabled: !isAgotado && !isDesactivado,
-                        color: AppColors.teal,
+                        color: Theme.of(context).colorScheme.primary,
                         onTap:
                             (!isAgotado && !isDesactivado)
                                 ? () {
@@ -527,6 +543,7 @@ class _IconCardAction extends StatelessWidget {
         button: true,
         child: Tooltip(
           message: tooltip,
+          preferBelow: false,
           child: Material(
             color: Colors.transparent,
             child: InkWell(
