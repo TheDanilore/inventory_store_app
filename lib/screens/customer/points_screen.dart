@@ -43,15 +43,6 @@ class _PointsScreenState extends State<PointsScreen> {
       showWalletChip: true,
       body: Consumer<PointsProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2.5,
-              ),
-            );
-          }
-
           final config = context.watch<AppConfigProvider>();
           final pointsToSolesRatio = config.getDouble(
             'points_to_soles_ratio',
@@ -72,60 +63,85 @@ class _PointsScreenState extends State<PointsScreen> {
               'Día 1: $d1 monedas. Día 2: $d2 monedas. Sigue la racha para ganar más.';
 
           return SafeArea(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              backgroundColor: PointsDS.surface,
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 1. Hero balance card
-                    PointsBalanceHeroCard(
-                      currentBalance: provider.currentBalance,
-                      hundredCoinsValue: hundredCoinsValue,
-                      currentStreak: provider.currentStreak,
-                    ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child:
+                      provider.isLoading
+                          ? const Center(
+                            key: ValueKey('loading'),
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                          : RefreshIndicator(
+                            key: const ValueKey('content'),
+                            color: AppColors.primary,
+                            backgroundColor: PointsDS.surface,
+                            onRefresh: _loadData,
+                            child: SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // 1. Hero balance card
+                                  PointsBalanceHeroCard(
+                                    currentBalance: provider.currentBalance,
+                                    hundredCoinsValue: hundredCoinsValue,
+                                    currentStreak: provider.currentStreak,
+                                  ),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: 16),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        const SizedBox(height: 16),
 
-                          // 2. Check-in diario
-                          PointsDailyCheckinCard(
-                            hundredCoinsValue: hundredCoinsValue,
-                            claimMessage: claimMessage,
-                            streakPreviewLabel: streakPreviewLabel,
-                            currentStreak: provider.currentStreak,
-                            nextCheckinReward: provider.nextCheckinReward,
-                            hasTodayCheckin: provider.hasTodayCheckin,
-                            isClaimingCheckin: provider.isClaimingCheckin,
-                            onClaim:
-                                () => provider.claimDailyCheckin(
-                                  context.read<WalletProvider>(),
-                                ),
+                                        // 2. Check-in diario
+                                        PointsDailyCheckinCard(
+                                          hundredCoinsValue: hundredCoinsValue,
+                                          claimMessage: claimMessage,
+                                          streakPreviewLabel:
+                                              streakPreviewLabel,
+                                          currentStreak: provider.currentStreak,
+                                          nextCheckinReward:
+                                              provider.nextCheckinReward,
+                                          hasTodayCheckin:
+                                              provider.hasTodayCheckin,
+                                          isClaimingCheckin:
+                                              provider.isClaimingCheckin,
+                                          onClaim:
+                                              () => provider.claimDailyCheckin(
+                                                context.read<WalletProvider>(),
+                                              ),
+                                        ),
+                                        const SizedBox(height: 16),
+
+                                        // 3. Juegos diarios
+                                        const PointsGameActionsSection(),
+                                        const SizedBox(height: 16),
+
+                                        // 4. Mini-juego cajas
+                                        const PointsMiniGameCard(),
+                                        const SizedBox(height: 16),
+
+                                        // 5. Historial
+                                        const PointsMovementsSection(),
+                                        const SizedBox(height: 24),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 16),
-
-                          // 3. Juegos diarios
-                          const PointsGameActionsSection(),
-                          const SizedBox(height: 16),
-
-                          // 4. Mini-juego cajas
-                          const PointsMiniGameCard(),
-                          const SizedBox(height: 16),
-
-                          // 5. Historial
-                          const PointsMovementsSection(),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),
