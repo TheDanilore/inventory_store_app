@@ -100,26 +100,36 @@ class CustomerHeaderCard extends StatelessWidget {
                     ),
                   ),
                 if (c.phone != null && c.phone!.isNotEmpty)
-                  GestureDetector(
-                    onTap: () => _launchWhatsApp(c.phone!),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.phone_rounded,
-                          color: Colors.white,
-                          size: 12,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: InkWell(
+                      onTap: () => _launchWhatsApp(c.phone!),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 2,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          c.phone!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            decoration: TextDecoration.underline,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.phone_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              c.phone!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 const SizedBox(height: 8),
@@ -127,7 +137,7 @@ class CustomerHeaderCard extends StatelessWidget {
                   children: [
                     _HeaderChip(
                       label: c.isActive ? 'Activo' : 'Inactivo',
-                      color: c.isActive ? Colors.green : Colors.red,
+                      color: c.isActive ? AppColors.success : AppColors.danger,
                     ),
                     const SizedBox(width: 6),
                     _HeaderChip(
@@ -145,6 +155,7 @@ class CustomerHeaderCard extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.edit_rounded, color: Colors.white),
                 onPressed: onEdit,
+                tooltip: 'Editar cliente',
               ),
               if (c.phone != null && c.phone!.isNotEmpty)
                 IconButton(

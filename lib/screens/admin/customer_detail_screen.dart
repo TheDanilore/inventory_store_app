@@ -44,104 +44,253 @@ class _CustomerDetailContent extends StatelessWidget {
     final c = provider.customer;
 
     return AdminLayout(
-      title: 'Detalle del Cliente',
+      title: c.fullName,
       showBackButton: true,
-      settingsActions: const [
-        PopupMenuItem(value: 'edit', child: Text('Editar cliente')),
-      ],
-      onSettingsSelected: (value) {
-        if (value == 'edit') {
-          _openEditCustomer(context);
-        }
-      },
-      body: RefreshIndicator(
-        onRefresh: provider.loadAllData,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: CustomerHeaderCard(
-                customer: c,
-                onEdit: () => _openEditCustomer(context),
-              ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: RefreshIndicator(
+            color: Theme.of(context).colorScheme.primary,
+            onRefresh: provider.loadAllData,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth > 750;
+
+                if (isTablet) {
+                  return _buildTabletLayout(context, provider);
+                }
+                return _buildMobileLayout(context, provider);
+              },
             ),
-            if (provider.isLoading)
-              const SliverFillRemaining(child: _CustomerDetailSkeleton())
-            else if (provider.errorMessage != null)
-              SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    provider.errorMessage!,
-                    style: const TextStyle(color: AppColors.danger),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 8),
-                  CustomerKpiRow(
-                    totalSpent: c.totalSpent,
-                    orderCount: c.orderCount,
-                    avgOrder: provider.avgOrderValue,
-                    walletBalance: c.walletBalance,
-                  ),
-                  const SizedBox(height: 24),
-                  if (provider.hasCredit)
-                    CustomerCreditSection(
-                      debt: provider.currentDebt,
-                      limit: provider.creditLimit,
-                      isActive: provider.creditIsActive,
-                      creditId: provider.creditId!,
-                      customer: c,
-                      movements: provider.creditMovements,
-                      onPaymentRegistered: provider.loadAllData,
-                    ),
-                  if (provider.addresses.isNotEmpty)
-                    CustomerAddressesSection(addresses: provider.addresses),
-                  if (provider.topProducts.isNotEmpty)
-                    CustomerTopProductsSection(products: provider.topProducts),
-                  CustomerRecentOrdersSection(orders: provider.recentOrders),
-                  const SizedBox(height: 40),
-                ]),
-              ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    CustomerDetailProvider provider,
+  ) {
+    final c = provider.customer;
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: CustomerHeaderCard(
+            customer: c,
+            onEdit: () => _openEditCustomer(context),
+          ),
+        ),
+        if (provider.isLoading)
+          const SliverFillRemaining(child: _CustomerDetailSkeleton())
+        else if (provider.errorMessage != null)
+          SliverFillRemaining(
+            child: Center(
+              child: Text(
+                provider.errorMessage!,
+                style: const TextStyle(color: AppColors.danger),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildListDelegate([
+              const SizedBox(height: 8),
+              CustomerKpiRow(
+                totalSpent: c.totalSpent,
+                orderCount: c.orderCount,
+                avgOrder: provider.avgOrderValue,
+                walletBalance: c.walletBalance,
+              ),
+              const SizedBox(height: 24),
+              if (provider.hasCredit)
+                CustomerCreditSection(
+                  debt: provider.currentDebt,
+                  limit: provider.creditLimit,
+                  isActive: provider.creditIsActive,
+                  creditId: provider.creditId!,
+                  customer: c,
+                  movements: provider.creditMovements,
+                  onPaymentRegistered: provider.loadAllData,
+                ),
+              if (provider.addresses.isNotEmpty)
+                CustomerAddressesSection(addresses: provider.addresses),
+              if (provider.topProducts.isNotEmpty)
+                CustomerTopProductsSection(products: provider.topProducts),
+              CustomerRecentOrdersSection(orders: provider.recentOrders),
+              const SizedBox(height: 40),
+            ]),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTabletLayout(
+    BuildContext context,
+    CustomerDetailProvider provider,
+  ) {
+    final c = provider.customer;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Columna Izquierda (Master)
+        Expanded(
+          flex: 4,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: CustomerHeaderCard(
+                  customer: c,
+                  onEdit: () => _openEditCustomer(context),
+                ),
+              ),
+              if (provider.isLoading)
+                const SliverToBoxAdapter(
+                  child: _CustomerDetailSkeleton(isTabletLeftColumn: true),
+                )
+              else if (provider.errorMessage != null)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(color: AppColors.danger),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    const SizedBox(height: 8),
+                    CustomerKpiRow(
+                      totalSpent: c.totalSpent,
+                      orderCount: c.orderCount,
+                      avgOrder: provider.avgOrderValue,
+                      walletBalance: c.walletBalance,
+                    ),
+                    const SizedBox(height: 24),
+                    if (provider.hasCredit)
+                      CustomerCreditSection(
+                        debt: provider.currentDebt,
+                        limit: provider.creditLimit,
+                        isActive: provider.creditIsActive,
+                        creditId: provider.creditId!,
+                        customer: c,
+                        movements: provider.creditMovements,
+                        onPaymentRegistered: provider.loadAllData,
+                      ),
+                    const SizedBox(height: 40),
+                  ]),
+                ),
+            ],
+          ),
+        ),
+
+        // Columna Derecha (Detail)
+        if (!provider.isLoading && provider.errorMessage == null)
+          Expanded(
+            flex: 6,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.only(top: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      if (provider.addresses.isNotEmpty)
+                        CustomerAddressesSection(addresses: provider.addresses),
+                      if (provider.topProducts.isNotEmpty)
+                        CustomerTopProductsSection(
+                          products: provider.topProducts,
+                        ),
+                      CustomerRecentOrdersSection(
+                        orders: provider.recentOrders,
+                      ),
+                      const SizedBox(height: 40),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (provider.isLoading)
+          Expanded(
+            flex: 6,
+            child: CustomScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: const _CustomerDetailSkeleton(
+                      isTabletRightColumn: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
 
 class _CustomerDetailSkeleton extends StatelessWidget {
-  const _CustomerDetailSkeleton();
+  final bool isTabletLeftColumn;
+  final bool isTabletRightColumn;
+
+  const _CustomerDetailSkeleton({
+    this.isTabletLeftColumn = false,
+    this.isTabletRightColumn = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (isTabletRightColumn) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            AppShimmer(height: 120, borderRadius: 16),
+            SizedBox(height: 24),
+            AppShimmer(height: 200, borderRadius: 16),
+            SizedBox(height: 24),
+            AppShimmer(height: 250, borderRadius: 16),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
+          if (!isTabletLeftColumn) const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: const [
               Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
-              SizedBox(width: 12),
+              SizedBox(width: 10),
               Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
-              SizedBox(width: 12),
+              SizedBox(width: 10),
+              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+              SizedBox(width: 10),
               Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
             ],
           ),
           const SizedBox(height: 24),
-          const AppShimmer(width: 150, height: 24, borderRadius: 4),
-          const SizedBox(height: 16),
-          const AppShimmer(height: 120, borderRadius: 16),
-          const SizedBox(height: 24),
-          const AppShimmer(width: 180, height: 24, borderRadius: 4),
-          const SizedBox(height: 16),
-          const AppShimmer(height: 200, borderRadius: 16),
+          const AppShimmer(height: 180, borderRadius: 16),
+          if (!isTabletLeftColumn) ...const [
+            SizedBox(height: 24),
+            AppShimmer(height: 120, borderRadius: 16),
+            SizedBox(height: 24),
+            AppShimmer(height: 250, borderRadius: 16),
+          ],
         ],
       ),
     );

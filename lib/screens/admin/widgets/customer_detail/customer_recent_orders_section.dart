@@ -26,8 +26,30 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                 ),
               )
               : Column(
-                children:
-                    orders.take(5).map((o) => _OrderRow(order: o)).toList(),
+                children: [
+                  ...orders.take(5).toList().asMap().entries.map((entry) {
+                    return _OrderRow(
+                      order: entry.value,
+                      isLast:
+                          entry.key ==
+                          (orders.length > 5 ? 4 : orders.length - 1),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () {
+                        // Implementar navegación a lista completa
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Ver todos los pedidos →'),
+                    ),
+                  ),
+                ],
               ),
     );
   }
@@ -35,7 +57,8 @@ class CustomerRecentOrdersSection extends StatelessWidget {
 
 class _OrderRow extends StatelessWidget {
   final RecentOrder order;
-  const _OrderRow({required this.order});
+  final bool isLast;
+  const _OrderRow({required this.order, this.isLast = false});
 
   bool get _isCancelled => order.status.toUpperCase() == 'CANCELLED';
 
@@ -157,7 +180,7 @@ class _OrderRow extends StatelessWidget {
                         Text(
                           _methodLabel(order.paymentMethod),
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.textMuted,
                           ),
                         ),
@@ -166,7 +189,7 @@ class _OrderRow extends StatelessWidget {
                           Text(
                             '+${order.pointsEarned}pts',
                             style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: Colors.amber,
                               fontWeight: FontWeight.w600,
                             ),
@@ -177,7 +200,7 @@ class _OrderRow extends StatelessWidget {
                           Text(
                             '-${order.pointsUsed}pts',
                             style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: AppColors.textMuted,
                             ),
                           ),
@@ -188,7 +211,7 @@ class _OrderRow extends StatelessWidget {
                       Text(
                         'Descuento: S/ ${order.discountAmount.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: AppColors.success,
                         ),
                       ),
@@ -196,7 +219,7 @@ class _OrderRow extends StatelessWidget {
                       Text(
                         'Vence: ${DateFormat('d MMM yyyy', 'es').format(order.dueDate!)}',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color:
                               order.dueDate!.isBefore(DateTime.now())
                                   ? AppColors.danger
@@ -235,7 +258,7 @@ class _OrderRow extends StatelessWidget {
                     child: Text(
                       _statusLabel,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: _statusColor,
                         fontWeight: FontWeight.bold,
                       ),
@@ -245,7 +268,7 @@ class _OrderRow extends StatelessWidget {
                     Text(
                       'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: AppColors.danger,
                         fontWeight: FontWeight.w600,
                       ),
@@ -254,10 +277,11 @@ class _OrderRow extends StatelessWidget {
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Divider(height: 1, color: AppColors.border),
-          ),
+          if (!isLast)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
         ],
       ),
     );

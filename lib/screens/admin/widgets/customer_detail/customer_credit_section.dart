@@ -111,16 +111,34 @@ class CustomerCreditSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: pct,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isRisk ? AppColors.danger : AppColors.success,
-              ),
-              minHeight: 8,
-            ),
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(begin: 0, end: pct),
+            builder: (context, value, child) {
+              // Interpolar el color
+              final animColor = Color.lerp(
+                AppColors.success,
+                AppColors.danger,
+                value >= 0.8 ? 1.0 : (value / 0.8), // Rojo cuando >= 80%
+              );
+
+              return Semantics(
+                label: 'Crédito usado: ${(value * 100).toStringAsFixed(0)}%',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: value,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      animColor ??
+                          (isRisk ? AppColors.danger : AppColors.success),
+                    ),
+                    minHeight: 8,
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 4),
           Align(
@@ -135,7 +153,7 @@ class CustomerCreditSection extends StatelessWidget {
             ),
           ),
 
-          if (debt > 0 && isActive) ...[
+          if (isActive) ...[
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -223,7 +241,7 @@ class _CreditMovementRow extends StatelessWidget {
                   Text(
                     movement.notes!,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppColors.textMuted,
                     ),
                     maxLines: 1,
@@ -246,7 +264,7 @@ class _CreditMovementRow extends StatelessWidget {
               Text(
                 DateFormat('d MMM', 'es').format(movement.createdAt),
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: AppColors.textMuted,
                 ),
               ),
@@ -282,7 +300,7 @@ class _CreditStat extends StatelessWidget {
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
         ),
       ],
     );

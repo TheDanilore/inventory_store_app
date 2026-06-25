@@ -23,30 +23,34 @@ class CustomerKpiRow extends StatelessWidget {
         children: [
           _KpiCard(
             icon: Icons.attach_money_rounded,
-            value: 'S/ ${totalSpent.toStringAsFixed(0)}',
+            value: totalSpent,
+            prefix: 'S/ ',
             label: 'Total',
             color: AppColors.success,
           ),
           const SizedBox(width: 10),
           _KpiCard(
             icon: Icons.shopping_bag_rounded,
-            value: '$orderCount',
+            value: orderCount.toDouble(),
+            prefix: '',
             label: 'Pedidos',
             color: AppColors.primary,
           ),
           const SizedBox(width: 10),
           _KpiCard(
             icon: Icons.bar_chart_rounded,
-            value: 'S/ ${avgOrder.toStringAsFixed(0)}',
+            value: avgOrder,
+            prefix: 'S/ ',
             label: 'Promedio',
-            color: Colors.purple,
+            color: AppColors.blue,
           ),
           const SizedBox(width: 10),
           _KpiCard(
             icon: Icons.stars_rounded,
-            value: '$walletBalance',
+            value: walletBalance.toDouble(),
+            prefix: '',
             label: 'Monedas',
-            color: Colors.amber.shade700,
+            color: AppColors.gold,
           ),
         ],
       ),
@@ -56,54 +60,71 @@ class CustomerKpiRow extends StatelessWidget {
 
 class _KpiCard extends StatelessWidget {
   final IconData icon;
-  final String value;
+  final double value;
+  final String prefix;
   final String label;
   final Color color;
 
   const _KpiCard({
     required this.icon,
     required this.value,
+    required this.prefix,
     required this.label,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final displayValue = '$prefix${value.toStringAsFixed(0)}';
+
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+      child: Semantics(
+        label: '$label: $displayValue',
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(height: 4),
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                tween: Tween<double>(begin: 0, end: value),
+                builder: (context, val, child) {
+                  return Text(
+                    '$prefix${val.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  );
+                },
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -78,7 +78,7 @@ class _AddressRow extends StatelessWidget {
                         child: const Text(
                           'Principal',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
                           ),
@@ -89,7 +89,7 @@ class _AddressRow extends StatelessWidget {
                 Text(
                   '${address.district}, ${address.province} - ${address.department}',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.textMuted,
                   ),
                 ),
