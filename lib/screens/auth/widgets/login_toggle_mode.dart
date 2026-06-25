@@ -22,18 +22,19 @@ class LoginToggleMode extends StatelessWidget {
           isLoginMode ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? ',
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
-        MouseRegion(
-          cursor:
-              isLoading ? SystemMouseCursors.basic : SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: isLoading ? null : onToggle,
-            child: Text(
-              isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
+        TextButton(
+          onPressed: isLoading ? null : onToggle,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),

@@ -31,6 +31,7 @@ class LoginFormCard extends StatefulWidget {
 
 class _LoginFormCardState extends State<LoginFormCard> {
   bool _obscurePassword = true;
+  bool _isButtonPressed = false;
 
   String? _validateName(String? value) {
     if (widget.isLoginMode) return null;
@@ -220,38 +221,56 @@ class _LoginFormCardState extends State<LoginFormCard> {
               const SizedBox(height: 22),
             ],
 
-            SizedBox(
-              height: 54,
-              child: ElevatedButton(
-                onPressed: widget.isLoading ? null : widget.onAuthenticate,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            GestureDetector(
+              onTapDown:
+                  widget.isLoading
+                      ? null
+                      : (_) => setState(() => _isButtonPressed = true),
+              onTapUp:
+                  widget.isLoading
+                      ? null
+                      : (_) => setState(() => _isButtonPressed = false),
+              onTapCancel:
+                  widget.isLoading
+                      ? null
+                      : () => setState(() => _isButtonPressed = false),
+              child: AnimatedScale(
+                scale: _isButtonPressed ? 0.95 : 1.0,
+                duration: const Duration(milliseconds: 150),
+                child: SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: widget.isLoading ? null : widget.onAuthenticate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child:
+                        widget.isLoading
+                            ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                            : Text(
+                              widget.isLoginMode
+                                  ? 'Iniciar sesión'
+                                  : 'Crear cuenta',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
                   ),
                 ),
-                child:
-                    widget.isLoading
-                        ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                        : Text(
-                          widget.isLoginMode
-                              ? 'Iniciar sesión'
-                              : 'Crear cuenta',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
               ),
             ),
           ],
