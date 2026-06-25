@@ -8,14 +8,22 @@ class CategoriesSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    final crossAxisCount = MediaQuery.of(context).size.width >= 600 ? 2 : 1;
+
+    return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: itemCount,
       physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisExtent: 88, // Altura fija que coincide con las tarjetas reales
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
       itemBuilder: (context, index) {
         return Card(
           elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(color: Colors.grey.shade100),
@@ -36,9 +44,10 @@ class CategoriesSkeleton extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       AppShimmer(
-                        width: 150,
+                        width: 100, // Menos ancho porque puede ser de 2 columnas
                         height: 16,
                         borderRadius: 4,
                       ),
@@ -57,6 +66,7 @@ class CategoriesSkeleton extends StatelessWidget {
                 // Status Shimmer
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     AppShimmer(
                       width: 50,

@@ -73,7 +73,7 @@ class AdminPageBlocks extends StatelessWidget {
                             isSelected ? null : () => onPageChanged(page),
                         style: OutlinedButton.styleFrom(
                           padding: EdgeInsets.zero, // Quitamos padding interno
-                          minimumSize: const Size(36, 36),
+                          minimumSize: const Size(48, 48), // Fix: 48dp mínimo para accesibilidad
                           // Si está seleccionado: fondo primario, si no: transparente
                           backgroundColor:
                               isSelected ? primaryColor : Colors.grey.shade100,

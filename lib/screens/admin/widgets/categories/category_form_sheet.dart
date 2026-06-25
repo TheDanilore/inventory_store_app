@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/providers/admin/categories_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_text_field.dart';
 
 class CategoryFormSheet extends StatefulWidget {
   final CategoryModel? category;
@@ -57,150 +58,129 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isEditing = widget.category != null;
     final provider = context.watch<CategoriesProvider>();
+    final isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Material(
       color: Colors.white,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-
-              Text(
-                isEditing ? 'Editar Categoría' : 'Nueva Categoría',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-
-              const Text(
-                'Nombre de la categoría',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  hintText: 'Ej. Electrónica, Ropa...',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                validator:
-                    (val) =>
-                        val == null || val.trim().isEmpty
-                            ? 'El nombre es requerido'
-                            : null,
-              ),
-
-              const SizedBox(height: 16),
-              const Text(
-                'Descripción (Opcional)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText:
-                      'Breve descripción de los productos en esta categoría...',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text(
-                  'Estado',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  _isActive
-                      ? 'La categoría estará visible en el sistema'
-                      : 'La categoría estará oculta',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                value: _isActive,
-                activeThumbColor: AppColors.primary,
-                contentPadding: EdgeInsets.zero,
-                onChanged:
-                    provider.isSaving
-                        ? null
-                        : (val) => setState(() => _isActive = val),
-              ),
-
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: provider.isSaving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+      borderRadius: isTablet 
+          ? BorderRadius.circular(24) 
+          : const BorderRadius.vertical(top: Radius.circular(24)),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Handle (solo visible en bottom sheet / móvil)
+                if (!isTablet)
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  child:
-                      provider.isSaving
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : const Text(
-                            'Guardar Categoría',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+
+                Text(
+                  isEditing ? 'Editar Categoría' : 'Nueva Categoría',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+
+                AppTextField(
+                  controller: _nameCtrl,
+                  label: 'Nombre de la categoría',
+                  icon: Icons.category_outlined,
+                  hintText: 'Ej. Electrónica, Ropa...',
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  validator:
+                      (val) =>
+                          val == null || val.trim().isEmpty
+                              ? 'El nombre es requerido'
+                              : null,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: _descCtrl,
+                  label: 'Descripción (Opcional)',
+                  icon: Icons.description_outlined,
+                  hintText: 'Breve descripción de los productos en esta categoría...',
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.done,
+                ),
+
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: Text(
+                    'Estado',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _isActive
+                        ? 'La categoría estará visible en el sistema'
+                        : 'La categoría estará oculta',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  value: _isActive,
+                  activeThumbColor: AppColors.primary,
+                  activeTrackColor: AppColors.primary.withValues(alpha: 0.4), // Fix de activeTrackColor
+                  contentPadding: EdgeInsets.zero,
+                  onChanged:
+                      provider.isSaving
+                          ? null
+                          : (val) => setState(() => _isActive = val),
+                ),
+
+                const SizedBox(height: 24),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: provider.isSaving ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child:
+                        provider.isSaving
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : const Text(
+                              'Guardar Categoría',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
