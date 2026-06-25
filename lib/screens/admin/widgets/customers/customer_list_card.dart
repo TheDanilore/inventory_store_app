@@ -4,7 +4,7 @@ import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
-class CustomerListCard extends StatelessWidget {
+class CustomerListCard extends StatefulWidget {
   final CustomerSummary customer;
   final VoidCallback onTap;
 
@@ -15,143 +15,157 @@ class CustomerListCard extends StatelessWidget {
   });
 
   @override
+  State<CustomerListCard> createState() => _CustomerListCardState();
+}
+
+class _CustomerListCardState extends State<CustomerListCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    return Semantics(
+      label:
+          '${widget.customer.fullName}, ${widget.customer.orderCount} compras, ${widget.customer.currentDebt > 0 ? 'Deuda de S/ ${widget.customer.currentDebt.toStringAsFixed(0)}' : 'Sin deudas'}, Total gastado S/ ${widget.customer.totalSpent.toStringAsFixed(0)}',
+      button: true,
+      child: AnimatedScale(
+        scale: _isHovered ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _CustomerAvatar(customer: customer),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTapDown: (_) => setState(() => _isHovered = true),
+              onTapUp: (_) => setState(() => _isHovered = false),
+              onTapCancel: () => setState(() => _isHovered = false),
+              onTap: widget.onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    _CustomerAvatar(customer: widget.customer),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              customer.fullName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: AppColors.textPrimary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (!customer.isActive)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              margin: const EdgeInsets.only(left: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Inactivo',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.bold,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  widget.customer.fullName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      if (customer.phone != null && customer.phone!.isNotEmpty)
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.phone_rounded,
-                              size: 12,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              customer.phone!,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _Tag(
-                            icon: Icons.shopping_bag_rounded,
-                            text: '${customer.orderCount} compras',
-                            color: Colors.blue,
+                              if (!widget.customer.isActive)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  margin: const EdgeInsets.only(left: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Inactivo',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          if (customer.currentDebt > 0)
-                            _Tag(
-                              icon: Icons.warning_rounded,
-                              text:
-                                  'Debe S/ ${customer.currentDebt.toStringAsFixed(0)}',
-                              color: Colors.red,
+                          const SizedBox(height: 4),
+                          if (widget.customer.phone != null &&
+                              widget.customer.phone!.isNotEmpty)
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.phone_rounded,
+                                  size: 12,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.customer.phone!,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _Tag(
+                                icon: Icons.shopping_bag_rounded,
+                                text: '${widget.customer.orderCount} compras',
+                                color: AppColors.blue,
+                              ),
+                              const SizedBox(width: 8),
+                              if (widget.customer.currentDebt > 0)
+                                _Tag(
+                                  icon: Icons.warning_rounded,
+                                  text:
+                                      'Debe S/ ${widget.customer.currentDebt.toStringAsFixed(0)}',
+                                  color: AppColors.danger,
+                                ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Total Gastado',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
                     ),
-                    Text(
-                      'S/ ${customer.totalSpent.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (customer.lastOrderAt != null)
-                      Text(
-                        'Últ: ${DateFormat('dd/MM/yy').format(customer.lastOrderAt!)}',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textSecondary,
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'S/ ${widget.customer.totalSpent.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: AppColors.primary,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        if (widget.customer.lastOrderAt != null)
+                          Text(
+                            'Últ: ${DateFormat('dd/MM/yy').format(widget.customer.lastOrderAt!)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -196,7 +210,7 @@ class _CustomerAvatar extends StatelessWidget {
 class _Tag extends StatelessWidget {
   final IconData icon;
   final String text;
-  final MaterialColor color;
+  final Color color;
 
   const _Tag({required this.icon, required this.text, required this.color});
 
@@ -205,20 +219,20 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.shade50,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.shade200),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 10, color: color.shade700),
+          Icon(icon, size: 10, color: color),
           const SizedBox(width: 4),
           Text(
             text,
             style: TextStyle(
-              fontSize: 10,
-              color: color.shade700,
+              fontSize: 11,
+              color: color,
               fontWeight: FontWeight.w600,
             ),
           ),

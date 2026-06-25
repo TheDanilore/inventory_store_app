@@ -45,7 +45,7 @@ class TopCustomersSection extends StatelessWidget {
         ),
         SizedBox(
           height:
-              125, // Incrementado de 110 a 125 para evitar el RenderFlex overflow
+              140, // Incrementado de 125 a 140 para prevenir overflow con fuentes grandes
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -53,63 +53,104 @@ class TopCustomersSection extends StatelessWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, i) {
               final c = top[i];
-              return GestureDetector(
-                onTap: () => onTap(c),
-                child: Container(
-                  width: 130,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _medals[i],
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const Spacer(),
-                          _MiniAvatar(name: c.fullName, avatarUrl: c.avatarUrl),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        c.fullName.split(' ').first,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'S/ ${c.totalSpent.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _TopCustomerCard(customer: c, medal: _medals[i], onTap: onTap);
             },
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TopCustomerCard extends StatefulWidget {
+  final CustomerSummary customer;
+  final String medal;
+  final void Function(CustomerSummary) onTap;
+
+  const _TopCustomerCard({
+    required this.customer,
+    required this.medal,
+    required this.onTap,
+  });
+
+  @override
+  State<_TopCustomerCard> createState() => _TopCustomerCardState();
+}
+
+class _TopCustomerCardState extends State<_TopCustomerCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: _isHovered ? 0.96 : 1.0,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOutCubic,
+      child: Container(
+        width: 130,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTapDown: (_) => setState(() => _isHovered = true),
+            onTapUp: (_) => setState(() => _isHovered = false),
+            onTapCancel: () => setState(() => _isHovered = false),
+            onTap: () => widget.onTap(widget.customer),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        widget.medal,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const Spacer(),
+                      _MiniAvatar(
+                        name: widget.customer.fullName,
+                        avatarUrl: widget.customer.avatarUrl,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.customer.fullName.split(' ').first,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'S/ ${widget.customer.totalSpent.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

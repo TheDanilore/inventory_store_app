@@ -70,16 +70,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   }
 
   void _openDetail(CustomerSummary customer) {
-    context
-        .push(
-          '/admin/customer-detail/${customer.id}',
-          extra: customer,
-        )
-        .then((_) {
-          if (mounted) {
-            context.read<CustomersProvider>().reload();
-          }
-        });
+    context.push('/admin/customer-detail/${customer.id}', extra: customer).then(
+      (_) {
+        if (mounted) {
+          context.read<CustomersProvider>().reload();
+        }
+      },
+    );
   }
 
   @override
@@ -117,186 +114,283 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => provider.reload(),
-        child: CustomScrollView(
-          controller: _scrollCtrl,
-          slivers: [
-            // BUSCADOR
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por nombre, documento o teléfono...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon:
-                        provider.isSearching
-                            ? const Padding(
-                              padding: EdgeInsets.all(12.0),
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            )
-                            : _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                provider.search('');
-                              },
-                            )
-                            : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onChanged: (val) => provider.search(val.trim()),
-                ),
-              ),
-            ),
-
-            // ESTADÍSTICAS GLOBALES
-            SliverToBoxAdapter(child: CustomersStatsHeader(provider: provider)),
-
-            // TOP 5
-            if (provider.topCustomers.isNotEmpty &&
-                _searchCtrl.text.isEmpty &&
-                !provider.showOnlyWithDebt)
-              SliverToBoxAdapter(
-                child: TopCustomersSection(
-                  top: provider.topCustomers,
-                  onTap: _openDetail,
-                ),
-              ),
-
-            // TABS
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TabBar(
-                    controller: _tabCtrl,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                    tabs: [
-                      const Tab(text: 'Todos los clientes'),
-                      Tab(
-                        text:
-                            provider.debtCustomersCount > 0
-                                ? 'Con deuda activa (${provider.debtCustomersCount})'
-                                : 'Con deuda activa',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // LISTA PRINCIPAL
-            if (provider.isLoading && provider.customers.isEmpty)
-              const SliverFillRemaining(child: _CustomersSkeleton())
-            else if (provider.customers.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 64,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        provider.showOnlyWithDebt
-                            ? 'No hay clientes con deuda activa'
-                            : 'No hay clientes registrados',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index == provider.customers.length) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child:
-                                provider.isLoading
-                                    ? const CircularProgressIndicator()
-                                    : const Text(
-                                      'No hay más clientes',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                          ),
-                        );
-                      }
-
-                      final c = provider.customers[index];
-                      return CustomerListCard(
-                        customer: c,
-                        onTap: () => _openDetail(c),
-                      );
-                    },
-                    childCount:
-                        provider.customers.length + (provider.hasMore ? 1 : 0),
-                  ),
-                ),
-              ),
-
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 80),
-            ), // Padding FAB
-          ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 750) {
+                return _buildTabletLayout(context, provider);
+              }
+              return _buildMobileLayout(context, provider);
+            },
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildMobileLayout(BuildContext context, CustomersProvider provider) {
+    return RefreshIndicator(
+      onRefresh: () => provider.reload(),
+      child: CustomScrollView(
+        controller: _scrollCtrl,
+        slivers: [
+          // BUSCADOR
+          _buildSearchSliver(provider),
+
+          // ESTADÍSTICAS GLOBALES
+          SliverToBoxAdapter(child: CustomersStatsHeader(provider: provider)),
+
+          // TOP 5
+          if (provider.topCustomers.isNotEmpty &&
+              _searchCtrl.text.isEmpty &&
+              !provider.showOnlyWithDebt)
+            SliverToBoxAdapter(
+              child: TopCustomersSection(
+                top: provider.topCustomers,
+                onTap: _openDetail,
+              ),
+            ),
+
+          // TABS
+          _buildTabsSliver(provider),
+
+          // LISTA PRINCIPAL
+          _buildListSliver(provider),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 80)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout(BuildContext context, CustomersProvider provider) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // MASTER: Búsqueda, Estadísticas, Top 5 y Tabs
+        Expanded(
+          flex: 4,
+          child: CustomScrollView(
+            slivers: [
+              _buildSearchSliver(provider),
+              SliverToBoxAdapter(
+                child: CustomersStatsHeader(provider: provider),
+              ),
+              if (provider.topCustomers.isNotEmpty &&
+                  _searchCtrl.text.isEmpty &&
+                  !provider.showOnlyWithDebt)
+                SliverToBoxAdapter(
+                  child: TopCustomersSection(
+                    top: provider.topCustomers,
+                    onTap: _openDetail,
+                  ),
+                ),
+              _buildTabsSliver(provider),
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        // DETAIL: Lista de clientes
+        Expanded(
+          flex: 6,
+          child: RefreshIndicator(
+            onRefresh: () => provider.reload(),
+            child: CustomScrollView(
+              controller: _scrollCtrl,
+              slivers: [
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                _buildListSliver(provider),
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchSliver(CustomersProvider provider) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Semantics(
+          label: 'Buscar cliente',
+          child: TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'Buscar por nombre, documento o teléfono...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon:
+                  provider.isSearching
+                      ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                      : _searchCtrl.text.isNotEmpty
+                      ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          provider.search('');
+                        },
+                      )
+                      : null,
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (val) => provider.search(val.trim()),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabsSliver(CustomersProvider provider) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TabBar(
+            controller: _tabCtrl,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            indicator: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+            tabs: [
+              const Tab(text: 'Todos los clientes'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Con deuda activa'),
+                    if (provider.debtCustomersCount > 0) ...[
+                      const SizedBox(width: 8),
+                      Badge(
+                        backgroundColor: AppColors.accent,
+                        label: Text('${provider.debtCustomersCount}'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListSliver(CustomersProvider provider) {
+    if (provider.isLoading && provider.customers.isEmpty) {
+      return const _CustomersSkeleton();
+    } else if (provider.customers.isEmpty) {
+      return SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.people_outline, size: 64, color: Colors.grey.shade300),
+              const SizedBox(height: 16),
+              Text(
+                provider.showOnlyWithDebt
+                    ? 'No hay clientes con deuda activa'
+                    : 'No hay clientes registrados',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              if (!provider.showOnlyWithDebt && _searchCtrl.text.isEmpty)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const CustomerFormSheet(),
+                    ).then((saved) {
+                      if (saved == true && mounted) {
+                        provider.reload();
+                      }
+                    });
+                  },
+                  icon: const Icon(
+                    Icons.person_add_rounded,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Registrar Cliente',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              if (index == provider.customers.length) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child:
+                        provider.isLoading
+                            ? const CircularProgressIndicator()
+                            : const Text(
+                              'No hay más clientes',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                  ),
+                );
+              }
+
+              final c = provider.customers[index];
+              return CustomerListCard(customer: c, onTap: () => _openDetail(c));
+            },
+            childCount: provider.customers.length + (provider.hasMore ? 1 : 0),
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -305,41 +399,41 @@ class _CustomersSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
+    return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: 6,
-      itemBuilder: (context, index) {
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                const AppShimmer(width: 48, height: 48, borderRadius: 24),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      AppShimmer(width: 150, height: 16, borderRadius: 4),
-                      SizedBox(height: 8),
-                      AppShimmer(width: 100, height: 12, borderRadius: 4),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const AppShimmer(width: 60, height: 24, borderRadius: 12),
-              ],
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
             ),
-          ),
-        );
-      },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const AppShimmer(width: 48, height: 48, borderRadius: 24),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AppShimmer(width: 150, height: 16, borderRadius: 4),
+                        SizedBox(height: 8),
+                        AppShimmer(width: 100, height: 12, borderRadius: 4),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const AppShimmer(width: 60, height: 24, borderRadius: 12),
+                ],
+              ),
+            ),
+          );
+        }, childCount: 6),
+      ),
     );
   }
 }

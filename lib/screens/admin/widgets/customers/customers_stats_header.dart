@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/admin/customers_provider.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class CustomersStatsHeader extends StatelessWidget {
   final CustomersProvider provider;
@@ -13,7 +14,7 @@ class CustomersStatsHeader extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
+          colors: [AppColors.primary, Color(0xFF2A2A4A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -29,54 +30,58 @@ class CustomersStatsHeader extends StatelessWidget {
       child: Row(
         children: [
           _StatItem(
-            value: '${provider.totalCustomersCount}',
+            value: provider.totalCustomersCount.toDouble(),
             label: 'Total',
             icon: Icons.people_alt_rounded,
           ),
           _VerticalDivider(),
           _StatItem(
-            value: '${provider.activeCustomersCount}',
+            value: provider.activeCustomersCount.toDouble(),
             label: 'Activos',
             icon: Icons.check_circle_rounded,
             valueColor: Colors.greenAccent,
           ),
           _VerticalDivider(),
           _StatItem(
-            value: _compact(provider.totalRevenue),
+            value: provider.totalRevenue,
             label: 'Ingresos',
             icon: Icons.attach_money_rounded,
             valueColor: Colors.amberAccent,
+            isCurrency: true,
           ),
           _VerticalDivider(),
           _StatItem(
-            value: _compact(provider.totalDebt),
+            value: provider.totalDebt,
             label: 'Por cobrar',
             icon: Icons.credit_card_rounded,
             valueColor: Colors.redAccent.shade100,
+            isCurrency: true,
           ),
         ],
       ),
     );
   }
 
-  String _compact(double v) {
-    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}K';
-    return v.toStringAsFixed(0);
+  static String _compact(double v, bool isCurrency) {
+    if (v >= 1000000) return '${isCurrency ? 'S/ ' : ''}${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '${isCurrency ? 'S/ ' : ''}${(v / 1000).toStringAsFixed(1)}K';
+    return isCurrency ? 'S/ ${v.toStringAsFixed(0)}' : v.toStringAsFixed(0);
   }
 }
 
 class _StatItem extends StatelessWidget {
-  final String value;
+  final double value;
   final String label;
   final IconData icon;
   final Color? valueColor;
+  final bool isCurrency;
 
   const _StatItem({
     required this.value,
     required this.label,
     required this.icon,
     this.valueColor,
+    this.isCurrency = false,
   });
 
   @override
@@ -87,21 +92,28 @@ class _StatItem extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white70, size: 18),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor ?? Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(begin: 0, end: value),
+            builder: (context, val, child) {
+              return Text(
+                CustomersStatsHeader._compact(val, isCurrency),
+                style: TextStyle(
+                  color: valueColor ?? Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              );
+            },
           ),
           Text(
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 10,
+              fontSize: 11,
             ),
           ),
         ],
