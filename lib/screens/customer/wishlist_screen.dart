@@ -64,9 +64,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
       context: context,
       builder:
           (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             title: const Text(
               'Eliminar de deseos',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             content: Text(
               '¿Quitar "${entry.product.name}" de tu lista?',
@@ -80,16 +83,19 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 onPressed: () => Navigator.pop(context, false),
                 child: const Text(
                   'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFFFFF0F0),
+                  foregroundColor: AppColors.error,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 onPressed: () => Navigator.pop(context, true),
@@ -131,44 +137,49 @@ class _WishlistScreenState extends State<WishlistScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () async {
-          await provider.fetchWishlist(reset: true);
-        },
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Column(
-                  children: [
-                    _buildHeaderBanner(provider),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
-
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: _buildBody(provider),
-            ),
-
-            if (provider.isLoadingMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () async {
+              await provider.fetchWishlist(reset: true);
+            },
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      children: [
+                        _buildHeaderBanner(provider),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          ],
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: _buildBody(provider),
+                ),
+
+                if (provider.isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -191,9 +202,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.28),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: AppColors.primary.withValues(alpha: 0.20),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -302,7 +313,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  elevation: 0,
+                  elevation: 6,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
