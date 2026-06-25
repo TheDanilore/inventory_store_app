@@ -73,7 +73,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     context
         .push(
           '/admin/customer-detail/${customer.id}',
-          extra: {'customer': customer},
+          extra: customer,
         )
         .then((_) {
           if (mounted) {
