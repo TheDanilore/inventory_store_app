@@ -23,6 +23,7 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
+  OrderModel? _selectedOrder;
 
   @override
   void initState() {
@@ -295,7 +296,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Future<void> _showOrderDetails(OrderModel order) async {
+  Future<void> _showOrderDetails(OrderModel order, bool isWide) async {
+    if (isWide) {
+      setState(() {
+        _selectedOrder = order;
+      });
+      return;
+    }
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -314,7 +322,82 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
+  void _onOrderEmbeddedPop(bool wasModified) {
+    if (wasModified && mounted) {
+      context.read<OrdersProvider>().loadOrders(background: true);
+    }
+    setState(() {
+      _selectedOrder = null;
+    });
+  }
+
   Future<String?> _showPaymentMethodBottomSheet(OrderModel order) {
+    final isWide = MediaQuery.of(context).size.width >= 800;
+
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Selecciona cómo pagó el cliente:',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Monto a cobrar: S/ ${order.totalAmount.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 24),
+        _PaymentOptionButton(
+          label: 'EFECTIVO',
+          icon: Icons.payments_outlined,
+          onSelect: () => Navigator.pop(context, 'EFECTIVO'),
+        ),
+        const SizedBox(height: 12),
+        _PaymentOptionButton(
+          label: 'YAPE',
+          icon: Icons.phone_android_rounded,
+          onSelect: () => Navigator.pop(context, 'YAPE'),
+        ),
+        const SizedBox(height: 12),
+        _PaymentOptionButton(
+          label: 'PLIN',
+          icon: Icons.phone_android_rounded,
+          onSelect: () => Navigator.pop(context, 'PLIN'),
+        ),
+        const SizedBox(height: 12),
+        _PaymentOptionButton(
+          label: 'TARJETA',
+          icon: Icons.credit_card_rounded,
+          onSelect: () => Navigator.pop(context, 'TARJETA'),
+        ),
+        const SizedBox(height: 12),
+        _PaymentOptionButton(
+          label: 'CRÉDITO',
+          icon: Icons.schedule_rounded,
+          onSelect: () => Navigator.pop(context, 'CRÉDITO'),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+
+    if (isWide) {
+      return showDialog<String>(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              content: SizedBox(width: 400, child: content),
+            ),
+      );
+    }
+
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -326,56 +409,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Selecciona cómo pagó el cliente:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Monto a cobrar: S/ ${order.totalAmount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _PaymentOptionButton(
-                  label: 'EFECTIVO',
-                  icon: Icons.payments_outlined,
-                  onSelect: () => Navigator.pop(ctx, 'EFECTIVO'),
-                ),
-                const SizedBox(height: 12),
-                _PaymentOptionButton(
-                  label: 'YAPE',
-                  icon: Icons.phone_android_rounded,
-                  onSelect: () => Navigator.pop(ctx, 'YAPE'),
-                ),
-                const SizedBox(height: 12),
-                _PaymentOptionButton(
-                  label: 'PLIN',
-                  icon: Icons.phone_android_rounded,
-                  onSelect: () => Navigator.pop(ctx, 'PLIN'),
-                ),
-                const SizedBox(height: 12),
-                _PaymentOptionButton(
-                  label: 'TARJETA',
-                  icon: Icons.credit_card_rounded,
-                  onSelect: () => Navigator.pop(ctx, 'TARJETA'),
-                ),
-                const SizedBox(height: 12),
-                _PaymentOptionButton(
-                  label: 'CRÉDITO',
-                  icon: Icons.schedule_rounded,
-                  onSelect: () => Navigator.pop(ctx, 'CRÉDITO'),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+            child: content,
           ),
     );
   }
@@ -417,310 +451,392 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return AdminLayout(
       title: 'Gestión de Pedidos',
       showBackButton: true,
-      body: Consumer<OrdersProvider>(
-        builder: (context, provider, _) {
-          final totalPages = provider.totalPages;
-          final pageItems = provider.orders;
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 800;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Barra de progreso (recargas en background) ──────────────────
-              if (provider.isBackgroundLoading)
-                const LinearProgressIndicator(
-                  color: AppColors.teal,
-                  minHeight: 2,
-                ),
-
-              // ── Buscador ────────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por cliente o ID de pedido...',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 14,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey.shade400,
-                    ),
-                    suffixIcon:
-                        _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(
-                                Icons.cancel_rounded,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                provider.setSearchQuery('');
-                              },
-                            )
-                            : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 1.5,
+          return Consumer<OrdersProvider>(
+            builder: (context, provider, _) {
+              final content = CustomScrollView(
+                slivers: [
+                  if (provider.isBackgroundLoading)
+                    const SliverToBoxAdapter(
+                      child: LinearProgressIndicator(
+                        color: AppColors.teal,
+                        minHeight: 2,
                       ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 0,
+                  SliverPersistentHeader(
+                    pinned: true,
+                    floating: true,
+                    delegate: _OrdersFiltersHeaderDelegate(
+                      searchCtrl: _searchCtrl,
+                      onSearchChanged: _onSearchChanged,
+                      provider: provider,
+                      buildFilterChip: _buildFilterChip,
                     ),
                   ),
-                ),
-              ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: _buildListSliver(provider, isWide),
+                  ),
+                ],
+              );
 
-              // ── Filtros ─────────────────────────────────────────────────────
-              SizedBox(
-                height: 48,
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
+              if (isWide) {
+                return Row(
                   children: [
-                    _buildFilterChip(
-                      label: 'Todos',
-                      isSelected: provider.statusFilter == 'ALL',
-                      onSelected: (_) => provider.setStatusFilter('ALL'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: 'Borradores',
-                      isSelected: provider.statusFilter == 'PENDING',
-                      onSelected: (_) => provider.setStatusFilter('PENDING'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: 'Completados',
-                      isSelected: provider.statusFilter == 'COMPLETED',
-                      onSelected: (_) => provider.setStatusFilter('COMPLETED'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: 'Cancelados',
-                      isSelected: provider.statusFilter == 'CANCELLED',
-                      onSelected: (_) => provider.setStatusFilter('CANCELLED'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: 'Devueltos',
-                      isSelected: provider.statusFilter == 'RETURNED',
-                      onSelected: (_) => provider.setStatusFilter('RETURNED'),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: provider.paymentStatusFilter,
-                          icon: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 16,
-                            color: Colors.black87,
-                          ),
-                          isDense: true,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                            fontFamily: 'Nunito',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'ALL',
-                              child: Text('Cobros: Todos'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'PAID',
-                              child: Text('Pagados'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'PENDING',
-                              child: Text('Por cobrar'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'PARTIAL',
-                              child: Text('Parciales'),
-                            ),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) {
-                              provider.setPaymentStatusFilter(val);
-                            }
-                          },
-                        ),
+                    Expanded(
+                      flex: 45,
+                      child: Container(
+                        color: Colors.grey.shade50,
+                        child: content,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    DateFilterCalendar(
-                      dateRange: provider.dateRange,
-                      onDateRangeSelected: (picked) {
-                        provider.setDateRange(picked);
-                      },
-                      onClear: () {
-                        provider.setDateRange(null);
-                      },
+                    Container(width: 1, color: Colors.grey.shade200),
+                    Expanded(
+                      flex: 55,
+                      child:
+                          _selectedOrder == null
+                              ? const AppEmptyState(
+                                icon: Icons.receipt_long_rounded,
+                                title: 'Ningún pedido seleccionado',
+                                message:
+                                    'Selecciona un pedido de la lista para ver o editar sus detalles.',
+                              )
+                              : AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: OrderDetailSheet(
+                                  key: ValueKey(_selectedOrder!.id),
+                                  order: _selectedOrder!,
+                                  isEmbedded: true,
+                                  onPop: _onOrderEmbeddedPop,
+                                ),
+                              ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 16),
+                );
+              }
 
-              // ── Lista de pedidos ─────────────────────────────────────────────
-              Expanded(
-                child: RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () => provider.loadOrders(reset: true),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Builder(
-                      key: ValueKey(
-                        '${provider.isLoading}_${pageItems.length}_${provider.errorMessage}',
-                      ),
-                      builder: (context) {
-                        if (provider.isLoading) {
-                          return ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: 5,
-                            separatorBuilder:
-                                (_, _) => const SizedBox(height: 12),
-                            itemBuilder:
-                                (_, _) => const AppShimmer(height: 140),
-                          );
-                        }
-
-                        if (provider.errorMessage.isNotEmpty) {
-                          return _buildErrorState(provider.errorMessage);
-                        }
-
-                        if (pageItems.isEmpty) {
-                          return _buildEmptyState();
-                        }
-
-                        return Column(
-                          children: [
-                            // Contador
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    'Mostrando resultados',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'Pág. ${provider.currentPage + 1} / $totalPages',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Lista paginada
-                            Expanded(
-                              child: ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  8,
-                                  16,
-                                  16,
-                                ),
-                                itemCount: pageItems.length,
-                                separatorBuilder:
-                                    (_, _) => const SizedBox(height: 12),
-                                itemBuilder: (context, index) {
-                                  final order = pageItems[index];
-                                  return AdminOrderCard(
-                                    order: order,
-                                    isProcessing: provider.isOrderProcessing(
-                                      order.id,
-                                    ),
-                                    isGeneratingPDF: provider.isGeneratingPDF(
-                                      order.id,
-                                    ),
-                                    onTap: () => _showOrderDetails(order),
-                                    onUpdateStatus:
-                                        (o, s) => _updateOrderStatus(o, s),
-                                    onPrint: () => _printOrderTicket(order),
-                                  );
-                                },
-                              ),
-                            ),
-
-                            // Controles de Paginación
-                            if (totalPages > 1)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  14,
-                                  16,
-                                  8,
-                                ),
-                                child: AdminPageBlocks(
-                                  currentPage: provider.currentPage,
-                                  totalPages: totalPages,
-                                  onPageChanged: provider.goToPage,
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              return content;
+            },
           );
         },
       ),
     );
   }
 
-  Widget _buildErrorState(String message) {
-    return AppEmptyState(
-      icon: Icons.error_outline_rounded,
-      color: Colors.red,
-      title: 'Ocurrió un error',
-      message: message,
+  Widget _buildListSliver(OrdersProvider provider, bool isWide) {
+    final totalPages = provider.totalPages;
+    final pageItems = provider.orders;
+
+    if (provider.isLoading) {
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: AppShimmer(height: 140),
+          ),
+          childCount: 5,
+        ),
+      );
+    }
+
+    if (provider.errorMessage.isNotEmpty) {
+      return SliverFillRemaining(
+        child: AppEmptyState(
+          icon: Icons.error_outline_rounded,
+          color: Colors.red,
+          title: 'Ocurrió un error',
+          message: provider.errorMessage,
+        ),
+      );
+    }
+
+    if (pageItems.isEmpty) {
+      return const SliverFillRemaining(
+        child: AppEmptyState(
+          icon: Icons.receipt_long_rounded,
+          title: 'No se encontraron pedidos.',
+          message: 'Intenta cambiar los filtros o la búsqueda.',
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        // Contador
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
+          child: Row(
+            children: [
+              Text(
+                'Mostrando resultados',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Pág. ${provider.currentPage + 1} / $totalPages',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Lista
+        ...pageItems.map((order) {
+          final isSelected = isWide && _selectedOrder?.id == order.id;
+          return AdminOrderCard(
+            order: order,
+            isProcessing: provider.isOrderProcessing(order.id),
+            isGeneratingPDF: provider.isGeneratingPDF(order.id),
+            isSelected: isSelected,
+            onTap: () => _showOrderDetails(order, isWide),
+            onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
+            onPrint: () => _printOrderTicket(order),
+          );
+        }),
+
+        // Paginación
+        if (totalPages > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 24),
+            child: AdminPageBlocks(
+              currentPage: provider.currentPage,
+              totalPages: totalPages,
+              onPageChanged: provider.goToPage,
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+// ─── DELGATE PARA EL HEADER STICKY DE BÚSQUEDA Y FILTROS ─────────────────────
+
+class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final TextEditingController searchCtrl;
+  final Function(String) onSearchChanged;
+  final OrdersProvider provider;
+  final Widget Function({
+    required String label,
+    required bool isSelected,
+    required Function(bool) onSelected,
+  })
+  buildFilterChip;
+
+  _OrdersFiltersHeaderDelegate({
+    required this.searchCtrl,
+    required this.onSearchChanged,
+    required this.provider,
+    required this.buildFilterChip,
+  });
+
+  @override
+  double get minExtent => 140.0;
+  @override
+  double get maxExtent => 140.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: AppColors.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Buscador
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: TextField(
+              controller: searchCtrl,
+              onChanged: onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Buscar por cliente o ID de pedido...',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: Colors.grey.shade400,
+                ),
+                suffixIcon:
+                    searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(
+                            Icons.cancel_rounded,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            searchCtrl.clear();
+                            provider.setSearchQuery('');
+                          },
+                        )
+                        : null,
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+              ),
+            ),
+          ),
+          // Filtros
+          SizedBox(
+            height: 48,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              children: [
+                buildFilterChip(
+                  label: 'Todos',
+                  isSelected: provider.statusFilter == 'ALL',
+                  onSelected: (_) => provider.setStatusFilter('ALL'),
+                ),
+                const SizedBox(width: 8),
+                buildFilterChip(
+                  label: 'Borradores',
+                  isSelected: provider.statusFilter == 'PENDING',
+                  onSelected: (_) => provider.setStatusFilter('PENDING'),
+                ),
+                const SizedBox(width: 8),
+                buildFilterChip(
+                  label: 'Completados',
+                  isSelected: provider.statusFilter == 'COMPLETED',
+                  onSelected: (_) => provider.setStatusFilter('COMPLETED'),
+                ),
+                const SizedBox(width: 8),
+                buildFilterChip(
+                  label: 'Cancelados',
+                  isSelected: provider.statusFilter == 'CANCELLED',
+                  onSelected: (_) => provider.setStatusFilter('CANCELLED'),
+                ),
+                const SizedBox(width: 8),
+                buildFilterChip(
+                  label: 'Devueltos',
+                  isSelected: provider.statusFilter == 'RETURNED',
+                  onSelected: (_) => provider.setStatusFilter('RETURNED'),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: PopupMenuButton<String>(
+                    initialValue: provider.paymentStatusFilter,
+                    offset: const Offset(0, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    onSelected: (val) {
+                      provider.setPaymentStatusFilter(val);
+                    },
+                    itemBuilder:
+                        (context) => const [
+                          PopupMenuItem(
+                            value: 'ALL',
+                            child: Text('Cobros: Todos'),
+                          ),
+                          PopupMenuItem(value: 'PAID', child: Text('Pagados')),
+                          PopupMenuItem(
+                            value: 'PENDING',
+                            child: Text('Por cobrar'),
+                          ),
+                          PopupMenuItem(
+                            value: 'PARTIAL',
+                            child: Text('Parciales'),
+                          ),
+                        ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getPaymentStatusLabel(
+                              provider.paymentStatusFilter,
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                DateFilterCalendar(
+                  dateRange: provider.dateRange,
+                  onDateRangeSelected: (picked) {
+                    provider.setDateRange(picked);
+                  },
+                  onClear: () {
+                    provider.setDateRange(null);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return const AppEmptyState(
-      icon: Icons.receipt_long_rounded,
-      title: 'No se encontraron pedidos.',
-      message: 'Intenta cambiar los filtros o la búsqueda.',
-    );
+  String _getPaymentStatusLabel(String status) {
+    switch (status) {
+      case 'PAID':
+        return 'Pagados';
+      case 'PENDING':
+        return 'Por cobrar';
+      case 'PARTIAL':
+        return 'Parciales';
+      default:
+        return 'Cobros: Todos';
+    }
+  }
+
+  @override
+  bool shouldRebuild(covariant _OrdersFiltersHeaderDelegate oldDelegate) {
+    return oldDelegate.provider != provider ||
+        oldDelegate.searchCtrl.text != searchCtrl.text;
   }
 }
 

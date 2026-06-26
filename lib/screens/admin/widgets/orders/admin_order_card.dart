@@ -7,6 +7,7 @@ class AdminOrderCard extends StatelessWidget {
   final OrderModel order;
   final bool isProcessing;
   final bool isGeneratingPDF;
+  final bool isSelected;
   final VoidCallback onTap;
   final Function(OrderModel, String) onUpdateStatus;
   final VoidCallback onPrint;
@@ -16,6 +17,7 @@ class AdminOrderCard extends StatelessWidget {
     required this.order,
     required this.isProcessing,
     this.isGeneratingPDF = false,
+    this.isSelected = false,
     required this.onTap,
     required this.onUpdateStatus,
     required this.onPrint,
@@ -53,14 +55,22 @@ class AdminOrderCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color:
+            isSelected
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border:
+            isSelected
+                ? Border.all(color: AppColors.primary, width: 2)
+                : Border.all(color: Colors.transparent, width: 2),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
+          if (!isSelected)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Material(
