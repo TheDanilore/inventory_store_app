@@ -178,10 +178,29 @@ class UserFormProvider extends ChangeNotifier {
 
     // 2. Si cambió la contraseña, actualizarla vía Edge Function
     if (passwordCtrl.text.trim().isNotEmpty) {
+      String? authUserId = existingUser!['auth_user_id'];
+      
+      // Si el auth_user_id no viene en el view, lo buscamos en profiles
+      if (authUserId == null) {
+        final profileRes = await _supabase
+            .from('profiles')
+            .select('auth_user_id')
+            .eq('id', profileId)
+            .maybeSingle();
+        
+        if (profileRes != null) {
+          authUserId = profileRes['auth_user_id'];
+        }
+      }
+
+      if (authUserId == null) {
+        throw Exception('No se pudo obtener el identificador de autenticación del usuario.');
+      }
+
       final pwResponse = await _supabase.functions.invoke(
         'actualizar-password-admin',
         body: {
-          'auth_user_id': existingUser!['auth_user_id'],
+          'auth_user_id': authUserId,
           'new_password': passwordCtrl.text,
         },
       );
