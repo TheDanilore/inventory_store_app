@@ -215,7 +215,7 @@ class KpiCard extends StatelessWidget {
     final card = Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: baseColor.withValues(alpha: 0.15),
@@ -338,6 +338,7 @@ class KpiCardWide extends StatelessWidget {
   final String rightLabel;
   final String rightValue;
   final Color? rightColor;
+  final List<double>? sparklineData;
 
   const KpiCardWide({
     super.key,
@@ -349,14 +350,15 @@ class KpiCardWide extends StatelessWidget {
     required this.rightLabel,
     required this.rightValue,
     this.rightColor,
+    this.sparklineData,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
         boxShadow: [
           BoxShadow(
@@ -369,29 +371,22 @@ class KpiCardWide extends StatelessWidget {
       child: Stack(
         children: [
           // Sparkline background
-          Positioned(
-            right: -20,
-            bottom: 0,
-            left: 50,
-            height: 50,
-            child: Opacity(
-              opacity: 0.3,
-              child: CustomPaint(
-                painter: _SparklinePainter(color, [
-                  1.2,
-                  1.0,
-                  1.8,
-                  1.5,
-                  2.5,
-                  2.1,
-                  3.2,
-                  2.8,
-                  3.8,
-                  4.2,
-                ]),
+          if (sparklineData != null && sparklineData!.isNotEmpty)
+            Positioned(
+              right: -20,
+              bottom: 0,
+              left: 50,
+              height: 50,
+              child: Tooltip(
+                message: 'Tendencia histórica',
+                child: Opacity(
+                  opacity: 0.3,
+                  child: CustomPaint(
+                    painter: _SparklinePainter(color, sparklineData!),
+                  ),
+                ),
               ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
@@ -496,12 +491,14 @@ class GananciaBrutaCard extends StatelessWidget {
   final double gananciaBruta;
   final double margenPct;
   final double inversion;
+  final List<double>? sparklineData;
 
   const GananciaBrutaCard({
     super.key,
     required this.gananciaBruta,
     required this.margenPct,
     required this.inversion,
+    this.sparklineData,
   });
 
   @override
@@ -509,7 +506,7 @@ class GananciaBrutaCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.success.withValues(alpha: 0.2),
@@ -526,29 +523,25 @@ class GananciaBrutaCard extends StatelessWidget {
       child: Stack(
         children: [
           // Sparkline en el fondo
-          Positioned(
-            right: -20,
-            bottom: 0,
-            left: 50,
-            height: 60,
-            child: Opacity(
-              opacity: 0.4,
-              child: CustomPaint(
-                painter: _SparklinePainter(AppColors.success, [
-                  1.0,
-                  1.5,
-                  1.2,
-                  2.0,
-                  2.8,
-                  2.4,
-                  3.5,
-                  4.0,
-                  3.8,
-                  5.0,
-                ]),
+          if (sparklineData != null && sparklineData!.isNotEmpty)
+            Positioned(
+              right: -20,
+              bottom: 0,
+              left: 50,
+              height: 60,
+              child: Tooltip(
+                message: 'Proyección de ganancias',
+                child: Opacity(
+                  opacity: 0.4,
+                  child: CustomPaint(
+                    painter: _SparklinePainter(
+                      AppColors.success,
+                      sparklineData!,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -703,7 +696,7 @@ class MargenBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
         boxShadow: [
@@ -831,7 +824,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         border: Border.all(
           color: AppColors.danger.withValues(alpha: 0.2),
           width: 1.5,
@@ -1171,7 +1164,7 @@ class AdminGoalCard extends StatelessWidget {
                     'MI META DE AHORRO',
                     style: TextStyle(
                       color: Colors.amber.shade300,
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.1,
                     ),
