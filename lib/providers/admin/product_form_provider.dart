@@ -95,8 +95,14 @@ class ProductFormProvider extends ChangeNotifier {
   ProductFormProvider({ProductFormService? service})
     : _service = service ?? ProductFormService();
 
+  bool _hasErrorLoading = false;
+  String _errorMessage = '';
+
   // Getters
   bool get isInitializingData => _isInitializingData;
+  bool get hasErrorLoading => _hasErrorLoading;
+  String get errorMessage => _errorMessage;
+
   bool get isSaving => _isSaving;
   bool get hasUnsavedChanges => _isDirty;
   bool get isLoadingCategories => _isLoadingCategories;
@@ -156,47 +162,63 @@ class ProductFormProvider extends ChangeNotifier {
   Future<void> initData(ProductModel? product) async {
     _productToEdit = product;
     _isInitializingData = true;
+    _hasErrorLoading = false;
+    _errorMessage = '';
     notifyListeners();
 
-    if (product != null) {
-      // Editar
-      nombreCtrl.text = product.name;
-      costoCtrl.text = product.unitCost.toString();
-      precioCtrl.text = product.salePrice.toString();
-      precioMayorCtrl.text = product.wholesalePrice?.toString() ?? '';
-      cantidadMayorCtrl.text = product.wholesaleMinQuantity.toString();
-      descCtrl.text = product.description ?? '';
-      _selectedCategoryId = product.categoryId;
+    try {
+      if (product != null) {
+        // Editar
+        nombreCtrl.text = product.name;
+        costoCtrl.text = product.unitCost.toString();
+        precioCtrl.text = product.salePrice.toString();
+        precioMayorCtrl.text = product.wholesalePrice?.toString() ?? '';
+        cantidadMayorCtrl.text = product.wholesaleMinQuantity.toString();
+        descCtrl.text = product.description ?? '';
+        _selectedCategoryId = product.categoryId;
 
-      _productType = product.productType;
-      _stockControl = product.stockControl;
-      _batchManagementEnabled = product.usesBatches;
+        _productType = product.productType;
+        _stockControl = product.stockControl;
+        _batchManagementEnabled = product.usesBatches;
 
-      if (product.details.isNotEmpty) {
-        product.details.forEach((key, value) {
-          detailRows.add(
-            DetailControllers(
-              keyCtrl: TextEditingController(text: key),
-              valueCtrl: TextEditingController(text: value.toString()),
-            ),
-          );
-        });
+        if (product.details.isNotEmpty) {
+          product.details.forEach((key, value) {
+            detailRows.add(
+              DetailControllers(
+                keyCtrl: TextEditingController(text: key),
+                valueCtrl: TextEditingController(text: value.toString()),
+              ),
+            );
+          });
+        }
+
+        await Future.wait([
+          _fetchCategories(),
+          _fetchProductImages(product.id),
+          _fetchIngredients(product.id),
+          _fetchVariants(product.id),
+        ]);
+      } else {
+        // Nuevo
+        cantidadMayorCtrl.text = '3';
+        await _fetchCategories();
       }
-
-      await Future.wait([
-        _fetchCategories(),
-        _fetchProductImages(product.id),
-        _fetchIngredients(product.id),
-        _fetchVariants(product.id),
-      ]);
-    } else {
-      // Nuevo
-      cantidadMayorCtrl.text = '3';
-      await _fetchCategories();
+    } catch (e) {
+      debugPrint('Error en initData: $e');
+      _hasErrorLoading = true;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup') ||
+          errStr.contains('timeout')) {
+        _errorMessage = 'Error de red. Verifica tu conexión a internet.';
+      } else {
+        _errorMessage = 'Ocurrió un error inesperado al cargar los datos.';
+      }
+    } finally {
+      _isInitializingData = false;
+      notifyListeners();
     }
-
-    _isInitializingData = false;
-    notifyListeners();
   }
 
   Future<void> _fetchCategories() async {
@@ -278,10 +300,30 @@ class ProductFormProvider extends ChangeNotifier {
     final archivos = await picker.pickMultiImage();
 
     if (archivos.isNotEmpty) {
+      const maxImages = 5;
+      final int currentCount = formImages.length;
+
+      if (currentCount >= maxImages) {
+        if (context.mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Límite de imágenes alcanzado ($maxImages).',
+            backgroundColor: Colors.orange,
+          );
+        }
+        return;
+      }
+
       var duplicadas = 0;
+      var excedidas = 0;
       final nuevosItems = <FormImageItem>[];
 
       for (final archivo in archivos) {
+        if (currentCount + nuevosItems.length >= maxImages) {
+          excedidas++;
+          continue;
+        }
+
         final nombre = _normalizarNombreArchivo(archivo);
         if (formImages.any((img) => !img.isExisting && img.newName == nombre)) {
           duplicadas++;
@@ -300,10 +342,14 @@ class ProductFormProvider extends ChangeNotifier {
       markAsDirty();
       notifyListeners();
 
-      if (duplicadas > 0 && context.mounted) {
+      if ((duplicadas > 0 || excedidas > 0) && context.mounted) {
+        String msg = '';
+        if (duplicadas > 0) msg += '$duplicadas repetida(s). ';
+        if (excedidas > 0) msg += '$excedidas exceden el límite de $maxImages.';
+
         AppSnackbar.show(
           context,
-          message: '$duplicadas imagen(es) repetida(s) omitidas.',
+          message: msg.trim(),
           backgroundColor: Colors.orange,
         );
       }
@@ -559,34 +605,37 @@ class ProductFormProvider extends ChangeNotifier {
       );
 
       // Imágenes del Producto
-      if (isUpdating && formImages.isNotEmpty) {
-        await _service.updateProductImagesIsMain(productId);
-      }
-
+      final imagesPayload = <Map<String, dynamic>>[];
       for (var i = 0; i < formImages.length; i++) {
         final item = formImages[i];
         final isMain = (i == 0);
 
         if (item.isExisting) {
-          await _service.updateExistingProductImage(
-            item.existing!.id,
-            i,
-            isMain,
-          );
+          imagesPayload.add({
+            'id': item.existing!.id,
+            'product_id': productId,
+            'image_url': item.existing!.imageUrl,
+            'display_order': i,
+            'is_main': isMain,
+          });
         } else {
           final url = await _service.uploadImageToStorage(
             item.newBytes!,
             'productos',
           );
           if (url != null) {
-            await _service.insertProductImage(
-              productId: productId,
-              url: url,
-              displayOrder: i,
-              isMain: isMain,
-            );
+            imagesPayload.add({
+              'product_id': productId,
+              'image_url': url,
+              'display_order': i,
+              'is_main': isMain,
+            });
           }
         }
+      }
+
+      if (imagesPayload.isNotEmpty) {
+        await _service.syncProductImages(imagesPayload);
       }
 
       // Variantes Eliminadas
@@ -662,13 +711,15 @@ class ProductFormProvider extends ChangeNotifier {
             final bytes = draft.nuevasImagenes.first;
             final url = await _service.uploadImageToStorage(bytes, 'variantes');
             if (url != null) {
-              await _service.insertProductImage(
-                productId: productId,
-                variantId: vId,
-                url: url,
-                displayOrder: 0,
-                isMain: false,
-              );
+              await _service.syncProductImages([
+                {
+                  'product_id': productId,
+                  'variant_id': vId,
+                  'image_url': url,
+                  'display_order': 0,
+                  'is_main': false,
+                },
+              ]);
             }
           }
         }
@@ -704,23 +755,28 @@ class ProductFormProvider extends ChangeNotifier {
         await _service.clearProductIngredients(productId);
       }
 
+      _isDirty = false;
+      notifyListeners();
+
       if (context.mounted) {
         AppSnackbar.show(
           context,
-          message: 'Producto guardado exitosamente',
-          backgroundColor: AppColors.success,
+          message: 'Producto guardado con éxito.',
+          type: SnackbarType.success,
         );
       }
       return true;
     } catch (e) {
-      debugPrint('Error saving product: $e');
+      debugPrint('Error saveProduct: $e');
       if (context.mounted) {
         final errStr = e.toString().toLowerCase();
-        String msg = 'Error inesperado.';
+        String msg = 'Ocurrió un error al guardar el producto.';
         if (errStr.contains('socketexception') ||
             errStr.contains('clientexception') ||
-            errStr.contains('failed host lookup')) {
-          msg = 'Sin conexión a internet.';
+            errStr.contains('failed host lookup') ||
+            errStr.contains('timeout')) {
+          msg =
+              'Error de red. Verifica tu conexión a internet e intenta de nuevo.';
         }
         AppSnackbar.show(context, message: msg, type: SnackbarType.error);
       }

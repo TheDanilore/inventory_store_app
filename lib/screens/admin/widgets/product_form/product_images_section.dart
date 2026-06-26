@@ -46,9 +46,11 @@ class ProductImagesSection extends StatelessWidget {
               children: [
                 InkWell(
                   onTap:
-                      () => context.read<ProductFormProvider>().pickImages(
-                        context,
-                      ),
+                      context.watch<ProductFormProvider>().isSaving
+                          ? null
+                          : () => context
+                              .read<ProductFormProvider>()
+                              .pickImages(context),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 100,
@@ -98,6 +100,7 @@ class ProductImagesSection extends StatelessWidget {
                         },
                         itemCount: provider.formImages.length,
                         onReorderItem: (oldIndex, newIndex) {
+                          if (provider.isSaving) return;
                           provider.reorderImages(oldIndex, newIndex);
                         },
                         itemBuilder: (context, index) {
@@ -224,18 +227,24 @@ class ProductImagesSection extends StatelessWidget {
                                     right: 4,
                                     child: GestureDetector(
                                       onTap:
-                                          () => provider.removeImage(
-                                            context,
-                                            index,
-                                          ),
+                                          provider.isSaving
+                                              ? null
+                                              : () => provider.removeImage(
+                                                context,
+                                                index,
+                                              ),
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.black54,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.error,
                                           shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
                                         ),
                                         child: const Icon(
-                                          Icons.close,
+                                          Icons.close_rounded,
                                           size: 14,
                                           color: Colors.white,
                                         ),

@@ -109,6 +109,37 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         body:
             provider.isInitializingData
                 ? const _ProductFormSkeleton()
+                : provider.hasErrorLoading
+                ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.wifi_off_rounded,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          provider.errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        AppPrimaryButton(
+                          label: 'Reintentar cargar datos',
+                          onPressed:
+                              () => provider.initData(provider.productToEdit),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
                 : Stack(
                   children: [
                     Form(

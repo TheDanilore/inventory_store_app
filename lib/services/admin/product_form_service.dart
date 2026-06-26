@@ -208,38 +208,9 @@ class ProductFormService {
     }
   }
 
-  Future<void> updateProductImagesIsMain(String productId) async {
-    await _supabase
-        .from('product_images')
-        .update({'is_main': false})
-        .eq('product_id', productId);
-  }
-
-  Future<void> updateExistingProductImage(
-    String id,
-    int index,
-    bool isMain,
-  ) async {
-    await _supabase
-        .from('product_images')
-        .update({'display_order': index, 'is_main': isMain})
-        .eq('id', id);
-  }
-
-  Future<void> insertProductImage({
-    required String productId,
-    String? variantId,
-    required String url,
-    required int displayOrder,
-    required bool isMain,
-  }) async {
-    await _supabase.from('product_images').insert({
-      'product_id': productId,
-      if (variantId != null) 'variant_id': variantId,
-      'image_url': url,
-      'display_order': displayOrder,
-      'is_main': isMain,
-    });
+  Future<void> syncProductImages(List<Map<String, dynamic>> payload) async {
+    if (payload.isEmpty) return;
+    await _supabase.from('product_images').upsert(payload);
   }
 
   Future<void> deactivateVariant(String variantId) async {
