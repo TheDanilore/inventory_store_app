@@ -4,67 +4,67 @@ enum SalesTimeFilter { today, thisWeek, thisMonth, allTime }
 
 class InventoryMetrics {
   final int totalStock;
-  final int productosBajoStock;
-  final double inversionTotal;
-  final double valorVentaMinorista;
-  final double gananciaBruta;
-  final double gananciaEsperadaMax;
-  final double gananciaEsperadaMin;
-  final double margenBruto;
-  final int totalProductos;
+  final int lowStockProducts;
+  final double totalInvestment;
+  final double retailValue;
+  final double grossProfit;
+  final double expectedMaxProfit;
+  final double expectedMinProfit;
+  final double grossMargin;
+  final int totalProducts;
 
   InventoryMetrics({
     required this.totalStock,
-    required this.productosBajoStock,
-    required this.inversionTotal,
-    required this.valorVentaMinorista,
-    required this.gananciaBruta,
-    required this.gananciaEsperadaMax,
-    required this.gananciaEsperadaMin,
-    required this.margenBruto,
-    required this.totalProductos,
+    required this.lowStockProducts,
+    required this.totalInvestment,
+    required this.retailValue,
+    required this.grossProfit,
+    required this.expectedMaxProfit,
+    required this.expectedMinProfit,
+    required this.grossMargin,
+    required this.totalProducts,
   });
 
   factory InventoryMetrics.empty() {
     return InventoryMetrics(
       totalStock: 0,
-      productosBajoStock: 0,
-      inversionTotal: 0,
-      valorVentaMinorista: 0,
-      gananciaBruta: 0,
-      gananciaEsperadaMax: 0,
-      gananciaEsperadaMin: 0,
-      margenBruto: 0,
-      totalProductos: 0,
+      lowStockProducts: 0,
+      totalInvestment: 0,
+      retailValue: 0,
+      grossProfit: 0,
+      expectedMaxProfit: 0,
+      expectedMinProfit: 0,
+      grossMargin: 0,
+      totalProducts: 0,
     );
   }
 }
 
 class SalesMetrics {
-  final int totalVentas;
-  final double ingresoTotal;
-  final double gananciaTotal;
-  final double fondoReposicion;
-  final double ticketPromedio;
-  final double margenVentas;
+  final int totalSales;
+  final double totalRevenue;
+  final double totalProfit;
+  final double replacementFund;
+  final double averageTicket;
+  final double salesMargin;
 
   SalesMetrics({
-    required this.totalVentas,
-    required this.ingresoTotal,
-    required this.gananciaTotal,
-    required this.fondoReposicion,
-    required this.ticketPromedio,
-    required this.margenVentas,
+    required this.totalSales,
+    required this.totalRevenue,
+    required this.totalProfit,
+    required this.replacementFund,
+    required this.averageTicket,
+    required this.salesMargin,
   });
 
   factory SalesMetrics.empty() {
     return SalesMetrics(
-      totalVentas: 0,
-      ingresoTotal: 0,
-      gananciaTotal: 0,
-      fondoReposicion: 0,
-      ticketPromedio: 0,
-      margenVentas: 0,
+      totalSales: 0,
+      totalRevenue: 0,
+      totalProfit: 0,
+      replacementFund: 0,
+      averageTicket: 0,
+      salesMargin: 0,
     );
   }
 }
@@ -89,13 +89,13 @@ class DashboardService {
       final products = List<Map<String, dynamic>>.from(response);
 
       int totalStock = 0;
-      double inversionTotal = 0.0;
-      double valorVentaMinorista = 0.0;
-      double gananciaEsperadaMax = 0.0;
-      double gananciaEsperadaMin = 0.0;
-      double gananciaBruta = 0.0;
-      int productosBajoStock = 0;
-      int totalProductos = 0;
+      double totalInvestment = 0.0;
+      double retailValue = 0.0;
+      double expectedMaxProfit = 0.0;
+      double expectedMinProfit = 0.0;
+      double grossProfit = 0.0;
+      int lowStockProducts = 0;
+      int totalProducts = 0;
 
       for (var row in products) {
         final prodUnitCost = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
@@ -110,7 +110,7 @@ class DashboardService {
         final activeVariants =
             variants.where((v) => v['is_active'] == true).toList();
 
-        totalProductos++;
+        totalProducts++;
 
         final batches = List<Map<String, dynamic>>.from(
           row['warehouse_stock_batches'] ?? [],
@@ -136,54 +136,58 @@ class DashboardService {
                   ? (variant['unit_cost'] as num).toDouble()
                   : prodUnitCost;
 
-          final rawVarSalePrice = (variant['sale_price'] as num?)?.toDouble() ?? 0.0;
-          final varSalePrice = rawVarSalePrice > 0 ? rawVarSalePrice : prodSalePrice;
+          final rawVarSalePrice =
+              (variant['sale_price'] as num?)?.toDouble() ?? 0.0;
+          final varSalePrice =
+              rawVarSalePrice > 0 ? rawVarSalePrice : prodSalePrice;
 
-          final rawVarWholesalePrice = (variant['wholesale_price'] as num?)?.toDouble() ?? 0.0;
-          final varWholesalePrice = rawVarWholesalePrice > 0 ? rawVarWholesalePrice : prodWholesalePrice;
+          final rawVarWholesalePrice =
+              (variant['wholesale_price'] as num?)?.toDouble() ?? 0.0;
+          final varWholesalePrice =
+              rawVarWholesalePrice > 0
+                  ? rawVarWholesalePrice
+                  : prodWholesalePrice;
           final varWholesaleMinQty =
               (variant['wholesale_min_quantity'] as num?)?.toInt() ??
               prodWholesaleMinQty;
           final reorderPoint = (variant['reorder_point'] as num?)?.toInt() ?? 3;
 
           totalStock += variantStock;
-          inversionTotal += variantStock * varUnitCost;
-          valorVentaMinorista += variantStock * varSalePrice;
+          totalInvestment += variantStock * varUnitCost;
+          retailValue += variantStock * varSalePrice;
 
-          gananciaBruta +=
+          grossProfit +=
               (variantStock * varSalePrice) - (variantStock * varUnitCost);
-          gananciaEsperadaMax +=
+          expectedMaxProfit +=
               (variantStock * varSalePrice) - (variantStock * varUnitCost);
 
           final canApplyWholesale =
               varWholesalePrice != null && variantStock >= varWholesaleMinQty;
           final effectiveWholesale =
               canApplyWholesale ? varWholesalePrice : varSalePrice;
-          gananciaEsperadaMin +=
+          expectedMinProfit +=
               (variantStock * effectiveWholesale) -
               (variantStock * varUnitCost);
 
           if (variantStock <= reorderPoint) prodHasLowStock = true;
         }
 
-        if (prodHasLowStock) productosBajoStock++;
+        if (prodHasLowStock) lowStockProducts++;
       }
 
-      final margenBruto =
-          inversionTotal > 0
-              ? (gananciaBruta / valorVentaMinorista) * 100
-              : 0.0;
+      final grossMargin =
+          totalInvestment > 0 ? (grossProfit / retailValue) * 100 : 0.0;
 
       return InventoryMetrics(
         totalStock: totalStock,
-        productosBajoStock: productosBajoStock,
-        inversionTotal: inversionTotal,
-        valorVentaMinorista: valorVentaMinorista,
-        gananciaBruta: gananciaBruta,
-        gananciaEsperadaMax: gananciaEsperadaMax,
-        gananciaEsperadaMin: gananciaEsperadaMin,
-        margenBruto: margenBruto,
-        totalProductos: totalProductos,
+        lowStockProducts: lowStockProducts,
+        totalInvestment: totalInvestment,
+        retailValue: retailValue,
+        grossProfit: grossProfit,
+        expectedMaxProfit: expectedMaxProfit,
+        expectedMinProfit: expectedMinProfit,
+        grossMargin: grossMargin,
+        totalProducts: totalProducts,
       );
     } catch (e) {
       throw Exception('Error al obtener métricas de inventario: \$e');
@@ -254,27 +258,27 @@ class DashboardService {
       final response = await query;
       final orders = List<Map<String, dynamic>>.from(response);
 
-      int totalVentas = orders.length;
-      double ingresoTotal = 0.0;
-      double gananciaTotal = 0.0;
+      int totalSales = orders.length;
+      double totalRevenue = 0.0;
+      double totalProfit = 0.0;
 
       for (var venta in orders) {
-        ingresoTotal += (venta['total_amount'] as num?)?.toDouble() ?? 0.0;
-        gananciaTotal += (venta['total_profit'] as num?)?.toDouble() ?? 0.0;
+        totalRevenue += (venta['total_amount'] as num?)?.toDouble() ?? 0.0;
+        totalProfit += (venta['total_profit'] as num?)?.toDouble() ?? 0.0;
       }
 
-      final fondoReposicion = ingresoTotal - gananciaTotal;
-      final ticketPromedio = totalVentas > 0 ? ingresoTotal / totalVentas : 0.0;
-      final margenVentas =
-          ingresoTotal > 0 ? (gananciaTotal / ingresoTotal) * 100 : 0.0;
+      final replacementFund = totalRevenue - totalProfit;
+      final averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0.0;
+      final salesMargin =
+          totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0.0;
 
       return SalesMetrics(
-        totalVentas: totalVentas,
-        ingresoTotal: ingresoTotal,
-        gananciaTotal: gananciaTotal,
-        fondoReposicion: fondoReposicion,
-        ticketPromedio: ticketPromedio,
-        margenVentas: margenVentas,
+        totalSales: totalSales,
+        totalRevenue: totalRevenue,
+        totalProfit: totalProfit,
+        replacementFund: replacementFund,
+        averageTicket: averageTicket,
+        salesMargin: salesMargin,
       );
     } catch (e) {
       throw Exception('Error al obtener métricas de ventas: \$e');

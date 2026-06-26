@@ -244,7 +244,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           if (_inventory != null)
                             _HealthSummaryBar(
-                              lowStockCount: _inventory!.productosBajoStock,
+                              lowStockCount: _inventory!.lowStockProducts,
                               criticalBatchesCount: _criticalBatchesCount,
                             ),
                           const SizedBox(height: 16),
@@ -312,7 +312,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             delegate: SliverChildListDelegate([
               if (_inventory != null)
                 _HealthSummaryBar(
-                  lowStockCount: _inventory!.productosBajoStock,
+                  lowStockCount: _inventory!.lowStockProducts,
                   criticalBatchesCount: _criticalBatchesCount,
                 ),
               const SizedBox(height: 16),
@@ -443,7 +443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Expanded(
                     child: KpiCard(
                       title: 'Órdenes',
-                      value: '${_sales!.totalVentas}',
+                      value: '${_sales!.totalSales}',
                       subtitle: 'Ventas completadas',
                       icon: Icons.shopping_bag_rounded,
                       gradient: LinearGradient(
@@ -460,7 +460,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Expanded(
                     child: KpiCard(
                       title: 'Ticket Prom.',
-                      value: 'S/ ${_sales!.ticketPromedio.toStringAsFixed(2)}',
+                      value: 'S/ ${_sales!.averageTicket.toStringAsFixed(2)}',
                       subtitle: 'Por orden vendida',
                       icon: Icons.receipt_long_rounded,
                       gradient: LinearGradient(
@@ -478,12 +478,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 12),
               KpiCardWide(
                 title: 'Ingreso Total Bruto',
-                value: 'S/ ${_sales!.ingresoTotal.toStringAsFixed(2)}',
+                value: 'S/ ${_sales!.totalRevenue.toStringAsFixed(2)}',
                 subtitle: 'Facturado en caja',
                 icon: Icons.monetization_on_rounded,
                 color: AppColors.tealDark,
                 rightLabel: 'Ganancia Neta',
-                rightValue: 'S/ ${_sales!.gananciaTotal.toStringAsFixed(2)}',
+                rightValue: 'S/ ${_sales!.totalProfit.toStringAsFixed(2)}',
                 rightColor: AppColors.success,
                 sparklineData: const [
                   1.2,
@@ -501,14 +501,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 12),
               KpiCardWide(
                 title: 'Fondo de Reposición',
-                value: 'S/ ${_sales!.fondoReposicion.toStringAsFixed(2)}',
+                value: 'S/ ${_sales!.replacementFund.toStringAsFixed(2)}',
                 subtitle: 'Costo unitario de lo vendido',
                 icon: Icons.currency_exchange_rounded,
                 color: AppColors.slate,
                 rightLabel: '% del Ingreso',
                 rightValue:
-                    _sales!.ingresoTotal > 0
-                        ? '${((_sales!.fondoReposicion / _sales!.ingresoTotal) * 100).toStringAsFixed(1)}%'
+                    _sales!.totalRevenue > 0
+                        ? '${((_sales!.replacementFund / _sales!.totalRevenue) * 100).toStringAsFixed(1)}%'
                         : '0.0%',
                 rightColor: AppColors.slate,
                 sparklineData: const [
@@ -527,7 +527,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 12),
               MargenBar(
                 label: 'Margen Nivelado sobre ventas',
-                percent: _sales!.margenVentas,
+                percent: _sales!.salesMargin,
                 color: AppColors.success,
               ),
             ],
@@ -547,7 +547,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: KpiCard(
                 title: 'Stock Total',
                 value: '${_inventory!.totalStock}',
-                subtitle: '${_inventory!.totalProductos} productos activos',
+                subtitle: '${_inventory!.totalProducts} productos activos',
                 icon: Icons.inventory_2_rounded,
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -563,7 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: KpiCard(
                 title: 'Bajo Stock',
-                value: '${_inventory!.productosBajoStock}',
+                value: '${_inventory!.lowStockProducts}',
                 subtitle: 'Productos en alerta',
                 icon: Icons.warning_amber_rounded,
                 gradient: LinearGradient(
@@ -581,7 +581,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 12),
         KpiCardWide(
           title: 'Valorización a Costo',
-          value: 'S/ ${_inventory!.inversionTotal.toStringAsFixed(2)}',
+          value: 'S/ ${_inventory!.totalInvestment.toStringAsFixed(2)}',
           subtitle: 'Inversión en almacén',
           icon: Icons.account_balance_wallet_rounded,
           color: AppColors.primary,
@@ -600,34 +600,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           rightLabel: '',
           rightValue: '',
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 16,
-              decoration: BoxDecoration(
-                color: AppColors.teal,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'PROYECCIÓN DE VENTAS',
-              style: TextStyle(
-                color: AppColors.teal,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
         const SizedBox(height: 8),
         GananciaBrutaCard(
-          gananciaBruta: _inventory!.gananciaEsperadaMax,
-          inversion: _inventory!.inversionTotal,
-          margenPct: _inventory!.margenBruto,
+          gananciaBruta: _inventory!.expectedMaxProfit,
+          inversion: _inventory!.totalInvestment,
+          margenPct: _inventory!.grossMargin,
           sparklineData: const [
             1.0,
             1.5,
@@ -647,8 +624,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: KpiCard(
                 title: 'G. Público',
-                value:
-                    'S/ ${_inventory!.gananciaEsperadaMax.toStringAsFixed(2)}',
+                value: 'S/ ${_inventory!.expectedMaxProfit.toStringAsFixed(2)}',
                 subtitle: 'Aplicando precio al público',
                 icon: Icons.trending_up_rounded,
                 gradient: LinearGradient(
@@ -665,8 +641,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: KpiCard(
                 title: 'G. Mayorista',
-                value:
-                    'S/ ${_inventory!.gananciaEsperadaMin.toStringAsFixed(2)}',
+                value: 'S/ ${_inventory!.expectedMinProfit.toStringAsFixed(2)}',
                 subtitle: 'Aplicando precio por mayor',
                 icon: Icons.people_alt_rounded,
                 gradient: LinearGradient(
