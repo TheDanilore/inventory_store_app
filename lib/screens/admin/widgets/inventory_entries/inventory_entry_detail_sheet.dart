@@ -11,10 +11,13 @@ class InventoryEntryDetailSheet extends StatefulWidget {
   final InventoryEntryModel entry;
   final Future<List<InventoryEntryItemModel>> Function() loadItems;
 
+  final bool isBottomSheet;
+
   const InventoryEntryDetailSheet({
     super.key,
     required this.entry,
     required this.loadItems,
+    this.isBottomSheet = true,
   });
 
   @override
@@ -33,6 +36,19 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
   void initState() {
     super.initState();
     _fetchItems();
+  }
+
+  @override
+  void didUpdateWidget(covariant InventoryEntryDetailSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.id != widget.entry.id) {
+      setState(() {
+        _loading = true;
+        _errorMessage = null;
+        _items = null;
+      });
+      _fetchItems();
+    }
   }
 
   // FIX: Antes usaba `.then()` sin `.catchError()`.
@@ -66,16 +82,35 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
     // Migrado de DraggableScrollableSheet a Container de altura fija
     // para consistencia con los otros 3 detail sheets.
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
+      height:
+          widget.isBottomSheet
+              ? MediaQuery.of(context).size.height * 0.85
+              : null,
+      decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            widget.isBottomSheet
+                ? const BorderRadius.vertical(top: Radius.circular(28))
+                : BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Header compartido ────────────────────────────────────
-          DetailSheetHeader(title: 'Detalle de Entrada'),
+          if (widget.isBottomSheet)
+            DetailSheetHeader(title: 'Detalle de Entrada')
+          else
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: Text(
+                'Detalle de Entrada',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
           const SizedBox(height: 8),
 
           Expanded(

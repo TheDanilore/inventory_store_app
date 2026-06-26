@@ -26,6 +26,7 @@ class InventoryEntriesScreen extends StatefulWidget {
 class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   final _searchCtrl = TextEditingController();
   bool _hasDraft = false;
+  InventoryEntryModel? _selectedEntry; // State for Master-Detail
 
   @override
   void initState() {
@@ -57,88 +58,89 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     super.dispose();
   }
 
-  Future<void> _loadItemsAndShowDetail(
-    BuildContext context,
-    InventoryEntryModel entry,
+  Future<List<InventoryEntryItemModel>> _loadEntryItems(
+    String entryId,
+    Map<String, dynamic>? productData,
   ) async {
     final service = InventoryEntriesService();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => InventoryEntryDetailSheet(
-            entry: entry,
-            loadItems: () async {
-              final itemsDynamic = await service.getEntryItems(entry.id);
-              return itemsDynamic.map((r) {
-                final prod = r['products'] as Map<String, dynamic>?;
-                final variantData =
-                    r['product_variants'] as Map<String, dynamic>?;
-                final variantId = r['variant_id'] as String?;
+    final itemsDynamic = await service.getEntryItems(entryId);
+    return itemsDynamic.map((r) {
+      final prod = r['products'] as Map<String, dynamic>?;
+      final variantData = r['product_variants'] as Map<String, dynamic>?;
+      final variantId = r['variant_id'] as String?;
 
-                final vavList =
-                    variantData?['variant_attribute_values']
-                        as List<dynamic>? ??
-                    [];
-                final List<String> attrValues = [];
+      final vavList =
+          variantData?['variant_attribute_values'] as List<dynamic>? ?? [];
+      final List<String> attrValues = [];
 
-                for (var vav in vavList) {
-                  final av = vav['attribute_values'] as Map<String, dynamic>?;
-                  if (av != null && av['value'] != null) {
-                    attrValues.add(av['value'].toString());
-                  }
-                }
+      for (var vav in vavList) {
+        final av = vav['attribute_values'] as Map<String, dynamic>?;
+        if (av != null && av['value'] != null) {
+          attrValues.add(av['value'].toString());
+        }
+      }
 
-                final attrsText = attrValues.join(' · ');
-                final bool usesBatches = prod?['uses_batches'] == true;
+      final attrsText = attrValues.join(' · ');
+      final bool usesBatches = prod?['uses_batches'] == true;
 
-                String? finalImageUrl;
-                final imagesList =
-                    prod?['product_images'] as List<dynamic>? ?? [];
-                if (imagesList.isNotEmpty) {
-                  final variantImage = imagesList
-                      .cast<Map<String, dynamic>>()
-                      .firstWhere(
-                        (img) => img['variant_id'] == variantId,
-                        orElse: () => <String, dynamic>{},
-                      );
-                  if (variantImage.isNotEmpty &&
-                      variantImage['image_url'] != null) {
-                    finalImageUrl = variantImage['image_url'] as String;
-                  } else {
-                    final mainImage = imagesList
-                        .cast<Map<String, dynamic>>()
-                        .firstWhere(
-                          (img) => img['is_main'] == true,
-                          orElse:
-                              () => imagesList.first as Map<String, dynamic>,
-                        );
-                    finalImageUrl = mainImage['image_url'] as String?;
-                  }
-                }
+      String? finalImageUrl;
+      final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+      if (imagesList.isNotEmpty) {
+        final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+          (img) => img['variant_id'] == variantId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+          finalImageUrl = variantImage['image_url'] as String;
+        } else {
+          final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+            (img) => img['is_main'] == true,
+            orElse: () => imagesList.first as Map<String, dynamic>,
+          );
+          finalImageUrl = mainImage['image_url'] as String?;
+        }
+      }
 
-                return InventoryEntryItemModel(
-                  id: r['id'] as String? ?? '',
-                  entryId: entry.id,
-                  productId: prod?['id'] as String? ?? '',
-                  variantId: variantId ?? '',
-                  productName: prod?['name'] as String? ?? '—',
-                  variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
-                  quantity: (r['quantity'] as num).toDouble(),
-                  unitCost: (r['unit_cost'] as num).toDouble(),
-                  batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-                  expiryDate:
-                      r['expiry_date'] != null
-                          ? DateTime.tryParse(r['expiry_date'] as String)
-                          : null,
-                  usesBatches: usesBatches,
-                  imageUrl: finalImageUrl,
-                );
-              }).toList();
-            },
-          ),
-    );
+      return InventoryEntryItemModel(
+        id: r['id'] as String? ?? '',
+        entryId: entryId,
+        productId: prod?['id'] as String? ?? '',
+        variantId: variantId ?? '',
+        productName: prod?['name'] as String? ?? '—',
+        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+        quantity: (r['quantity'] as num).toDouble(),
+        unitCost: (r['unit_cost'] as num).toDouble(),
+        batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+        expiryDate:
+            r['expiry_date'] != null
+                ? DateTime.tryParse(r['expiry_date'] as String)
+                : null,
+        usesBatches: usesBatches,
+        imageUrl: finalImageUrl,
+      );
+    }).toList();
+  }
+
+  void _onEntryTapped(
+    BuildContext context,
+    InventoryEntryModel entry,
+    bool isTablet,
+  ) {
+    if (isTablet) {
+      setState(() => _selectedEntry = entry);
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder:
+            (_) => InventoryEntryDetailSheet(
+              entry: entry,
+              isBottomSheet: true,
+              loadItems: () => _loadEntryItems(entry.id, null),
+            ),
+      );
+    }
   }
 
   @override
@@ -156,289 +158,416 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           });
         }
 
-        final double totalAmount = provider.entries.fold<double>(
-          0,
-          (s, e) => s + e.totalAmount,
-        );
-
         return AdminLayout(
           title: 'Historial de Entradas',
           showBackButton: true,
-          body: Column(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 800;
+                  return Stack(
+                    children: [
+                      if (isTablet)
+                        _buildTabletLayout(context, provider)
+                      else
+                        _buildMobileLayout(context, provider),
+
+                      _buildFloatingAction(provider),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFloatingAction(InventoryEntriesProvider provider) {
+    return Positioned(
+      bottom: 24,
+      right: 24,
+      child: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await context.push<bool>(
+            '/admin/inventory-entry-form',
+          );
+          if (result == true) {
+            provider.loadEntries(page: 0);
+          }
+          _checkDraft();
+        },
+        icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
+        label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
+        backgroundColor:
+            _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 4,
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context,
+    InventoryEntriesProvider provider,
+  ) {
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () => provider.loadEntries(page: 0),
+            child: _buildCustomScrollView(context, provider, false),
+          ),
+        ),
+        _buildPagination(provider),
+      ],
+    );
+  }
+
+  Widget _buildTabletLayout(
+    BuildContext context,
+    InventoryEntriesProvider provider,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Column(
             children: [
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: () => provider.loadEntries(page: 0),
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      // ── Borrador ──────────────────────────────────────────
-                      if (_hasDraft)
-                        SliverToBoxAdapter(
-                          child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withValues(alpha: 0.1),
-                              border: Border.all(
-                                color: AppColors.warning.withValues(alpha: 0.3),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.edit_document,
-                                  color: AppColors.warning,
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Text(
-                                    'Tienes un borrador de entrada en progreso.',
-                                    style: TextStyle(
-                                      color: AppColors.warning,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                FilledButton.tonal(
-                                  onPressed: () async {
-                                    final result = await context.push<bool>(
-                                      '/admin/inventory-entry-form',
-                                    );
-                                    _checkDraft();
-                                    if (result == true && context.mounted) {
-                                      context
-                                          .read<InventoryEntriesProvider>()
-                                          .init();
-                                    }
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.warning
-                                        .withValues(alpha: 0.2),
-                                    foregroundColor: AppColors.warning,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 0,
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  child: const Text(
-                                    'Continuar',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                      // ── Resumen ──────────────────────────────────────────
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                          child: Row(
-                            children: [
-                              _SummaryChip(
-                                label: 'Página actual',
-                                value: '${provider.entries.length}',
-                                icon: Icons.move_to_inbox_rounded,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 10),
-                              _SummaryChip(
-                                label: 'Inversión (pág)',
-                                value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-                                icon: Icons.payments_rounded,
-                                color: AppColors.teal,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // ── Filtros ───────────────────────────────────────────
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _SearchField(
-                                      controller: _searchCtrl,
-                                      hint: 'Buscar proveedor o comprobante...',
-                                      onChanged: (v) {},
-                                      onSubmitted:
-                                          (v) => provider.setSearchQuery(v),
-                                      onClear: () {
-                                        _searchCtrl.clear();
-                                        provider.setSearchQuery('');
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  DateFilterCalendar(
-                                    dateRange: provider.dateRange,
-                                    onDateRangeSelected: provider.setDateRange,
-                                    onClear: () => provider.setDateRange(null),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children:
-                                      provider.availableWarehouses.map((w) {
-                                        final sel =
-                                            provider.warehouseFilter == w;
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 8,
-                                          ),
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            child: FilterChip(
-                                              label: Text(w),
-                                              selected: sel,
-                                              onSelected:
-                                                  (_) => provider
-                                                      .setWarehouseFilter(w),
-                                              selectedColor: AppColors.primary
-                                                  .withValues(alpha: 0.15),
-                                              checkmarkColor: AppColors.primary,
-                                              backgroundColor:
-                                                  AppColors.surface,
-                                              side: BorderSide(
-                                                color:
-                                                    sel
-                                                        ? Colors.transparent
-                                                        : Colors.grey.shade300,
-                                              ),
-                                              labelStyle: TextStyle(
-                                                fontWeight:
-                                                    sel
-                                                        ? FontWeight.w700
-                                                        : FontWeight.w500,
-                                                fontSize: 12,
-                                                color:
-                                                    sel
-                                                        ? AppColors.primary
-                                                        : AppColors
-                                                            .textSecondary,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // ── Lista ─────────────────────────────────────────────
-                      if (provider.isLoading)
-                        const SliverPadding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          sliver: SliverToBoxAdapter(child: _EntriesSkeleton()),
-                        )
-                      else if (provider.entries.isEmpty)
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: AppEmptyState(
-                            icon: Icons.inbox_outlined,
-                            title: 'Sin Resultados',
-                            message:
-                                provider.searchQuery.isEmpty &&
-                                        provider.dateRange == null &&
-                                        provider.warehouseFilter == 'Todos'
-                                    ? 'No hay entradas registradas'
-                                    : 'Sin resultados para los filtros aplicados',
-                          ),
-                        )
-                      else
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, i) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _EntryCard(
-                                  entry: provider.entries[i],
-                                  onTap:
-                                      () => _loadItemsAndShowDetail(
-                                        context,
-                                        provider.entries[i],
-                                      ),
-                                ),
-                              ),
-                              childCount: provider.entries.length,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  child: _buildCustomScrollView(context, provider, true),
                 ),
               ),
+              _buildPagination(provider),
+            ],
+          ),
+        ),
+        Container(
+          width: 1,
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+        ),
+        Expanded(
+          flex: 6,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child:
+                _selectedEntry == null
+                    ? AppEmptyState(
+                      key: const ValueKey('empty_detail'),
+                      icon: Icons.receipt_long_rounded,
+                      title: 'Ninguna Entrada Seleccionada',
+                      message:
+                          'Selecciona una entrada del panel izquierdo para ver sus detalles.',
+                    )
+                    : Padding(
+                      key: ValueKey(_selectedEntry!.id),
+                      padding: const EdgeInsets.all(16.0),
+                      child: InventoryEntryDetailSheet(
+                        entry: _selectedEntry!,
+                        isBottomSheet: false,
+                        loadItems:
+                            () => _loadEntryItems(_selectedEntry!.id, null),
+                      ),
+                    ),
+          ),
+        ),
+      ],
+    );
+  }
 
-              // ── Paginación anclada al fondo ───────────────────────────────
-              if (provider.totalPages > 1 && !provider.isLoading)
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, -4),
+  Widget _buildCustomScrollView(
+    BuildContext context,
+    InventoryEntriesProvider provider,
+    bool isTablet,
+  ) {
+    final double totalAmount = provider.entries.fold<double>(
+      0,
+      (s, e) => s + e.totalAmount,
+    );
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        // ── Borrador ──────────────────────────────────────────
+        if (_hasDraft)
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.3),
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_document, color: AppColors.warning),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Tienes un borrador de entrada en progreso.',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: () async {
+                      final result = await context.push<bool>(
+                        '/admin/inventory-entry-form',
+                      );
+                      _checkDraft();
+                      if (result == true && context.mounted) {
+                        context.read<InventoryEntriesProvider>().init();
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.warning.withValues(alpha: 0.2),
+                      foregroundColor: AppColors.warning,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text(
+                      'Continuar',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // ── Resumen ──────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                _SummaryChip(
+                  label: 'Página actual',
+                  value: '${provider.entries.length}',
+                  icon: Icons.move_to_inbox_rounded,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 10),
+                _SummaryChip(
+                  label: 'Inversión (pág)',
+                  value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+                  icon: Icons.payments_rounded,
+                  color: AppColors.teal,
+                  isPremium: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Filtros Pegajosos (Sticky Header) ─────────────────
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _StickyFilterDelegate(
+            minHeight: 110,
+            maxHeight: 110,
+            child: Container(
+              color: AppColors.background,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SearchField(
+                          controller: _searchCtrl,
+                          hint: 'Buscar proveedor o comprobante...',
+                          onChanged: (v) {},
+                          onSubmitted: (v) => provider.setSearchQuery(v),
+                          onClear: () {
+                            _searchCtrl.clear();
+                            provider.setSearchQuery('');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      DateFilterCalendar(
+                        dateRange: provider.dateRange,
+                        onDateRangeSelected: provider.setDateRange,
+                        onClear: () => provider.setDateRange(null),
                       ),
                     ],
                   ),
-                  child: SafeArea(
-                    top: false,
-                    child: AdminPageBlocks(
-                      currentPage: provider.currentPage,
-                      totalPages: provider.totalPages,
-                      onPageChanged: provider.goToPage,
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children:
+                          provider.availableWarehouses.map((w) {
+                            final sel = provider.warehouseFilter == w;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                child: FilterChip(
+                                  label: Text(w),
+                                  selected: sel,
+                                  onSelected:
+                                      (_) => provider.setWarehouseFilter(w),
+                                  selectedColor: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  checkmarkColor: AppColors.primary,
+                                  backgroundColor: AppColors.surface,
+                                  side: BorderSide(
+                                    color:
+                                        sel
+                                            ? Colors.transparent
+                                            : Colors.grey.shade300,
+                                  ),
+                                  labelStyle: TextStyle(
+                                    fontWeight:
+                                        sel ? FontWeight.w700 : FontWeight.w500,
+                                    fontSize: 12,
+                                    color:
+                                        sel
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     ),
                   ),
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () async {
-              final result = await context.push<bool>(
-                '/admin/inventory-entry-form',
-              );
-              if (result == true) {
-                provider.loadEntries(page: 0);
-              }
-              _checkDraft();
-            },
-            icon: Icon(_hasDraft ? Icons.edit_note_rounded : Icons.add_rounded),
-            label: Text(_hasDraft ? 'Continuar Borrador' : 'Nueva entrada'),
-            backgroundColor:
-                _hasDraft ? const Color(0xFFF59E0B) : AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 4,
+        ),
+
+        // ── Lista ─────────────────────────────────────────────
+        if (provider.isLoading)
+          const SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(child: _EntriesSkeleton()),
+          )
+        else if (provider.entries.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppEmptyState(
+              icon: Icons.inbox_outlined,
+              title: 'Sin Resultados',
+              message:
+                  provider.searchQuery.isEmpty &&
+                          provider.dateRange == null &&
+                          provider.warehouseFilter == 'Todos'
+                      ? 'No hay entradas registradas'
+                      : 'Sin resultados para los filtros aplicados',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              80,
+            ), // Padding inferior por FAB
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate((context, i) {
+                final entry = provider.entries[i];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _EntryCard(
+                    entry: entry,
+                    isSelected: _selectedEntry?.id == entry.id,
+                    onTap: () => _onEntryTapped(context, entry, isTablet),
+                  ),
+                );
+              }, childCount: provider.entries.length),
+            ),
           ),
-        );
-      },
+      ],
     );
+  }
+
+  Widget _buildPagination(InventoryEntriesProvider provider) {
+    if (provider.totalPages <= 1 || provider.isLoading) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: AdminPageBlocks(
+          currentPage: provider.currentPage,
+          totalPages: provider.totalPages,
+          onPageChanged: provider.goToPage,
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STICKY DELEGATE
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _StickyFilterDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double maxHeight;
+  final double minHeight;
+
+  _StickyFilterDelegate({
+    required this.child,
+    required this.maxHeight,
+    required this.minHeight,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  bool shouldRebuild(covariant _StickyFilterDelegate oldDelegate) {
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        child != oldDelegate.child;
   }
 }
 
@@ -449,7 +578,12 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 class _EntryCard extends StatelessWidget {
   final InventoryEntryModel entry;
   final VoidCallback onTap;
-  const _EntryCard({required this.entry, required this.onTap});
+  final bool isSelected;
+  const _EntryCard({
+    required this.entry,
+    required this.onTap,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -459,11 +593,17 @@ class _EntryCard extends StatelessWidget {
         entry.documentNumber != null &&
         entry.documentNumber!.isNotEmpty;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color:
+            isSelected
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200), // AppColors.border equivalente
+        border: Border.all(
+          color: isSelected ? AppColors.primary : Colors.grey.shade200,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -599,11 +739,14 @@ class _SummaryChip extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final bool isPremium;
+
   const _SummaryChip({
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
+    this.isPremium = false,
   });
 
   @override
@@ -611,13 +754,33 @@ class _SummaryChip extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        gradient:
+            isPremium
+                ? LinearGradient(
+                  colors: [color.withValues(alpha: 0.8), color],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+                : null,
+        color: isPremium ? null : color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: isPremium ? Colors.transparent : color.withValues(alpha: 0.1),
+        ),
+        boxShadow:
+            isPremium
+                ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : null,
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: color),
+          Icon(icon, size: 20, color: isPremium ? Colors.white : color),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -628,14 +791,17 @@ class _SummaryChip extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
-                    color: color,
+                    color: isPremium ? Colors.white : color,
                   ),
                 ),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: color.withValues(alpha: 0.8),
+                    color:
+                        isPremium
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : color.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
