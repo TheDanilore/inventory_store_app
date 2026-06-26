@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  AppTheme._(); // Constructor privado para evitar instanciaciones innecesarias
+
   static ThemeData light() {
     return ThemeData(
       useMaterial3: true,
@@ -10,25 +12,29 @@ class AppTheme {
       fontFamily: 'Inter',
 
       // =====================================
-      // 1. APP BAR
+      // 1. APP BAR (Look Premium: Limpio y Minimalista)
       // =====================================
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        centerTitle: true,
+        backgroundColor:
+            AppColors.surface, // Superficie blanca limpia estilo Apple
+        foregroundColor:
+            AppColors.textPrimary, // Texto oscuro de alta legibilidad
+        centerTitle: false, // Alineado a la izquierda es más ejecutivo en ERPs
         elevation: 0,
-        scrolledUnderElevation: 2,
-        iconTheme: IconThemeData(color: Colors.white),
+        scrolledUnderElevation: 1, // Sutil elevación al hacer scroll
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        actionsIconTheme: IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-          letterSpacing: -0.5,
+          fontFamily: 'Inter',
+          fontSize: 20,
+          fontWeight: FontWeight.w700, // Títulos más robustos
+          color: AppColors.textPrimary,
+          letterSpacing: -0.6,
         ),
       ),
 
       // =====================================
-      // 3. CAMPOS DE TEXTO
+      // 2. CAMPOS DE TEXTO (Formularios Consistentes)
       // =====================================
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -43,161 +49,192 @@ class AppTheme {
         ),
         hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(
+            AppColors.radius,
+          ), // Consistencia con AppColors
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radius),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radius),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radius),
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
       ),
 
       // =====================================
-      // 4. BOTONES
+      // 3. BOTONES (Interactividad Senior)
       // =====================================
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          shadowColor: AppColors.primary.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          minimumSize: const Size(
+            48,
+            48,
+          ), // Garantiza el estándar táctil de 48dp
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radius),
           ),
           textStyle: const TextStyle(
+            fontFamily: 'Inter',
             fontSize: 15,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.2,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
         ).copyWith(
-          elevation: WidgetStateProperty.resolveWith<double>((states) {
-            if (states.contains(WidgetState.disabled)) return 0;
-            if (states.contains(WidgetState.pressed)) return 4;
-            return 2;
+          // Efecto de interacción al presionar en Material 3
+          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.white.withValues(alpha: 0.1);
+            }
+            return null;
           }),
         ),
       ),
+
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor:
-              AppColors
-                  .accent, // Usamos el rojo para destacar los enlaces de texto
+              AppColors.accent, // Enlaces llamativos en Rojo Vibrante
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
           ),
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
+
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.border, width: 1.5),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radius),
           ),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          textStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
 
       // =====================================
-      // 5. BARRA DE NAVEGACIÓN INFERIOR
+      // 4. COMPONENTES DE NAVEGACIÓN MODERNA (Móvil & Tablet Adaptativo)
       // =====================================
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        elevation: 16, // Elevación para separar la barra del fondo
-        selectedItemColor:
-            AppColors.accent, // El ícono activo en ROJO resalta hermoso
-        unselectedItemColor: AppColors.textMuted,
-        selectedIconTheme: IconThemeData(size: 26),
-        unselectedIconTheme: IconThemeData(size: 24),
-        selectedLabelStyle: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-        ),
-        type: BottomNavigationBarType.fixed,
+        elevation: 4,
+        indicatorColor: AppColors.primaryLight, // Globo de selección elegante
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: AppColors.primary, size: 24);
+          }
+          return const IconThemeData(color: AppColors.textMuted, size: 24);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            );
+          }
+          return const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textMuted,
+          );
+        }),
       ),
 
       // =====================================
-      // 7. DIVISORES Y CHIPS
+      // 5. CHIPS, DIVISORES Y DIÁLOGOS
       // =====================================
       dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+        color: AppColors.divider,
         thickness: 1,
         space: 24,
       ),
+
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.surface,
-        selectedColor:
-            AppColors.primaryLight, // Fondo gris/azulado claro al seleccionar
-        disabledColor: AppColors.background,
+        backgroundColor: AppColors.background,
+        selectedColor: AppColors.primaryLight,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         labelStyle: const TextStyle(
-          color: AppColors.textSecondary, // Gris cuando no está seleccionado
+          color: AppColors.textSecondary,
           fontWeight: FontWeight.w500,
+          fontSize: 13,
         ),
         secondaryLabelStyle: const TextStyle(
-          color: AppColors.primary, // Navy oscuro cuando SÍ está seleccionado
-          fontWeight: FontWeight.w900,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
           side: const BorderSide(color: AppColors.border),
         ),
         showCheckmark: false,
       ),
 
-      // =====================================
-      // 8. SNACKBARS
-      // =====================================
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.primaryDark,
         contentTextStyle: const TextStyle(
+          fontFamily: 'Inter',
           color: Colors.white,
           fontWeight: FontWeight.w500,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        ),
+        elevation: 4,
       ),
 
-      // =====================================
-      // 9. CARDS Y DIÁLOGOS
-      // =====================================
       cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
+        color: AppColors.surface,
+        elevation:
+            0, // Las sombras ahora las maneja nuestro AppColors.cardShadow para un look limpio
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          side: const BorderSide(color: AppColors.border),
         ),
         margin: EdgeInsets.zero,
       ),
+
       dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
-        elevation: 10,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppColors.surface,
+        elevation: 24,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        ),
         titleTextStyle: const TextStyle(
+          fontFamily: 'Inter',
           fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
         contentTextStyle: const TextStyle(
+          fontFamily: 'Inter',
           fontSize: 15,
           color: AppColors.textSecondary,
         ),
