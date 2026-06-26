@@ -96,8 +96,8 @@ class AppColors {
   static const ColorScheme colorScheme = ColorScheme.light(
     primary: primary,
     primaryContainer: primaryLight,
-    secondary: accent, // El rojo vibrante actúa como secundario interactivo
-    secondaryContainer: accentLight,
+    secondary: primary, // Usar primario en lugar de rojo para evitar destellos
+    secondaryContainer: primaryLight,
     surface: surface,
     error: error,
     onPrimary: Colors.white,

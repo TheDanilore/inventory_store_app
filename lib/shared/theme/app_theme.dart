@@ -10,6 +10,8 @@ class AppTheme {
       colorScheme: AppColors.colorScheme,
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: 'Inter',
+      splashColor: AppColors.primary.withValues(alpha: 0.1),
+      highlightColor: AppColors.primary.withValues(alpha: 0.05),
 
       // =====================================
       // 1. APP BAR (Look Premium: Limpio y Minimalista)
@@ -104,7 +106,8 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor:
-              AppColors.accent, // Enlaces llamativos en Rojo Vibrante
+              AppColors
+                  .primary, // Enlaces en color primario (Navy) para un look más formal
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
