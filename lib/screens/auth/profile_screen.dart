@@ -14,6 +14,7 @@ import 'package:inventory_store_app/screens/auth/widgets/profile_read_only_info_
 import 'package:inventory_store_app/screens/auth/widgets/profile_edit_form_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_action_buttons_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_shimmer.dart';
+import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -180,208 +181,274 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body:
           provider.isLoading || !_hasInitialized
               ? const ProfileShimmer()
-              : SizedBox(
-                height: double.infinity,
-                child: RefreshIndicator(
-                  color: AppColors.teal,
-                  onRefresh: () async {
-                    await provider.fetchUserProfile();
-                    // Also might fetch wallet balance if provider handles it?
-                  },
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: ProfileHeaderSection(
-                          displayName:
-                              provider.fullName.isEmpty
-                                  ? 'Usuario'
-                                  : provider.fullName,
-                          userRole: provider.userRole,
-                          email: email,
-                          walletBalance: walletBalance,
-                          avatarUrl: provider.avatarUrl,
-                          imageBytes: provider.imageBytes,
-                          isEditing: _isEditing,
-                          onPickImage: _pickImage,
-                          onEditToggle:
-                              () => setState(() {
-                                if (_isEditing) {
-                                  // Cancelar edición revierte los valores
-                                  _nameCtrl.text = provider.fullName;
-                                  _phoneCtrl.text = provider.phone;
-                                  _docNumCtrl.text = provider.documentNumber;
-                                  _docType = provider.documentType;
-                                  provider.setImageBytes(null);
-                                }
-                                _isEditing = !_isEditing;
-                              }),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-                      if (!widget.openedFromAdmin)
-                        SliverToBoxAdapter(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _sectionLabel('Accesos rápidos'),
-                              ProfileQuickActionGrid(
-                                items: [
-                                  ProfileQuickActionItem(
-                                    title: 'Monedas',
-                                    value: 'Canjear ',
-                                    icon: Icons.stars_rounded,
-                                    color: AppColors.gold,
-                                    onTap:
-                                        () => context.push('/customer/points'),
-                                  ),
-                                  ProfileQuickActionItem(
-                                    title: 'Pedidos',
-                                    value: 'Ver historial',
-                                    icon: Icons.receipt_long_rounded,
-                                    color: AppColors.info,
-                                    onTap:
-                                        () => context.push('/customer/orders'),
-                                  ),
-                                  ProfileQuickActionItem(
-                                    title: 'Direcciones',
-                                    value: 'Ver direcciones',
-                                    icon: Icons.location_on_rounded,
-                                    color: AppColors.success,
-                                    onTap:
-                                        () => context.push('/customer/address'),
-                                  ),
-                                  ProfileQuickActionItem(
-                                    title: 'Deseos',
-                                    value: 'Ver wishlist',
-                                    icon: Icons.favorite_rounded,
-                                    color: AppColors.accent,
-                                    onTap:
-                                        () =>
-                                            context.push('/customer/wishlist'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                            ],
+              : LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 700;
+                  final horizontalPadding =
+                      isTablet ? (constraints.maxWidth - 700) / 2 : 0.0;
+                  return RefreshIndicator(
+                    color: AppColors.teal,
+                    onRefresh: () async {
+                      await provider.fetchUserProfile();
+                    },
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverPadding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding,
                           ),
-                        ),
+                          sliver: SliverList(
+                            delegate: SliverChildListDelegate([
+                              ProfileHeaderSection(
+                                displayName:
+                                    provider.fullName.isEmpty
+                                        ? 'Usuario'
+                                        : provider.fullName,
+                                userRole: provider.userRole,
+                                email: email,
+                                walletBalance: walletBalance,
+                                avatarUrl: provider.avatarUrl,
+                                imageBytes: provider.imageBytes,
+                                isEditing: _isEditing,
+                                onPickImage: _pickImage,
+                                onEditToggle:
+                                    () => setState(() {
+                                      if (_isEditing) {
+                                        // Cancelar edición revierte los valores
+                                        _nameCtrl.text = provider.fullName;
+                                        _phoneCtrl.text = provider.phone;
+                                        _docNumCtrl.text =
+                                            provider.documentNumber;
+                                        _docType = provider.documentType;
+                                        provider.setImageBytes(null);
+                                      }
+                                      _isEditing = !_isEditing;
+                                    }),
+                                isTablet: isTablet,
+                              ),
+                              const SizedBox(height: 8),
 
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 350),
-                                switchInCurve: Curves.easeOut,
-                                switchOutCurve: Curves.easeIn,
-                                child:
-                                    _isEditing
-                                        ? Column(
-                                          key: const ValueKey('editMode'),
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            _sectionLabelInline(
-                                              'Editar datos personales',
-                                            ),
-                                            Stack(
-                                              children: [
-                                                ProfileEditFormSection(
-                                                  nameCtrl: _nameCtrl,
-                                                  phoneCtrl: _phoneCtrl,
-                                                  docNumCtrl: _docNumCtrl,
-                                                  docType: _docType,
-                                                  onDocTypeChanged:
-                                                      (v) => setState(
-                                                        () => _docType = v,
-                                                      ),
-                                                  onSave:
-                                                      provider.isSaving
-                                                          ? () {}
-                                                          : _saveProfile,
-                                                ),
-                                                if (provider.isSaving)
-                                                  const Positioned.fill(
-                                                    child: ColoredBox(
-                                                      color: Colors.white54,
-                                                      child: Center(
-                                                        child:
-                                                            CircularProgressIndicator(),
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 14),
-                                            _sectionLabelInline('Seguridad'),
-                                            PasswordChangeCard(
-                                              newPasswordCtrl: _newPasswordCtrl,
-                                              confirmPasswordCtrl:
-                                                  _confirmPasswordCtrl,
-                                              isUpdating:
-                                                  provider.isUpdatingPassword,
-                                              onSave: _changePassword,
-                                            ),
-                                          ],
-                                        )
-                                        : Column(
-                                          key: const ValueKey('readMode'),
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            _sectionLabelInline(
-                                              'Información de cuenta',
-                                            ),
-                                            ProfileReadOnlyInfoSection(
-                                              email:
-                                                  email.isEmpty
-                                                      ? 'Sin correo'
-                                                      : email,
-                                              userRole: provider.userRole,
-                                              fullName: provider.fullName,
-                                              phone: provider.phone,
-                                              docType: provider.documentType,
-                                              docNum: provider.documentNumber,
-                                            ),
-                                          ],
+                              if (!widget.openedFromAdmin)
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _sectionLabel('Accesos rápidos'),
+                                    ProfileQuickActionGrid(
+                                      items: [
+                                        ProfileQuickActionItem(
+                                          title: 'Monedas',
+                                          value: 'Canjear ',
+                                          icon: Icons.stars_rounded,
+                                          color: AppColors.gold,
+                                          onTap:
+                                              () => context.push(
+                                                '/customer/points',
+                                              ),
                                         ),
-                              ),
+                                        ProfileQuickActionItem(
+                                          title: 'Pedidos',
+                                          value: 'Ver historial',
+                                          icon: Icons.receipt_long_rounded,
+                                          color: AppColors.info,
+                                          onTap:
+                                              () => context.push(
+                                                '/customer/orders',
+                                              ),
+                                        ),
+                                        ProfileQuickActionItem(
+                                          title: 'Direcciones',
+                                          value: 'Ver direcciones',
+                                          icon: Icons.location_on_rounded,
+                                          color: AppColors.success,
+                                          onTap:
+                                              () => context.push(
+                                                '/customer/address',
+                                              ),
+                                        ),
+                                        ProfileQuickActionItem(
+                                          title: 'Deseos',
+                                          value: 'Ver wishlist',
+                                          icon: Icons.favorite_rounded,
+                                          color: AppColors.accent,
+                                          onTap:
+                                              () => context.push(
+                                                '/customer/wishlist',
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                  ],
+                                ),
 
-                              const SizedBox(height: 20),
-
-                              ProfileActionButtonsSection(
-                                isAdmin: provider.userRole == 'Administrador',
-                                openedFromAdmin: widget.openedFromAdmin,
-                                onToggleView: () {
-                                  if (widget.openedFromAdmin) {
-                                    context.go('/customer');
-                                  } else {
-                                    context.go('/admin');
-                                  }
-                                },
-                                onSignOut: () async {
-                                  final authProvider =
-                                      context.read<AuthProvider>();
-                                  authProvider.clearSession();
-                                  try {
-                                    await provider.signOut();
-                                  } catch (e) {
-                                    debugPrint('Logout error: $e');
-                                  }
-                                },
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    AnimatedSize(
+                                      duration: const Duration(
+                                        milliseconds: 350,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                      alignment: Alignment.topCenter,
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
+                                        switchInCurve: Curves.easeOut,
+                                        switchOutCurve: Curves.easeIn,
+                                        child:
+                                            _isEditing
+                                                ? Column(
+                                                  key: const ValueKey(
+                                                    'editMode',
+                                                  ),
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _sectionLabelInline(
+                                                      context,
+                                                      'Editar datos personales',
+                                                    ),
+                                                    Stack(
+                                                      children: [
+                                                        ProfileEditFormSection(
+                                                          nameCtrl: _nameCtrl,
+                                                          phoneCtrl: _phoneCtrl,
+                                                          docNumCtrl:
+                                                              _docNumCtrl,
+                                                          docType: _docType,
+                                                          onDocTypeChanged:
+                                                              (v) => setState(
+                                                                () =>
+                                                                    _docType =
+                                                                        v,
+                                                              ),
+                                                          onSave:
+                                                              provider.isSaving
+                                                                  ? () {}
+                                                                  : _saveProfile,
+                                                        ),
+                                                        if (provider.isSaving)
+                                                          Positioned.fill(
+                                                            child: ClipRRect(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    24,
+                                                                  ),
+                                                              child: BackdropFilter(
+                                                                filter:
+                                                                    ImageFilter.blur(
+                                                                      sigmaX: 8,
+                                                                      sigmaY: 8,
+                                                                    ),
+                                                                child: Container(
+                                                                  color: Colors
+                                                                      .white
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.3,
+                                                                      ),
+                                                                  child: const Center(
+                                                                    child:
+                                                                        CircularProgressIndicator(),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 14),
+                                                    _sectionLabelInline(
+                                                      context,
+                                                      'Seguridad',
+                                                    ),
+                                                    PasswordChangeCard(
+                                                      newPasswordCtrl:
+                                                          _newPasswordCtrl,
+                                                      confirmPasswordCtrl:
+                                                          _confirmPasswordCtrl,
+                                                      isUpdating:
+                                                          provider
+                                                              .isUpdatingPassword,
+                                                      onSave: _changePassword,
+                                                    ),
+                                                  ],
+                                                )
+                                                : Column(
+                                                  key: const ValueKey(
+                                                    'readMode',
+                                                  ),
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _sectionLabelInline(
+                                                      context,
+                                                      'Información de cuenta',
+                                                    ),
+                                                    ProfileReadOnlyInfoSection(
+                                                      email:
+                                                          email.isEmpty
+                                                              ? 'Sin correo'
+                                                              : email,
+                                                      userRole:
+                                                          provider.userRole,
+                                                      fullName:
+                                                          provider.fullName,
+                                                      phone: provider.phone,
+                                                      docType:
+                                                          provider.documentType,
+                                                      docNum:
+                                                          provider
+                                                              .documentNumber,
+                                                    ),
+                                                  ],
+                                                ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    ProfileActionButtonsSection(
+                                      isAdmin:
+                                          provider.userRole == 'Administrador',
+                                      openedFromAdmin: widget.openedFromAdmin,
+                                      onToggleView: () {
+                                        if (widget.openedFromAdmin) {
+                                          context.go('/customer');
+                                        } else {
+                                          context.go('/admin');
+                                        }
+                                      },
+                                      onSignOut: () async {
+                                        final authProvider =
+                                            context.read<AuthProvider>();
+                                        authProvider.clearSession();
+                                        try {
+                                          await provider.signOut();
+                                        } catch (e) {
+                                          debugPrint('Logout error: $e');
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 32),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 32),
-                            ],
+                            ]),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  );
+                },
               ),
     );
   }
@@ -391,8 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 16,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
           letterSpacing: -0.2,
@@ -401,13 +467,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _sectionLabelInline(String text) {
+  Widget _sectionLabelInline(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 15,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
           letterSpacing: -0.2,
