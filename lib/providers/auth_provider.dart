@@ -75,6 +75,11 @@ class AuthProvider extends ChangeNotifier {
       
       // Obtener rol y notificar para que GoRouter redirija
       final role = await checkAndGetRole();
+      
+      if (role == null) {
+        return 'Error al obtener la información de la cuenta.';
+      }
+
       await initializeSession(role);
       
       return null;
@@ -83,6 +88,9 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error auth: $e');
       final errStr = e.toString().toLowerCase();
+      if (errStr.contains('inactive_user')) {
+        return 'Tu cuenta está inactiva o bloqueada. Contacta a soporte.';
+      }
       if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
         return 'Sin conexión a internet.';
       }
@@ -121,11 +129,14 @@ class AuthProvider extends ChangeNotifier {
 
       if (data['is_active'] == false) {
         await _supabase.auth.signOut();
-        return null;
+        throw Exception('inactive_user');
       }
 
       return data['role'] as String?;
     } catch (e) {
+      if (e.toString().contains('inactive_user')) {
+        rethrow;
+      }
       await _supabase.auth.signOut();
       return null;
     } finally {
