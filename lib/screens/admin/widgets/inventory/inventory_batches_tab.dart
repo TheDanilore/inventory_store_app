@@ -160,7 +160,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 ),
                 const SizedBox(width: 6),
                 _MetricCard(
-                  label: 'Próximos',
+                  label: 'Críticos',
                   value: '${provider.countCritico}',
                   icon: Icons.warning_amber_rounded,
                   color: AppColors.warning,
@@ -168,10 +168,10 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 ),
                 const SizedBox(width: 6),
                 _MetricCard(
-                  label: 'En <30d',
+                  label: 'Próximos',
                   value: '${provider.countProximo}',
                   icon: Icons.schedule_rounded,
-                  color: Colors.orange.shade400,
+                  color: Colors.blue.shade400,
                   highlight: provider.countProximo > 0,
                 ),
                 const SizedBox(width: 6),
@@ -235,7 +235,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                           label: 'Próximos',
                           isSelected: provider.batchStatusFilter == 'proximo',
                           onTap: () => provider.setBatchStatus('proximo'),
-                          color: Colors.orange.shade400,
+                          color: Colors.blue.shade400,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
@@ -362,9 +362,9 @@ class _StickyBatchesFiltersDelegate extends SliverPersistentHeaderDelegate {
   _StickyBatchesFiltersDelegate({required this.child});
 
   @override
-  double get minExtent => 110.0;
+  double get minExtent => 130.0;
   @override
-  double get maxExtent => 110.0;
+  double get maxExtent => 130.0;
 
   @override
   Widget build(
@@ -372,7 +372,7 @@ class _StickyBatchesFiltersDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return child;
+    return SizedBox.expand(child: child);
   }
 
   @override

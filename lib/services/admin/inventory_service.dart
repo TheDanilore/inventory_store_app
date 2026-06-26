@@ -314,13 +314,13 @@ class InventoryService {
     final plus90 =
         DateTime(now.year, now.month, now.day + 90).toIso8601String();
 
-    if (statusFilter == 'Vencido') {
+    if (statusFilter == 'vencido') {
       query = query.lt('expiry_date', today);
-    } else if (statusFilter == 'Crítico') {
+    } else if (statusFilter == 'critico') {
       query = query.gte('expiry_date', today).lte('expiry_date', plus30);
-    } else if (statusFilter == 'Próximo') {
+    } else if (statusFilter == 'proximo') {
       query = query.gt('expiry_date', plus30).lte('expiry_date', plus90);
-    } else if (statusFilter == 'Normal') {
+    } else if (statusFilter == 'normal') {
       query = query.gt('expiry_date', plus90);
     }
 

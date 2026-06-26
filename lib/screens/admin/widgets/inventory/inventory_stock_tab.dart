@@ -352,9 +352,9 @@ class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
   _StickyStockFiltersDelegate({required this.child});
 
   @override
-  double get minExtent => 110.0;
+  double get minExtent => 130.0;
   @override
-  double get maxExtent => 110.0;
+  double get maxExtent => 130.0;
 
   @override
   Widget build(
@@ -362,7 +362,7 @@ class _StickyStockFiltersDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return child;
+    return SizedBox.expand(child: child);
   }
 
   @override
