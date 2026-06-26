@@ -97,6 +97,7 @@ class AdminLayout extends StatelessWidget {
                                 if (showBackButton)
                                   AdminAppBarIconButton(
                                     icon: Icons.arrow_back_ios_new_rounded,
+                                    tooltip: 'Volver',
                                     onTap: () => Navigator.maybePop(context),
                                   ),
                                 if (showBackButton && showProfileButton)
@@ -128,6 +129,7 @@ class AdminLayout extends StatelessWidget {
                         builder:
                             (context) => AdminAppBarIconButton(
                               icon: Icons.menu_rounded,
+                              tooltip: 'Menú principal',
                               onTap: () => Scaffold.of(context).openEndDrawer(),
                             ),
                       ),
@@ -194,27 +196,35 @@ class AdminLayout extends StatelessWidget {
 class AdminAppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final String? tooltip;
 
   const AdminAppBarIconButton({
     super.key,
     required this.icon,
     required this.onTap,
+    this.tooltip,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(10),
+    final button = Material(
+      color: const Color(0xFFF1F5F9),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(icon, size: 18, color: const Color(0xFF475569)),
         ),
-        child: Icon(icon, size: 18, color: const Color(0xFF475569)),
       ),
     );
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip!, child: button);
+    }
+    return button;
   }
 }
 
@@ -259,8 +269,8 @@ class AdminProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return Tooltip(
+      message: 'Perfil',
       child: Container(
         width: 38,
         height: 38,
@@ -271,51 +281,66 @@ class AdminProfileAvatar extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Consumer<ProfileProvider>(
-            builder: (context, profile, _) {
-              if (profile.isLoading &&
-                  profile.avatarUrl == null &&
-                  profile.fullName.isEmpty) {
-                // Skeleton/Loading state
-                return const Center(
-                  child: SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white70,
-                    ),
-                  ),
-                );
-              }
-
-              if (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty) {
-                return CachedNetworkImage(
-                  imageUrl: profile.avatarUrl!,
-                  fit: BoxFit.cover,
-                  width: 38,
-                  height: 38,
-                  fadeInDuration: const Duration(milliseconds: 150),
-                  placeholder:
-                      (context, url) => const Center(
-                        child: SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white70,
-                          ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Consumer<ProfileProvider>(
+                builder: (context, profile, _) {
+                  if (profile.isLoading &&
+                      profile.avatarUrl == null &&
+                      profile.fullName.isEmpty) {
+                    // Skeleton/Loading state
+                    return const Center(
+                      child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white70,
                         ),
                       ),
-                  errorWidget:
-                      (context, url, error) => _initialsWidget(profile),
-                );
-              }
-              return _initialsWidget(profile);
-            },
+                    );
+                  }
+
+                  if (profile.avatarUrl != null &&
+                      profile.avatarUrl!.isNotEmpty) {
+                    return CachedNetworkImage(
+                      imageUrl: profile.avatarUrl!,
+                      fit: BoxFit.cover,
+                      width: 38,
+                      height: 38,
+                      fadeInDuration: const Duration(milliseconds: 150),
+                      placeholder:
+                          (context, url) => const Center(
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ),
+                      errorWidget:
+                          (context, url, error) => _initialsWidget(profile),
+                    );
+                  }
+                  return _initialsWidget(profile);
+                },
+              ),
+            ),
           ),
         ),
       ),
