@@ -105,7 +105,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   // Helpers para generar modelos dummy
-  ProductModel _dummyProduct(String id, String name, bool usesBatches) {
+  ProductModel _dummyProduct(String id, String name, bool usesBatches, String? imageUrl) {
     return ProductModel.fromJson({
       'id': id,
       'name': name,
@@ -115,16 +115,34 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       'product_type': 'good',
       'unit_cost': 0,
       'sale_price': 0,
+      if (imageUrl != null)
+        'product_images': [
+          {
+            'id': 'dummy-img',
+            'product_id': id,
+            'image_url': imageUrl,
+            'is_main': true,
+          }
+        ],
     });
   }
 
-  ProductVariantModel _dummyVariant(String id, String productId, String attrs) {
+  ProductVariantModel _dummyVariant(String id, String productId, String attrs, String? imageUrl) {
     return ProductVariantModel.fromJson({
       'id': id,
       'product_id': productId,
       'attributes': {'label': attrs},
       'is_active': true,
       'unit_cost': 0,
+      if (imageUrl != null)
+        'product_images': [
+          {
+            'id': 'dummy-img-v',
+            'product_id': productId,
+            'image_url': imageUrl,
+            'is_main': true,
+          }
+        ],
     });
   }
 
@@ -151,11 +169,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                             i.productId,
                             i.productName ?? '—',
                             i.usesBatches,
+                            i.imageUrl,
                           ),
                           variant: _dummyVariant(
                             i.variantId,
                             i.productId,
                             i.variantAttrs,
+                            i.imageUrl,
                           ),
                           quantity: i.quantityOrdered - i.quantityReceived,
                           unitCost: i.unitCost,
