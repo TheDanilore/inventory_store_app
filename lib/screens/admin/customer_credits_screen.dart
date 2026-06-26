@@ -139,7 +139,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                                     color: AppColors.textMuted,
                                   ),
                                   filled: true,
-                                  fillColor: AppColors.bg,
+                                  fillColor: AppColors.background,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide.none,
@@ -152,7 +152,7 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen>
                               const SizedBox(height: 10),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: AppColors.bg,
+                                  color: AppColors.background,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: TabBar(

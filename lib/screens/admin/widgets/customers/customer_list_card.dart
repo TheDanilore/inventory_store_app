@@ -125,7 +125,7 @@ class _CustomerListCardState extends State<CustomerListCard> {
                               _Tag(
                                 icon: Icons.shopping_bag_rounded,
                                 text: '${widget.customer.orderCount} compras',
-                                color: AppColors.blue,
+                                color: Colors.blue,
                               ),
                               const SizedBox(width: 8),
                               if (widget.customer.currentDebt > 0)

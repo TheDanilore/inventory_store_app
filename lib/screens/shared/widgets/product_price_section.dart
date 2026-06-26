@@ -87,7 +87,7 @@ class ProductPriceSection extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: isWholesale ? AppColors.amberLight : AppColors.bg,
+                  color: isWholesale ? AppColors.amberLight : AppColors.background,
                   borderRadius: BorderRadius.circular(AppColors.radius),
                   border: Border.all(
                     color:

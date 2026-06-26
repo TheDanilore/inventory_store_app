@@ -126,7 +126,7 @@ class _InfoTile extends StatelessWidget {
                       label,
                       style: const TextStyle(
                         fontSize: 11,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

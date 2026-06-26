@@ -124,7 +124,7 @@ class ProductBatchesCard extends StatelessWidget {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.bg,
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(
                             AppColors.radiusSm + 2,
                           ),

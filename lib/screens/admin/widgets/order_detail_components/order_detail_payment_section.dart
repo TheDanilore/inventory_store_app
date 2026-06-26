@@ -195,7 +195,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.teal : AppColors.bg,
+          color: isSelected ? AppColors.teal : AppColors.background,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.teal : AppColors.border,

@@ -56,7 +56,7 @@ class ProductAvailabilityCard extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.bg,
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
                   border: Border.all(color: AppColors.border),
                 ),

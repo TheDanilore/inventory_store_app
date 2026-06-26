@@ -309,7 +309,7 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
   }
 
   Widget _imgFallback() => Container(
-    color: AppColors.bg,
+    color: AppColors.background,
     child: const Icon(Icons.image_outlined, color: AppColors.textSecondary),
   );
 }

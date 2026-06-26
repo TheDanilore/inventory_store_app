@@ -51,7 +51,7 @@ class ProductBottomBar extends StatelessWidget {
               if (canBuy) ...[
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.bg,
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(AppColors.radius),
                     border: Border.all(color: AppColors.border),
                   ),

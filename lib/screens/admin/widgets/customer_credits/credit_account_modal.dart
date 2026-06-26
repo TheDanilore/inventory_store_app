@@ -226,7 +226,7 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
           const SizedBox(height: 6),
           Container(
             decoration: BoxDecoration(
-              color: _isEditing ? Colors.grey.shade100 : AppColors.bg,
+              color: _isEditing ? Colors.grey.shade100 : AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color:
@@ -330,7 +330,7 @@ class _CreditAccountModalState extends State<CreditAccountModal> {
           const SizedBox(height: 6),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.bg,
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),

@@ -109,7 +109,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                         color:
                             isSelected
                                 ? chipColor.withValues(alpha: 0.12)
-                                : AppColors.bg,
+                                : AppColors.background,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: isSelected ? chipColor : AppColors.border,
@@ -196,7 +196,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                       color:
                           isCredito
                               ? Colors.deepOrange.withValues(alpha: 0.12)
-                              : AppColors.bg,
+                              : AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: isCredito ? Colors.deepOrange : AppColors.border,
@@ -301,7 +301,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 border: Border.all(color: AppColors.border),
               ),

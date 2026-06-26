@@ -404,7 +404,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                             width: 110,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.bg,
+                              color: AppColors.background,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: AppColors.border),
                             ),
@@ -796,7 +796,7 @@ class _ReadOnlyInfoRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
@@ -920,7 +920,7 @@ class _StyledField extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
         filled: true,
-        fillColor: AppColors.bg,
+        fillColor: AppColors.background,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 14,
@@ -972,7 +972,7 @@ class _ToggleRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),

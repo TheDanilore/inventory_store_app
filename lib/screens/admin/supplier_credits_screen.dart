@@ -187,7 +187,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                                         )
                                         : null,
                                 filled: true,
-                                fillColor: AppColors.bg,
+                                fillColor: AppColors.background,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -200,7 +200,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                             const SizedBox(height: 10),
                             Container(
                               decoration: BoxDecoration(
-                                color: AppColors.bg,
+                                color: AppColors.background,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: TabBar(

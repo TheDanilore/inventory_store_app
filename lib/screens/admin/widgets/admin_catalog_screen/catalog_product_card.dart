@@ -360,7 +360,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                 Container(
                   margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                   decoration: BoxDecoration(
-                    color: AppColors.bg,
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -385,7 +385,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                       _IconCardAction(
                         icon: Icons.edit_rounded,
                         tooltip: 'Editar producto',
-                        color: AppColors.blue,
+                        color: Colors.blue,
                         onTap: widget.onEdit,
                       ),
                       // Botón Activar / Desactivar

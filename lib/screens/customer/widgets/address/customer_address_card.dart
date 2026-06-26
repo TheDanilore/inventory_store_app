@@ -179,7 +179,7 @@ class CustomerAddressCard extends StatelessWidget {
                                   const Icon(
                                     Icons.info_outline_rounded,
                                     size: 12,
-                                    color: AppColors.textHint,
+                                    color: AppColors.textMuted,
                                   ),
                                   const SizedBox(width: 4),
                                   Expanded(
@@ -188,7 +188,7 @@ class CustomerAddressCard extends StatelessWidget {
                                       style: const TextStyle(
                                         fontSize: 11,
                                         fontStyle: FontStyle.italic,
-                                        color: AppColors.textHint,
+                                        color: AppColors.textMuted,
                                       ),
                                     ),
                                   ),

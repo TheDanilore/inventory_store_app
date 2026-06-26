@@ -519,7 +519,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.grey.shade200),
               ),
@@ -817,7 +817,7 @@ InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
     filled: true,
     fillColor: AppColors.background,
     prefixIcon:
-        icon != null ? Icon(icon, color: AppColors.textHint, size: 20) : null,
+        icon != null ? Icon(icon, color: AppColors.textMuted, size: 20) : null,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: BorderSide(color: Colors.grey.shade300),
@@ -910,7 +910,7 @@ class _DatePickerField extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.textHint, size: 20),
+            Icon(icon, color: AppColors.textMuted, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -933,7 +933,7 @@ class _DatePickerField extends StatelessWidget {
                 onTap: onClear,
                 child: const Icon(
                   Icons.close_rounded,
-                  color: AppColors.textHint,
+                  color: AppColors.textMuted,
                   size: 18,
                 ),
               ),

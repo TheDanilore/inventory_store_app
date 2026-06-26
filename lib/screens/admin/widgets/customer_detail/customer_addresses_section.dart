@@ -37,7 +37,7 @@ class _AddressRow extends StatelessWidget {
               color:
                   address.isDefault
                       ? AppColors.primary.withValues(alpha: 0.1)
-                      : AppColors.bg,
+                      : AppColors.background,
               shape: BoxShape.circle,
             ),
             child: Icon(

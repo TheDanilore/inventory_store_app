@@ -42,7 +42,7 @@ class CustomerKpiRow extends StatelessWidget {
             value: avgOrder,
             prefix: 'S/ ',
             label: 'Promedio',
-            color: AppColors.blue,
+            color: Colors.blue,
           ),
           const SizedBox(width: 10),
           _KpiCard(

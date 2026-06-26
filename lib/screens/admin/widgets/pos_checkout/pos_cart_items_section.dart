@@ -33,7 +33,7 @@ class PosCartItemsSection extends StatelessWidget {
             Icon(
               Icons.shopping_bag_outlined,
               size: 32,
-              color: AppColors.textHint,
+              color: AppColors.textMuted,
             ),
             SizedBox(height: 8),
             Text(
@@ -159,7 +159,7 @@ class PosCartItemRow extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.bg,
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.border),
             ),
@@ -183,13 +183,13 @@ class PosCartItemRow extends StatelessWidget {
                         errorWidget:
                             (context, url, error) => const Icon(
                               Icons.image_not_supported,
-                              color: AppColors.textHint,
+                              color: AppColors.textMuted,
                               size: 20,
                             ),
                       )
                       : const Icon(
                         Icons.inventory_2_outlined,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                         size: 20,
                       ),
             ),
@@ -279,7 +279,7 @@ class PosCartItemRow extends StatelessWidget {
                     Container(
                       height: 28,
                       decoration: BoxDecoration(
-                        color: AppColors.bg,
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: AppColors.border),
                       ),
@@ -306,7 +306,7 @@ class PosCartItemRow extends StatelessWidget {
                                 color:
                                     item.quantity > 1
                                         ? AppColors.textSecondary
-                                        : AppColors.textHint,
+                                        : AppColors.textMuted,
                               ),
                             ),
                           ),
@@ -348,7 +348,7 @@ class PosCartItemRow extends StatelessWidget {
                                 color:
                                     item.quantity < item.availableStock
                                         ? AppColors.textSecondary
-                                        : AppColors.textHint,
+                                        : AppColors.textMuted,
                               ),
                             ),
                           ),
@@ -448,7 +448,7 @@ class PosWholesaleHint extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: isPositive ? AppColors.successLight : AppColors.blueLight,
+            color: isPositive ? AppColors.successLight : Colors.blue.shade300,
             borderRadius: BorderRadius.circular(AppColors.radiusSm),
           ),
           child: Row(
@@ -458,7 +458,7 @@ class PosWholesaleHint extends StatelessWidget {
                     ? Icons.check_circle_outline_rounded
                     : Icons.info_outline_rounded,
                 size: 14,
-                color: isPositive ? AppColors.success : AppColors.blue,
+                color: isPositive ? AppColors.success : Colors.blue,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -467,7 +467,7 @@ class PosWholesaleHint extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isPositive ? AppColors.success : AppColors.blue,
+                    color: isPositive ? AppColors.success : Colors.blue,
                   ),
                 ),
               ),

@@ -867,7 +867,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 child: Container(
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.bg,
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
                     border: Border.all(color: Colors.grey.shade300),
                   ),

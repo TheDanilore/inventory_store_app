@@ -48,7 +48,7 @@ class AdminSaleClientSection extends StatelessWidget {
           Container(
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.bg,
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
               border: Border.all(color: AppColors.border),
             ),
@@ -308,7 +308,7 @@ class _ClientMatchesList extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.teal : AppColors.bg,
+                        color: isSelected ? AppColors.teal : AppColors.background,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected ? AppColors.teal : AppColors.border,

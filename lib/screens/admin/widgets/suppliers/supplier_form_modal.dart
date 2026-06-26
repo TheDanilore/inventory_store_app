@@ -264,7 +264,7 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
           ),
           prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
           filled: true,
-          fillColor: AppColors.bg,
+          fillColor: AppColors.background,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,

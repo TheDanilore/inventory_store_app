@@ -41,7 +41,7 @@ class AppTheme {
           color: AppColors.textSecondary,
           fontSize: 14,
         ),
-        hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
@@ -118,7 +118,7 @@ class AppTheme {
         elevation: 16, // Elevación para separar la barra del fondo
         selectedItemColor:
             AppColors.accent, // El ícono activo en ROJO resalta hermoso
-        unselectedItemColor: AppColors.textHint,
+        unselectedItemColor: AppColors.textMuted,
         selectedIconTheme: IconThemeData(size: 26),
         unselectedIconTheme: IconThemeData(size: 24),
         selectedLabelStyle: TextStyle(

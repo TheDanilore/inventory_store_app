@@ -563,7 +563,7 @@ class _AppDrawerState extends State<AppDrawer> {
       child: Text(
         title,
         style: const TextStyle(
-          color: AppColors.textHint,
+          color: AppColors.textMuted,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.4,
@@ -938,7 +938,7 @@ class _DrawerFooter extends StatelessWidget {
                       child: Text(
                         'v1.0.0',
                         style: TextStyle(
-                          color: AppColors.textHint,
+                          color: AppColors.textMuted,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),

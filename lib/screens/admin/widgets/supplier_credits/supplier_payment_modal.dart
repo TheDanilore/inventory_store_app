@@ -368,7 +368,7 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.bg,
+                    color: AppColors.background,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.border),
                   ),
@@ -464,7 +464,7 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
             const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color:
@@ -560,7 +560,7 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
                 initialValue: _selectedAccount,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: AppColors.bg,
+                  fillColor: AppColors.background,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -673,7 +673,7 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
             const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
@@ -817,7 +817,7 @@ class _OrderSelectionTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.tealLight : AppColors.bg,
+          color: isSelected ? AppColors.tealLight : AppColors.background,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.teal : AppColors.border,
@@ -890,7 +890,7 @@ class _QuickAmountChip extends StatelessWidget {
           color:
               isSelected
                   ? (isTotalChip ? AppColors.danger : AppColors.teal)
-                  : AppColors.bg,
+                  : AppColors.background,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? Colors.transparent : AppColors.border,

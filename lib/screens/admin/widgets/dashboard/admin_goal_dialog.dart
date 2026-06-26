@@ -355,7 +355,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                             'Saldo actual exacto',
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: AppColors.blue,
+                              color: Colors.blue,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -378,7 +378,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                                 label: 'Editar saldo actual',
                                 child: const Icon(
                                   Icons.edit_note,
-                                  color: AppColors.blue,
+                                  color: Colors.blue,
                                 ),
                               ),
                             ),

@@ -32,7 +32,7 @@ class ProductDetailsCard extends StatelessWidget {
             final isEven = e.key % 2 == 0;
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-              color: isEven ? AppColors.bg : Colors.white,
+              color: isEven ? AppColors.background : Colors.white,
               child: Row(
                 children: [
                   Expanded(

@@ -302,7 +302,7 @@ class _ProductDetailScreenContentState
                     const SizedBox(height: 24),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.bg,
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border),
                       ),
@@ -485,7 +485,7 @@ class _ProductDetailScreenContentState
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.bg,
+                              color: AppColors.background,
                               borderRadius: BorderRadius.circular(
                                 AppColors.radiusSm,
                               ),
@@ -1027,7 +1027,7 @@ class _ProductDetailScreenContentState
     );
 
     if (widget.isEmbedded) {
-      return Container(color: AppColors.bg, child: content);
+      return Container(color: AppColors.background, child: content);
     }
 
     if (isAdmin) {
@@ -1036,7 +1036,7 @@ class _ProductDetailScreenContentState
         showBackButton: true,
         showSettingsButton: false,
         showAppBar: false,
-        body: Container(color: AppColors.bg, child: content),
+        body: Container(color: AppColors.background, child: content),
       );
     }
 
@@ -1046,7 +1046,7 @@ class _ProductDetailScreenContentState
       showBottomNav: false,
       showCartIcon: false,
       showAppBar: false,
-      body: Container(color: AppColors.bg, child: content),
+      body: Container(color: AppColors.background, child: content),
       bottomNavigationBar: ProductBottomBar(
         canBuy: _canBuy,
         isActive: _isActive,

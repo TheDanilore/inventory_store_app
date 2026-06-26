@@ -129,7 +129,7 @@ class _QuickActionCardState extends State<_QuickActionCard> {
                 const Icon(
                   Icons.chevron_right_rounded,
                   size: 16,
-                  color: AppColors.textHint,
+                  color: AppColors.textMuted,
                 ),
               ],
             ),

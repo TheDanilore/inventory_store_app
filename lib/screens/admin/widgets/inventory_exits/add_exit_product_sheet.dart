@@ -287,12 +287,12 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                     decoration: InputDecoration(
                       hintText: 'Buscar producto...',
                       hintStyle: const TextStyle(
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                         fontSize: 14,
                       ),
                       prefixIcon: const Icon(
                         Icons.search_rounded,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                       suffixIcon:
                           _selectedProduct != null
@@ -300,7 +300,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                                 icon: const Icon(
                                   Icons.clear_rounded,
                                   size: 18,
-                                  color: AppColors.textHint,
+                                  color: AppColors.textMuted,
                                 ),
                                 onPressed: () {
                                   textEditingController.clear();
@@ -669,7 +669,7 @@ InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
     labelText: label,
     labelStyle: const TextStyle(color: AppColors.textSecondary),
-    prefixIcon: icon != null ? Icon(icon, color: AppColors.textHint) : null,
+    prefixIcon: icon != null ? Icon(icon, color: AppColors.textMuted) : null,
     filled: true,
     fillColor: AppColors.background,
     border: OutlineInputBorder(
@@ -716,12 +716,12 @@ class _ProductThumbnail extends StatelessWidget {
                   errorWidget:
                       (context, url, error) => const Icon(
                         Icons.image_not_supported_rounded,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                 )
                 : const Icon(
                   Icons.inventory_2_rounded,
-                  color: AppColors.textHint,
+                  color: AppColors.textMuted,
                   size: 28,
                 ),
       ),

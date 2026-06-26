@@ -723,7 +723,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           Icon(
                             Icons.widgets_outlined,
                             size: 48,
-                            color: AppColors.textHint,
+                            color: AppColors.textMuted,
                           ),
                           SizedBox(height: 12),
                           Text(
@@ -969,7 +969,7 @@ class _DatePickerField extends StatelessWidget {
                     onTap: onClear,
                     child: const Icon(
                       Icons.close_rounded,
-                      color: AppColors.textHint,
+                      color: AppColors.textMuted,
                       size: 20,
                     ),
                   ),

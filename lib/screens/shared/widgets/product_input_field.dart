@@ -29,7 +29,7 @@ class ProductInputField extends StatelessWidget {
         hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
         labelStyle: const TextStyle(color: AppColors.textSecondary),
         filled: true,
-        fillColor: AppColors.bg,
+        fillColor: AppColors.background,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,

@@ -315,7 +315,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                                 const Icon(
                                   Icons.tag_rounded,
                                   size: 12,
-                                  color: AppColors.textHint,
+                                  color: AppColors.textMuted,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
@@ -389,7 +389,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                       Container(
                         height: 32,
                         decoration: BoxDecoration(
-                          color: AppColors.bg,
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.border),
                         ),
@@ -413,7 +413,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                                   color:
                                       b.assigned > 0
                                           ? AppColors.textSecondary
-                                          : AppColors.textHint,
+                                          : AppColors.textMuted,
                                 ),
                               ),
                             ),
@@ -460,7 +460,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                                   color:
                                       b.assigned < b.available && _remaining > 0
                                           ? AppColors.textSecondary
-                                          : AppColors.textHint,
+                                          : AppColors.textMuted,
                                 ),
                               ),
                             ),
@@ -483,8 +483,8 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                       : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.teal,
-                disabledBackgroundColor: AppColors.bg,
-                disabledForegroundColor: AppColors.textHint,
+                disabledBackgroundColor: AppColors.background,
+                disabledForegroundColor: AppColors.textMuted,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

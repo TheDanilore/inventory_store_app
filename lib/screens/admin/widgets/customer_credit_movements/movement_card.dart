@@ -97,7 +97,7 @@ class _MovementCardState extends State<MovementCard> {
                           'Pedido #${_expanded ? movement.orderNumber : movement.orderNumber!.substring(0, 8)}',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: AppColors.textHint,
+                            color: AppColors.textMuted,
                             fontFamily: 'monospace',
                           ),
                         ),
@@ -133,7 +133,7 @@ class _MovementCardState extends State<MovementCard> {
                           const Icon(
                             Icons.person_outline,
                             size: 14,
-                            color: AppColors.textHint,
+                            color: AppColors.textMuted,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -141,7 +141,7 @@ class _MovementCardState extends State<MovementCard> {
                               movement.createdByName ?? 'Desconocido',
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textHint,
+                                color: AppColors.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -191,7 +191,7 @@ class _MovementCardState extends State<MovementCard> {
                       timeStr,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

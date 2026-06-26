@@ -218,7 +218,7 @@ class _FallbackIcon extends StatelessWidget {
   Widget build(BuildContext context) => const Icon(
     Icons.image_not_supported_outlined,
     size: 22,
-    color: AppColors.textHint,
+    color: AppColors.textMuted,
   );
 }
 

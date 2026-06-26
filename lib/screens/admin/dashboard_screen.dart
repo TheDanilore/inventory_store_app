@@ -462,8 +462,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          AppColors.blue,
-                          AppColors.blue.withValues(alpha: 0.85),
+                          Colors.blue,
+                          Colors.blue.withValues(alpha: 0.85),
                         ],
                       ),
                     ),
@@ -548,8 +548,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.blue,
-                    AppColors.blue.withValues(alpha: 0.8),
+                    Colors.blue,
+                    Colors.blue.withValues(alpha: 0.8),
                   ],
                 ),
               ),

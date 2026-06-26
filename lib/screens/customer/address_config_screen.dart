@@ -388,7 +388,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         disabledBackgroundColor: AppColors.background,
-                        disabledForegroundColor: AppColors.textHint,
+                        disabledForegroundColor: AppColors.textMuted,
                       ),
                       child:
                           _isSaving
@@ -450,7 +450,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
         prefixIcon: Icon(
           icon,
           size: 18,
-          color: enabled ? AppColors.textSecondary : AppColors.textHint,
+          color: enabled ? AppColors.textSecondary : AppColors.textMuted,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -505,7 +505,7 @@ class _AddressConfigScreenState extends State<AddressConfigScreen> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 13),
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
         prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

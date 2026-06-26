@@ -590,7 +590,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                           Icon(
                             Icons.outbox_rounded,
                             size: 48,
-                            color: AppColors.textHint,
+                            color: AppColors.textMuted,
                           ),
                           SizedBox(height: 12),
                           Text(
@@ -694,12 +694,12 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                             (context, url, error) => const Icon(
                               Icons.image_not_supported_rounded,
                               size: 20,
-                              color: AppColors.textHint,
+                              color: AppColors.textMuted,
                             ),
                       )
                       : const Icon(
                         Icons.inventory_2_rounded,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
             ),
           ),

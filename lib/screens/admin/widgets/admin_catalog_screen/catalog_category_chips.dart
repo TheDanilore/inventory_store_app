@@ -83,7 +83,7 @@ class _StatusFilterChip extends StatelessWidget {
     Theme.of(context);
     String label = 'Todos';
     Color color = AppColors.textSecondary;
-    Color bgColor = AppColors.bg;
+    Color bgColor = AppColors.background;
     IconData icon = Icons.filter_list_rounded;
 
     if (filterIsActive == true) {
@@ -177,7 +177,7 @@ class _CategoryChip extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: selected ? primaryColor : AppColors.bg,
+                color: selected ? primaryColor : AppColors.background,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: selected ? primaryColor : AppColors.border,

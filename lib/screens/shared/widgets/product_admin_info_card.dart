@@ -129,7 +129,7 @@ class ProductAdminInfoCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     _AdminRow(
                       Icons.bar_chart_rounded,
-                      AppColors.blue,
+                      Colors.blue,
                       'Proy. Mayorista',
                       'S/ ${projectedWholesale.toStringAsFixed(2)}',
                       badge: 'Todo el stock',

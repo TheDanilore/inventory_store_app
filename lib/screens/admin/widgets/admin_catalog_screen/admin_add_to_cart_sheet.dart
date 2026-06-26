@@ -258,7 +258,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: AppColors.bg,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 border: Border.all(color: AppColors.border),
               ),
@@ -313,7 +313,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.bg,
+              color: AppColors.background,
               borderRadius: BorderRadius.circular(AppColors.radius),
               border: Border.all(color: AppColors.border),
             ),
@@ -481,7 +481,7 @@ class _ImgPlaceholder extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(14),
       ),
       child: const Icon(Icons.image_rounded, color: AppColors.textMuted),

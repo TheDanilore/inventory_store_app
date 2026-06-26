@@ -326,7 +326,7 @@ class _IngredientCardState extends State<_IngredientCard> {
                     IconButton(
                       icon: const Icon(
                         Icons.edit_rounded,
-                        color: AppColors.blue,
+                        color: Colors.blue,
                       ),
                       onPressed: widget.onEdit,
                       tooltip: 'Editar',

@@ -152,7 +152,7 @@ class SupplierCreditCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: pct,
                     minHeight: 8,
-                    backgroundColor: AppColors.bg,
+                    backgroundColor: AppColors.background,
                     color: barColor,
                   ),
                 ),

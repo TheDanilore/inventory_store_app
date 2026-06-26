@@ -200,7 +200,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                         IconButton(
                           icon: const Icon(
                             Icons.edit_rounded,
-                            color: AppColors.blue,
+                            color: Colors.blue,
                           ),
                           onPressed: widget.onEdit,
                           tooltip: 'Editar Propiedad',

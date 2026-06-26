@@ -381,12 +381,12 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                     decoration: InputDecoration(
                       hintText: 'Buscar producto...',
                       hintStyle: const TextStyle(
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                         fontSize: 14,
                       ),
                       prefixIcon: const Icon(
                         Icons.search_rounded,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                       suffixIcon:
                           _selectedProduct != null
@@ -394,7 +394,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                 icon: const Icon(
                                   Icons.clear_rounded,
                                   size: 18,
-                                  color: AppColors.textHint,
+                                  color: AppColors.textMuted,
                                 ),
                                 onPressed: () {
                                   textEditingController.clear();
@@ -631,7 +631,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                       fillColor: AppColors.background,
                       prefixIcon: const Icon(
                         Icons.qr_code_scanner,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                       // Indicador visual de que hay lotes disponibles
                       suffixIcon:
@@ -898,7 +898,7 @@ class _DatePickerField extends StatelessWidget {
           children: [
             const Icon(
               Icons.calendar_today_rounded,
-              color: AppColors.textHint,
+              color: AppColors.textMuted,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -923,7 +923,7 @@ class _DatePickerField extends StatelessWidget {
                 onTap: onClear,
                 child: const Icon(
                   Icons.close_rounded,
-                  color: AppColors.textHint,
+                  color: AppColors.textMuted,
                   size: 18,
                 ),
               ),
@@ -975,7 +975,7 @@ InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
     labelText: label,
     labelStyle: const TextStyle(color: AppColors.textSecondary),
-    prefixIcon: icon != null ? Icon(icon, color: AppColors.textHint) : null,
+    prefixIcon: icon != null ? Icon(icon, color: AppColors.textMuted) : null,
     filled: true,
     fillColor: AppColors.background,
     border: OutlineInputBorder(
@@ -1022,12 +1022,12 @@ class _ProductThumbnail extends StatelessWidget {
                   errorWidget:
                       (context, url, error) => const Icon(
                         Icons.image_not_supported_rounded,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                 )
                 : const Icon(
                   Icons.inventory_2_rounded,
-                  color: AppColors.textHint,
+                  color: AppColors.textMuted,
                   size: 28,
                 ),
       ),

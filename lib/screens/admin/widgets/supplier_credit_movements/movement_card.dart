@@ -70,7 +70,7 @@ class SupplierCreditMovementCard extends StatelessWidget {
                       'Orden #${movement.purchaseOrderId!.substring(0, 8)}',
                       style: const TextStyle(
                         fontSize: 11,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   if (!isCharge && movement.paymentMethod != null)
@@ -97,7 +97,7 @@ class SupplierCreditMovementCard extends StatelessWidget {
                       const Icon(
                         Icons.person_outline,
                         size: 12,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -105,7 +105,7 @@ class SupplierCreditMovementCard extends StatelessWidget {
                           movement.createdByName ?? 'Sistema',
                           style: const TextStyle(
                             fontSize: 11,
-                            color: AppColors.textHint,
+                            color: AppColors.textMuted,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -117,7 +117,7 @@ class SupplierCreditMovementCard extends StatelessWidget {
                     timeStr,
                     style: const TextStyle(
                       fontSize: 11,
-                      color: AppColors.textHint,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],

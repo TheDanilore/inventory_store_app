@@ -33,7 +33,7 @@ class WishlistCard extends StatelessWidget {
 
     if (!isActive) {
       statusText = 'No disponible';
-      statusColor = AppColors.textHint;
+      statusColor = AppColors.textMuted;
       statusBgColor = AppColors.background;
     } else if (inStock) {
       statusText = 'En stock';
@@ -95,7 +95,7 @@ class WishlistCard extends StatelessWidget {
                                           height: 20,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2.5,
-                                            color: AppColors.textHint,
+                                            color: AppColors.textMuted,
                                           ),
                                         ),
                                       ),
@@ -135,7 +135,7 @@ class WishlistCard extends StatelessWidget {
                           color:
                               isActive
                                   ? AppColors.textPrimary
-                                  : AppColors.textHint,
+                                  : AppColors.textMuted,
                           letterSpacing: -0.2,
                           height: 1.2,
                         ),
@@ -154,7 +154,7 @@ class WishlistCard extends StatelessWidget {
                               color:
                                   isActive
                                       ? AppColors.primary
-                                      : AppColors.textHint,
+                                      : AppColors.textMuted,
                               letterSpacing: -0.5,
                             ),
                           ),
@@ -187,7 +187,7 @@ class WishlistCard extends StatelessWidget {
                             const Icon(
                               Icons.bookmark_outline_rounded,
                               size: 11,
-                              color: AppColors.textHint,
+                              color: AppColors.textMuted,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -196,7 +196,7 @@ class WishlistCard extends StatelessWidget {
                               ).format(entry.createdAt!.toLocal()),
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: AppColors.textHint,
+                                color: AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -232,7 +232,7 @@ class WishlistCard extends StatelessWidget {
                                       color:
                                           canBuy
                                               ? Colors.white
-                                              : AppColors.textHint,
+                                              : AppColors.textMuted,
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
@@ -247,7 +247,7 @@ class WishlistCard extends StatelessWidget {
                                         color:
                                             canBuy
                                                 ? Colors.white
-                                                : AppColors.textHint,
+                                                : AppColors.textMuted,
                                       ),
                                     ),
                                   ],

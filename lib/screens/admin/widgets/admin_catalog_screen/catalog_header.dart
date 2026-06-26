@@ -42,7 +42,7 @@ class CatalogHeader extends StatelessWidget {
                         color:
                             searchByIngredient
                                 ? const Color(0xFFECFDF5)
-                                : AppColors.bg,
+                                : AppColors.background,
                         borderRadius: BorderRadius.circular(AppColors.radius),
                         border: Border.all(
                           color:
@@ -111,7 +111,7 @@ class CatalogHeader extends StatelessWidget {
                     color:
                         searchByIngredient
                             ? const Color(0xFFECFDF5)
-                            : AppColors.bg,
+                            : AppColors.background,
                     borderRadius: BorderRadius.circular(AppColors.radius),
                     border: Border.all(
                       color:

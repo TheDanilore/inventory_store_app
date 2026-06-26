@@ -66,7 +66,7 @@ class ExpandableProfileCard extends StatelessWidget {
                       curve: Curves.easeInOut,
                       child: const Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.textHint,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ],

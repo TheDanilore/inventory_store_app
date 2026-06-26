@@ -93,7 +93,7 @@ class CatalogDialogs {
                       Container(
                         constraints: const BoxConstraints(maxHeight: 260),
                         decoration: BoxDecoration(
-                          color: AppColors.bg,
+                          color: AppColors.background,
                           borderRadius: BorderRadius.circular(AppColors.radius),
                           border: Border.all(color: AppColors.border),
                         ),

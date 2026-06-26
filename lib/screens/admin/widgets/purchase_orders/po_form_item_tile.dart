@@ -339,7 +339,7 @@ class _ImagePlaceholder extends StatelessWidget {
     ),
     child: const Icon(
       Icons.image_not_supported_outlined,
-      color: AppColors.textHint,
+      color: AppColors.textMuted,
       size: 24,
     ),
   );
@@ -363,7 +363,7 @@ class _StepperButton extends StatelessWidget {
           child: Icon(
             icon, 
             size: 18, 
-            color: onTap == null ? AppColors.textHint : AppColors.primary,
+            color: onTap == null ? AppColors.textMuted : AppColors.primary,
           ),
         ),
       ),
