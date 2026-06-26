@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as dart_ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/providers/admin/inventory_exit_form_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/inventory_exits/add_exit_product_sheet.dart';
@@ -186,12 +187,13 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Para autorizar, escribe la palabra CONFIRMAR (en mayúsculas):',
+                  'Para autorizar, escribe la palabra CONFIRMAR:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: confirmCtrl,
+                  textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
                     hintText: 'CONFIRMAR',
                     border: OutlineInputBorder(
@@ -349,332 +351,279 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ? const Center(
                       child: CircularProgressIndicator(color: AppColors.danger),
                     )
-                    : Column(
-                      children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // ── Datos de la salida ──
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.output_rounded,
-                                            size: 16,
-                                            color: AppColors.danger,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Información General',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      DropdownButtonFormField<String>(
-                                        initialValue:
-                                            provider.selectedWarehouseId,
-                                        decoration: _dropdownDeco(
-                                          'Almacén de Origen',
-                                          Icons.warehouse_rounded,
-                                        ),
-                                        items:
-                                            provider.warehouses
-                                                .map(
-                                                  (w) => DropdownMenuItem(
-                                                    value: w.id,
-                                                    child: Text(
-                                                      w.name,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                                .toList(),
-                                        onChanged: provider.selectWarehouse,
-                                      ),
-                                      const SizedBox(height: 12),
-
-                                      DropdownButtonFormField<String>(
-                                        initialValue: provider.selectedReason,
-                                        decoration: _dropdownDeco(
-                                          'Motivo de Salida',
-                                          Icons.assignment_late_rounded,
-                                        ),
-                                        items:
-                                            [
-                                                  'AJUSTE',
-                                                  'MERMA',
-                                                  'DAÑO',
-                                                  'VENCIMIENTO',
-                                                  'ROBO/PÉRDIDA',
-                                                  'CONSUMO INTERNO',
-                                                ]
-                                                .map(
-                                                  (r) => DropdownMenuItem(
-                                                    value: r,
-                                                    child: Text(
-                                                      r,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                                .toList(),
-                                        onChanged: (v) {
-                                          if (v != null) {
-                                            provider.selectReason(v);
-                                          }
-                                        },
-                                      ),
-                                      const SizedBox(height: 12),
-
-                                      TextField(
-                                        controller: _notesCtrl,
-                                        decoration: _dropdownDeco(
-                                          'Notas / Justificación (Opcional)',
-                                          Icons.notes_rounded,
-                                        ).copyWith(
-                                          hintText:
-                                              'Ej: Botellas rotas durante traslado',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // ── Lista de ítems ──
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.danger.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.inventory_2_rounded,
-                                            size: 18,
-                                            color: AppColors.danger,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          'Items (${provider.items.length})',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: _showAddProductSheet,
-                                      icon: const Icon(
-                                        Icons.add_circle_outline_rounded,
-                                        size: 18,
-                                      ),
-                                      label: const Text(
-                                        'Retirar Producto',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: AppColors.danger,
-                                        backgroundColor: AppColors.danger
-                                            .withValues(alpha: 0.1),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-
-                                if (provider.items.isEmpty)
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 40,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    child: const Column(
-                                      children: [
-                                        Icon(
-                                          Icons.outbox_rounded,
-                                          size: 32,
-                                          color: AppColors.textHint,
-                                        ),
-                                        SizedBox(height: 16),
-                                        Text(
-                                          'Sin productos a retirar',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                else
-                                  ListView.separated(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    itemCount: provider.items.length,
-                                    separatorBuilder:
-                                        (_, _) => const SizedBox(height: 10),
-                                    itemBuilder:
-                                        (context, index) => _buildItemCard(
-                                          provider,
-                                          provider.items[index],
-                                          index,
-                                        ),
-                                  ),
-                              ],
+                    : Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: Stack(
+                          children: [
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isTablet = constraints.maxWidth >= 800;
+                                return isTablet
+                                    ? _buildTabletLayout(provider)
+                                    : _buildMobileLayout(provider);
+                              },
                             ),
-                          ),
+                            _buildBottomActionButton(provider),
+                          ],
                         ),
-
-                        // ── Panel Inferior Fijo ──
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.danger.withValues(alpha: 0.08),
-                                blurRadius: 24,
-                                offset: const Offset(0, -6),
-                              ),
-                            ],
-                          ),
-                          child: SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Pérdida Valorizada',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${provider.items.length} items · ${provider.totalUnits} unidades retiradas',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      'S/ ${provider.totalLossCost.toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.danger,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 52,
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        provider.items.isNotEmpty
-                                            ? _saveExit
-                                            : null,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.danger,
-                                      disabledBackgroundColor:
-                                          AppColors.background,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.remove_circle_outline_rounded,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
-                                    label: const Text(
-                                      'Confirmar Salida',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
           );
         },
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // LAYOUTS
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildMobileLayout(InventoryExitFormProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildGeneralInfoSection(provider),
+          const SizedBox(height: 16),
+          _buildProductsSection(provider),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout(InventoryExitFormProvider provider) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left Column (Settings)
+        Expanded(
+          flex: 4,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 12, 100),
+            child: _buildGeneralInfoSection(provider),
+          ),
+        ),
+        // Right Column (Products)
+        Expanded(
+          flex: 6,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 24, 24, 100),
+            child: _buildProductsSection(provider),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SECTIONS
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildGeneralInfoSection(InventoryExitFormProvider provider) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.output_rounded,
+            title: 'Información General',
+            iconColor: AppColors.danger,
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: provider.selectedWarehouseId,
+            icon: const Icon(Icons.expand_more_rounded),
+            decoration: _dropdownDecoration(
+              'Almacén de Origen',
+              icon: Icons.warehouse_rounded,
+            ),
+            items:
+                provider.warehouses
+                    .map(
+                      (w) => DropdownMenuItem(
+                        value: w.id,
+                        child: Text(
+                          w.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    )
+                    .toList(),
+            onChanged: provider.selectWarehouse,
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: provider.selectedReason,
+            icon: const Icon(Icons.expand_more_rounded),
+            decoration: _dropdownDecoration(
+              'Motivo de Salida',
+              icon: Icons.assignment_late_rounded,
+            ),
+            items:
+                [
+                      'AJUSTE',
+                      'MERMA',
+                      'DAÑO',
+                      'VENCIMIENTO',
+                      'ROBO/PÉRDIDA',
+                      'CONSUMO INTERNO',
+                    ]
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(
+                          r,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    )
+                    .toList(),
+            onChanged: (v) {
+              if (v != null) provider.selectReason(v);
+            },
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _notesCtrl,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: 'Notas / Justificación (Opcional)',
+              hintText: 'Ej: Botellas rotas durante traslado',
+              filled: true,
+              fillColor: AppColors.background,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductsSection(InventoryExitFormProvider provider) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: _SectionTitle(
+                        icon: Icons.inventory_2_rounded,
+                        title: 'Productos a Retirar',
+                        iconColor: AppColors.danger,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${provider.items.length}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _showAddProductSheet,
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                label: const Text(
+                  'Retirar',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger.withValues(alpha: 0.1),
+                  foregroundColor: AppColors.danger,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            child:
+                provider.items.isEmpty
+                    ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.border,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(
+                            Icons.outbox_rounded,
+                            size: 48,
+                            color: AppColors.textHint,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'Sin productos a retirar',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                    : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: provider.items.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder:
+                          (context, index) => _buildItemCard(
+                            provider,
+                            provider.items[index],
+                            index,
+                          ),
+                    ),
+          ),
+        ],
       ),
     );
   }
@@ -705,17 +654,17 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     final double maxAvailable =
         (item.selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
 
+    final bool isBatchMissing =
+        item.product.usesBatches &&
+        (batchNumber == 'DEFAULT' || batchNumber.trim().isEmpty);
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              (item.product.usesBatches &&
-                      (batchNumber == 'DEFAULT' || batchNumber.trim().isEmpty))
-                  ? AppColors.danger
-                  : AppColors.border,
+          color: isBatchMissing ? AppColors.danger : AppColors.border,
         ),
       ),
       child: Row(
@@ -750,6 +699,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                         errorWidget:
                             (context, url, error) => const Icon(
                               Icons.image_not_supported_rounded,
+                              size: 20,
                               color: AppColors.textHint,
                             ),
                       )
@@ -759,7 +709,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -767,107 +717,70 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 Text(
                   item.product.name,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     fontSize: 14,
                     color: AppColors.textPrimary,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (displayVariantText != 'Única') ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      displayVariantText,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-                if (item.product.usesBatches && batchNumber != 'DEFAULT') ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.tag_rounded,
-                        size: 11,
-                        color: AppColors.textHint,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        'Lote: $batchNumber',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textHint,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (item.product.usesBatches &&
-                    (batchNumber == 'DEFAULT' ||
-                        batchNumber.trim().isEmpty)) ...[
-                  const SizedBox(height: 4),
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.warning_rounded,
-                        size: 12,
-                        color: AppColors.danger,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Requiere seleccionar lote',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.danger,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      'Costo: S/ ${item.unitCost.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'S/ ${item.totalCost.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        displayVariantText,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                if (item.product.usesBatches)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isBatchMissing
+                                ? AppColors.danger.withValues(alpha: 0.1)
+                                : AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isBatchMissing
+                            ? '⚠ Lote Requerido'
+                            : 'Lote: $batchNumber',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              isBatchMissing
+                                  ? AppColors.danger
+                                  : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-
-          // ── Stepper ──
           _VerticalStepper(
             value: item.quantity.toInt(),
             onAdd:
@@ -879,40 +792,206 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     ? () => provider.updateQuantity(index, item.quantity - 1)
                     : null,
             onTapValue:
-                () => _showQuantityDialog(
-                  index,
-                  item.quantity,
-                  maxAvailable,
-                ),
+                () => _showQuantityDialog(index, item.quantity, maxAvailable),
           ),
           const SizedBox(width: 6),
           IconButton(
             icon: const Icon(
               Icons.delete_outline_rounded,
               color: AppColors.danger,
-              size: 22,
             ),
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(),
             onPressed: () => provider.removeItem(index),
+            tooltip: 'Eliminar ítem',
           ),
         ],
       ),
     );
   }
 
-  InputDecoration _dropdownDeco(String label, IconData icon) {
+  // ════════════════════════════════════════════════════════════════════════════
+  // FIXED BOTTOM BUTTON
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildBottomActionButton(InventoryExitFormProvider provider) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: dart_ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: AppColors.background.withValues(alpha: 0.8),
+              border: Border(
+                top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Pérdida Valorizada',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${provider.items.length} items · ${provider.totalUnits} unidades retiradas',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'S/ ${provider.totalLossCost.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.danger,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: provider.items.isNotEmpty ? _saveExit : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                        disabledBackgroundColor: AppColors.border,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.remove_circle_outline_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        'Confirmar Salida',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // UTILS
+  // ════════════════════════════════════════════════════════════════════════════
+
+  InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: AppColors.textSecondary),
-      prefixIcon: Icon(icon, color: AppColors.textHint),
+      labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
       filled: true,
-      fillColor: AppColors.background,
+      fillColor: AppColors.surface,
+      prefixIcon:
+          icon != null ? Icon(icon, color: AppColors.primary, size: 20) : null,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+    );
+  }
+}
+
+// ── WIDGETS AUXILIARES ──
+class _SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const _SectionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color? iconColor;
+
+  const _SectionTitle({
+    required this.icon,
+    required this.title,
+    this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: (iconColor ?? AppColors.primary).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor ?? AppColors.primary, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -921,66 +1000,77 @@ class _VerticalStepper extends StatelessWidget {
   final int value;
   final VoidCallback? onAdd;
   final VoidCallback? onRemove;
-  final VoidCallback onTapValue;
+  final VoidCallback? onTapValue;
 
   const _VerticalStepper({
     required this.value,
     this.onAdd,
     this.onRemove,
-    required this.onTapValue,
+    this.onTapValue,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _stepperBtn(Icons.add_rounded, onAdd == null, onAdd ?? () {}),
-        const SizedBox(height: 4),
-        Material(
-          color: AppColors.primary.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(8),
-          child: InkWell(
-            onTap: onTapValue,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 32,
-              height: 32,
-              alignment: Alignment.center,
-              child: Text(
-                value.toString(),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onAdd,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  size: 20,
+                  color:
+                      onAdd != null ? AppColors.textPrimary : AppColors.border,
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        _stepperBtn(Icons.remove_rounded, onRemove == null, onRemove ?? () {}),
-      ],
-    );
-  }
-
-  Widget _stepperBtn(IconData icon, bool disabled, VoidCallback onTap) {
-    return Material(
-      color: disabled ? const Color(0xFFF1F5F9) : AppColors.primary,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: disabled ? null : onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          child: Icon(
-            icon,
-            size: 18,
-            color: disabled ? AppColors.textMuted : Colors.white,
+          GestureDetector(
+            onTap: onTapValue,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              child: Text(
+                '$value',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+            ),
           ),
-        ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onRemove,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color:
+                      onRemove != null
+                          ? AppColors.textPrimary
+                          : AppColors.border,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
