@@ -195,62 +195,69 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                 : Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 800),
-                    child: Column(
-                      children: [
-                        if (checkout.isVerifyingStock)
-                          const LinearProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.only(top: 4, bottom: 20),
-                            itemCount: cart.items.length + 3,
-                            itemBuilder: (context, i) {
-                              if (i == 0) {
-                                return CartWalletSummary(
+                    child: SizedBox(
+                      height: double.infinity,
+                      child: Column(
+                        children: [
+                          if (checkout.isVerifyingStock)
+                            const LinearProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.only(
+                                top: 4,
+                                bottom: 20,
+                              ),
+                              itemCount: cart.items.length + 3,
+                              itemBuilder: (context, i) {
+                                if (i == 0) {
+                                  return CartWalletSummary(
+                                    cart: cart,
+                                    saldoPuntos: saldoPuntos,
+                                  );
+                                }
+                                if (i == 1) {
+                                  return CartAddressCard(
+                                    address: checkout.defaultAddress,
+                                    isLoading: checkout.isLoadingAddress,
+                                    onTap: () async {
+                                      await context.push('/customer/address');
+                                      if (context.mounted) {
+                                        context
+                                            .read<CartCheckoutProvider>()
+                                            .loadAddress();
+                                      }
+                                    },
+                                  );
+                                }
+                                if (i == 2) {
+                                  return CartActionHeader(cart: cart);
+                                }
+
+                                final index = i - 3;
+                                final cartItem =
+                                    cart.items.values.toList()[index];
+                                final productId =
+                                    cart.items.keys.toList()[index];
+                                return CartItemCard(
+                                  productId: productId,
+                                  item: cartItem,
                                   cart: cart,
                                   saldoPuntos: saldoPuntos,
+                                  pointsToSolesRatio: pointsToSolesRatio,
                                 );
-                              }
-                              if (i == 1) {
-                                return CartAddressCard(
-                                  address: checkout.defaultAddress,
-                                  isLoading: checkout.isLoadingAddress,
-                                  onTap: () async {
-                                    await context.push('/customer/address');
-                                    if (context.mounted) {
-                                      context
-                                          .read<CartCheckoutProvider>()
-                                          .loadAddress();
-                                    }
-                                  },
-                                );
-                              }
-                              if (i == 2) {
-                                return CartActionHeader(cart: cart);
-                              }
-
-                              final index = i - 3;
-                              final cartItem =
-                                  cart.items.values.toList()[index];
-                              final productId = cart.items.keys.toList()[index];
-                              return CartItemCard(
-                                productId: productId,
-                                item: cartItem,
-                                cart: cart,
-                                saldoPuntos: saldoPuntos,
-                                pointsToSolesRatio: pointsToSolesRatio,
-                              );
-                            },
+                              },
+                            ),
                           ),
-                        ),
-                        CartCheckoutFooter(
-                          cart: cart,
-                          saldoPuntos: saldoPuntos,
-                          pointsToSolesRatio: pointsToSolesRatio,
-                          onProcessCheckout: _handleCheckout,
-                        ),
-                      ],
+                          CartCheckoutFooter(
+                            cart: cart,
+                            saldoPuntos: saldoPuntos,
+                            pointsToSolesRatio: pointsToSolesRatio,
+                            onProcessCheckout: _handleCheckout,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

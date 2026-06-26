@@ -134,16 +134,19 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
       // pero CustomerLayout por defecto esconde el AppBar si pasamos child.
       body: Stack(
         children: [
-          RefreshIndicator(
-            onRefresh: provider.refreshProducts,
-            color: AppColors.primary,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
+          Positioned.fill(
+            child: RefreshIndicator(
+              onRefresh: provider.refreshProducts,
+              color: AppColors.primary,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: SizedBox(
+                    height: double.infinity,
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
                     const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                     // --- Banners ---
@@ -275,6 +278,8 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                       ),
                     ],
                   ],
+                    ),
+                  ),
                 ),
               ),
             ),

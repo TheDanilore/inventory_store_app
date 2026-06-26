@@ -289,41 +289,44 @@ class CustomerLayout extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _navItem(
-                    context: context,
-                    index: 0,
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
-                    label: 'Inicio',
-                    onTap: () {
-                      if (onTabSelected != null) {
-                        onTabSelected!(0);
-                      } else {
-                        context.go('/customer');
-                      }
-                    },
-                  ),
-                  _navItemCart(context),
-                  _navItem(
-                    context: context,
-                    index: 2,
-                    icon: Icons.person_outline_rounded,
-                    activeIcon: Icons.person_rounded,
-                    label: 'Perfil',
-                    onTap: () {
-                      final user = Supabase.instance.client.auth.currentUser;
-                      if (user == null) {
-                        context.go('/login');
-                      } else {
+                  Expanded(
+                    child: _navItem(
+                      context: context,
+                      index: 0,
+                      icon: Icons.home_outlined,
+                      activeIcon: Icons.home_rounded,
+                      label: 'Inicio',
+                      onTap: () {
                         if (onTabSelected != null) {
-                          onTabSelected!(2);
+                          onTabSelected!(0);
                         } else {
-                          context.go('/customer/profile');
+                          context.go('/customer');
                         }
-                      }
-                    },
+                      },
+                    ),
+                  ),
+                  Expanded(child: _navItemCart(context)),
+                  Expanded(
+                    child: _navItem(
+                      context: context,
+                      index: 2,
+                      icon: Icons.person_outline_rounded,
+                      activeIcon: Icons.person_rounded,
+                      label: 'Perfil',
+                      onTap: () {
+                        final user = Supabase.instance.client.auth.currentUser;
+                        if (user == null) {
+                          context.go('/login');
+                        } else {
+                          if (onTabSelected != null) {
+                            onTabSelected!(2);
+                          } else {
+                            context.go('/customer/profile');
+                          }
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -352,7 +355,8 @@ class CustomerLayout extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color:
                   isActive
@@ -403,11 +407,12 @@ class CustomerLayout extends StatelessWidget {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color:
                   isActive
-                      ? AppColors.accent.withValues(alpha: 0.1)
+                      ? AppColors.primary.withValues(alpha: 0.08)
                       : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
@@ -423,7 +428,9 @@ class CustomerLayout extends StatelessWidget {
                           : Icons.shopping_bag_outlined,
                       size: 22,
                       color:
-                          isActive ? AppColors.accent : AppColors.textSecondary,
+                          isActive
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                     Consumer<CartProvider>(
                       builder: (context, cart, _) {
@@ -463,7 +470,7 @@ class CustomerLayout extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     color:
-                        isActive ? AppColors.accent : AppColors.textSecondary,
+                        isActive ? AppColors.primary : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -481,8 +488,7 @@ class CustomerLayout extends StatelessWidget {
     // Banner de sin conexión + body
     Widget pageBody = body;
 
-    Widget finalBody =
-        showAppBar ? pageBody : SafeArea(bottom: false, child: pageBody);
+    Widget finalBody = pageBody;
 
     if (showAppBar && hideAppBarOnScroll) {
       finalBody = NestedScrollView(
@@ -511,6 +517,7 @@ class CustomerLayout extends StatelessWidget {
     }
 
     finalBody = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Consumer<NetworkProvider>(
           builder: (context, network, child) {
@@ -565,7 +572,7 @@ class CustomerLayout extends StatelessWidget {
       backgroundColor: AppColors.surface,
       appBar:
           (showAppBar && !hideAppBarOnScroll) ? _buildAppBar(context) : null,
-      body: finalBody,
+      body: showAppBar ? finalBody : SafeArea(top: true, bottom: false, child: finalBody),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar:
           showBottomNav ? _buildBottomNav(context) : bottomNavigationBar,
