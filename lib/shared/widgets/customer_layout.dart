@@ -4,9 +4,11 @@ import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/network_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
+import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class CustomerLayout extends StatelessWidget {
   // ← StatelessWidget ahora
@@ -47,8 +49,8 @@ class CustomerLayout extends StatelessWidget {
     // Usamos Consumer para que SOLO el chip se reconstruya al cambiar el saldo
     return Consumer<WalletProvider>(
       builder: (context, wallet, child) {
-        // Si no hay saldo, ocultamos
-        if (!wallet.hasBalance) return const SizedBox.shrink();
+        // Si no hay saldo y tampoco está cargando, ocultamos
+        if (!wallet.hasBalance && !wallet.isLoading) return const SizedBox.shrink();
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -72,13 +74,36 @@ class CustomerLayout extends StatelessWidget {
                     color: AppColors.gold,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    wallet.isLoading ? '...' : '${wallet.balance ?? 0}',
-                    style: const TextStyle(
-                      color: Color(0xFF8A6300),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, 0.5),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: wallet.isLoading
+                        ? const AppShimmer(
+                            key: ValueKey('shimmer'),
+                            width: 30,
+                            height: 12,
+                            borderRadius: 6,
+                          )
+                        : Text(
+                            '${wallet.balance ?? 0}',
+                            key: ValueKey(wallet.balance ?? 0),
+                            style: const TextStyle(
+                              color: Color(0xFF8A6300),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -239,7 +264,13 @@ class CustomerLayout extends StatelessWidget {
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surface.withValues(alpha: 0.85),
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(color: Colors.transparent),
+        ),
+      ),
       foregroundColor: AppColors.textPrimary,
       elevation: 0,
       centerTitle: false,
@@ -254,188 +285,74 @@ class CustomerLayout extends StatelessWidget {
     );
   }
 
-  // ─── BOTTOM NAV ──────────────────────────────────────────────────────────
+  // ─── NAVITATION (BOTTOM & RAIL) ──────────────────────────────────────────
+
+  void _onNavDestinationSelected(BuildContext context, int index) {
+    if (index == 2) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        context.go('/login');
+        return;
+      }
+    }
+    if (onTabSelected != null) {
+      onTabSelected!(index);
+    } else {
+      if (index == 0) context.go('/customer');
+      if (index == 1) context.go('/customer/cart');
+      if (index == 2) context.go('/customer/profile');
+    }
+  }
 
   Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: AppColors.cardShadow(),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(
-                context: context,
-                index: 0,
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Inicio',
-                onTap: () {
-                  if (onTabSelected != null) {
-                    onTabSelected!(0);
-                  } else {
-                    context.go('/customer');
-                  }
-                },
-              ),
-              _navItemCart(context),
-              _navItem(
-                context: context,
-                index: 2,
-                icon: Icons.person_outline_rounded,
-                activeIcon: Icons.person_rounded,
-                label: 'Perfil',
-                onTap: () {
-                  final user = Supabase.instance.client.auth.currentUser;
-                  if (user == null) {
-                    context.go('/login');
-                  } else {
-                    if (onTabSelected != null) {
-                      onTabSelected!(2);
-                    } else {
-                      context.go('/customer/profile');
-                    }
-                  }
-                },
-              ),
-            ],
-          ),
+    return NavigationBar(
+      selectedIndex: currentIndex,
+      onDestinationSelected: (idx) => _onNavDestinationSelected(context, idx),
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded),
+          label: 'Inicio',
         ),
-      ),
+        NavigationDestination(
+          icon: _ShakeCartIcon(isActive: false),
+          selectedIcon: _ShakeCartIcon(isActive: true),
+          label: 'Carrito',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline_rounded),
+          selectedIcon: Icon(Icons.person_rounded),
+          label: 'Perfil',
+        ),
+      ],
     );
   }
 
-  Widget _navItem({
-    required BuildContext context,
-    required int index,
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    final isActive = currentIndex == index;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                isActive
-                    ? AppColors.primary.withValues(alpha: 0.08)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isActive ? activeIcon : icon,
-                size: 22,
-                color: isActive ? AppColors.primary : AppColors.textSecondary,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: isActive ? AppColors.primary : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildNavRail(BuildContext context) {
+    return NavigationRail(
+      selectedIndex: currentIndex,
+      onDestinationSelected: (idx) => _onNavDestinationSelected(context, idx),
+      backgroundColor: AppColors.surface,
+      labelType: NavigationRailLabelType.all,
+      destinations: const [
+        NavigationRailDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded),
+          label: Text('Inicio'),
         ),
-      ),
-    );
-  }
-
-  Widget _navItemCart(BuildContext context) {
-    final isActive = currentIndex == 1;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          if (onTabSelected != null) {
-            onTabSelected!(1);
-          } else {
-            context.go('/customer/cart');
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                isActive
-                    ? AppColors.accent.withValues(alpha: 0.1)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(
-                    isActive
-                        ? Icons.shopping_bag_rounded
-                        : Icons.shopping_bag_outlined,
-                    size: 22,
-                    color:
-                        isActive ? AppColors.accent : AppColors.textSecondary,
-                  ),
-                  Consumer<CartProvider>(
-                    builder: (context, cart, _) {
-                      if (cart.itemCount == 0) return const SizedBox.shrink();
-                      return Positioned(
-                        right: -6,
-                        top: -4,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                            color: AppColors.accent,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 15,
-                            minHeight: 15,
-                          ),
-                          child: Text(
-                            '${cart.itemCount}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'Carrito',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: isActive ? AppColors.accent : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+        NavigationRailDestination(
+          icon: _ShakeCartIcon(isActive: false),
+          selectedIcon: _ShakeCartIcon(isActive: true),
+          label: Text('Carrito'),
         ),
-      ),
+        NavigationRailDestination(
+          icon: Icon(Icons.person_outline_rounded),
+          selectedIcon: Icon(Icons.person_rounded),
+          label: Text('Perfil'),
+        ),
+      ],
     );
   }
 
@@ -503,7 +420,13 @@ class CustomerLayout extends StatelessWidget {
         headerSliverBuilder:
             (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                backgroundColor: AppColors.surface,
+                backgroundColor: AppColors.surface.withValues(alpha: 0.85),
+                flexibleSpace: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
                 foregroundColor: AppColors.textPrimary,
                 elevation: 0,
                 centerTitle: false,
@@ -524,14 +447,94 @@ class CustomerLayout extends StatelessWidget {
       );
     }
 
+    final isTablet = MediaQuery.of(context).size.width > 600;
+
+    Widget scaffoldBody = finalBody;
+    if (isTablet && showBottomNav) {
+      scaffoldBody = Row(
+        children: [
+          _buildNavRail(context),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(child: scaffoldBody),
+        ],
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar:
           (showAppBar && !hideAppBarOnScroll) ? _buildAppBar(context) : null,
-      body: finalBody,
+      body: scaffoldBody,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar:
-          showBottomNav ? _buildBottomNav(context) : bottomNavigationBar,
+          (showBottomNav && !isTablet) ? _buildBottomNav(context) : (bottomNavigationBar != null && !isTablet ? bottomNavigationBar : null),
+    );
+  }
+}
+
+class _ShakeCartIcon extends StatefulWidget {
+  final bool isActive;
+  const _ShakeCartIcon({required this.isActive});
+
+  @override
+  State<_ShakeCartIcon> createState() => _ShakeCartIconState();
+}
+
+class _ShakeCartIconState extends State<_ShakeCartIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _animation;
+  int _prevCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.08), weight: 25),
+      TweenSequenceItem(tween: Tween(begin: 0.08, end: -0.08), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: -0.08, end: 0.0), weight: 25),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<CartProvider>(
+      builder: (context, cart, child) {
+        if (cart.itemCount > _prevCount) {
+          _ctrl.forward(from: 0.0);
+        }
+        _prevCount = cart.itemCount;
+
+        return RotationTransition(
+          turns: _animation,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                widget.isActive
+                    ? Icons.shopping_bag_rounded
+                    : Icons.shopping_bag_outlined,
+              ),
+              if (cart.itemCount > 0)
+                Positioned(
+                  right: -6,
+                  top: -4,
+                  child: _AnimatedCartBadge(itemCount: cart.itemCount),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
