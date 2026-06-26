@@ -36,12 +36,13 @@ class ProductAdminInfoCard extends StatelessWidget {
     final effectiveStock = provider.effectiveStock;
     final projectedRetail = retailProfitUnit * effectiveStock;
     final projectedWholesale = wholesaleProfitUnit * effectiveStock;
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+    return Material(
+      color: const Color(0xFFF8FAFC),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+        side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(

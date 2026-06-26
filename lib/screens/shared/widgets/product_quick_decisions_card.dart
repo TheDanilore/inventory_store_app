@@ -27,12 +27,13 @@ class ProductQuickDecisionsCard extends StatelessWidget {
     final double totalCapital = inventoryValue + totalRevenue;
     final bool multiVariant = variantSummaries.length > 1;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
+    return Material(
+      color: const Color(0xFFF0FDF4),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
+        side: const BorderSide(color: Color(0xFF86EFAC), width: 1.5),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
