@@ -479,7 +479,38 @@ class CustomerLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Banner de sin conexión + body
-    Widget pageBody = Column(
+    Widget pageBody = body;
+
+    Widget finalBody =
+        showAppBar ? pageBody : SafeArea(bottom: false, child: pageBody);
+
+    if (showAppBar && hideAppBarOnScroll) {
+      finalBody = NestedScrollView(
+        headerSliverBuilder:
+            (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 0,
+                centerTitle: false,
+                automaticallyImplyLeading: false,
+                surfaceTintColor: Colors.transparent,
+                floating: true,
+                snap: true,
+                titleSpacing: 0,
+                leading: _buildLeading(context),
+                title: _buildTitle(context),
+                actions:
+                    (showCartIcon || showWalletChip)
+                        ? _buildActions(context)
+                        : null,
+              ),
+            ],
+        body: pageBody,
+      );
+    }
+
+    finalBody = Column(
       children: [
         Consumer<NetworkProvider>(
           builder: (context, network, child) {
@@ -489,7 +520,7 @@ class CustomerLayout extends StatelessWidget {
               curve: Curves.easeInOut,
               child:
                   isOnline
-                      ? const SizedBox.shrink() // No ocupa espacio si hay internet
+                      ? const SizedBox.shrink()
                       : AnimatedSlide(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutCubic,
@@ -526,38 +557,9 @@ class CustomerLayout extends StatelessWidget {
             );
           },
         ),
-        Expanded(child: body),
+        Expanded(child: finalBody),
       ],
     );
-
-    Widget finalBody =
-        showAppBar ? pageBody : SafeArea(bottom: false, child: pageBody);
-
-    if (showAppBar && hideAppBarOnScroll) {
-      finalBody = NestedScrollView(
-        headerSliverBuilder:
-            (context, innerBoxIsScrolled) => [
-              SliverAppBar(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.textPrimary,
-                elevation: 0,
-                centerTitle: false,
-                automaticallyImplyLeading: false,
-                surfaceTintColor: Colors.transparent,
-                floating: true,
-                snap: true,
-                titleSpacing: 0,
-                leading: _buildLeading(context),
-                title: _buildTitle(context),
-                actions:
-                    (showCartIcon || showWalletChip)
-                        ? _buildActions(context)
-                        : null,
-              ),
-            ],
-        body: pageBody,
-      );
-    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,
