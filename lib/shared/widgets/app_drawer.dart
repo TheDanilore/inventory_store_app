@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
@@ -913,6 +914,9 @@ class _DrawerFooter extends StatelessWidget {
                               tooltip: 'Cerrar Sesión',
                               onPressed: () async {
                                 Navigator.pop(context);
+                                final authProvider =
+                                    context.read<AuthProvider>();
+                                authProvider.clearSession();
                                 try {
                                   await context
                                       .read<ProfileProvider>()
