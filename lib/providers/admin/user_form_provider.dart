@@ -122,10 +122,10 @@ class UserFormProvider extends ChangeNotifier {
         _errorMessage = 'Este correo ya está registrado en el sistema.';
       } else {
         final errStr = e.toString().toLowerCase();
-        if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        if (errStr.contains('socketexception') || errStr.contains('failed host lookup')) {
           _errorMessage = 'Sin conexión a internet.';
         } else {
-          _errorMessage = 'Error inesperado al guardar el usuario.';
+          _errorMessage = 'Error: $e';
         }
       }
       return false;

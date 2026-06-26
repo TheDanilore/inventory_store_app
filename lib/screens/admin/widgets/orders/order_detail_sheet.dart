@@ -484,7 +484,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 OrderDetailStatusSection(
                                   originalStatus: provider.order.status,
                                   currentStatus: provider.currentStatus,
-                                  isEditing: _isEditing,
+                                  isEditing: false, // Siempre en modo lectura
                                   onChanged: (val) {
                                     if (val != null) {
                                       provider.updateStatus(val);
