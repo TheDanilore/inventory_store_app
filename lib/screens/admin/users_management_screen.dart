@@ -74,172 +74,213 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     return AdminLayout(
       title: 'Usuarios',
       showBackButton: true,
-      body: Column(
-        children: [
-          // ─── BUSCADOR Y FILTROS ──────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            color: Colors.white,
-            child: Column(
-              children: [
-                Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(
+            children: [
+              // ─── BUSCADOR Y FILTROS ──────────────────────────────────────────
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onSubmitted: (_) => setState(() {}),
-                        textInputAction: TextInputAction.search,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Buscar por nombre, correo, teléfono o DNI...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 14,
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search_rounded,
-                            color: Colors.grey.shade400,
-                          ),
-                          suffixIcon:
-                              _searchCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear_rounded,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      _searchCtrl.clear();
-                                      setState(() {});
-                                    },
-                                  )
-                                  : null,
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: AppColors.primary,
-                              width: 1.5,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchCtrl,
+                            onSubmitted: (_) => setState(() {}),
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Buscar por nombre, correo, teléfono o DNI...',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 14,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search_rounded,
+                                color: Colors.grey.shade400,
+                              ),
+                              suffixIcon:
+                                  _searchCtrl.text.isNotEmpty
+                                      ? IconButton(
+                                        icon: const Icon(
+                                          Icons.clear_rounded,
+                                          color: Colors.grey,
+                                        ),
+                                        onPressed: () {
+                                          _searchCtrl.clear();
+                                          setState(() {});
+                                        },
+                                      )
+                                      : null,
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade200,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade200,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(
+                                  color: AppColors.primary,
+                                  width: 1.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Botón de exportar
-                    Container(
-                      height: 48,
-                      width: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.green.shade200),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.file_download_outlined,
-                          color: Colors.green.shade700,
+                        const SizedBox(width: 8),
+                        // Botón de exportar
+                        Container(
+                          height: 48,
+                          width: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.file_download_outlined,
+                              color: Colors.green.shade700,
+                            ),
+                            tooltip: 'Exportar a Excel/CSV',
+                            onPressed: () => _exportToCsv(context),
+                          ),
                         ),
-                        tooltip: 'Exportar a Excel/CSV',
-                        onPressed: () => _exportToCsv(context),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Mostrar solo usuarios activos',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Switch(
+                          value: _onlyActive,
+                          activeThumbColor: AppColors.primary,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          onChanged: (val) {
+                            setState(() {
+                              _onlyActive = val;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Mostrar solo usuarios activos',
-                      style: TextStyle(
+              ),
+
+              // ─── TABS ────────────────────────────────────────────────────────
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white70,
+                      indicatorColor: Colors.white,
+                      indicatorWeight: 3.5,
+                      labelStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
                       ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      tabs: [
+                        Tab(
+                          iconMargin: const EdgeInsets.only(bottom: 6),
+                          icon: const Icon(
+                            Icons.people_outline_rounded,
+                            size: 20,
+                          ),
+                          text: 'Clientes ($_customerTotal)',
+                        ),
+                        Tab(
+                          iconMargin: const EdgeInsets.only(bottom: 6),
+                          icon: const Icon(
+                            Icons.admin_panel_settings_outlined,
+                            size: 20,
+                          ),
+                          text: 'Admins ($_adminTotal)',
+                        ),
+                      ],
                     ),
-                    Switch(
-                      value: _onlyActive,
-                      activeThumbColor: AppColors.primary,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      onChanged: (val) {
-                        setState(() {
-                          _onlyActive = val;
-                        });
-                      },
+                  ),
+                ),
+              ),
+
+              // ─── LISTAS ──────────────────────────────────────────────────────
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    UsersTab(
+                      role: AppRoles.customer,
+                      searchQuery: _searchCtrl.text,
+                      onlyActive: _onlyActive,
+                    ),
+                    UsersTab(
+                      role: AppRoles.admin,
+                      searchQuery: _searchCtrl.text,
+                      onlyActive: _onlyActive,
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // ─── TABS ────────────────────────────────────────────────────────
-          Material(
-            color: AppColors.primary,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3.5,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              tabs: [
-                Tab(
-                  iconMargin: const EdgeInsets.only(bottom: 6),
-                  icon: const Icon(Icons.people_outline_rounded, size: 20),
-                  text: 'Clientes ($_customerTotal)',
-                ),
-                Tab(
-                  iconMargin: const EdgeInsets.only(bottom: 6),
-                  icon: const Icon(
-                    Icons.admin_panel_settings_outlined,
-                    size: 20,
-                  ),
-                  text: 'Admins ($_adminTotal)',
-                ),
-              ],
-            ),
+            ],
           ),
-
-          // ─── LISTAS ──────────────────────────────────────────────────────
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                UsersTab(
-                  role: AppRoles.customer,
-                  searchQuery: _searchCtrl.text,
-                  onlyActive: _onlyActive,
-                ),
-                UsersTab(
-                  role: AppRoles.admin,
-                  searchQuery: _searchCtrl.text,
-                  onlyActive: _onlyActive,
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
