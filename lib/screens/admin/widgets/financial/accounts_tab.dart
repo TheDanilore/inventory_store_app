@@ -49,16 +49,10 @@ class _AccountsTabState extends State<AccountsTab> {
         final activeAccounts = accounts.where((a) => a.isActive).toList();
         final inactiveAccounts = accounts.where((a) => !a.isActive).toList();
 
-        final totalBalance = activeAccounts.fold<double>(
-          0.0,
-          (sum, a) => sum + a.balance,
-        );
-
         return Stack(
           children: [
             Column(
               children: [
-                _GlobalBalanceCard(totalBalance: totalBalance),
                 Expanded(
                   child:
                       isLoading && accounts.isEmpty
@@ -215,75 +209,6 @@ class _AccountsTabState extends State<AccountsTab> {
           ],
         );
       },
-    );
-  }
-}
-
-class _GlobalBalanceCard extends StatelessWidget {
-  final double totalBalance;
-  const _GlobalBalanceCard({required this.totalBalance});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF6C63FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Balance total (Activas)',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'S/ ${totalBalance.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
