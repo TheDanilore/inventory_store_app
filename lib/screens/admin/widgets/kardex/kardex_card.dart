@@ -4,8 +4,9 @@ import 'package:inventory_store_app/models/kardex_movement_model.dart';
 
 class KardexCard extends StatefulWidget {
   final KardexMovementModel item;
+  final bool isLast;
 
-  const KardexCard({super.key, required this.item});
+  const KardexCard({super.key, required this.item, this.isLast = false});
 
   @override
   State<KardexCard> createState() => _KardexCardState();
@@ -13,6 +14,7 @@ class KardexCard extends StatefulWidget {
 
 class _KardexCardState extends State<KardexCard> {
   bool _isExpanded = false;
+  bool _isHovered = false;
 
   void _toggleExpand() {
     setState(() {
@@ -87,286 +89,411 @@ class _KardexCardState extends State<KardexCard> {
             ? (widget.item.isReturn ? Colors.purple : Colors.green)
             : (widget.item.isSale ? Colors.blue : Colors.red);
     final iconData =
-        (widget.item.isEntry || widget.item.isReturn) ? Icons.arrow_downward : Icons.arrow_upward;
+        (widget.item.isEntry || widget.item.isReturn)
+            ? Icons.arrow_downward
+            : Icons.arrow_upward;
 
     final hasDetails =
         (widget.item.referenceId != null) ||
         (move.notes != null && move.notes!.toString().isNotEmpty);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: hasDetails ? _toggleExpand : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDate(move.createdAt?.toIso8601String()),
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── LÍNEA DE TIEMPO (TIMELINE) ──
+          SizedBox(
+            width: 30,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                // Línea vertical continua (desaparece en el último ítem)
+                if (!widget.isLast)
+                  Positioned(
+                    top: 24,
+                    bottom: 0,
+                    child: Container(width: 2, color: Colors.grey.shade300),
                   ),
-                  _buildMovementBadge(movementType),
-                ],
-              ),
-              const Divider(height: 24),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // IMAGEN EN CACHÉ
-                  Container(
-                    width: 52,
-                    height: 52,
+                // Punto indicador
+                Positioned(
+                  top: 24,
+                  child: Container(
+                    width: 12,
+                    height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(11),
-                      child:
-                          widget.item.imageUrl != null &&
-                                  widget.item.imageUrl!.isNotEmpty
-                              ? CachedNetworkImage(
-                                imageUrl: widget.item.imageUrl!,
-                                fit: BoxFit.cover,
-                                placeholder:
-                                    (context, url) => Container(
-                                      color: Colors.grey.shade50,
-                                      child: const Center(
-                                        child: SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                errorWidget:
-                                    (context, url, error) => Container(
-                                      color: Colors.grey.shade50,
-                                      child: Icon(
-                                        Icons.broken_image_outlined,
-                                        size: 20,
-                                        color: Colors.grey.shade400,
-                                      ),
-                                    ),
-                              )
-                              : Icon(
-                                Icons.inventory_2_outlined,
-                                color: Colors.grey.shade400,
-                              ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.item.productName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            height: 1.2,
-                          ),
-                        ),
-                        if (widget.item.attrsText != 'Única') ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              widget.item.attrsText,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (widget.item.usesBatches &&
-                            widget.item.batchNumber != 'DEFAULT') ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.tag_rounded,
-                                size: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Lote: ${widget.item.batchNumber}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (widget.item.sku != null &&
-                            widget.item.sku!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'SKU: ${widget.item.sku}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.warehouse,
-                              size: 14,
-                              color: Colors.grey.shade500,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                widget.item.warehouseName,
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
+                      color: iconColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: iconColor.withValues(alpha: 0.4),
+                          blurRadius: 4,
+                          spreadRadius: 1,
                         ),
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        'Cant.',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                      Row(
-                        children: [
-                          Icon(iconData, color: iconColor, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${(widget.item.isEntry || widget.item.isReturn) ? '+' : ''}${move.quantity}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                              color: iconColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Stock: ${move.previousStock} → ${move.newStock}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      if (move.unitCost != null)
-                        Text(
-                          'Costo: S/ ${move.unitCost}',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              if (hasDetails) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Icon(
-                    _isExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: Colors.grey.shade400,
-                  ),
                 ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child:
-                      !_isExpanded
-                          ? const SizedBox.shrink()
-                          : Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.shade200),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // ── TARJETA PRINCIPAL ──
+          Expanded(
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color:
+                        _isHovered
+                            ? iconColor.withValues(alpha: 0.3)
+                            : Colors.grey.shade200,
+                  ),
+                  boxShadow:
+                      _isHovered
+                          ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            child: Column(
+                          ]
+                          : [],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: hasDetails ? _toggleExpand : null,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _formatDate(
+                                    move.createdAt?.toIso8601String(),
+                                  ),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                _buildMovementBadge(movementType),
+                              ],
+                            ),
+                            const Divider(height: 24),
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (widget.item.referenceId != null)
-                                  Text(
-                                    'ID Ref: ${widget.item.referenceId}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontFamily: 'monospace',
-                                      color: Colors.black54,
+                                // IMAGEN EN CACHÉ
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
                                     ),
                                   ),
-                                if (move.notes != null &&
-                                    move.notes!.toString().isNotEmpty) ...[
-                                  if (widget.item.referenceId != null)
-                                    const SizedBox(height: 8),
-                                  Row(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(11),
+                                    child:
+                                        widget.item.imageUrl != null &&
+                                                widget.item.imageUrl!.isNotEmpty
+                                            ? CachedNetworkImage(
+                                              imageUrl: widget.item.imageUrl!,
+                                              fit: BoxFit.cover,
+                                              placeholder:
+                                                  (context, url) => Container(
+                                                    color: Colors.grey.shade50,
+                                                    child: const Center(
+                                                      child: SizedBox(
+                                                        width: 16,
+                                                        height: 16,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              errorWidget:
+                                                  (
+                                                    context,
+                                                    url,
+                                                    error,
+                                                  ) => Container(
+                                                    color: Colors.grey.shade50,
+                                                    child: Icon(
+                                                      Icons
+                                                          .broken_image_outlined,
+                                                      size: 20,
+                                                      color:
+                                                          Colors.grey.shade400,
+                                                    ),
+                                                  ),
+                                            )
+                                            : Icon(
+                                              Icons.inventory_2_outlined,
+                                              color: Colors.grey.shade400,
+                                            ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.notes,
-                                        size: 14,
-                                        color: Colors.grey.shade500,
+                                      Text(
+                                        widget.item.productName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          height: 1.2,
+                                        ),
                                       ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          move.notes ?? '',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade700,
-                                            fontStyle: FontStyle.italic,
+                                      if (widget.item.attrsText != 'Única') ...[
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            widget.item.attrsText,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade700,
+                                            ),
                                           ),
                                         ),
+                                      ],
+                                      if (widget.item.usesBatches &&
+                                          widget.item.batchNumber !=
+                                              'DEFAULT') ...[
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.tag_rounded,
+                                              size: 12,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Lote: ${widget.item.batchNumber}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade600,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                      if (widget.item.sku != null &&
+                                          widget.item.sku!.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'SKU: ${widget.item.sku}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.warehouse,
+                                            size: 14,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              widget.item.warehouseName,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Cant.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          iconData,
+                                          color: iconColor,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${(widget.item.isEntry || widget.item.isReturn) ? '+' : ''}${move.quantity}',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 18,
+                                            color: iconColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      'Stock: ${move.previousStock} → ${move.newStock}',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    if (move.unitCost != null)
+                                      Text(
+                                        'Costo: S/ ${move.unitCost}',
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
-                          ),
+                            if (hasDetails) ...[
+                              const SizedBox(height: 8),
+                              Center(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        _isHovered
+                                            ? Colors.grey.shade100
+                                            : Colors.transparent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _isExpanded
+                                        ? Icons.keyboard_arrow_up
+                                        : Icons.keyboard_arrow_down,
+                                    color:
+                                        _isHovered
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade400,
+                                  ),
+                                ),
+                              ),
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                child:
+                                    !_isExpanded
+                                        ? const SizedBox.shrink()
+                                        : Container(
+                                          width: double.infinity,
+                                          margin: const EdgeInsets.only(top: 8),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.grey.shade200,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (widget.item.referenceId !=
+                                                  null)
+                                                Text(
+                                                  'ID Ref: ${widget.item.referenceId}',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontFamily: 'monospace',
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                              if (move.notes != null &&
+                                                  move.notes!
+                                                      .toString()
+                                                      .isNotEmpty) ...[
+                                                if (widget.item.referenceId !=
+                                                    null)
+                                                  const SizedBox(height: 8),
+                                                Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.notes,
+                                                      size: 14,
+                                                      color:
+                                                          Colors.grey.shade500,
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Expanded(
+                                                      child: Text(
+                                                        move.notes ?? '',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              Colors
+                                                                  .grey
+                                                                  .shade700,
+                                                          fontStyle:
+                                                              FontStyle.italic,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

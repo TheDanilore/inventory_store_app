@@ -28,13 +28,16 @@ class KardexProvider extends ChangeNotifier {
   String _typeFilter = 'ALL'; // 'ALL', 'ENTRY', 'EXIT', 'SALE'
   String get typeFilter => _typeFilter;
 
+  String _searchText = '';
+  String get searchText => _searchText;
+
   // Paginación y Scroll Infinito
   static const int pageSize = 12;
   int _currentPage = 0;
   int get currentPage => _currentPage;
   int _totalCount = 0;
   int get totalCount => _totalCount;
-  
+
   int get totalPages => (_totalCount / pageSize).ceil();
 
   KardexProvider() {
@@ -57,6 +60,13 @@ class KardexProvider extends ChangeNotifier {
   void setTypeFilter(String type) {
     if (_typeFilter == type) return;
     _typeFilter = type;
+    _currentPage = 0;
+    _loadMovements();
+  }
+
+  void setSearchText(String text) {
+    if (_searchText == text) return;
+    _searchText = text;
     _currentPage = 0;
     _loadMovements();
   }
@@ -92,6 +102,11 @@ class KardexProvider extends ChangeNotifier {
       query = query.not('order_id', 'is', null).neq('reason', 'RETURN');
     } else if (_typeFilter == 'RETURN') {
       query = query.not('order_id', 'is', null).eq('reason', 'RETURN');
+    }
+
+    if (_searchText.isNotEmpty) {
+      // Usamos el filtro de tabla foránea soportado por PostgREST para ilike.
+      query = query.ilike('product_variants.products.name', '%$_searchText%');
     }
 
     return query;

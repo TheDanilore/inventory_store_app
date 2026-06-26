@@ -20,6 +20,7 @@ class AdminLayout extends StatelessWidget {
   final bool showAppBar;
   final List<PopupMenuEntry<String>>? settingsActions;
   final ValueChanged<String>? onSettingsSelected;
+  final List<Widget>? actions;
 
   const AdminLayout({
     super.key,
@@ -34,6 +35,7 @@ class AdminLayout extends StatelessWidget {
     this.showAppBar = true,
     this.settingsActions,
     this.onSettingsSelected,
+    this.actions,
   });
 
   void _openProfile(BuildContext context) {
@@ -107,6 +109,10 @@ class AdminLayout extends StatelessWidget {
                             ),
                           ),
                   actions: [
+                    if (actions != null) ...actions!,
+                    if (actions != null && actions!.isNotEmpty)
+                      const SizedBox(width: 8),
+
                     if (showSettingsButton &&
                         settingsActions != null &&
                         settingsActions!.isNotEmpty) ...[
