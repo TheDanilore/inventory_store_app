@@ -4,6 +4,9 @@ import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
+
+enum SettingFormat { number, percent, currency, integer }
 
 class PointsSettingsScreen extends StatefulWidget {
   const PointsSettingsScreen({super.key});
@@ -15,7 +18,7 @@ class PointsSettingsScreen extends StatefulWidget {
 class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _formKey = GlobalKey<FormState>();
+  int _selectedIndex = 0; // For navigation rail
 
   // Claves de la base de datos
   static const String _earningRateKey = 'points_earning_rate';
@@ -51,67 +54,199 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   // Controladores y definiciones
   final Map<String, _SettingDefinition> _settings = {};
 
+  final _formsKeys = {
+    0: GlobalKey<FormState>(),
+    1: GlobalKey<FormState>(),
+    2: GlobalKey<FormState>(),
+  };
+
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _selectedIndex = _tabController.index;
+        });
+      }
+    });
 
-    // Inicializar mapa de configuraciones
+    // Sistema y Ratio
     _initSettingDef(
       _earningRateKey,
       0.03,
-      'Tasa de acumulación (ej: 0.03 = 3%)',
+      'Tasa de acumulación',
+      format: SettingFormat.percent,
     );
     _initSettingDef(
       _pointsRatioKey,
       0.01,
-      'Valor en soles (ej: 0.01 = S/ 0.01)',
+      'Valor por punto',
+      format: SettingFormat.currency,
     );
-    _initSettingDef(_checkinRewardKey, 20, 'Monedas por check-in día 1');
-    _initSettingDef(_checkinStreakStepKey, 10, 'Monedas extra por racha');
+    _initSettingDef(
+      _checkinRewardKey,
+      20,
+      'Premio Check-in día 1',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _checkinStreakStepKey,
+      10,
+      'Bono por racha',
+      format: SettingFormat.integer,
+    );
 
-    _initSettingDef(_boxesDailyLimitKey, 1, 'Límite diario: Cajitas');
-    _initSettingDef(_memoramaDailyLimitKey, 1, 'Límite diario: Memorama');
-    _initSettingDef(_catcherDailyLimitKey, 1, 'Límite diario: Lluvia');
-    _initSettingDef(_pinataDailyLimitKey, 1, 'Límite diario: Piñata');
-    _initSettingDef(_jumpDailyLimitKey, 1, 'Límite diario: Salto');
-    _initSettingDef(_clawDailyLimitKey, 1, 'Límite diario: Garra');
-    _initSettingDef(_stackDailyLimitKey, 1, 'Límite diario: Cajas');
-    _initSettingDef(_dodgeDailyLimitKey, 1, 'Límite diario: Esquiva');
+    // Límites Diarios
+    _initSettingDef(
+      _boxesDailyLimitKey,
+      1,
+      'Cajitas Misteriosas',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _memoramaDailyLimitKey,
+      1,
+      'Memorama',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _catcherDailyLimitKey,
+      1,
+      'Lluvia de Monedas',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _pinataDailyLimitKey,
+      1,
+      'Piñata',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _jumpDailyLimitKey,
+      1,
+      'Salto',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _clawDailyLimitKey,
+      1,
+      'Máquina de Garra',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _stackDailyLimitKey,
+      1,
+      'Apilador',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _dodgeDailyLimitKey,
+      1,
+      'Esquiva',
+      format: SettingFormat.integer,
+    );
 
-    _initSettingDef(_boxesPrize1Key, 10, 'Cajitas: Premio 1');
-    _initSettingDef(_boxesPrize2Key, 20, 'Cajitas: Premio 2');
-    _initSettingDef(_boxesPrize3Key, 30, 'Cajitas: Premio 3');
-    _initSettingDef(_pinataGrandPrizeKey, 50, 'Piñata: Mayor (>= 50 toques)');
-    _initSettingDef(_pinataConsolationPrizeKey, 5, 'Piñata: Consolación');
-    _initSettingDef(_memoramaMatchRewardKey, 5, 'Memorama: Puntos por pareja');
-    _initSettingDef(_catcherCoinRewardKey, 1, 'Lluvia: Puntos por moneda');
-    _initSettingDef(_catcherGiftRewardKey, 5, 'Lluvia: Puntos por regalo');
+    // Premios
+    _initSettingDef(
+      _boxesPrize1Key,
+      10,
+      'Premio 1',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _boxesPrize2Key,
+      20,
+      'Premio 2',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _boxesPrize3Key,
+      30,
+      'Premio 3',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _pinataGrandPrizeKey,
+      50,
+      'Mayor (>= 50)',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _pinataConsolationPrizeKey,
+      5,
+      'Consolación',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _memoramaMatchRewardKey,
+      5,
+      'Pts por pareja',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _catcherCoinRewardKey,
+      1,
+      'Pts por moneda',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(
+      _catcherGiftRewardKey,
+      5,
+      'Pts por regalo',
+      format: SettingFormat.integer,
+    );
     _initSettingDef(
       _catcherBombPenaltyKey,
       -3,
-      'Lluvia: Penalidad por bomba (negativo)',
+      'Penalidad bomba',
+      format: SettingFormat.integer,
+      icon: Icons.warning_rounded,
     );
 
-    _initSettingDef(_clawPrize1Key, 5, 'Garra: P1 (Izquierda)');
-    _initSettingDef(_clawPrize2Key, 20, 'Garra: P2');
-    _initSettingDef(_clawPrize3Key, 50, 'Garra: P3 (Centro)');
-    _initSettingDef(_clawPrize4Key, 10, 'Garra: P4');
-    _initSettingDef(_clawPrize5Key, 5, 'Garra: P5 (Derecha)');
+    _initSettingDef(
+      _clawPrize1Key,
+      5,
+      'P1 (Izq)',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(_clawPrize2Key, 20, 'P2', format: SettingFormat.integer);
+    _initSettingDef(
+      _clawPrize3Key,
+      50,
+      'P3 (Centro)',
+      format: SettingFormat.integer,
+    );
+    _initSettingDef(_clawPrize4Key, 10, 'P4', format: SettingFormat.integer);
+    _initSettingDef(
+      _clawPrize5Key,
+      5,
+      'P5 (Der)',
+      format: SettingFormat.integer,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
   }
 
-  void _initSettingDef(String key, double fallback, String description) {
+  void _initSettingDef(
+    String key,
+    double fallback,
+    String description, {
+    SettingFormat format = SettingFormat.number,
+    IconData? icon,
+  }) {
     _settings[key] = _SettingDefinition(
       key: key,
       fallback: fallback,
       description: description,
       controller: TextEditingController(),
+      format: format,
+      icon: icon,
     );
   }
 
@@ -138,8 +273,17 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   void _fillControllers(AppConfigProvider config) {
     for (final def in _settings.values) {
-      final val = config.getDouble(def.key, def.fallback);
-      final text = val.toStringAsFixed(4).replaceFirst(RegExp(r'\.?0+$'), '');
+      double val = config.getDouble(def.key, def.fallback);
+      if (def.format == SettingFormat.percent) {
+        val = val * 100;
+      }
+
+      String text;
+      if (def.format == SettingFormat.integer) {
+        text = val.toInt().toString();
+      } else {
+        text = val.toStringAsFixed(4).replaceFirst(RegExp(r'\.?0+$'), '');
+      }
       def.controller.text = text;
     }
   }
@@ -153,11 +297,12 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     super.dispose();
   }
 
-  Future<void> _saveAll() async {
-    if (!_formKey.currentState!.validate()) {
+  Future<void> _saveSection(int tabIndex, List<String> keys) async {
+    final formKey = _formsKeys[tabIndex];
+    if (formKey == null || !formKey.currentState!.validate()) {
       AppSnackbar.show(
         context,
-        message: 'Por favor, corrige los errores en los campos.',
+        message: 'Corrige los errores en esta sección antes de guardar.',
         type: SnackbarType.error,
       );
       return;
@@ -166,9 +311,15 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     final newValues = <String, double>{};
     final descriptions = <String, String>{};
 
-    for (final def in _settings.values) {
-      final parsed =
+    for (final key in keys) {
+      final def = _settings[key]!;
+      double parsed =
           double.tryParse(def.controller.text.trim()) ?? def.fallback;
+
+      if (def.format == SettingFormat.percent) {
+        parsed = parsed / 100.0;
+      }
+
       newValues[def.key] = parsed;
       descriptions[def.key] = def.description;
     }
@@ -183,13 +334,13 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       if (success) {
         AppSnackbar.show(
           context,
-          message: 'Configuración de monedas guardada.',
+          message: 'Configuración guardada correctamente.',
           type: SnackbarType.success,
         );
       } else {
         AppSnackbar.show(
           context,
-          message: 'No se pudo guardar la configuración.',
+          message: 'Error al guardar la configuración.',
           type: SnackbarType.error,
         );
       }
@@ -198,249 +349,540 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppConfigProvider>();
-
     return AdminLayout(
-      title: 'Configuración de Monedas',
+      title: 'Configuración de Juegos',
       showBackButton: true,
       body:
           !_isInitialized
               ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  TabBar(
-                    controller: _tabController,
-                    labelColor: Theme.of(context).primaryColor,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: Theme.of(context).primaryColor,
-                    isScrollable: true,
-                    tabs: const [
-                      Tab(text: 'Sistema y Ratio'),
-                      Tab(text: 'Límites Diarios'),
-                      Tab(text: 'Premios y Juegos'),
-                    ],
-                  ),
-                  Expanded(
-                    child: Form(
-                      key: _formKey,
-                      child: TabBarView(
+              : LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 800;
+
+                  if (isWide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildNavigationRail(),
+                        Container(width: 1, color: Colors.grey.shade200),
+                        Expanded(
+                          child: Container(
+                            color: AppColors.background,
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 800),
+                              child: _buildSelectedTabContent(_selectedIndex),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      TabBar(
                         controller: _tabController,
-                        children: [
-                          _buildSystemTab(),
-                          _buildLimitsTab(),
-                          _buildPrizesTab(),
+                        labelColor: AppColors.primary,
+                        unselectedLabelColor: Colors.grey,
+                        indicatorColor: AppColors.primary,
+                        isScrollable: true,
+                        tabs: const [
+                          Tab(text: 'Sistema y Ratio'),
+                          Tab(text: 'Límites Diarios'),
+                          Tab(text: 'Premios'),
                         ],
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: AppPrimaryButton(
-                      label:
-                          provider.isSavingSettings
-                              ? 'Guardando...'
-                              : 'Guardar toda la configuración',
-                      onPressed: provider.isSavingSettings ? null : _saveAll,
-                    ),
-                  ),
-                ],
+                      Expanded(
+                        child: Container(
+                          color: AppColors.background,
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildSelectedTabContent(0),
+                              _buildSelectedTabContent(1),
+                              _buildSelectedTabContent(2),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
     );
   }
 
+  Widget _buildNavigationRail() {
+    return Container(
+      width: 240,
+      color: Colors.white,
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          _buildRailItem(0, Icons.settings_rounded, 'Sistema y Ratio'),
+          _buildRailItem(1, Icons.sports_esports_rounded, 'Límites Diarios'),
+          _buildRailItem(2, Icons.redeem_rounded, 'Premios y Juegos'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRailItem(int index, IconData icon, String label) {
+    final isSelected = _selectedIndex == index;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+          _tabController.animateTo(index);
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
+          border: Border(
+            right: BorderSide(
+              color: isSelected ? AppColors.primary : Colors.transparent,
+              width: 4,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppColors.primary : Colors.grey.shade600,
+              size: 22,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.grey.shade800,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedTabContent(int index) {
+    return Form(
+      key: _formsKeys[index],
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          if (index == 0) _buildSystemTab(),
+          if (index == 1) _buildLimitsTab(),
+          if (index == 2) _buildPrizesTab(),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSystemTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    final keys = [
+      _earningRateKey,
+      _pointsRatioKey,
+      _checkinRewardKey,
+      _checkinStreakStepKey,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionCard(
           title: 'Sistema de Puntos y Canjes',
-          subtitle: 'Define el valor y las tasas de obtención generales.',
+          subtitle: 'Define el valor monetario y la acumulación.',
+          icon: Icons.currency_exchange_rounded,
+          color: Colors.blue,
           children: [
-            _buildField(_earningRateKey, allowZero: false),
-            _buildField(_pointsRatioKey, allowZero: false),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildField(_earningRateKey)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildField(_pointsRatioKey)),
+              ],
+            ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         _buildSectionCard(
           title: 'Check-in Diario',
           subtitle: 'Recompensas por rachas consecutivas.',
+          icon: Icons.fact_check_rounded,
+          color: Colors.green,
           children: [
-            _buildField(_checkinRewardKey, allowZero: false),
-            _buildField(_checkinStreakStepKey, allowZero: false),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildField(_checkinRewardKey)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildField(_checkinStreakStepKey)),
+              ],
+            ),
           ],
         ),
+        const SizedBox(height: 24),
+        _buildSaveButton(0, keys),
       ],
     );
   }
 
   Widget _buildLimitsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    final keys = [
+      _boxesDailyLimitKey,
+      _memoramaDailyLimitKey,
+      _catcherDailyLimitKey,
+      _pinataDailyLimitKey,
+      _jumpDailyLimitKey,
+      _clawDailyLimitKey,
+      _stackDailyLimitKey,
+      _dodgeDailyLimitKey,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionCard(
           title: 'Límites de Juegos Diarios',
           subtitle:
               'Controla el máximo de veces que los usuarios pueden jugar cada día.',
+          icon: Icons.sports_esports_rounded,
+          color: Colors.orange,
           children: [
-            _buildField(_boxesDailyLimitKey, allowZero: false),
-            _buildField(_memoramaDailyLimitKey, allowZero: false),
-            _buildField(_catcherDailyLimitKey, allowZero: false),
-            _buildField(_pinataDailyLimitKey, allowZero: false),
-            _buildField(_jumpDailyLimitKey, allowZero: false),
-            _buildField(_clawDailyLimitKey, allowZero: false),
-            _buildField(_stackDailyLimitKey, allowZero: false),
-            _buildField(_dodgeDailyLimitKey, allowZero: false),
+            _buildGridLayout([
+              _buildField(_boxesDailyLimitKey),
+              _buildField(_memoramaDailyLimitKey),
+              _buildField(_catcherDailyLimitKey),
+              _buildField(_pinataDailyLimitKey),
+              _buildField(_jumpDailyLimitKey),
+              _buildField(_clawDailyLimitKey),
+              _buildField(_stackDailyLimitKey),
+              _buildField(_dodgeDailyLimitKey),
+            ]),
           ],
         ),
+        const SizedBox(height: 24),
+        _buildSaveButton(1, keys),
       ],
     );
   }
 
   Widget _buildPrizesTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    final keys = [
+      _boxesPrize1Key,
+      _boxesPrize2Key,
+      _boxesPrize3Key,
+      _pinataGrandPrizeKey,
+      _pinataConsolationPrizeKey,
+      _catcherCoinRewardKey,
+      _catcherGiftRewardKey,
+      _catcherBombPenaltyKey,
+      _memoramaMatchRewardKey,
+      _clawPrize1Key,
+      _clawPrize2Key,
+      _clawPrize3Key,
+      _clawPrize4Key,
+      _clawPrize5Key,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionCard(
           title: 'Cajitas Misteriosas',
-          subtitle: 'Tres premios aleatorios que se esconden en las cajas.',
+          subtitle: 'Premios aleatorios de las cajas.',
+          icon: Icons.inventory_2_rounded,
+          color: Colors.purple,
           children: [
-            Row(
-              children: [
-                Expanded(child: _buildField(_boxesPrize1Key)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildField(_boxesPrize2Key)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildField(_boxesPrize3Key)),
-              ],
-            ),
+            _buildGridLayout([
+              _buildField(_boxesPrize1Key),
+              _buildField(_boxesPrize2Key),
+              _buildField(_boxesPrize3Key),
+            ], crossAxisCount: 3),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         _buildSectionCard(
-          title: 'Piñata',
-          subtitle: 'Premio mayor para 50+ toques y premio consolación.',
+          title: 'Piñata y Memorama',
+          subtitle: 'Premios mayores, consolación y por pares.',
+          icon: Icons.celebration_rounded,
+          color: Colors.pink,
           children: [
-            Row(
-              children: [
-                Expanded(child: _buildField(_pinataGrandPrizeKey)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildField(_pinataConsolationPrizeKey)),
-              ],
-            ),
+            _buildGridLayout([
+              _buildField(_pinataGrandPrizeKey),
+              _buildField(_pinataConsolationPrizeKey),
+              _buildField(_memoramaMatchRewardKey),
+            ], crossAxisCount: 3),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         _buildSectionCard(
           title: 'Lluvia de Monedas',
-          subtitle:
-              'Valor por atrapar monedas, regalos o penalidad por bombas.',
+          subtitle: 'Valor por atrapar elementos.',
+          icon: Icons.cloud_download_rounded,
+          color: Colors.lightBlue,
           children: [
-            _buildField(_catcherCoinRewardKey),
-            _buildField(_catcherGiftRewardKey),
-            _buildField(_catcherBombPenaltyKey, allowNegative: true),
+            _buildGridLayout([
+              _buildField(_catcherCoinRewardKey),
+              _buildField(_catcherGiftRewardKey),
+              _buildField(_catcherBombPenaltyKey, allowNegative: true),
+            ], crossAxisCount: 3),
           ],
         ),
-        const SizedBox(height: 16),
-        _buildSectionCard(
-          title: 'Memorama',
-          subtitle: 'Puntos por acertar un par.',
-          children: [_buildField(_memoramaMatchRewardKey)],
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         _buildSectionCard(
           title: 'Máquina de Garra',
-          subtitle: 'Premios de la ranura 1 a la 5 (Izquierda a Derecha).',
+          subtitle: 'Premios según la ranura donde cae el gancho (1 al 5).',
+          icon: Icons.precision_manufacturing_rounded,
+          color: Colors.amber,
           children: [
-            Row(
-              children: [
-                Expanded(child: _buildField(_clawPrize1Key)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildField(_clawPrize2Key)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildField(_clawPrize3Key)),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(child: _buildField(_clawPrize4Key)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildField(_clawPrize5Key)),
-              ],
-            ),
+            _buildGridLayout([
+              _buildField(_clawPrize1Key),
+              _buildField(_clawPrize2Key),
+              _buildField(_clawPrize3Key),
+              _buildField(_clawPrize4Key),
+              _buildField(_clawPrize5Key),
+            ], crossAxisCount: 3),
           ],
         ),
+        const SizedBox(height: 24),
+        _buildSaveButton(2, keys),
       ],
+    );
+  }
+
+  Widget _buildGridLayout(List<Widget> children, {int crossAxisCount = 2}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        final actualCols = width < 400 ? 1 : crossAxisCount;
+
+        List<Row> rows = [];
+        for (var i = 0; i < children.length; i += actualCols) {
+          List<Widget> rowChildren = [];
+          for (var j = 0; j < actualCols; j++) {
+            if (i + j < children.length) {
+              rowChildren.add(Expanded(child: children[i + j]));
+            } else {
+              rowChildren.add(Expanded(child: const SizedBox()));
+            }
+            if (j < actualCols - 1) {
+              rowChildren.add(const SizedBox(width: 16));
+            }
+          }
+          rows.add(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: rowChildren,
+            ),
+          );
+        }
+
+        return Column(
+          children:
+              rows
+                  .map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: r,
+                    ),
+                  )
+                  .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildSaveButton(int tabIndex, List<String> keys) {
+    final provider = context.watch<AppConfigProvider>();
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 250,
+        child: AppPrimaryButton(
+          label: provider.isSavingSettings ? 'Guardando...' : 'Guardar Cambios',
+          onPressed:
+              provider.isSavingSettings
+                  ? null
+                  : () => _saveSection(tabIndex, keys),
+        ),
+      ),
     );
   }
 
   Widget _buildSectionCard({
     required String title,
     required String subtitle,
+    required IconData icon,
+    required Color color,
     required List<Widget> children,
   }) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            ...children,
-          ],
-        ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          ...children,
+        ],
       ),
     );
   }
 
-  Widget _buildField(
-    String key, {
-    bool allowZero = true,
-    bool allowNegative = false,
-  }) {
+  Widget _buildField(String key, {bool allowNegative = false}) {
     final def = _settings[key]!;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: def.controller,
-        keyboardType: TextInputType.numberWithOptions(
-          decimal: true,
-          signed: allowNegative,
+
+    Widget? prefix;
+    Widget? suffix;
+    TextInputType kType = const TextInputType.numberWithOptions(
+      decimal: true,
+      signed: false,
+    );
+
+    if (def.format == SettingFormat.percent) {
+      suffix = const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Text(
+          '%',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        decoration: InputDecoration(
-          labelText: def.description,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
+      );
+    } else if (def.format == SettingFormat.currency) {
+      prefix = const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Text(
+          'S/',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.green,
           ),
         ),
-        validator: (value) {
-          final text = value?.trim() ?? '';
-          if (text.isEmpty) return 'Requerido';
-          final parsed = double.tryParse(text);
-          if (parsed == null) return 'Inválido';
-          if (!allowNegative && parsed < 0) return 'Debe ser positivo';
-          if (!allowZero && parsed == 0) return 'Debe ser mayor a 0';
-          if (allowNegative && parsed > 0 && key == _catcherBombPenaltyKey) {
-            return 'Debe ser negativo';
-          }
-          return null;
-        },
+      );
+    } else if (def.format == SettingFormat.integer) {
+      kType = TextInputType.numberWithOptions(
+        decimal: false,
+        signed: allowNegative,
+      );
+      prefix = Padding(
+        padding: const EdgeInsets.only(left: 14, right: 8),
+        child: Icon(
+          def.icon ?? Icons.monetization_on_rounded,
+          color: Colors.amber,
+          size: 20,
+        ),
+      );
+    }
+
+    return TextFormField(
+      controller: def.controller,
+      keyboardType: kType,
+      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+      decoration: InputDecoration(
+        labelText: def.description,
+        labelStyle: TextStyle(
+          color: Colors.grey.shade600,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixIcon: prefix,
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        suffixIcon: suffix,
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
+      validator: (value) {
+        final text = value?.trim() ?? '';
+        if (text.isEmpty) return 'Requerido';
+        final parsed = double.tryParse(text);
+        if (parsed == null) return 'Número inválido';
+        if (!allowNegative && parsed < 0) return 'Debe ser positivo';
+        if (def.format == SettingFormat.integer && parsed != parsed.toInt()) {
+          return 'Debe ser entero';
+        }
+        if (allowNegative && parsed > 0 && key == _catcherBombPenaltyKey) {
+          return 'Debe ser negativo';
+        }
+        return null;
+      },
     );
   }
 }
@@ -450,11 +892,15 @@ class _SettingDefinition {
   final double fallback;
   final String description;
   final TextEditingController controller;
+  final SettingFormat format;
+  final IconData? icon;
 
   _SettingDefinition({
     required this.key,
     required this.fallback,
     required this.description,
     required this.controller,
+    required this.format,
+    this.icon,
   });
 }
