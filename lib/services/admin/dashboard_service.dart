@@ -79,7 +79,7 @@ class DashboardService {
       final response = await _supabase
           .from('products')
           .select('''
-            id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, 
+            id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, stock_control,
             product_variants(id, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active),
             warehouse_stock_batches(variant_id, available_quantity)
           ''')
@@ -98,6 +98,7 @@ class DashboardService {
       int totalProducts = 0;
 
       for (var row in products) {
+        final stockControl = row['stock_control'] as bool? ?? true;
         final prodUnitCost = (row['unit_cost'] as num?)?.toDouble() ?? 0.0;
         final prodSalePrice = (row['sale_price'] as num?)?.toDouble() ?? 0.0;
         final prodWholesalePrice = (row['wholesale_price'] as num?)?.toDouble();
@@ -116,8 +117,6 @@ class DashboardService {
           row['warehouse_stock_batches'] ?? [],
         );
 
-        bool prodHasLowStock = false;
-
         for (final variant in activeVariants) {
           final variantId = variant['id'] as String?;
           if (variantId == null) continue;
@@ -128,6 +127,12 @@ class DashboardService {
                 0,
                 (s, b) => s + ((b['available_quantity'] as num?)?.toInt() ?? 0),
               );
+
+          final reorderPoint = (variant['reorder_point'] as num?)?.toInt() ?? 3;
+
+          if (stockControl && variantStock <= reorderPoint) {
+            lowStockProducts++;
+          }
 
           if (variantStock <= 0) continue;
 
@@ -150,9 +155,15 @@ class DashboardService {
           final varWholesaleMinQty =
               (variant['wholesale_min_quantity'] as num?)?.toInt() ??
               prodWholesaleMinQty;
-          final reorderPoint = (variant['reorder_point'] as num?)?.toInt() ?? 3;
 
-          totalStock += variantStock;
+          if (stockControl) {
+            totalStock += variantStock;
+          } else {
+            // Si no tiene stock control, usualmente variantStock es 0 o no lo sumamos al total general
+            // pero si por algun motivo hay stock, para igualar a inventory_service, sumamos.
+            // En inventory_service totalStock += variantStock solo si stockControl == true.
+          }
+
           totalInvestment += variantStock * varUnitCost;
           retailValue += variantStock * varSalePrice;
 
@@ -168,11 +179,7 @@ class DashboardService {
           expectedMinProfit +=
               (variantStock * effectiveWholesale) -
               (variantStock * varUnitCost);
-
-          if (variantStock <= reorderPoint) prodHasLowStock = true;
         }
-
-        if (prodHasLowStock) lowStockProducts++;
       }
 
       final grossMargin =
