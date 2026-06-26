@@ -309,24 +309,18 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                         color: AppColors.primary,
                       ),
                     )
-                    : Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        child: Stack(
-                          children: [
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                final isTablet = constraints.maxWidth >= 800;
-                                return isTablet
-                                    ? _buildTabletLayout(provider)
-                                    : _buildMobileLayout(provider);
-                              },
-                            ),
-                            _buildBottomActionButton(provider),
-                          ],
+                    : Stack(
+                      children: [
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isTablet = constraints.maxWidth >= 800;
+                            return isTablet
+                                ? _buildTabletLayout(provider)
+                                : _buildMobileLayout(provider);
+                          },
                         ),
-                      ),
+                        _buildBottomActionButton(provider),
+                      ],
                     ),
           );
         },

@@ -55,26 +55,20 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     return AdminLayout(
       title: 'Finanzas',
       showBackButton: true,
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: Column(
-            children: [
-              _buildGlobalBalanceHeader(),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 720) {
-                      return _buildTabletLayout();
-                    }
-                    return _buildMobileLayout();
-                  },
-                ),
-              ),
-            ],
+      body: Column(
+        children: [
+          _buildGlobalBalanceHeader(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 720) {
+                  return _buildTabletLayout();
+                }
+                return _buildMobileLayout();
+              },
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

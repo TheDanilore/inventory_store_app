@@ -228,39 +228,32 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
 
                 Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 450),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: FadeTransition(
-                          opacity: _fadeAnim,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              LoginHeaderSection(
-                                isLoginMode: provider.isLoginMode,
-                              ),
-                              const SizedBox(height: 32),
-                              LoginFormCard(
-                                formKey: _formKey,
-                                nameController: _nameController,
-                                emailController: _emailController,
-                                passwordController: _passwordController,
-                                isLoginMode: provider.isLoginMode,
-                                isLoading: provider.isLoading,
-                                onAuthenticate: _authenticate,
-                              ),
-                              const SizedBox(height: 20),
-                              LoginToggleMode(
-                                isLoginMode: provider.isLoginMode,
-                                isLoading: provider.isLoading,
-                                onToggle: _onToggleMode,
-                              ),
-                              const SizedBox(height: 32),
-                            ],
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          LoginHeaderSection(isLoginMode: provider.isLoginMode),
+                          const SizedBox(height: 32),
+                          LoginFormCard(
+                            formKey: _formKey,
+                            nameController: _nameController,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            isLoginMode: provider.isLoginMode,
+                            isLoading: provider.isLoading,
+                            onAuthenticate: _authenticate,
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                          LoginToggleMode(
+                            isLoginMode: provider.isLoginMode,
+                            isLoading: provider.isLoading,
+                            onToggle: _onToggleMode,
+                          ),
+                          const SizedBox(height: 32),
+                        ],
                       ),
                     ),
                   ),

@@ -114,18 +114,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 750) {
-                return _buildTabletLayout(context, provider);
-              }
-              return _buildMobileLayout(context, provider);
-            },
-          ),
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 750) {
+            return _buildTabletLayout(context, provider);
+          }
+          return _buildMobileLayout(context, provider);
+        },
       ),
     );
   }

@@ -138,10 +138,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
             child: RefreshIndicator(
               onRefresh: provider.refreshProducts,
               color: AppColors.primary,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
-                  child: SizedBox(
+              child: SizedBox(
                     height: double.infinity,
                     child: CustomScrollView(
                       controller: _scrollController,
@@ -282,8 +279,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   ),
                 ),
               ),
-            ),
-          ),
 
           // Scroll to top button
           Positioned(

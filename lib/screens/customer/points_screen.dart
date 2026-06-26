@@ -101,88 +101,81 @@ class _PointsScreenState extends State<PointsScreen> {
               'Día 1: $d1 monedas. Día 2: $d2 monedas. Sigue la racha para ganar más.';
 
           return SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  child:
-                      provider.isLoading
-                          ? const Center(
-                            key: ValueKey('loading'),
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                          : RefreshIndicator(
-                            key: const ValueKey('content'),
-                            color: AppColors.primary,
-                            backgroundColor: PointsDS.surface,
-                            onRefresh: _loadData,
-                            child: SingleChildScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // 1. Hero balance card
-                                  PointsBalanceHeroCard(
-                                    balanceKey: _balanceKey,
-                                    currentBalance: provider.currentBalance,
-                                    hundredCoinsValue: hundredCoinsValue,
-                                    currentStreak: provider.currentStreak,
-                                  ),
-
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        const SizedBox(height: 16),
-
-                                        // 2. Check-in diario
-                                        PointsDailyCheckinCard(
-                                          claimButtonKey: _claimButtonKey,
-                                          hundredCoinsValue: hundredCoinsValue,
-                                          claimMessage: claimMessage,
-                                          streakPreviewLabel:
-                                              streakPreviewLabel,
-                                          currentStreak: provider.currentStreak,
-                                          nextCheckinReward:
-                                              provider.nextCheckinReward,
-                                          hasTodayCheckin:
-                                              provider.hasTodayCheckin,
-                                          isClaimingCheckin:
-                                              provider.isClaimingCheckin,
-                                          onClaim: () => _handleClaim(provider),
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        // 3. Juegos diarios
-                                        const PointsGameActionsSection(),
-                                        const SizedBox(height: 16),
-
-                                        // 4. Mini-juego cajas
-                                        PointsMiniGameCard(
-                                          onCoinFly: _playCoinFlyAnimation,
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        // 5. Historial
-                                        const PointsMovementsSection(),
-                                        const SizedBox(height: 24),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child:
+                  provider.isLoading
+                      ? const Center(
+                        key: ValueKey('loading'),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                      : RefreshIndicator(
+                        key: const ValueKey('content'),
+                        color: AppColors.primary,
+                        backgroundColor: PointsDS.surface,
+                        onRefresh: _loadData,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // 1. Hero balance card
+                              PointsBalanceHeroCard(
+                                balanceKey: _balanceKey,
+                                currentBalance: provider.currentBalance,
+                                hundredCoinsValue: hundredCoinsValue,
+                                currentStreak: provider.currentStreak,
                               ),
-                            ),
+
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    const SizedBox(height: 16),
+
+                                    // 2. Check-in diario
+                                    PointsDailyCheckinCard(
+                                      claimButtonKey: _claimButtonKey,
+                                      hundredCoinsValue: hundredCoinsValue,
+                                      claimMessage: claimMessage,
+                                      streakPreviewLabel: streakPreviewLabel,
+                                      currentStreak: provider.currentStreak,
+                                      nextCheckinReward:
+                                          provider.nextCheckinReward,
+                                      hasTodayCheckin: provider.hasTodayCheckin,
+                                      isClaimingCheckin:
+                                          provider.isClaimingCheckin,
+                                      onClaim: () => _handleClaim(provider),
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // 3. Juegos diarios
+                                    const PointsGameActionsSection(),
+                                    const SizedBox(height: 16),
+
+                                    // 4. Mini-juego cajas
+                                    PointsMiniGameCard(
+                                      onCoinFly: _playCoinFlyAnimation,
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // 5. Historial
+                                    const PointsMovementsSection(),
+                                    const SizedBox(height: 24),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                ),
-              ),
+                        ),
+                      ),
             ),
           );
         },

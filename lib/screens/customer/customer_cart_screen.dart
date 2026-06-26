@@ -192,10 +192,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                   message:
                       'Agrega productos desde el catálogo para armar tu pedido.',
                 )
-                : Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
-                    child: SizedBox(
+                : SizedBox(
                       height: double.infinity,
                       child: Column(
                         children: [
@@ -259,8 +256,6 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                         ],
                       ),
                     ),
-                  ),
-                ),
       ),
     );
   }

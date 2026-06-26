@@ -468,38 +468,32 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 },
               );
 
-              return Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1200),
-                  child: Column(
-                    children: [
-                      Expanded(child: mainContent),
-                      if (provider.products.isNotEmpty &&
-                          provider.totalPages > 1)
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, -4),
-                              ),
-                            ],
+              return Column(
+                children: [
+                  Expanded(child: mainContent),
+                  if (provider.products.isNotEmpty && provider.totalPages > 1)
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -4),
                           ),
-                          child: SafeArea(
-                            top: false,
-                            child: AdminPageBlocks(
-                              currentPage: provider.currentPage,
-                              totalPages: provider.totalPages,
-                              onPageChanged: provider.setPage,
-                            ),
-                          ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: AdminPageBlocks(
+                          currentPage: provider.currentPage,
+                          totalPages: provider.totalPages,
+                          onPageChanged: provider.setPage,
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
               );
             },
           ),

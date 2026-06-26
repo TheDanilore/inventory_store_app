@@ -73,74 +73,67 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () async {
-              await provider.fetchOrders(reset: true);
-            },
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (provider.isBackgroundLoading)
-                          _buildBackgroundSyncIndicator(),
-                        _buildHeaderBanner(provider.orders.length),
-                      ],
-                    ),
-                  ),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          await provider.fetchOrders(reset: true);
+        },
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (provider.isBackgroundLoading)
+                      _buildBackgroundSyncIndicator(),
+                    _buildHeaderBanner(provider.orders.length),
+                  ],
                 ),
-
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickyFiltersDelegate(
-                    child: Container(
-                      color: AppColors.background,
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildSearchBar(),
-                          const SizedBox(height: 12),
-                          _buildFilters(provider),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Body
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: _buildBody(provider),
-                ),
-
-                // Bottom Loading Indicator
-                if (provider.isLoadingMore)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+              ),
             ),
-          ),
+
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _StickyFiltersDelegate(
+                child: Container(
+                  color: AppColors.background,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSearchBar(),
+                      const SizedBox(height: 12),
+                      _buildFilters(provider),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Body
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: _buildBody(provider),
+            ),
+
+            // Bottom Loading Indicator
+            if (provider.isLoadingMore)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                ),
+              ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          ],
         ),
       ),
     );

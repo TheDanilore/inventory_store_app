@@ -137,49 +137,44 @@ class _WishlistScreenState extends State<WishlistScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: true,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () async {
-              await provider.fetchWishlist(reset: true);
-            },
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Column(
-                      children: [
-                        _buildHeaderBanner(provider),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async {
+          await provider.fetchWishlist(reset: true);
+        },
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(
+                  children: [
+                    _buildHeaderBanner(provider),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: _buildBody(provider),
-                ),
-
-                if (provider.isLoadingMore)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      ),
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+              ),
             ),
-          ),
+
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: _buildBody(provider),
+            ),
+
+            if (provider.isLoadingMore)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                ),
+              ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          ],
         ),
       ),
     );

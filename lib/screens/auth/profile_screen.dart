@@ -180,10 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body:
           provider.isLoading || !_hasInitialized
               ? const ProfileShimmer()
-              : Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 700),
-                  child: SizedBox(
+              : SizedBox(
                     height: double.infinity,
                     child: RefreshIndicator(
                       color: AppColors.teal,
@@ -403,8 +400,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-                ),
-              ),
     );
   }
 

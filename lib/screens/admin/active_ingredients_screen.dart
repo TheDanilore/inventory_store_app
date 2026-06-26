@@ -49,70 +49,64 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     return AdminLayout(
       title: 'Componentes Químicos',
       showBackButton: true,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Consumer<ActiveIngredientsProvider>(
-            builder: (context, provider, child) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ─── BUSCADOR ───────────────────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _AnimatedSearchBar(
-                      controller: _searchCtrl,
-                      onChanged: provider.onSearchChanged,
-                      onClear: () {
-                        _searchCtrl.clear();
-                        provider.clearSearch();
-                      },
-                      hasQuery: provider.searchQuery.isNotEmpty,
-                    ),
-                  ),
+      body: Consumer<ActiveIngredientsProvider>(
+        builder: (context, provider, child) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── BUSCADOR ───────────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: _AnimatedSearchBar(
+                  controller: _searchCtrl,
+                  onChanged: provider.onSearchChanged,
+                  onClear: () {
+                    _searchCtrl.clear();
+                    provider.clearSearch();
+                  },
+                  hasQuery: provider.searchQuery.isNotEmpty,
+                ),
+              ),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 4,
-                    ),
-                    child: Text(
-                      'Total: ${provider.totalIngredients} componentes',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
+                ),
+                child: Text(
+                  'Total: ${provider.totalIngredients} componentes',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+              ),
 
-                  // ─── LISTA ────────────────────────────────────────────
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: () => provider.fetchIngredients(),
-                      color: AppColors.primary,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _buildListContent(provider),
-                      ),
-                    ),
+              // ─── LISTA ────────────────────────────────────────────
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => provider.fetchIngredients(),
+                  color: AppColors.primary,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _buildListContent(provider),
                   ),
+                ),
+              ),
 
-                  if (provider.ingredients.isNotEmpty &&
-                      provider.totalPages > 1)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                      child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: (page) => provider.setPage(page),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
+              if (provider.ingredients.isNotEmpty && provider.totalPages > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: AdminPageBlocks(
+                    currentPage: provider.currentPage,
+                    totalPages: provider.totalPages,
+                    onPageChanged: (page) => provider.setPage(page),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,

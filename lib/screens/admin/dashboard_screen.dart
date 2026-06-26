@@ -230,71 +230,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           sliver: SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Columna Izquierda: Alertas e Inventario
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (_inventory != null)
-                            _HealthSummaryBar(
-                              lowStockCount: _inventory!.lowStockProducts,
-                              criticalBatchesCount: _criticalBatchesCount,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Columna Izquierda: Alertas e Inventario
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_inventory != null)
+                        _HealthSummaryBar(
+                          lowStockCount: _inventory!.lowStockProducts,
+                          criticalBatchesCount: _criticalBatchesCount,
+                        ),
+                      const SizedBox(height: 16),
+                      AdminGoalCard(
+                        currentAmount: goalCurrent,
+                        targetAmount: goalTarget,
+                        onAddPressed:
+                            () => _openGoalDialog(
+                              context,
+                              goalCurrent,
+                              goalTarget,
                             ),
-                          const SizedBox(height: 16),
-                          AdminGoalCard(
-                            currentAmount: goalCurrent,
-                            targetAmount: goalTarget,
-                            onAddPressed:
-                                () => _openGoalDialog(
-                                  context,
-                                  goalCurrent,
-                                  goalTarget,
-                                ),
-                          ),
-                          const SizedBox(height: 24),
-                          if (_batches.isNotEmpty) ...[
-                            ExpiringBatchesCard(batches: _batches),
-                            const SizedBox(height: 24),
-                          ],
-                          const SectionHeader(
-                            icon: Icons.inventory_2_rounded,
-                            title: 'Inventario',
-                            subtitle: 'Valorización y proyecciones de stock',
-                          ),
-                          const SizedBox(height: 12),
-                          _buildInventoryContent(),
-                        ],
                       ),
-                    ),
-                    const SizedBox(width: 32),
-                    // Columna Derecha: Ventas Registradas
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SectionHeader(
-                            icon: Icons.point_of_sale_rounded,
-                            title: 'Ventas Registradas',
-                            subtitle: 'Órdenes con estado COMPLETADO',
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSalesFilters(),
-                          const SizedBox(height: 16),
-                          _buildSalesContent(),
-                        ],
+                      const SizedBox(height: 24),
+                      if (_batches.isNotEmpty) ...[
+                        ExpiringBatchesCard(batches: _batches),
+                        const SizedBox(height: 24),
+                      ],
+                      const SectionHeader(
+                        icon: Icons.inventory_2_rounded,
+                        title: 'Inventario',
+                        subtitle: 'Valorización y proyecciones de stock',
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      _buildInventoryContent(),
+                    ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 32),
+                // Columna Derecha: Ventas Registradas
+                Expanded(
+                  flex: 6,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SectionHeader(
+                        icon: Icons.point_of_sale_rounded,
+                        title: 'Ventas Registradas',
+                        subtitle: 'Órdenes con estado COMPLETADO',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildSalesFilters(),
+                      const SizedBox(height: 16),
+                      _buildSalesContent(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -44,22 +44,17 @@ class _AttributesManagementScreenState
     return AdminLayout(
       title: 'Atributos de Variantes',
       showBackButton: true,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Consumer<AttributesProvider>(
-            builder: (context, provider, child) {
-              return RefreshIndicator(
-                onRefresh: () => provider.fetchAttributes(),
-                color: AppColors.primary,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _buildContent(provider),
-                ),
-              );
-            },
-          ),
-        ),
+      body: Consumer<AttributesProvider>(
+        builder: (context, provider, child) {
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchAttributes(),
+            color: AppColors.primary,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildContent(provider),
+            ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
@@ -75,10 +70,7 @@ class _AttributesManagementScreenState
 
   Widget _buildContent(AttributesProvider provider) {
     if (provider.isLoading) {
-      return const AttributesSkeleton(
-        key: ValueKey('skeleton'),
-        itemCount: 4,
-      );
+      return const AttributesSkeleton(key: ValueKey('skeleton'), itemCount: 4);
     }
     if (provider.attributes.isEmpty) {
       return ListView(
@@ -123,11 +115,8 @@ class _AttributesManagementScreenState
           attribute: attr,
           provider: provider,
           onEdit: () => _showAttributeForm(attr),
-          onDelete: () => provider.deleteAttribute(
-            context,
-            attr['id'],
-            attr['name'],
-          ),
+          onDelete:
+              () => provider.deleteAttribute(context, attr['id'], attr['name']),
           onAddValue: () => _showAddValueForm(attr['id'], attr['name']),
         );
       },
@@ -188,7 +177,9 @@ class _AttributeCardState extends State<_AttributeCard> {
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           child: const Icon(
                             Icons.category_outlined,
                             color: AppColors.primary,
@@ -207,12 +198,18 @@ class _AttributeCardState extends State<_AttributeCard> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit_rounded, color: AppColors.blue),
+                          icon: const Icon(
+                            Icons.edit_rounded,
+                            color: AppColors.blue,
+                          ),
                           onPressed: widget.onEdit,
                           tooltip: 'Editar Propiedad',
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.red,
+                          ),
                           onPressed: widget.onDelete,
                           tooltip: 'Eliminar Propiedad',
                         ),
@@ -223,7 +220,11 @@ class _AttributeCardState extends State<_AttributeCard> {
                 if (widget.attribute['description'] != null &&
                     widget.attribute['description'].toString().isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: 4, left: 52),
+                    padding: const EdgeInsets.only(
+                      bottom: 12,
+                      top: 4,
+                      left: 52,
+                    ),
                     child: Text(
                       widget.attribute['description'],
                       style: TextStyle(
@@ -242,10 +243,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                     runSpacing: 8,
                     children: [
                       ...values.map(
-                        (v) => _ValueChip(
-                          value: v,
-                          provider: widget.provider,
-                        ),
+                        (v) => _ValueChip(value: v, provider: widget.provider),
                       ),
                       AnimatedScale(
                         scale: widget.provider.isSaving ? 0.95 : 1.0,
@@ -257,7 +255,9 @@ class _AttributeCardState extends State<_AttributeCard> {
                             size: 16,
                             color: AppColors.primary,
                           ),
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           labelStyle: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -285,10 +285,7 @@ class _ValueChip extends StatefulWidget {
   final Map<String, dynamic> value;
   final AttributesProvider provider;
 
-  const _ValueChip({
-    required this.value,
-    required this.provider,
-  });
+  const _ValueChip({required this.value, required this.provider});
 
   @override
   State<_ValueChip> createState() => _ValueChipState();
@@ -312,23 +309,19 @@ class _ValueChipState extends State<_ValueChip> {
   @override
   Widget build(BuildContext context) {
     return InputChip(
-      label: Text(
-        widget.value['value'],
-        style: const TextStyle(fontSize: 13),
-      ),
-      deleteIcon: _isDeleting
-          ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.close, size: 14),
+      label: Text(widget.value['value'], style: const TextStyle(fontSize: 13)),
+      deleteIcon:
+          _isDeleting
+              ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(Icons.close, size: 14),
       onDeleted: _isDeleting ? null : _handleDelete,
       backgroundColor: Colors.grey.shade100,
       side: BorderSide(color: Colors.grey.shade200),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }

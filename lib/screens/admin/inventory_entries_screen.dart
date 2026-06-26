@@ -161,26 +161,20 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         return AdminLayout(
           title: 'Historial de Entradas',
           showBackButton: true,
-          body: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isTablet = constraints.maxWidth >= 800;
-                  return Stack(
-                    children: [
-                      if (isTablet)
-                        _buildTabletLayout(context, provider)
-                      else
-                        _buildMobileLayout(context, provider),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 800;
+              return Stack(
+                children: [
+                  if (isTablet)
+                    _buildTabletLayout(context, provider)
+                  else
+                    _buildMobileLayout(context, provider),
 
-                      _buildFloatingAction(provider),
-                    ],
-                  );
-                },
-              ),
-            ),
+                  _buildFloatingAction(provider),
+                ],
+              );
+            },
           ),
         );
       },

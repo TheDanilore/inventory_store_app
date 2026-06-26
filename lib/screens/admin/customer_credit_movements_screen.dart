@@ -63,58 +63,53 @@ class _CustomerCreditMovementsScreenContent extends StatelessWidget {
           ).showSnackBar(const SnackBar(content: Text('Generando PDF...')));
         }
       },
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child:
-              provider.isLoading
-                  ? const _MovementsShimmer()
-                  : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isTablet = constraints.maxWidth >= 700;
+      body:
+          provider.isLoading
+              ? const _MovementsShimmer()
+              : LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 700;
 
-                      if (isTablet) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Panel Izquierdo: Resumen Fijo
-                            SizedBox(
-                              width: 350,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: MovementsSummaryHeader(
-                                  customerName: provider.customerName,
-                                  currentDebt: provider.currentDebt,
-                                  creditLimit: provider.creditLimit,
-                                  debtPercent: debtPercent,
-                                  totalCharged: provider.totalCharged,
-                                  totalPaid: provider.totalPaid,
-                                ),
-                              ),
+                  if (isTablet) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Panel Izquierdo: Resumen Fijo
+                        SizedBox(
+                          width: 350,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: MovementsSummaryHeader(
+                              customerName: provider.customerName,
+                              currentDebt: provider.currentDebt,
+                              creditLimit: provider.creditLimit,
+                              debtPercent: debtPercent,
+                              totalCharged: provider.totalCharged,
+                              totalPaid: provider.totalPaid,
                             ),
-                            // Panel Derecho: Lista de Movimientos Scrollable
-                            Expanded(
-                              child: _buildMainContent(
-                                context,
-                                provider,
-                                isTablet: true,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
+                          ),
+                        ),
+                        // Panel Derecho: Lista de Movimientos Scrollable
+                        Expanded(
+                          child: _buildMainContent(
+                            context,
+                            provider,
+                            isTablet: true,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
 
-                      // Mobile: Todo en un Scroll
-                      return _buildMainContent(
-                        context,
-                        provider,
-                        isTablet: false,
-                        debtPercent: debtPercent,
-                      );
-                    },
-                  ),
-        ),
-      ),
+                  // Mobile: Todo en un Scroll
+                  return _buildMainContent(
+                    context,
+                    provider,
+                    isTablet: false,
+                    debtPercent: debtPercent,
+                  );
+                },
+              ),
     );
   }
 

@@ -274,75 +274,68 @@ class _KardexViewState extends State<_KardexView> {
                                   horizontal: 16,
                                   vertical: 12,
                                 ),
-                                child: Center(
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 850,
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
                                       children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _SearchField(
-                                                controller: _searchCtrl,
-                                                hint: 'Buscar producto...',
-                                                onChanged: _onSearchChanged,
-                                                onClear: () {
-                                                  _searchCtrl.clear();
-                                                  provider.setSearchText('');
-                                                },
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            DateFilterCalendar(
-                                              dateRange: provider.dateRange,
-                                              onDateRangeSelected: (picked) {
-                                                provider.setDateRange(picked);
-                                              },
-                                              onClear: () {
-                                                provider.setDateRange(null);
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        SingleChildScrollView(
-                                          scrollDirection: Axis.horizontal,
-                                          child: Row(
-                                            children: [
-                                              _buildFilterChip(
-                                                provider,
-                                                'Todos',
-                                                'ALL',
-                                              ),
-                                              _buildFilterChip(
-                                                provider,
-                                                'Ingresos',
-                                                'ENTRY',
-                                              ),
-                                              _buildFilterChip(
-                                                provider,
-                                                'Salidas',
-                                                'EXIT',
-                                              ),
-                                              _buildFilterChip(
-                                                provider,
-                                                'Ventas',
-                                                'SALE',
-                                              ),
-                                              _buildFilterChip(
-                                                provider,
-                                                'Devoluciones',
-                                                'RETURN',
-                                              ),
-                                            ],
+                                        Expanded(
+                                          child: _SearchField(
+                                            controller: _searchCtrl,
+                                            hint: 'Buscar producto...',
+                                            onChanged: _onSearchChanged,
+                                            onClear: () {
+                                              _searchCtrl.clear();
+                                              provider.setSearchText('');
+                                            },
                                           ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        DateFilterCalendar(
+                                          dateRange: provider.dateRange,
+                                          onDateRangeSelected: (picked) {
+                                            provider.setDateRange(picked);
+                                          },
+                                          onClear: () {
+                                            provider.setDateRange(null);
+                                          },
                                         ),
                                       ],
                                     ),
-                                  ),
+                                    const SizedBox(height: 12),
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          _buildFilterChip(
+                                            provider,
+                                            'Todos',
+                                            'ALL',
+                                          ),
+                                          _buildFilterChip(
+                                            provider,
+                                            'Ingresos',
+                                            'ENTRY',
+                                          ),
+                                          _buildFilterChip(
+                                            provider,
+                                            'Salidas',
+                                            'EXIT',
+                                          ),
+                                          _buildFilterChip(
+                                            provider,
+                                            'Ventas',
+                                            'SALE',
+                                          ),
+                                          _buildFilterChip(
+                                            provider,
+                                            'Devoluciones',
+                                            'RETURN',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -352,28 +345,21 @@ class _KardexViewState extends State<_KardexView> {
                           if (!provider.isLoading &&
                               provider.movements.isNotEmpty)
                             SliverToBoxAdapter(
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 850,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      12,
-                                      16,
-                                      12,
-                                    ),
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        '${provider.totalCount} movimientos encontrados',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade700,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  12,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '${provider.totalCount} movimientos encontrados',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -383,18 +369,9 @@ class _KardexViewState extends State<_KardexView> {
                           // --- LISTADO ---
                           if (provider.isLoading && provider.movements.isEmpty)
                             SliverToBoxAdapter(
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 850,
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    child: KardexSkeleton(),
-                                  ),
-                                ),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: KardexSkeleton(),
                               ),
                             )
                           else if (provider.movements.isEmpty)
@@ -409,33 +386,25 @@ class _KardexViewState extends State<_KardexView> {
                             )
                           else
                             SliverToBoxAdapter(
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 850,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      0,
-                                      16,
-                                      16,
-                                    ),
-                                    child: ListView.builder(
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      shrinkWrap: true,
-                                      itemCount: provider.movements.length,
-                                      itemBuilder: (context, index) {
-                                        return KardexCard(
-                                          item: provider.movements[index],
-                                          isLast:
-                                              index ==
-                                              provider.movements.length - 1,
-                                        );
-                                      },
-                                    ),
-                                  ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                child: ListView.builder(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  shrinkWrap: true,
+                                  itemCount: provider.movements.length,
+                                  itemBuilder: (context, index) {
+                                    return KardexCard(
+                                      item: provider.movements[index],
+                                      isLast:
+                                          index ==
+                                          provider.movements.length - 1,
+                                    );
+                                  },
                                 ),
                               ),
                             ),
@@ -460,16 +429,10 @@ class _KardexViewState extends State<_KardexView> {
                       ),
                       child: SafeArea(
                         top: false,
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 850),
-                            child: AdminPageBlocks(
-                              currentPage: provider.currentPage,
-                              totalPages: provider.totalPages,
-                              onPageChanged:
-                                  (page) => provider.changePage(page),
-                            ),
-                          ),
+                        child: AdminPageBlocks(
+                          currentPage: provider.currentPage,
+                          totalPages: provider.totalPages,
+                          onPageChanged: (page) => provider.changePage(page),
                         ),
                       ),
                     ),

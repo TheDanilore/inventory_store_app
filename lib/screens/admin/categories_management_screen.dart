@@ -58,15 +58,16 @@ class _CategoriesManagementScreenState
       showDialog(
         context: context,
         barrierDismissible: true,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding: const EdgeInsets.all(24),
-          child: SizedBox(
-            width: 480,
-            child: CategoryFormSheet(category: category),
-          ),
-        ),
+        builder:
+            (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: 480,
+                child: CategoryFormSheet(category: category),
+              ),
+            ),
       );
     } else {
       showModalBottomSheet(
@@ -78,12 +79,18 @@ class _CategoriesManagementScreenState
     }
   }
 
-  Future<void> _handleToggleStatus(CategoryModel cat, bool val, CategoriesProvider provider) async {
-    if (!val) { // Si se va a desactivar, pedir confirmación
+  Future<void> _handleToggleStatus(
+    CategoryModel cat,
+    bool val,
+    CategoriesProvider provider,
+  ) async {
+    if (!val) {
+      // Si se va a desactivar, pedir confirmación
       final confirm = await AppConfirmDialog.show(
         context,
         title: 'Desactivar Categoría',
-        message: '¿Estás seguro de desactivar la categoría "${cat.name}"? Los productos asociados podrían dejar de ser visibles para los clientes.',
+        message:
+            '¿Estás seguro de desactivar la categoría "${cat.name}"? Los productos asociados podrían dejar de ser visibles para los clientes.',
         confirmText: 'Desactivar',
         confirmColor: Colors.orange.shade700,
       );
@@ -110,108 +117,110 @@ class _CategoriesManagementScreenState
       ),
       body: Consumer<CategoriesProvider>(
         builder: (context, provider, child) {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ─── BUSCADOR ───────────────────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Semantics(
-                      label: 'Buscador de categorías',
-                      child: TextField(
-                        controller: _searchCtrl,
-                        onChanged: provider.onSearchChanged,
-                        decoration: InputDecoration(
-                          hintText: 'Buscar categoría por nombre...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 14,
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search_rounded,
-                            color: Colors.grey.shade400,
-                          ),
-                          suffixIcon: provider.searchQuery.isNotEmpty
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── BUSCADOR ───────────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Semantics(
+                  label: 'Buscador de categorías',
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: provider.onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar categoría por nombre...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: Colors.grey.shade400,
+                      ),
+                      suffixIcon:
+                          provider.searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(
-                                    Icons.clear_rounded,
-                                    color: Colors.grey,
-                                  ),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    provider.clearSearch();
-                                  },
-                                )
+                                icon: const Icon(
+                                  Icons.clear_rounded,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  provider.clearSearch();
+                                },
+                              )
                               : null,
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                              color: AppColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
                         ),
                       ),
                     ),
                   ),
+                ),
+              ),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 4,
-                    ),
-                    child: Text(
-                      'Total: ${provider.totalCategories} categorías',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
+                ),
+                child: Text(
+                  'Total: ${provider.totalCategories} categorías',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+              ),
 
-                  // ─── LISTA DE CATEGORÍAS ────────────────────────────────────────────
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: () => provider.fetchCategories(),
-                      color: AppColors.primary,
-                      child: provider.isLoading
+              // ─── LISTA DE CATEGORÍAS ────────────────────────────────────────────
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => provider.fetchCategories(),
+                  color: AppColors.primary,
+                  child:
+                      provider.isLoading
                           ? const CategoriesSkeleton(itemCount: 6)
                           : provider.categories.isEmpty
-                              ? _buildEmptyState(provider)
-                              : _buildCategoriesGrid(provider),
-                    ),
-                  ),
-
-                  if (provider.categories.isNotEmpty && provider.totalPages > 1)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80), // Padding inferior para el FAB
-                      child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: (page) => provider.setPage(page),
-                      ),
-                    ),
-                ],
+                          ? _buildEmptyState(provider)
+                          : _buildCategoriesGrid(provider),
+                ),
               ),
-            ),
+
+              if (provider.categories.isNotEmpty && provider.totalPages > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    80,
+                  ), // Padding inferior para el FAB
+                  child: AdminPageBlocks(
+                    currentPage: provider.currentPage,
+                    totalPages: provider.totalPages,
+                    onPageChanged: (page) => provider.setPage(page),
+                  ),
+                ),
+            ],
           );
         },
       ),
@@ -254,10 +263,7 @@ class _CategoriesManagementScreenState
                 provider.searchQuery.isNotEmpty
                     ? 'Intenta con otro término de búsqueda'
                     : 'Organiza tus productos creando la primera categoría.',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -269,7 +275,10 @@ class _CategoriesManagementScreenState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -287,7 +296,12 @@ class _CategoriesManagementScreenState
 
     return GridView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80), // Padding inferior para el FAB
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        80,
+      ), // Padding inferior para el FAB
       itemCount: provider.categories.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -306,10 +320,7 @@ class _CategoriesManagementScreenState
           builder: (context, value, child) {
             return Transform.translate(
               offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(
-                opacity: value,
-                child: child,
-              ),
+              child: Opacity(opacity: value, child: child),
             );
           },
           child: Card(
@@ -325,7 +336,11 @@ class _CategoriesManagementScreenState
                 // ─── Área de Info (Izquierda) ────────────────────────────────
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 16, top: 12, bottom: 12),
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      top: 12,
+                      bottom: 12,
+                    ),
                     child: Row(
                       children: [
                         Container(
@@ -335,10 +350,7 @@ class _CategoriesManagementScreenState
                             color: catColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            Icons.style_rounded,
-                            color: catColor,
-                          ),
+                          child: Icon(Icons.style_rounded, color: catColor),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -375,7 +387,9 @@ class _CategoriesManagementScreenState
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.primary.withValues(alpha: 0.8),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.8,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -395,20 +409,28 @@ class _CategoriesManagementScreenState
                     children: [
                       // Botón Editar explícito
                       IconButton(
-                        icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600, size: 20),
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          color: Colors.grey.shade600,
+                          size: 20,
+                        ),
                         tooltip: 'Editar categoría',
                         onPressed: () => _showCategoryForm(cat),
                       ),
-                      
+
                       // Switch de Estado independiente
                       Semantics(
                         label: 'Estado de la categoría ${cat.name}',
                         child: Switch(
                           value: cat.isActive,
-                          onChanged: (val) => _handleToggleStatus(cat, val, provider),
+                          onChanged:
+                              (val) => _handleToggleStatus(cat, val, provider),
                           activeThumbColor: AppColors.primary,
-                          activeTrackColor: AppColors.primary.withValues(alpha: 0.4),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          activeTrackColor: AppColors.primary.withValues(
+                            alpha: 0.4,
+                          ),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                       const SizedBox(width: 8),

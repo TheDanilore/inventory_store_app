@@ -84,389 +84,377 @@ class _UserFormContentState extends State<_UserFormContent> {
           showBackButton: true,
           showProfileButton: false,
           showDrawerButton: false,
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      top: 20,
-                      bottom: 100,
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          body: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: 100,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ─── SELECTOR DE ROL ─────────────────────────────────────
+                      const Text(
+                        'Tipo de cuenta',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
                         children: [
-                          // ─── SELECTOR DE ROL ─────────────────────────────────────
-                          const Text(
-                            'Tipo de cuenta',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
+                          Expanded(
+                            child: _RoleCard(
+                              title: 'Cliente',
+                              icon: Icons.people_alt_rounded,
+                              isSelected: provider.role == AppRoles.customer,
+                              color: AppColors.primary,
+                              onTap: () => provider.setRole(AppRoles.customer),
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _RoleCard(
+                              title: 'Administrador',
+                              icon: Icons.admin_panel_settings_rounded,
+                              isSelected: provider.role == AppRoles.admin,
+                              color: Colors.indigo,
+                              onTap: () => provider.setRole(AppRoles.admin),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ─── ESTADO ACTIVO (solo en modo edición) ────────────────
+                      if (isEditing) ...[
+                        _SectionCard(
+                          title: 'Estado de la cuenta',
+                          icon: Icons.toggle_on_rounded,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Usuario activo',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      provider.isActive
+                                          ? 'Puede iniciar sesión'
+                                          : 'Acceso bloqueado',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            provider.isActive
+                                                ? Colors.green.shade600
+                                                : Colors.red.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Switch(
+                                  value: provider.isActive,
+                                  activeThumbColor: AppColors.primary,
+                                  onChanged: provider.toggleActive,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // ─── CREDENCIALES ────────────────────────────────────────
+                      _SectionCard(
+                        title: 'Credenciales de Acceso',
+                        icon: Icons.lock_person_rounded,
+                        children: [
+                          _CustomTextField(
+                            controller: provider.emailCtrl,
+                            label: 'Correo Electrónico',
+                            hint: 'ejemplo@correo.com',
+                            icon: Icons.email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            readOnly: isEditing,
+                            validator:
+                                isEditing
+                                    ? null
+                                    : (v) =>
+                                        _required(v, 'el correo electrónico'),
+                          ),
+                          const SizedBox(height: 16),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: _RoleCard(
-                                  title: 'Cliente',
-                                  icon: Icons.people_alt_rounded,
-                                  isSelected:
-                                      provider.role == AppRoles.customer,
-                                  color: AppColors.primary,
-                                  onTap:
-                                      () => provider.setRole(AppRoles.customer),
+                                child: _CustomTextField(
+                                  controller: provider.passwordCtrl,
+                                  label:
+                                      isEditing
+                                          ? 'Nueva contraseña (opcional)'
+                                          : 'Contraseña temporal',
+                                  hint:
+                                      isEditing
+                                          ? 'Dejar vacío para no cambiar'
+                                          : 'Mínimo 6 caracteres',
+                                  icon: Icons.vpn_key_rounded,
+                                  obscureText: provider.obscurePassword,
+                                  validator: (v) {
+                                    if (isEditing) {
+                                      if (v != null &&
+                                          v.isNotEmpty &&
+                                          v.length < 6) {
+                                        return 'Mínimo 6 caracteres';
+                                      }
+                                      return null;
+                                    }
+                                    if (v == null || v.isEmpty) {
+                                      return 'Ingresa una contraseña';
+                                    }
+                                    if (v.length < 6) {
+                                      return 'Mínimo 6 caracteres';
+                                    }
+                                    return null;
+                                  },
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      provider.obscurePassword
+                                          ? Icons.visibility_rounded
+                                          : Icons.visibility_off_rounded,
+                                      color: Colors.grey.shade500,
+                                      size: 20,
+                                    ),
+                                    onPressed:
+                                        provider.togglePasswordVisibility,
+                                  ),
+                                ),
+                              ),
+                              if (!isEditing) ...[
+                                const SizedBox(width: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 24,
+                                  ), // Alinear con el input (debajo del label)
+                                  child: Tooltip(
+                                    message: 'Generar y copiar',
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          () => provider.generatePassword(
+                                            context,
+                                          ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.surface,
+                                        foregroundColor: AppColors.primary,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          side: BorderSide(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.password_rounded,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ─── DATOS PERSONALES ────────────────────────────────────
+                      _SectionCard(
+                        title: 'Datos Personales',
+                        icon: Icons.person_rounded,
+                        children: [
+                          _CustomTextField(
+                            controller: provider.nameCtrl,
+                            label: 'Nombre completo',
+                            hint: 'Nombres y Apellidos',
+                            icon: Icons.badge_rounded,
+                            textCapitalization: TextCapitalization.words,
+                            validator: (v) => _required(v, 'el nombre'),
+                          ),
+                          const SizedBox(height: 16),
+                          _CustomTextField(
+                            controller: provider.phoneCtrl,
+                            label: 'Teléfono (Opcional)',
+                            hint: 'Ej. 987654321',
+                            icon: Icons.phone_rounded,
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Documento de Identidad (Opcional)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 100,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: provider.docType,
+                                    isExpanded: true,
+                                    icon: const Icon(
+                                      Icons.arrow_drop_down_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    items:
+                                        ['DNI', 'CE', 'RUC', 'PASAPORTE']
+                                            .map(
+                                              (type) => DropdownMenuItem(
+                                                value: type,
+                                                child: Text(
+                                                  type,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        provider.setDocType(val);
+                                      }
+                                    },
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: _RoleCard(
-                                  title: 'Administrador',
-                                  icon: Icons.admin_panel_settings_rounded,
-                                  isSelected: provider.role == AppRoles.admin,
-                                  color: Colors.indigo,
-                                  onTap: () => provider.setRole(AppRoles.admin),
+                                child: _CustomTextField(
+                                  controller: provider.docCtrl,
+                                  hint: 'Número de documento',
+                                  keyboardType: TextInputType.number,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // ─── ESTADO ACTIVO (solo en modo edición) ────────────────
-                          if (isEditing) ...[
-                            _SectionCard(
-                              title: 'Estado de la cuenta',
-                              icon: Icons.toggle_on_rounded,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Usuario activo',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        Text(
-                                          provider.isActive
-                                              ? 'Puede iniciar sesión'
-                                              : 'Acceso bloqueado',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color:
-                                                provider.isActive
-                                                    ? Colors.green.shade600
-                                                    : Colors.red.shade600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Switch(
-                                      value: provider.isActive,
-                                      activeThumbColor: AppColors.primary,
-                                      onChanged: provider.toggleActive,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-
-                          // ─── CREDENCIALES ────────────────────────────────────────
-                          _SectionCard(
-                            title: 'Credenciales de Acceso',
-                            icon: Icons.lock_person_rounded,
-                            children: [
-                              _CustomTextField(
-                                controller: provider.emailCtrl,
-                                label: 'Correo Electrónico',
-                                hint: 'ejemplo@correo.com',
-                                icon: Icons.email_rounded,
-                                keyboardType: TextInputType.emailAddress,
-                                readOnly: isEditing,
-                                validator:
-                                    isEditing
-                                        ? null
-                                        : (v) => _required(
-                                          v,
-                                          'el correo electrónico',
-                                        ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: _CustomTextField(
-                                      controller: provider.passwordCtrl,
-                                      label:
-                                          isEditing
-                                              ? 'Nueva contraseña (opcional)'
-                                              : 'Contraseña temporal',
-                                      hint:
-                                          isEditing
-                                              ? 'Dejar vacío para no cambiar'
-                                              : 'Mínimo 6 caracteres',
-                                      icon: Icons.vpn_key_rounded,
-                                      obscureText: provider.obscurePassword,
-                                      validator: (v) {
-                                        if (isEditing) {
-                                          if (v != null &&
-                                              v.isNotEmpty &&
-                                              v.length < 6) {
-                                            return 'Mínimo 6 caracteres';
-                                          }
-                                          return null;
-                                        }
-                                        if (v == null || v.isEmpty) {
-                                          return 'Ingresa una contraseña';
-                                        }
-                                        if (v.length < 6) {
-                                          return 'Mínimo 6 caracteres';
-                                        }
-                                        return null;
-                                      },
-                                      suffixIcon: IconButton(
-                                        icon: Icon(
-                                          provider.obscurePassword
-                                              ? Icons.visibility_rounded
-                                              : Icons.visibility_off_rounded,
-                                          color: Colors.grey.shade500,
-                                          size: 20,
-                                        ),
-                                        onPressed:
-                                            provider.togglePasswordVisibility,
-                                      ),
-                                    ),
-                                  ),
-                                  if (!isEditing) ...[
-                                    const SizedBox(width: 8),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 24,
-                                      ), // Alinear con el input (debajo del label)
-                                      child: Tooltip(
-                                        message: 'Generar y copiar',
-                                        child: ElevatedButton(
-                                          onPressed:
-                                              () => provider.generatePassword(
-                                                context,
-                                              ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.surface,
-                                            foregroundColor: AppColors.primary,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              side: BorderSide(
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.3),
-                                              ),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 14,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.password_rounded,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          // ─── DATOS PERSONALES ────────────────────────────────────
-                          _SectionCard(
-                            title: 'Datos Personales',
-                            icon: Icons.person_rounded,
-                            children: [
-                              _CustomTextField(
-                                controller: provider.nameCtrl,
-                                label: 'Nombre completo',
-                                hint: 'Nombres y Apellidos',
-                                icon: Icons.badge_rounded,
-                                textCapitalization: TextCapitalization.words,
-                                validator: (v) => _required(v, 'el nombre'),
-                              ),
-                              const SizedBox(height: 16),
-                              _CustomTextField(
-                                controller: provider.phoneCtrl,
-                                label: 'Teléfono (Opcional)',
-                                hint: 'Ej. 987654321',
-                                icon: Icons.phone_rounded,
-                                keyboardType: TextInputType.phone,
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Documento de Identidad (Opcional)',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 100,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.grey.shade200,
-                                      ),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: provider.docType,
-                                        isExpanded: true,
-                                        icon: const Icon(
-                                          Icons.arrow_drop_down_rounded,
-                                          color: Colors.grey,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                        ),
-                                        items:
-                                            ['DNI', 'CE', 'RUC', 'PASAPORTE']
-                                                .map(
-                                                  (type) => DropdownMenuItem(
-                                                    value: type,
-                                                    child: Text(
-                                                      type,
-                                                      style: const TextStyle(
-                                                        fontSize: 13,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                                .toList(),
-                                        onChanged: (val) {
-                                          if (val != null) {
-                                            provider.setDocType(val);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _CustomTextField(
-                                      controller: provider.docCtrl,
-                                      hint: 'Número de documento',
-                                      keyboardType: TextInputType.number,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
+                ),
+              ),
 
-                  // ─── BOTÓN FIJO INFERIOR ─────────────────────────────────────────
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
+              // ─── BOTÓN FIJO INFERIOR ─────────────────────────────────────────
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
                       ),
-                      child: SizedBox(
-                        height: 54,
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed:
-                              provider.isLoading
-                                  ? null
-                                  : () => _onSave(provider),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                isEditing ? Colors.indigo : AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child:
-                              provider.isLoading
-                                  ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                  : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        isEditing
-                                            ? Icons.save_rounded
-                                            : Icons.person_add_rounded,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        isEditing
-                                            ? 'Guardar cambios'
-                                            : (provider.role == AppRoles.admin
-                                                ? 'Crear Administrador'
-                                                : 'Crear Cliente'),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    height: 54,
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          provider.isLoading ? null : () => _onSave(provider),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isEditing ? Colors.indigo : AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
+                      child:
+                          provider.isLoading
+                              ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                              : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    isEditing
+                                        ? Icons.save_rounded
+                                        : Icons.person_add_rounded,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isEditing
+                                        ? 'Guardar cambios'
+                                        : (provider.role == AppRoles.admin
+                                            ? 'Crear Administrador'
+                                            : 'Crear Cliente'),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         );
       },

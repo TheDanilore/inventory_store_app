@@ -197,31 +197,26 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   // ── Layout tablet: Master-Detail en 2 columnas ────────────────────────────
   Widget _buildTabletLayout() {
     return SingleChildScrollView(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Columna izquierda: preview + nota
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    children: [
-                      _buildPreviewCard(),
-                      const SizedBox(height: 16),
-                      _buildInfoNote(),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 20),
-                // Columna derecha: formulario
-                Expanded(flex: 6, child: _buildFormCard()),
-              ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Columna izquierda: preview + nota
+            Expanded(
+              flex: 4,
+              child: Column(
+                children: [
+                  _buildPreviewCard(),
+                  const SizedBox(height: 16),
+                  _buildInfoNote(),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 20),
+            // Columna derecha: formulario
+            Expanded(flex: 6, child: _buildFormCard()),
+          ],
         ),
       ),
     );

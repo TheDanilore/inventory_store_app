@@ -369,10 +369,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                           child: Container(
                             color: AppColors.background,
                             alignment: Alignment.topCenter,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 800),
-                              child: _buildSelectedTabContent(_selectedIndex),
-                            ),
+                            child: _buildSelectedTabContent(_selectedIndex),
                           ),
                         ),
                       ],

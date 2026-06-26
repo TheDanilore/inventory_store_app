@@ -130,28 +130,23 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       showBackButton: true,
       showBottomNav: false,
       showCartIcon: false,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: provider.loadAddresses,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _buildHeaderBanner(provider),
-                  ),
-                ),
-
-                _buildBody(provider),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              ],
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: provider.loadAddresses,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildHeaderBanner(provider),
+              ),
             ),
-          ),
+
+            _buildBody(provider),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ],
         ),
       ),
     );

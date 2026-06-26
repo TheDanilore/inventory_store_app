@@ -111,201 +111,186 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 ? const _ProductFormSkeleton()
                 : Stack(
                   children: [
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 850),
-                        child: Form(
-                          key: _formKey,
-                          onChanged: () {
-                            context.read<ProductFormProvider>().markAsDirty();
-                          },
-                          child: CustomScrollView(
-                            slivers: [
-                              SliverPadding(
-                                padding: const EdgeInsets.all(16.0),
-                                sliver: SliverList(
-                                  delegate: SliverChildListDelegate([
-                                    const ProductImagesSection(),
-                                    const SizedBox(height: 16),
-                                    const ProductBasicInfoSection(),
-                                    const SizedBox(height: 16),
-                                    const ProductConfigSection(),
-                                    const SizedBox(height: 16),
-                                    const ProductDetailsSection(),
-                                    const SizedBox(height: 16),
-                                    ProductPricingSection(formKey: _formKey),
-                                    const SizedBox(height: 16),
-                                    const ProductIngredientsSection(),
-                                    const SizedBox(height: 16),
-                                    const ProductBatchSection(),
-                                    const SizedBox(height: 16),
+                    Form(
+                      key: _formKey,
+                      onChanged: () {
+                        context.read<ProductFormProvider>().markAsDirty();
+                      },
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.all(16.0),
+                            sliver: SliverList(
+                              delegate: SliverChildListDelegate([
+                                const ProductImagesSection(),
+                                const SizedBox(height: 16),
+                                const ProductBasicInfoSection(),
+                                const SizedBox(height: 16),
+                                const ProductConfigSection(),
+                                const SizedBox(height: 16),
+                                const ProductDetailsSection(),
+                                const SizedBox(height: 16),
+                                ProductPricingSection(formKey: _formKey),
+                                const SizedBox(height: 16),
+                                const ProductIngredientsSection(),
+                                const SizedBox(height: 16),
+                                const ProductBatchSection(),
+                                const SizedBox(height: 16),
 
-                                    Row(
-                                      children: [
-                                        const Expanded(
-                                          child: Text(
-                                            'Variantes',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton.icon(
-                                          onPressed: provider.addVariantDraft,
-                                          icon: const Icon(
-                                            Icons.add_circle_outline,
-                                          ),
-                                          label: const Text('Agregar'),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    if (provider.variantDrafts.isEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade100,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
+                                Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Text(
+                                        'Variantes',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                  ]),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: provider.addVariantDraft,
+                                      icon: const Icon(
+                                        Icons.add_circle_outline,
+                                      ),
+                                      label: const Text('Agregar'),
+                                    ),
+                                  ],
                                 ),
+                                const SizedBox(height: 8),
+                                if (provider.variantDrafts.isEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
+                                    ),
+                                  ),
+                              ]),
+                            ),
+                          ),
+
+                          if (provider.variantDrafts.isNotEmpty)
+                            SliverPadding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
                               ),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  return VariantDraftCard(
+                                    index: index,
+                                    draft: provider.variantDrafts[index],
+                                    onRemove:
+                                        () => provider.removeVariantDraft(
+                                          context,
+                                          index,
+                                        ),
+                                    onDuplicate:
+                                        () => provider.duplicateVariantDraft(
+                                          index,
+                                        ),
+                                    onActiveChanged: (val) {
+                                      provider.variantDrafts[index].isActive =
+                                          val;
+                                      // Esto idealmente debería notificar al provider, pero VariantDraftCard usa su estado local también.
+                                    },
+                                    onPickImage:
+                                        () => provider.pickVariantImage(
+                                          context,
+                                          index,
+                                        ),
+                                  );
+                                }, childCount: provider.variantDrafts.length),
+                              ),
+                            ),
 
-                              if (provider.variantDrafts.isNotEmpty)
-                                SliverPadding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                  ),
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate((
-                                      context,
-                                      index,
-                                    ) {
-                                      return VariantDraftCard(
-                                        index: index,
-                                        draft: provider.variantDrafts[index],
-                                        onRemove:
-                                            () => provider.removeVariantDraft(
-                                              context,
-                                              index,
+                          if (provider.variantDrafts.isNotEmpty)
+                            SliverPadding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              sliver: SliverToBoxAdapter(
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        onPressed: provider.addVariantDraft,
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                        ),
+                                        label: const Text(
+                                          'Agregar otra variante',
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppColors.primary,
+                                          side: BorderSide(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.3,
                                             ),
-                                        onDuplicate:
-                                            () => provider
-                                                .duplicateVariantDraft(index),
-                                        onActiveChanged: (val) {
-                                          provider
-                                              .variantDrafts[index]
-                                              .isActive = val;
-                                          // Esto idealmente debería notificar al provider, pero VariantDraftCard usa su estado local también.
-                                        },
-                                        onPickImage:
-                                            () => provider.pickVariantImage(
-                                              context,
-                                              index,
-                                            ),
-                                      );
-                                    }, childCount: provider.variantDrafts.length),
-                                  ),
-                                ),
-
-                              if (provider.variantDrafts.isNotEmpty)
-                                SliverPadding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                  ),
-                                  sliver: SliverToBoxAdapter(
-                                    child: Column(
-                                      children: [
-                                        const SizedBox(height: 12),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: OutlinedButton.icon(
-                                            onPressed: provider.addVariantDraft,
-                                            icon: const Icon(
-                                              Icons.add_circle_outline,
-                                            ),
-                                            label: const Text(
-                                              'Agregar otra variante',
-                                            ),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor:
-                                                  AppColors.primary,
-                                              side: BorderSide(
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.3),
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 14,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
                                             ),
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-
-                              const SliverPadding(
-                                padding: EdgeInsets.only(bottom: 100),
                               ),
-                            ],
+                            ),
+
+                          const SliverPadding(
+                            padding: EdgeInsets.only(bottom: 100),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 850),
-                          child: ClipRRect(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(
-                                sigmaX: 15.0,
-                                sigmaY: 15.0,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 16,
-                                  top: 16,
-                                  bottom: 32,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.75),
-                                  border: Border(
-                                    top: BorderSide(
-                                      color: Colors.grey.withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                ),
-                                child: AppPrimaryButton(
-                                  label:
-                                      isEdit
-                                          ? 'Actualizar Producto'
-                                          : 'Guardar Producto',
-                                  onPressed:
-                                      provider.isSaving
-                                          ? null
-                                          : () => _guardar(context),
-                                  backgroundColor: AppColors.success,
-                                  foregroundColor: Colors.white,
+                      child: ClipRRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                          child: Container(
+                            padding: const EdgeInsets.only(
+                              left: 16,
+                              right: 16,
+                              top: 16,
+                              bottom: 32,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.grey.withValues(alpha: 0.2),
                                 ),
                               ),
+                            ),
+                            child: AppPrimaryButton(
+                              label:
+                                  isEdit
+                                      ? 'Actualizar Producto'
+                                      : 'Guardar Producto',
+                              onPressed:
+                                  provider.isSaving
+                                      ? null
+                                      : () => _guardar(context),
+                              backgroundColor: AppColors.success,
+                              foregroundColor: Colors.white,
                             ),
                           ),
                         ),
@@ -337,43 +322,22 @@ class _ProductFormSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 850),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [AppShimmer(width: 120, height: 40, borderRadius: 12)],
-            ),
-            const SizedBox(height: 16),
-            const AppShimmer(
-              width: double.infinity,
-              height: 180,
-              borderRadius: 16,
-            ),
-            const SizedBox(height: 16),
-            const AppShimmer(
-              width: double.infinity,
-              height: 300,
-              borderRadius: 16,
-            ),
-            const SizedBox(height: 16),
-            const AppShimmer(
-              width: double.infinity,
-              height: 120,
-              borderRadius: 16,
-            ),
-            const SizedBox(height: 16),
-            const AppShimmer(
-              width: double.infinity,
-              height: 250,
-              borderRadius: 16,
-            ),
-          ],
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [AppShimmer(width: 120, height: 40, borderRadius: 12)],
         ),
-      ),
+        const SizedBox(height: 16),
+        const AppShimmer(width: double.infinity, height: 180, borderRadius: 16),
+        const SizedBox(height: 16),
+        const AppShimmer(width: double.infinity, height: 300, borderRadius: 16),
+        const SizedBox(height: 16),
+        const AppShimmer(width: double.infinity, height: 120, borderRadius: 16),
+        const SizedBox(height: 16),
+        const AppShimmer(width: double.infinity, height: 250, borderRadius: 16),
+      ],
     );
   }
 }

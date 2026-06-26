@@ -97,149 +97,135 @@ class _SuppliersViewState extends State<_SuppliersView> {
               ),
             ),
           ),
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: Column(
-                children: [
-                  // ── Buscador ──
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+          body: Column(
+            children: [
+              // ── Buscador ──
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(100),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (val) => _onSearchChanged(val, provider),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre, RUC o contacto...',
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.textMuted,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(100),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      borderSide: BorderSide.none,
                     ),
-                    child: TextField(
-                      controller: _searchCtrl,
-                      onChanged: (val) => _onSearchChanged(val, provider),
-                      decoration: InputDecoration(
-                        hintText: 'Buscar por nombre, RUC o contacto...',
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          color: AppColors.textMuted,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(100),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
+                ),
+              ),
 
-                  // ── Lista ──
-                  Expanded(
-                    child:
-                        provider.isLoading
-                            ? const _SuppliersSkeleton()
-                            : provider.suppliers.isEmpty
-                            ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.storefront_rounded,
-                                    size: 60,
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    provider.searchQuery.isNotEmpty
-                                        ? 'No hay resultados para la búsqueda'
-                                        : 'No hay proveedores registrados',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+              // ── Lista ──
+              Expanded(
+                child:
+                    provider.isLoading
+                        ? const _SuppliersSkeleton()
+                        : provider.suppliers.isEmpty
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.storefront_rounded,
+                                size: 60,
+                                color: Colors.grey.shade300,
                               ),
-                            )
-                            : Column(
-                              children: [
-                                Padding(
+                              const SizedBox(height: 16),
+                              Text(
+                                provider.searchQuery.isNotEmpty
+                                    ? 'No hay resultados para la búsqueda'
+                                    : 'No hay proveedores registrados',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Página ${provider.currentPage + 1} de ${provider.totalPages}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: RefreshIndicator(
+                                onRefresh: () => provider.refresh(),
+                                child: ListView.separated(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
-                                    8,
-                                    16,
                                     4,
+                                    16,
+                                    16,
                                   ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Página ${provider.currentPage + 1} de ${provider.totalPages}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
+                                  itemCount: provider.suppliers.length,
+                                  separatorBuilder:
+                                      (_, _) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final supplier = provider.suppliers[index];
+                                    return SupplierCard(
+                                      supplier: supplier,
+                                      onEdit:
+                                          () => _openSupplierModal(
+                                            context,
+                                            supplier,
+                                          ),
+                                      onToggleStatus:
+                                          () => provider.toggleSupplierStatus(
+                                            supplier,
+                                          ),
+                                    );
+                                  },
                                 ),
-                                Expanded(
-                                  child: RefreshIndicator(
-                                    onRefresh: () => provider.refresh(),
-                                    child: ListView.separated(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        16,
-                                        4,
-                                        16,
-                                        16,
-                                      ),
-                                      itemCount: provider.suppliers.length,
-                                      separatorBuilder:
-                                          (_, _) => const SizedBox(height: 12),
-                                      itemBuilder: (context, index) {
-                                        final supplier =
-                                            provider.suppliers[index];
-                                        return SupplierCard(
-                                          supplier: supplier,
-                                          onEdit:
-                                              () => _openSupplierModal(
-                                                context,
-                                                supplier,
-                                              ),
-                                          onToggleStatus:
-                                              () =>
-                                                  provider.toggleSupplierStatus(
-                                                    supplier,
-                                                  ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                if (provider.totalPages > 1)
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      8,
-                                      16,
-                                      10,
-                                    ),
-                                    child: AdminPageBlocks(
-                                      currentPage: provider.currentPage,
-                                      totalPages: provider.totalPages,
-                                      onPageChanged: provider.setPage,
-                                    ),
-                                  ),
-                              ],
+                              ),
                             ),
-                  ),
-                ],
+                            if (provider.totalPages > 1)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  10,
+                                ),
+                                child: AdminPageBlocks(
+                                  currentPage: provider.currentPage,
+                                  totalPages: provider.totalPages,
+                                  onPageChanged: provider.setPage,
+                                ),
+                              ),
+                          ],
+                        ),
               ),
-            ),
+            ],
           ),
         );
       },

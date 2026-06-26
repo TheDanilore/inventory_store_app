@@ -46,23 +46,18 @@ class _CustomerDetailContent extends StatelessWidget {
     return AdminLayout(
       title: c.fullName,
       showBackButton: true,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: RefreshIndicator(
-            color: Theme.of(context).colorScheme.primary,
-            onRefresh: provider.loadAllData,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isTablet = constraints.maxWidth > 750;
+      body: RefreshIndicator(
+        color: Theme.of(context).colorScheme.primary,
+        onRefresh: provider.loadAllData,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth > 750;
 
-                if (isTablet) {
-                  return _buildTabletLayout(context, provider);
-                }
-                return _buildMobileLayout(context, provider);
-              },
-            ),
-          ),
+            if (isTablet) {
+              return _buildTabletLayout(context, provider);
+            }
+            return _buildMobileLayout(context, provider);
+          },
         ),
       ),
     );
