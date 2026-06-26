@@ -414,8 +414,8 @@ class OrderDetailService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', creditId),
-      _supabase.from('customer_credit_movements').insert({
-        'credit_id': creditId,
+      _supabase.from('customer_credits').insert({
+        'customer_credit_id': creditId,
         'order_id': orderId,
         'movement_type': 'CHARGE',
         'amount': totalAmount,

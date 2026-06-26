@@ -11,7 +11,7 @@ class CustomerCreditMovementsProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool _isExporting = false;
 
-  List<CreditMovementModel> _movements = [];
+  List<CustomerCreditMovementModel> _movements = [];
   int _totalCount = 0;
   int _currentPage = 0;
   static const int _pageSize = 8;
@@ -27,7 +27,7 @@ class CustomerCreditMovementsProvider extends ChangeNotifier {
   // Getters
   bool get isLoading => _isLoading;
   bool get isExporting => _isExporting;
-  List<CreditMovementModel> get movements => _movements;
+  List<CustomerCreditMovementModel> get movements => _movements;
   int get totalCount => _totalCount;
   int get currentPage => _currentPage;
   int get pageSize => _pageSize;
@@ -72,7 +72,7 @@ class CustomerCreditMovementsProvider extends ChangeNotifier {
       ]);
 
       final movementsData =
-          futures[0] as ({List<CreditMovementModel> movements, int count});
+          futures[0] as ({List<CustomerCreditMovementModel> movements, int count});
       final totalsData =
           futures[1] as ({double totalCharged, double totalPaid});
 

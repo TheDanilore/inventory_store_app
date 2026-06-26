@@ -175,7 +175,7 @@ class OrdersService {
           .eq('id', creditId);
 
       await _supabase.from('customer_credit_movements').insert({
-        'credit_id': creditId,
+        'customer_credit_id': creditId,
         'order_id': orderId,
         'movement_type': 'CHARGE',
         'amount': totalAmount,
@@ -514,7 +514,7 @@ class OrdersService {
     // Movimiento para deshacer el cargo original de la orden
     futures.add(
       _supabase.from('customer_credit_movements').insert({
-        'credit_id': creditId,
+        'customer_credit_id': creditId,
         'order_id': orderId,
         'movement_type': 'PAYMENT',
         'amount': origAmount,
@@ -527,7 +527,7 @@ class OrdersService {
     if (amountPaid > 0) {
       futures.add(
         _supabase.from('customer_credit_movements').insert({
-          'credit_id': creditId,
+          'customer_credit_id': creditId,
           'order_id': orderId,
           'movement_type': 'CHARGE',
           'amount': amountPaid,

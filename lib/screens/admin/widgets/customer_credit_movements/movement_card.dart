@@ -4,7 +4,7 @@ import 'package:inventory_store_app/models/credit_movement_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 class MovementCard extends StatefulWidget {
-  final CreditMovementModel movement;
+  final CustomerCreditMovementModel movement;
 
   const MovementCard({super.key, required this.movement});
 

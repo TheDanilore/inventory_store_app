@@ -268,7 +268,7 @@ class CustomerCreditsService {
       if (toApply > 0) {
         await Future.wait([
           _supabase.from('customer_credit_movements').insert({
-            'credit_id': account.creditId,
+            'customer_credit_id': account.creditId,
             'order_id': orderId,
             'movement_type': 'PAYMENT',
             'amount': toApply,
@@ -322,7 +322,7 @@ class CustomerCreditsService {
     if (remaining > 0) {
       await Future.wait([
         _supabase.from('customer_credit_movements').insert({
-          'credit_id': account.creditId,
+          'customer_credit_id': account.creditId,
           'movement_type': 'PAYMENT',
           'amount': remaining,
           'payment_method': selectedAccount.paymentMethodLabel,
@@ -361,7 +361,7 @@ class CustomerCreditsService {
   }
 
   // 6. Obtener movimientos paginados
-  Future<({List<CreditMovementModel> movements, int count})>
+  Future<({List<CustomerCreditMovementModel> movements, int count})>
   fetchCreditMovementsPaginated({
     required String creditId,
     required int page,
@@ -394,7 +394,7 @@ class CustomerCreditsService {
     final count = response.count;
     final list =
         (response.data as List)
-            .map((e) => CreditMovementModel.fromJson(e))
+            .map((e) => CustomerCreditMovementModel.fromJson(e))
             .toList();
 
     return (movements: list, count: count);

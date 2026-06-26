@@ -380,7 +380,7 @@ class PosCheckoutService {
           .eq('id', creditId);
 
       await _supabase.from('customer_credit_movements').insert({
-        'credit_id': creditId,
+        'customer_credit_id': creditId,
         'order_id': orderId,
         'movement_type': 'CHARGE',
         'amount': totalFinal,

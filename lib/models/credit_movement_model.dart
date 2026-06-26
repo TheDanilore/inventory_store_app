@@ -1,4 +1,4 @@
-class CreditMovementModel {
+class CustomerCreditMovementModel {
   final String id;
   final String creditId;
   final String? orderId;
@@ -16,7 +16,7 @@ class CreditMovementModel {
 
   final String? orderNumber;
 
-  CreditMovementModel({
+  CustomerCreditMovementModel({
     required this.id,
     required this.creditId,
     this.orderId,
@@ -34,10 +34,10 @@ class CreditMovementModel {
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
-  factory CreditMovementModel.fromJson(Map<String, dynamic> json) {
-    return CreditMovementModel(
+  factory CustomerCreditMovementModel.fromJson(Map<String, dynamic> json) {
+    return CustomerCreditMovementModel(
       id: json['id'] as String,
-      creditId: json['credit_id'] as String,
+      creditId: json['customer_credit_id'] as String,
       orderId: json['order_id'] as String?,
       movementType: json['movement_type'] as String,
       // Conversión segura de campos numéricos (numeric de SQL a double de Dart)
@@ -62,7 +62,7 @@ class CreditMovementModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'credit_id': creditId,
+      'customer_credit_id': creditId,
       'order_id': orderId,
       'movement_type': movementType,
       'amount': amount,
@@ -83,7 +83,7 @@ class CreditMovementModel {
   bool get isPayment => movementType == 'PAYMENT';
 
   /// Método copyWith ideal para el manejo de estados (Bloc, Riverpod, etc.)
-  CreditMovementModel copyWith({
+  CustomerCreditMovementModel copyWith({
     String? id,
     String? creditId,
     String? orderId,
@@ -100,7 +100,7 @@ class CreditMovementModel {
     final double? orderTotalAmount,
     final String? orderNumber,
   }) {
-    return CreditMovementModel(
+    return CustomerCreditMovementModel(
       id: id ?? this.id,
       creditId: creditId ?? this.creditId,
       orderId: orderId ?? this.orderId,
