@@ -259,629 +259,551 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                         color: AppColors.primary,
                       ),
                     )
-                    : Column(
-                      children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // ── 1. Datos de la Orden ─────────────────────
-                                _SectionCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const _SectionTitle(
-                                        icon: Icons.storefront_rounded,
-                                        title: 'Datos de la Orden',
-                                      ),
-                                      const SizedBox(height: 12),
-                                      DropdownButtonFormField<String>(
-                                        initialValue:
-                                            provider.selectedSupplierId,
-                                        isExpanded: true,
-                                        icon: const Icon(
-                                          Icons.expand_more_rounded,
-                                        ),
-                                        decoration: _dropdownDecoration(
-                                          'Proveedor (Obligatorio)',
-                                          icon: Icons.local_shipping_rounded,
-                                        ),
-                                        items:
-                                            provider.suppliers
-                                                .map(
-                                                  (s) => DropdownMenuItem(
-                                                    value: s['id'] as String,
-                                                    child: Text(
-                                                      s['name'] as String,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                                .toList(),
-                                        onChanged: provider.setSupplier,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      DropdownButtonFormField<String>(
-                                        initialValue:
-                                            provider.selectedWarehouseId,
-                                        isExpanded: true,
-                                        icon: const Icon(
-                                          Icons.expand_more_rounded,
-                                        ),
-                                        decoration: _dropdownDecoration(
-                                          'Almacén Destino (Obligatorio)',
-                                          icon: Icons.warehouse_rounded,
-                                        ),
-                                        items:
-                                            provider.warehouses
-                                                .map(
-                                                  (w) => DropdownMenuItem(
-                                                    value: w.id,
-                                                    child: Text(
-                                                      w.name,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                                .toList(),
-                                        onChanged: provider.setWarehouse,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _DatePickerField(
-                                        label: 'Fecha Vencimiento (Opcional)',
-                                        value: provider.dueDate,
-                                        onPick: () => _pickDueDate(context),
-                                        onClear:
-                                            () => provider.setDueDate(null),
-                                        icon: Icons.event_rounded,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
+                    : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 900;
 
-                                // ── 2. Productos a Pedir ─────────────────────
-                                _SectionCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Expanded(
-                                            child: _SectionTitle(
-                                              icon: Icons.inventory_2_rounded,
-                                              title: 'Productos a Pedir',
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Row(
-                                            children: [
-                                              TextButton.icon(
-                                                onPressed:
-                                                    () => _showAddProductSheet(
-                                                      context,
-                                                    ),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .add_circle_outline_rounded,
-                                                  size: 18,
-                                                ),
-                                                label: const Text('Agregar'),
-                                              ),
-                                              // Menú secundario solo cuando hay items
-                                              if (provider.items.isNotEmpty)
-                                                PopupMenuButton<String>(
-                                                  tooltip: 'Más opciones',
-                                                  icon: const Icon(
-                                                    Icons.more_vert_rounded,
-                                                    color:
-                                                        AppColors.textSecondary,
-                                                  ),
-                                                  onSelected: (value) {
-                                                    if (value == 'clear') {
-                                                      _handleClearDraft();
-                                                    }
-                                                  },
-                                                  itemBuilder:
-                                                      (_) => [
-                                                        const PopupMenuItem(
-                                                          value: 'clear',
-                                                          child: Row(
-                                                            children: [
-                                                              Icon(
-                                                                Icons
-                                                                    .delete_sweep_rounded,
-                                                                color:
-                                                                    AppColors
-                                                                        .danger,
-                                                                size: 18,
-                                                              ),
-                                                              SizedBox(
-                                                                width: 8,
-                                                              ),
-                                                              Text(
-                                                                'Descartar todo',
-                                                                style: TextStyle(
-                                                                  color:
-                                                                      AppColors
-                                                                          .danger,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                ),
-                                            ],
-                                          ),
-                                        ],
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Izquierda: Datos, Pago, Documento
+                              Expanded(
+                                flex: 5,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                        color: Colors.grey.shade200,
                                       ),
-                                      const SizedBox(height: 12),
-                                      if (provider.items.isEmpty)
-                                        // Empty state mejorado con CTA prominente
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 28,
-                                            horizontal: 16,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color: AppColors.border,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              Icon(
-                                                Icons.add_shopping_cart_rounded,
-                                                size: 52,
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.25),
-                                              ),
-                                              const SizedBox(height: 14),
-                                              const Text(
-                                                'Tu orden está vacía',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppColors.textPrimary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              const Text(
-                                                'Agrega los productos que necesitas pedir a tu proveedor',
-                                                style: TextStyle(
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                  fontSize: 13,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              const SizedBox(height: 18),
-                                              OutlinedButton.icon(
-                                                onPressed:
-                                                    () => _showAddProductSheet(
-                                                      context,
-                                                    ),
-                                                icon: const Icon(
-                                                  Icons.add_rounded,
-                                                  size: 18,
-                                                ),
-                                                label: const Text(
-                                                  'Agregar primer producto',
-                                                ),
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor:
-                                                      AppColors.primary,
-                                                  side: const BorderSide(
-                                                    color: AppColors.primary,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 20,
-                                                        vertical: 12,
-                                                      ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      else
-                                        ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          itemCount: provider.items.length,
-                                          itemBuilder: (context, index) {
-                                            return POFormItemTile(
-                                              item: provider.items[index],
-                                              onUpdateQuantity:
-                                                  (newQty) =>
-                                                      provider.updateItemQuantity(
-                                                        index,
-                                                        newQty,
-                                                      ),
-                                              onRemove:
-                                                  () => provider.removeItem(
-                                                    index,
-                                                  ),
-                                            );
-                                          },
-                                        ),
-                                      // Resumen con animación de expansión suave
-                                      AnimatedSize(
-                                        duration: const Duration(
-                                          milliseconds: 350,
-                                        ),
-                                        curve: Curves.easeInOut,
-                                        child:
-                                            provider.items.isEmpty
-                                                ? const SizedBox.shrink()
-                                                : Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                        top: 16,
-                                                      ),
-                                                  child: POFormSummaryCard(
-                                                    items: provider.items,
-                                                  ),
-                                                ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // ── 3. Condiciones de Pago ───────────────────
-                                _SectionCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const _SectionTitle(
-                                        icon: Icons.payments_rounded,
-                                        title: 'Condiciones de Pago',
-                                      ),
-                                      const SizedBox(height: 12),
-                                      DropdownButtonFormField<String>(
-                                        initialValue: provider.paymentMode,
-                                        isExpanded: true,
-                                        icon: const Icon(
-                                          Icons.expand_more_rounded,
-                                        ),
-                                        decoration: _dropdownDecoration(
-                                          'Modo de Pago',
-                                          icon: Icons.money_rounded,
-                                        ),
-                                        items: const [
-                                          DropdownMenuItem(
-                                            value: 'EFECTIVO',
-                                            child: Text(
-                                              'Efectivo',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: 'TARJETA',
-                                            child: Text(
-                                              'Tarjeta / Transferencia',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: 'CREDITO',
-                                            child: Text(
-                                              'Línea de Crédito',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        onChanged: (v) {
-                                          if (v != null) {
-                                            provider.setPaymentMode(v);
-                                            if (v == 'CREDITO') {
-                                              provider.setPaymentStatus(
-                                                'PENDING',
-                                              );
-                                              provider.setAccount(null);
-                                            }
-                                          }
-                                        },
-                                      ),
-                                      const SizedBox(height: 12),
-                                      if (provider.paymentMode !=
-                                          'CREDITO') ...[
-                                        DropdownButtonFormField<String>(
-                                          initialValue: provider.paymentStatus,
-                                          icon: const Icon(
-                                            Icons.expand_more_rounded,
-                                          ),
-                                          decoration: _dropdownDecoration(
-                                            'Estado del Pago',
-                                            icon: Icons.hourglass_top_rounded,
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'PENDING',
-                                              child: Text(
-                                                'Pago Pendiente',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'PAID',
-                                              child: Text(
-                                                'Pago Realizado / Adelantado',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppColors.success,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                          onChanged: (v) {
-                                            if (v != null) {
-                                              provider.setPaymentStatus(v);
-                                            }
-                                          },
-                                        ),
-                                        if (provider.paymentStatus ==
-                                            'PAID') ...[
-                                          const SizedBox(height: 12),
-                                          DropdownButtonFormField<String>(
-                                            initialValue:
-                                                provider.selectedAccountId,
-                                            isExpanded: true,
-                                            icon: const Icon(
-                                              Icons.expand_more_rounded,
-                                            ),
-                                            decoration: _dropdownDecoration(
-                                              'Cuenta Origen',
-                                              icon:
-                                                  Icons
-                                                      .account_balance_wallet_rounded,
-                                            ),
-                                            items:
-                                                provider.accounts.map((acc) {
-                                                  return DropdownMenuItem(
-                                                    value: acc.id,
-                                                    child: Text(
-                                                      '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 13,
-                                                      ),
-                                                    ),
-                                                  );
-                                                }).toList(),
-                                            onChanged: provider.setAccount,
-                                          ),
-                                        ],
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(24.0),
+                                    child: Column(
+                                      children: [
+                                        _buildHeaderData(provider),
+                                        const SizedBox(height: 24),
+                                        _buildPaymentData(provider),
+                                        const SizedBox(height: 24),
+                                        _buildDocumentData(provider),
                                       ],
-                                    ],
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-
-                                // ── 4. Documento y Notas ─────────────────────
-                                _SectionCard(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const _SectionTitle(
-                                        icon: Icons.receipt_long_rounded,
-                                        title: 'Documento (Opcional)',
+                              ),
+                              // Derecha: Productos y Botón Guardar
+                              Expanded(
+                                flex: 4,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: _buildProductsData(provider),
                                       ),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: DropdownButtonFormField<
-                                              String
-                                            >(
-                                              initialValue:
-                                                  provider.documentType,
-                                              isExpanded: true,
-                                              icon: const Icon(
-                                                Icons.expand_more_rounded,
-                                              ),
-                                              decoration: _dropdownDecoration(
-                                                'Tipo Doc.',
-                                              ),
-                                              items:
-                                                  _docTypes
-                                                      .map(
-                                                        (
-                                                          type,
-                                                        ) => DropdownMenuItem(
-                                                          value: type,
-                                                          child: Text(
-                                                            type,
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontSize: 13,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                      .toList(),
-                                              onChanged: (v) {
-                                                if (v != null) {
-                                                  provider.setDocumentType(v);
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 2,
-                                            child: TextFormField(
-                                              controller: _documentNumberCtrl,
-                                              decoration: InputDecoration(
-                                                labelText: 'Número / Serie',
-                                                filled: true,
-                                                fillColor: AppColors.background,
-                                                border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(14),
-                                                  borderSide: const BorderSide(
-                                                    color: AppColors.border,
-                                                  ),
-                                                ),
-                                                enabledBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            14,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color:
-                                                                AppColors
-                                                                    .border,
-                                                          ),
-                                                    ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _DatePickerField(
-                                        label: 'Fecha Emisión Físico',
-                                        value: provider.documentDate,
-                                        onPick:
-                                            () => _pickDocumentDate(context),
-                                        onClear:
-                                            () =>
-                                                provider.setDocumentDate(null),
-                                        icon: Icons.edit_calendar_rounded,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextFormField(
-                                        controller: _notesCtrl,
-                                        maxLines: 3,
-                                        decoration: InputDecoration(
-                                          labelText: 'Notas adicionales',
-                                          filled: true,
-                                          fillColor: AppColors.background,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                            borderSide: const BorderSide(
-                                              color: AppColors.border,
-                                            ),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                            borderSide: const BorderSide(
-                                              color: AppColors.border,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    _buildStickySaveButton(provider),
+                                  ],
                                 ),
-                                const SizedBox(height: 24), // padding inferior
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // ── BOTÓN FIJO ──────────────────────────────
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, -4),
                               ),
                             ],
-                          ),
-                          child: SafeArea(
-                            top: false,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        provider.items.isEmpty
-                                            ? null
-                                            : _handleSave,
-                                    icon: const Icon(
-                                      Icons.check_circle_outline_rounded,
-                                    ),
-                                    label: const Text(
-                                      'Generar Orden',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      backgroundColor: AppColors.primary,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                    ),
-                                  ),
+                          );
+                        }
+
+                        // Móvil
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildHeaderData(provider),
+                                    const SizedBox(height: 16),
+                                    _buildProductsData(provider),
+                                    const SizedBox(height: 16),
+                                    _buildPaymentData(provider),
+                                    const SizedBox(height: 16),
+                                    _buildDocumentData(provider),
+                                    const SizedBox(height: 24),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
+                            _buildStickySaveButton(provider),
+                          ],
+                        );
+                      },
                     ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStickySaveButton(PurchaseOrderFormProvider provider) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: provider.items.isEmpty ? null : _handleSave,
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                label: const Text(
+                  'Generar Orden',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderData(PurchaseOrderFormProvider provider) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.storefront_rounded,
+            title: 'Datos de la Orden',
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: provider.selectedSupplierId,
+            isExpanded: true,
+            icon: const Icon(Icons.expand_more_rounded),
+            decoration: _dropdownDecoration(
+              'Proveedor (Obligatorio)',
+              icon: Icons.local_shipping_rounded,
+            ),
+            items:
+                provider.suppliers
+                    .map(
+                      (s) => DropdownMenuItem(
+                        value: s['id'] as String,
+                        child: Text(
+                          s['name'] as String,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    )
+                    .toList(),
+            onChanged: provider.setSupplier,
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: provider.selectedWarehouseId,
+            isExpanded: true,
+            icon: const Icon(Icons.expand_more_rounded),
+            decoration: _dropdownDecoration(
+              'Almacén Destino (Obligatorio)',
+              icon: Icons.warehouse_rounded,
+            ),
+            items:
+                provider.warehouses
+                    .map(
+                      (w) => DropdownMenuItem(
+                        value: w.id,
+                        child: Text(
+                          w.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    )
+                    .toList(),
+            onChanged: provider.setWarehouse,
+          ),
+          const SizedBox(height: 16),
+          _DatePickerField(
+            label: 'Fecha Vencimiento (Opcional)',
+            value: provider.dueDate,
+            onPick: () => _pickDueDate(context),
+            onClear: () => provider.setDueDate(null),
+            icon: Icons.event_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductsData(PurchaseOrderFormProvider provider) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: _SectionTitle(
+                  icon: Icons.inventory_2_rounded,
+                  title: 'Productos a Pedir',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _showAddProductSheet(context),
+                    icon: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      size: 18,
+                    ),
+                    label: const Text('Agregar'),
+                  ),
+                  if (provider.items.isNotEmpty)
+                    PopupMenuButton<String>(
+                      tooltip: 'Más opciones',
+                      icon: const Icon(
+                        Icons.more_vert_rounded,
+                        color: AppColors.textSecondary,
+                      ),
+                      onSelected: (value) {
+                        if (value == 'clear') _handleClearDraft();
+                      },
+                      itemBuilder:
+                          (_) => [
+                            const PopupMenuItem(
+                              value: 'clear',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_sweep_rounded,
+                                    color: AppColors.danger,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Descartar todo',
+                                    style: TextStyle(color: AppColors.danger),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (provider.items.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.add_shopping_cart_rounded,
+                    size: 52,
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Tu orden está vacía',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Agrega los productos que necesitas pedir a tu proveedor',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 18),
+                  OutlinedButton.icon(
+                    onPressed: () => _showAddProductSheet(context),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Agregar primer producto'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: provider.items.length,
+              itemBuilder: (context, index) {
+                return POFormItemTile(
+                  item: provider.items[index],
+                  onUpdateQuantity:
+                      (newQty) => provider.updateItemQuantity(index, newQty),
+                  onRemove: () => provider.removeItem(index),
+                );
+              },
+            ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+            child:
+                provider.items.isEmpty
+                    ? const SizedBox.shrink()
+                    : Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: POFormSummaryCard(items: provider.items),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentData(PurchaseOrderFormProvider provider) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.payments_rounded,
+            title: 'Condiciones de Pago',
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: provider.paymentMode,
+            isExpanded: true,
+            icon: const Icon(Icons.expand_more_rounded),
+            decoration: _dropdownDecoration(
+              'Modo de Pago',
+              icon: Icons.money_rounded,
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'EFECTIVO',
+                child: Text(
+                  'Efectivo',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'TARJETA',
+                child: Text(
+                  'Tarjeta / Transferencia',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'CREDITO',
+                child: Text(
+                  'Línea de Crédito',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (v) {
+              if (v != null) {
+                provider.setPaymentMode(v);
+                if (v == 'CREDITO') {
+                  provider.setPaymentStatus('PENDING');
+                  provider.setAccount(null);
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          if (provider.paymentMode != 'CREDITO') ...[
+            DropdownButtonFormField<String>(
+              initialValue: provider.paymentStatus,
+              icon: const Icon(Icons.expand_more_rounded),
+              decoration: _dropdownDecoration(
+                'Estado del Pago',
+                icon: Icons.hourglass_top_rounded,
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'PENDING',
+                  child: Text(
+                    'Pago Pendiente',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'PAID',
+                  child: Text(
+                    'Pago Realizado / Adelantado',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: (v) {
+                if (v != null) provider.setPaymentStatus(v);
+              },
+            ),
+            if (provider.paymentStatus == 'PAID') ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: provider.selectedAccountId,
+                isExpanded: true,
+                icon: const Icon(Icons.expand_more_rounded),
+                decoration: _dropdownDecoration(
+                  'Cuenta Origen',
+                  icon: Icons.account_balance_wallet_rounded,
+                ),
+                items:
+                    provider.accounts.map((acc) {
+                      return DropdownMenuItem(
+                        value: acc.id,
+                        child: Text(
+                          '${acc.name} (Saldo: S/ ${acc.balance.toStringAsFixed(2)})',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                onChanged: provider.setAccount,
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentData(PurchaseOrderFormProvider provider) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.receipt_long_rounded,
+            title: 'Documento (Opcional)',
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: provider.documentType,
+                  isExpanded: true,
+                  icon: const Icon(Icons.expand_more_rounded),
+                  decoration: _dropdownDecoration('Tipo Doc.'),
+                  items:
+                      _docTypes
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(
+                                type,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (v) {
+                    if (v != null) provider.setDocumentType(v);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: _documentNumberCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Número / Serie',
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _DatePickerField(
+            label: 'Fecha Emisión Físico',
+            value: provider.documentDate,
+            onPick: () => _pickDocumentDate(context),
+            onClear: () => provider.setDocumentDate(null),
+            icon: Icons.edit_calendar_rounded,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _notesCtrl,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: 'Notas adicionales',
+              filled: true,
+              fillColor: AppColors.background,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -898,11 +820,11 @@ InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
         icon != null ? Icon(icon, color: AppColors.textHint, size: 20) : null,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: Colors.grey.shade300),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppColors.border),
+      borderSide: BorderSide(color: Colors.grey.shade300),
     ),
   );
 }
@@ -912,11 +834,17 @@ class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.child});
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(24),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.border),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     ),
     child: child,
   );
@@ -929,13 +857,20 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Icon(icon, size: 20, color: AppColors.textPrimary),
-      const SizedBox(width: 8),
+      Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 20, color: AppColors.primary),
+      ),
+      const SizedBox(width: 12),
       Flexible(
         child: Text(
           title,
           style: const TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             color: AppColors.textPrimary,
           ),
@@ -971,7 +906,7 @@ class _DatePickerField extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: Colors.grey.shade300),
         ),
         child: Row(
           children: [
