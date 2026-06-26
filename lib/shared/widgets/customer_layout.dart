@@ -533,7 +533,7 @@ class CustomerLayout extends StatelessWidget {
     Widget finalBody =
         showAppBar ? pageBody : SafeArea(bottom: false, child: pageBody);
 
-    if (hideAppBarOnScroll) {
+    if (showAppBar && hideAppBarOnScroll) {
       finalBody = NestedScrollView(
         headerSliverBuilder:
             (context, innerBoxIsScrolled) => [
