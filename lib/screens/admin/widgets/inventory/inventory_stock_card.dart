@@ -6,8 +6,15 @@ import 'package:go_router/go_router.dart';
 
 class InventoryStockCard extends StatelessWidget {
   final InventoryStockItem item;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
-  const InventoryStockCard({super.key, required this.item});
+  const InventoryStockCard({
+    super.key,
+    required this.item,
+    this.isSelected = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,30 +34,30 @@ class InventoryStockCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color:
+            isSelected
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        border: Border.all(
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.5)
+                  : Colors.grey.shade200,
+          width: isSelected ? 1.5 : 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: () {
-            context.push(
-              '/admin/product/${item.productId}?variantId=${item.variantId}',
-            );
-          },
+          onTap:
+              onTap ??
+              () {
+                context.push(
+                  '/admin/product/${item.productId}?variantId=${item.variantId}',
+                );
+              },
           borderRadius: BorderRadius.circular(16),
           child: Column(
             children: [

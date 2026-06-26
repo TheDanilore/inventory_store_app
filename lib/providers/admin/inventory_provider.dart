@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/inventory_stock_models.dart';
 import 'package:inventory_store_app/services/admin/inventory_service.dart';
+import 'package:inventory_store_app/services/admin/catalog_service.dart';
+import 'package:inventory_store_app/models/product_model.dart';
 
 class InventoryProvider extends ChangeNotifier {
   final _service = InventoryService();
@@ -58,6 +60,16 @@ class InventoryProvider extends ChangeNotifier {
     await fetchBatchPage();
   }
 
+  Future<ProductModel?> fetchProductById(String productId) async {
+    try {
+      final catalogService = CatalogService();
+      return await catalogService.getProductById(productId);
+    } catch (e) {
+      debugPrint('Error fetching product by id: $e');
+      return null;
+    }
+  }
+
   // ── Métodos Tab 1 ──
   Future<void> _loadCategories() async {
     try {
@@ -103,7 +115,9 @@ class InventoryProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error loading stock: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         errorMessageStock = 'Sin conexión a internet.';
       } else {
         errorMessageStock = 'Error cargando stock.';
@@ -170,7 +184,9 @@ class InventoryProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error loading batches: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         errorMessageBatches = 'Sin conexión a internet.';
       } else {
         errorMessageBatches = 'Error cargando lotes.';

@@ -35,12 +35,14 @@ class ProductDetailScreen extends StatelessWidget {
   final ProductModel product;
   final bool isAdmin;
   final String? initialVariantId;
+  final bool isEmbedded;
 
   const ProductDetailScreen({
     super.key,
     required this.product,
     this.isAdmin = false,
     this.initialVariantId,
+    this.isEmbedded = false,
   });
 
   @override
@@ -52,13 +54,14 @@ class ProductDetailScreen extends StatelessWidget {
             isAdmin: isAdmin,
             initialVariantId: initialVariantId,
           ),
-      child: const _ProductDetailScreenContent(),
+      child: _ProductDetailScreenContent(isEmbedded: isEmbedded),
     );
   }
 }
 
 class _ProductDetailScreenContent extends StatefulWidget {
-  const _ProductDetailScreenContent({super.key});
+  final bool isEmbedded;
+  const _ProductDetailScreenContent({super.key, this.isEmbedded = false});
 
   @override
   State<_ProductDetailScreenContent> createState() =>
@@ -673,20 +676,27 @@ class _ProductDetailScreenContentState
           backgroundColor: Colors.transparent,
           elevation: 0,
           automaticallyImplyLeading: false,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 16.0, top: 8, bottom: 8),
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withValues(alpha: 0.8),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 18,
-                  color: Colors.black87,
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ),
+          leading:
+              widget.isEmbedded
+                  ? null
+                  : Padding(
+                    padding: const EdgeInsets.only(
+                      left: 16.0,
+                      top: 8,
+                      bottom: 8,
+                    ),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withValues(alpha: 0.8),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 18,
+                          color: Colors.black87,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ),
           actions: [
             if (isAdmin) ...[
               Padding(
@@ -1015,6 +1025,10 @@ class _ProductDetailScreenContentState
         ),
       ],
     );
+
+    if (widget.isEmbedded) {
+      return Container(color: AppColors.bg, child: content);
+    }
 
     if (isAdmin) {
       return AdminLayout(

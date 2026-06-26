@@ -6,8 +6,15 @@ import 'package:go_router/go_router.dart';
 
 class InventoryBatchCard extends StatelessWidget {
   final InventoryBatchItem batch;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
-  const InventoryBatchCard({super.key, required this.batch});
+  const InventoryBatchCard({
+    super.key,
+    required this.batch,
+    this.isSelected = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -56,20 +63,18 @@ class InventoryBatchCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color:
+            isSelected
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        border: Border.all(
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.5)
+                  : Colors.grey.shade200,
+          width: isSelected ? 1.5 : 1,
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -80,11 +85,13 @@ class InventoryBatchCard extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
-                context.push(
-                  '/admin/product/${batch.productId}?variantId=${batch.variantId}',
-                );
-              },
+              onTap:
+                  onTap ??
+                  () {
+                    context.push(
+                      '/admin/product/${batch.productId}?variantId=${batch.variantId}',
+                    );
+                  },
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
