@@ -10,11 +10,13 @@ import 'package:inventory_store_app/shared/widgets/product_item_card.dart';
 class InventoryExitDetailSheet extends StatefulWidget {
   final InventoryExitModel exitData;
   final Future<List<InventoryExitItemModel>> Function() loadItems;
+  final bool isBottomSheet;
 
   const InventoryExitDetailSheet({
     super.key,
     required this.exitData,
     required this.loadItems,
+    this.isBottomSheet = true,
   });
 
   @override
@@ -56,10 +58,16 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
     final reasonColor = _reasonColor(reason);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
+      height:
+          widget.isBottomSheet
+              ? MediaQuery.of(context).size.height * 0.85
+              : null,
+      decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            widget.isBottomSheet
+                ? const BorderRadius.vertical(top: Radius.circular(28))
+                : BorderRadius.zero,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -67,6 +75,7 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
           // ── Header compartido ──────────────────────────────────────
           DetailSheetHeader(
             title: 'Detalle de Salida',
+            showDragHandle: widget.isBottomSheet,
             trailing:
                 reason.isNotEmpty
                     ? StatusPill(

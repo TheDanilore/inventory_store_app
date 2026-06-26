@@ -16,11 +16,14 @@ class DetailSheetHeader extends StatefulWidget {
   /// Padding horizontal del contenido del header. Default: 24.
   final double horizontalPadding;
 
+  final bool showDragHandle;
+
   const DetailSheetHeader({
     super.key,
     required this.title,
     this.trailing,
     this.horizontalPadding = 24,
+    this.showDragHandle = true,
   });
 
   @override
@@ -66,15 +69,18 @@ class _DetailSheetHeaderState extends State<DetailSheetHeader>
       mainAxisSize: MainAxisSize.min,
       children: [
         // ── Drag handle ──────────────────────────────────────────
-        Container(
-          margin: const EdgeInsets.only(top: 12, bottom: 16),
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: AppColors.border,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
+        if (widget.showDragHandle)
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 16),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          )
+        else
+          const SizedBox(height: 16),
 
         // ── Título + trailing ─────────────────────────────────────
         Padding(

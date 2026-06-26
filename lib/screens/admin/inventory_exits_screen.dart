@@ -28,6 +28,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   final _searchCtrl = TextEditingController();
 
   bool _hasDraft = false;
+  InventoryExitModel? _selectedExit;
 
   @override
   void initState() {
@@ -56,11 +57,68 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadItemsAndShowDetail(
-    BuildContext context,
+  Future<List<InventoryExitItemModel>> _loadItems(
     InventoryExitModel exitData,
   ) async {
     final service = InventoryExitsService();
+    final itemsList = await service.getExitItems(exitData.id);
+    return itemsList.map((r) {
+      final prod = r['products'] as Map<String, dynamic>?;
+      final variant = r['product_variants'] as Map<String, dynamic>?;
+      final variantId = r['variant_id'] as String?;
+
+      final vavList =
+          variant?['variant_attribute_values'] as List<dynamic>? ?? [];
+      final List<String> attrValues = [];
+      for (var vav in vavList) {
+        final av = vav['attribute_values'] as Map<String, dynamic>?;
+        if (av != null && av['value'] != null) {
+          attrValues.add(av['value'].toString());
+        }
+      }
+      final attrsText = attrValues.join(' · ');
+
+      final bool usesBatches = prod?['uses_batches'] == true;
+
+      String? finalImageUrl;
+      final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+      if (imagesList.isNotEmpty) {
+        final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+          (img) => img['variant_id'] == variantId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
+          finalImageUrl = variantImage['image_url'] as String;
+        } else {
+          final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
+            (img) => img['is_main'] == true,
+            orElse: () => imagesList.first as Map<String, dynamic>,
+          );
+          finalImageUrl = mainImage['image_url'] as String?;
+        }
+      }
+
+      return InventoryExitItemModel(
+        id: r['id'] as String? ?? '',
+        exitId: exitData.id,
+        productId: prod?['id'] as String? ?? '',
+        variantId: variantId ?? '',
+        productName: prod?['name'] as String? ?? '—',
+        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+        quantity: (r['quantity'] as num).toDouble(),
+        unitCost: (r['unit_cost'] as num).toDouble(),
+        batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+        usesBatches: usesBatches,
+        imageUrl: finalImageUrl,
+        sku: variant?['sku'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<void> _loadItemsAndShowDetailMobile(
+    BuildContext context,
+    InventoryExitModel exitData,
+  ) async {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -68,68 +126,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       builder:
           (_) => InventoryExitDetailSheet(
             exitData: exitData,
-            loadItems: () async {
-              final itemsList = await service.getExitItems(exitData.id);
-              return itemsList.map((r) {
-                final prod = r['products'] as Map<String, dynamic>?;
-                final variant = r['product_variants'] as Map<String, dynamic>?;
-                final variantId = r['variant_id'] as String?;
-
-                final vavList =
-                    variant?['variant_attribute_values'] as List<dynamic>? ??
-                    [];
-                final List<String> attrValues = [];
-                for (var vav in vavList) {
-                  final av = vav['attribute_values'] as Map<String, dynamic>?;
-                  if (av != null && av['value'] != null) {
-                    attrValues.add(av['value'].toString());
-                  }
-                }
-                final attrsText = attrValues.join(' · ');
-
-                final bool usesBatches = prod?['uses_batches'] == true;
-
-                String? finalImageUrl;
-                final imagesList =
-                    prod?['product_images'] as List<dynamic>? ?? [];
-                if (imagesList.isNotEmpty) {
-                  final variantImage = imagesList
-                      .cast<Map<String, dynamic>>()
-                      .firstWhere(
-                        (img) => img['variant_id'] == variantId,
-                        orElse: () => <String, dynamic>{},
-                      );
-                  if (variantImage.isNotEmpty &&
-                      variantImage['image_url'] != null) {
-                    finalImageUrl = variantImage['image_url'] as String;
-                  } else {
-                    final mainImage = imagesList
-                        .cast<Map<String, dynamic>>()
-                        .firstWhere(
-                          (img) => img['is_main'] == true,
-                          orElse:
-                              () => imagesList.first as Map<String, dynamic>,
-                        );
-                    finalImageUrl = mainImage['image_url'] as String?;
-                  }
-                }
-
-                return InventoryExitItemModel(
-                  id: r['id'] as String? ?? '',
-                  exitId: exitData.id,
-                  productId: prod?['id'] as String? ?? '',
-                  variantId: variantId ?? '',
-                  productName: prod?['name'] as String? ?? '—',
-                  variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
-                  quantity: (r['quantity'] as num).toDouble(),
-                  unitCost: (r['unit_cost'] as num).toDouble(),
-                  batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-                  usesBatches: usesBatches,
-                  imageUrl: finalImageUrl,
-                  sku: variant?['sku'] as String?,
-                );
-              }).toList();
-            },
+            isBottomSheet: true,
+            loadItems: () => _loadItems(exitData),
           ),
     );
   }
@@ -145,15 +143,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               message: provider.errorMessage!,
               type: SnackbarType.error,
             );
-            // Si quieres limpiar el error después de mostrarlo para no repetirlo
-            // provider.clearError();
           });
         }
-
-        final totalCost = provider.exits.fold<double>(
-          0,
-          (s, e) => s + e.totalCost,
-        );
 
         return AdminLayout(
           title: 'Salidas de Inventario',
@@ -177,206 +168,59 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               );
             }
           },
-          body: Column(
-            children: [
-              // ── Borrador ──
-              if (_hasDraft)
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.3),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_document, color: AppColors.warning),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Tienes un borrador de salida en progreso.',
-                          style: TextStyle(
-                            color: AppColors.warning,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: () async {
-                          final result = await context.push<bool>(
-                            '/admin/inventory-exit-form',
-                          );
-                          _checkDraft();
-                          if (result == true && context.mounted) {
-                            context.read<InventoryExitsProvider>().initLoad();
-                          }
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.warning.withValues(
-                            alpha: 0.2,
-                          ),
-                          foregroundColor: AppColors.warning,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 0,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: const Text(
-                          'Continuar',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 800;
 
-              Expanded(
-                child: RefreshIndicator(
-                  color: AppColors.danger,
-                  onRefresh: () => provider.loadExits(isRefresh: true),
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      // ── Resumen ──
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                          child: Row(
-                            children: [
-                              _SummaryTile(
-                                label: 'Salidas',
-                                value: '${provider.exits.length}',
-                                icon: Icons.output_rounded,
-                                color: AppColors.danger,
-                              ),
-                              const SizedBox(width: 8),
-                              _SummaryTile(
-                                label: 'Costo Total',
-                                value: 'S/ ${totalCost.toStringAsFixed(2)}',
-                                icon: Icons.money_off_rounded,
-                                color: Colors.orange.shade700,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+              // Si es tablet pero borramos la búsqueda, limpiamos la selección si ya no existe
+              if (isTablet && _selectedExit != null) {
+                final exists = provider.exits.any(
+                  (e) => e.id == _selectedExit!.id,
+                );
+                if (!exists && provider.exits.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() => _selectedExit = null);
+                    }
+                  });
+                }
+              }
 
-                      // ── Filtros ──
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _SearchField(
-                                  controller: _searchCtrl,
-                                  hint: 'Buscar motivo o notas...',
-                                  onChanged: provider.updateSearch,
-                                  onClear: () {
-                                    _searchCtrl.clear();
-                                    provider.updateSearch('');
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              DateFilterCalendar(
-                                dateRange: provider.dateRange,
-                                onDateRangeSelected: provider.updateDateRange,
-                                onClear: () => provider.updateDateRange(null),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+              return Stack(
+                children: [
+                  isTablet
+                      ? _buildTabletLayout(provider)
+                      : _buildMobileLayout(provider),
 
-                      // ── Lista ──
-                      if (provider.isLoading && provider.exits.isEmpty)
-                        const SliverPadding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          sliver: SliverToBoxAdapter(child: KardexSkeleton()),
-                        )
-                      else if (provider.errorMessage != null &&
-                          provider.exits.isEmpty)
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: Center(
-                            child: Text(
-                              provider.errorMessage!,
-                              style: const TextStyle(color: AppColors.danger),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      else if (provider.exits.isEmpty)
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: AppEmptyState(
-                            icon: Icons.inventory_2_outlined,
-                            title: 'Sin Resultados',
-                            message:
-                                provider.searchQuery.isEmpty &&
-                                        provider.dateRange == null
-                                    ? 'No hay salidas registradas'
-                                    : 'Sin resultados para los filtros',
-                          ),
-                        )
-                      else
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, i) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _ExitCard(
-                                  exitData: provider.exits[i],
-                                  onTap:
-                                      () => _loadItemsAndShowDetail(
-                                        context,
-                                        provider.exits[i],
-                                      ),
-                                ),
-                              ),
-                              childCount: provider.exits.length,
+                  // ── Paginación anclada al fondo ──
+                  if (provider.totalPages > 1 && !provider.isLoading)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: isTablet ? constraints.maxWidth * 0.6 : 0,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background.withValues(alpha: 0.9),
+                          border: Border(
+                            top: BorderSide(
+                              color: Colors.grey.withValues(alpha: 0.2),
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Paginación anclada al fondo ──
-              if (provider.totalPages > 1 && !provider.isLoading)
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, -4),
+                        child: SafeArea(
+                          top: false,
+                          child: AdminPageBlocks(
+                            currentPage: provider.currentPage,
+                            totalPages: provider.totalPages,
+                            onPageChanged: provider.changePage,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: AdminPageBlocks(
-                      currentPage: provider.currentPage,
-                      totalPages: provider.totalPages,
-                      onPageChanged: provider.changePage,
                     ),
-                  ),
-                ),
-            ],
+                ],
+              );
+            },
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
@@ -399,6 +243,283 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       },
     );
   }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // LAYOUTS
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildMobileLayout(InventoryExitsProvider provider) {
+    return _buildListContent(provider, isTablet: false);
+  }
+
+  Widget _buildTabletLayout(InventoryExitsProvider provider) {
+    return Row(
+      children: [
+        // Panel Izquierdo: Lista
+        Expanded(
+          flex: 4,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+            ),
+            child: _buildListContent(provider, isTablet: true),
+          ),
+        ),
+        // Panel Derecho: Detalles
+        Expanded(
+          flex: 6,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child:
+                _selectedExit == null
+                    ? Container(
+                      key: const ValueKey('empty_detail'),
+                      color: AppColors.background,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.outbox_rounded,
+                              size: 64,
+                              color: AppColors.border,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Selecciona una salida para ver sus detalles',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    : InventoryExitDetailSheet(
+                      key: ValueKey('detail_${_selectedExit!.id}'),
+                      exitData: _selectedExit!,
+                      isBottomSheet: false,
+                      loadItems: () => _loadItems(_selectedExit!),
+                    ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListContent(
+    InventoryExitsProvider provider, {
+    required bool isTablet,
+  }) {
+    final totalCost = provider.exits.fold<double>(0, (s, e) => s + e.totalCost);
+
+    return RefreshIndicator(
+      color: AppColors.danger,
+      onRefresh: () => provider.loadExits(isRefresh: true),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // ── Borrador ──
+          if (_hasDraft)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_document, color: AppColors.warning),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Borrador en progreso',
+                        style: TextStyle(
+                          color: AppColors.warning,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonal(
+                      onPressed: () async {
+                        final result = await context.push<bool>(
+                          '/admin/inventory-exit-form',
+                        );
+                        _checkDraft();
+                        if (!mounted) return;
+                        if (result == true) {
+                          context.read<InventoryExitsProvider>().initLoad();
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.warning.withValues(
+                          alpha: 0.2,
+                        ),
+                        foregroundColor: AppColors.warning,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Continuar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Resumen ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  _SummaryTile(
+                    label: 'Salidas',
+                    value: '${provider.exits.length}',
+                    icon: Icons.output_rounded,
+                    color: AppColors.danger,
+                  ),
+                  const SizedBox(width: 8),
+                  _SummaryTile(
+                    label: 'Costo Total',
+                    value: 'S/ ${totalCost.toStringAsFixed(2)}',
+                    icon: Icons.money_off_rounded,
+                    color: Colors.orange.shade700,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Filtros (Sticky) ──
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StickyFiltersDelegate(
+              child: Container(
+                color: AppColors.background,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _SearchField(
+                        controller: _searchCtrl,
+                        hint: 'Buscar motivo o notas...',
+                        onChanged: provider.updateSearch,
+                        onClear: () {
+                          _searchCtrl.clear();
+                          provider.updateSearch('');
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    DateFilterCalendar(
+                      dateRange: provider.dateRange,
+                      onDateRangeSelected: provider.updateDateRange,
+                      onClear: () => provider.updateDateRange(null),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Lista ──
+          if (provider.isLoading && provider.exits.isEmpty)
+            const SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(child: KardexSkeleton()),
+            )
+          else if (provider.errorMessage != null && provider.exits.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Text(
+                  provider.errorMessage!,
+                  style: const TextStyle(color: AppColors.danger),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          else if (provider.exits.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppEmptyState(
+                icon: Icons.inventory_2_outlined,
+                title: 'Sin Resultados',
+                message:
+                    provider.searchQuery.isEmpty && provider.dateRange == null
+                        ? 'No hay salidas registradas'
+                        : 'Sin resultados para los filtros',
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  final exit = provider.exits[i];
+                  final isSelected = isTablet && _selectedExit?.id == exit.id;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ExitCard(
+                      exitData: exit,
+                      isSelected: isSelected,
+                      onTap: () {
+                        if (isTablet) {
+                          setState(() => _selectedExit = exit);
+                        } else {
+                          _loadItemsAndShowDetailMobile(context, exit);
+                        }
+                      },
+                    ),
+                  );
+                }, childCount: provider.exits.length),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DELEGATES
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _StickyFiltersDelegate({required this.child});
+
+  @override
+  double get minExtent => 70.0;
+  @override
+  double get maxExtent => 70.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_StickyFiltersDelegate oldDelegate) {
+    return oldDelegate.child != child;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -408,27 +529,35 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 class _ExitCard extends StatelessWidget {
   final InventoryExitModel exitData;
   final VoidCallback onTap;
+  final bool isSelected;
 
-  const _ExitCard({required this.exitData, required this.onTap});
+  const _ExitCard({
+    required this.exitData,
+    required this.onTap,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color:
+              isSelected
+                  ? AppColors.danger.withValues(alpha: 0.05)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(
+            color:
+                isSelected
+                    ? AppColors.danger.withValues(alpha: 0.5)
+                    : Colors.grey.shade200,
+            width: isSelected ? 1.5 : 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,32 +663,41 @@ class _SummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.15),
+            color.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(height: 4),
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.w900,
-              fontSize: 13,
+              fontSize: 15,
               color: color,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 2),
           Text(
             label,
             style: TextStyle(
-              fontSize: 9,
-              color: color.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              color: color.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -598,7 +736,15 @@ class _SearchField extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.primary),
       ),
       filled: true,
       fillColor: AppColors.surface,
