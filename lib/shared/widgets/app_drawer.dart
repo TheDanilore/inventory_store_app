@@ -100,6 +100,9 @@ class _AppDrawerState extends State<AppDrawer> {
   Widget build(BuildContext context) {
     return Drawer(
       backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(left: Radius.circular(24)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -440,25 +443,29 @@ class _AppDrawerState extends State<AppDrawer> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          border: active
-              ? const Border(
-                  left: BorderSide(
-                    color: AppColors.primary,
-                    width: 4,
-                  ),
-                )
-              : null,
+          border:
+              active
+                  ? const Border(
+                    left: BorderSide(color: AppColors.primary, width: 4),
+                  )
+                  : null,
         ),
         child: ListTile(
           leading: Icon(
             item.icon,
-            color: active ? AppColors.primary : AppColors.textSecondary.withValues(alpha: 0.8),
+            color:
+                active
+                    ? AppColors.primary
+                    : AppColors.textSecondary.withValues(alpha: 0.8),
             size: 22,
           ),
           title: Text(
             item.title,
             style: TextStyle(
-              color: active ? AppColors.primary : AppColors.textPrimary.withValues(alpha: 0.9),
+              color:
+                  active
+                      ? AppColors.primary
+                      : AppColors.textPrimary.withValues(alpha: 0.9),
               fontSize: 15,
               fontWeight: active ? FontWeight.w800 : FontWeight.w600,
             ),
@@ -468,7 +475,8 @@ class _AppDrawerState extends State<AppDrawer> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.horizontal(
               right: const Radius.circular(12),
-              left: active ? const Radius.circular(8) : const Radius.circular(12),
+              left:
+                  active ? const Radius.circular(8) : const Radius.circular(12),
             ),
           ),
           splashColor: AppColors.primary.withValues(alpha: 0.15),
@@ -626,14 +634,12 @@ class _SubItemTile extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: active
-              ? const Border(
-                  left: BorderSide(
-                    color: AppColors.primary,
-                    width: 3,
-                  ),
-                )
-              : null,
+          border:
+              active
+                  ? const Border(
+                    left: BorderSide(color: AppColors.primary, width: 3),
+                  )
+                  : null,
         ),
         child: ListTile(
           leading: Icon(
@@ -647,7 +653,10 @@ class _SubItemTile extends StatelessWidget {
           title: Text(
             item.title,
             style: TextStyle(
-              color: active ? AppColors.primary : AppColors.textPrimary.withValues(alpha: 0.9),
+              color:
+                  active
+                      ? AppColors.primary
+                      : AppColors.textPrimary.withValues(alpha: 0.9),
               fontSize: 14,
               fontWeight: active ? FontWeight.w800 : FontWeight.w600,
             ),
@@ -657,7 +666,8 @@ class _SubItemTile extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.horizontal(
               right: const Radius.circular(10),
-              left: active ? const Radius.circular(6) : const Radius.circular(10),
+              left:
+                  active ? const Radius.circular(6) : const Radius.circular(10),
             ),
           ),
           splashColor: AppColors.primary.withValues(alpha: 0.15),
@@ -667,7 +677,10 @@ class _SubItemTile extends StatelessWidget {
           },
           dense: true,
           minLeadingWidth: 20,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 0,
+          ),
         ),
       ),
     );
@@ -691,12 +704,19 @@ class _DrawerHeader extends StatelessWidget {
         left: 24,
         right: 24,
       ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryDark.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,92 +840,94 @@ class _DrawerFooter extends StatelessWidget {
             builder: (context, profile, _) {
               return Column(
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (isAdmin) {
-                        context.go('/admin/profile');
-                      } else {
-                        context.go('/customer/profile');
-                      }
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: AppColors.primary.withValues(
-                              alpha: 0.1,
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (isAdmin) {
+                          context.go('/admin/profile');
+                        } else {
+                          context.go('/customer/profile');
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
+                              backgroundImage:
+                                  profile.avatarUrl != null
+                                      ? NetworkImage(profile.avatarUrl!)
+                                      : null,
+                              child:
+                                  profile.avatarUrl == null
+                                      ? const Icon(
+                                        Icons.person_rounded,
+                                        color: AppColors.primary,
+                                        size: 20,
+                                      )
+                                      : null,
                             ),
-                            backgroundImage:
-                                profile.avatarUrl != null
-                                    ? NetworkImage(profile.avatarUrl!)
-                                    : null,
-                            child:
-                                profile.avatarUrl == null
-                                    ? const Icon(
-                                      Icons.person_rounded,
-                                      color: AppColors.primary,
-                                      size: 20,
-                                    )
-                                    : null,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  profile.fullName.isEmpty
-                                      ? 'Mi Perfil'
-                                      : profile.fullName,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    profile.fullName.isEmpty
+                                        ? 'Mi Perfil'
+                                        : profile.fullName,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  isAdmin ? 'Administrador' : 'Cliente',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary,
+                                  Text(
+                                    isAdmin ? 'Administrador' : 'Cliente',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.logout_rounded,
-                              color: AppColors.error,
-                              size: 20,
-                            ),
-                            tooltip: 'Cerrar Sesión',
-                            onPressed: () async {
-                              Navigator.pop(context);
-                              try {
-                                await context.read<ProfileProvider>().signOut();
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e')),
-                                  );
+                            IconButton(
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                color: AppColors.error,
+                                size: 20,
+                              ),
+                              tooltip: 'Cerrar Sesión',
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                try {
+                                  await context
+                                      .read<ProfileProvider>()
+                                      .signOut();
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
                                 }
-                              }
-                            },
-                          ),
-                        ],
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
