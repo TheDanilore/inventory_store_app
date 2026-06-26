@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 
 class CustomerLayout extends StatelessWidget {
+  // ← StatelessWidget ahora
   final String title;
   final Widget body;
   final Widget? floatingActionButton;
@@ -49,47 +50,37 @@ class CustomerLayout extends StatelessWidget {
         // Si no hay saldo, ocultamos
         if (!wallet.hasBalance) return const SizedBox.shrink();
 
-        return Tooltip(
-          message: 'Mis Puntos',
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
+        return MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => context.go('/customer/points'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.goldLight,
                 borderRadius: BorderRadius.circular(20),
-                onTap: () => context.go('/customer/points'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.stars_rounded,
+                    size: 16,
+                    color: AppColors.gold,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.4),
+                  const SizedBox(width: 4),
+                  Text(
+                    wallet.isLoading ? '...' : '${wallet.balance ?? 0}',
+                    style: const TextStyle(
+                      color: Color(0xFF8A6300),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.stars_rounded,
-                        size: 16,
-                        color: AppColors.gold,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        wallet.isLoading ? '...' : '${wallet.balance ?? 0}',
-                        style: const TextStyle(
-                          color: Color(0xFF8A6300),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
             ),
           ),
@@ -197,56 +188,45 @@ class CustomerLayout extends StatelessWidget {
       if (showWalletChip) _buildWalletChip(context),
       const SizedBox(width: 8),
       if (showCartIcon)
-        Tooltip(
-          message: 'Ir al Carrito',
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () {
+              if (onTabSelected != null) {
+                onTabSelected!(1);
+              } else {
+                context.go('/customer/cart');
+              }
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: 4),
+              decoration: BoxDecoration(
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  if (onTabSelected != null) {
-                    onTabSelected!(1);
-                  } else {
-                    context.go('/customer/cart');
-                  }
-                },
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  margin: const EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Center(
+                    child: Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 20,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Center(
-                        child: Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 20,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Consumer<CartProvider>(
-                        builder: (context, cart, _) {
-                          if (cart.itemCount == 0) {
-                            return const SizedBox.shrink();
-                          }
-                          return Positioned(
-                            right: 4,
-                            top: 4,
-                            child: _AnimatedCartBadge(
-                              itemCount: cart.itemCount,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                  Consumer<CartProvider>(
+                    builder: (context, cart, _) {
+                      if (cart.itemCount == 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: 4,
+                        top: 4,
+                        child: _AnimatedCartBadge(itemCount: cart.itemCount),
+                      );
+                    },
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -285,52 +265,44 @@ class CustomerLayout extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _navItem(
-                      context: context,
-                      index: 0,
-                      icon: Icons.home_outlined,
-                      activeIcon: Icons.home_rounded,
-                      label: 'Inicio',
-                      onTap: () {
-                        if (onTabSelected != null) {
-                          onTabSelected!(0);
-                        } else {
-                          context.go('/customer');
-                        }
-                      },
-                    ),
-                  ),
-                  Expanded(child: _navItemCart(context)),
-                  Expanded(
-                    child: _navItem(
-                      context: context,
-                      index: 2,
-                      icon: Icons.person_outline_rounded,
-                      activeIcon: Icons.person_rounded,
-                      label: 'Perfil',
-                      onTap: () {
-                        final user = Supabase.instance.client.auth.currentUser;
-                        if (user == null) {
-                          context.go('/login');
-                        } else {
-                          if (onTabSelected != null) {
-                            onTabSelected!(2);
-                          } else {
-                            context.go('/customer/profile');
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(
+                context: context,
+                index: 0,
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Inicio',
+                onTap: () {
+                  if (onTabSelected != null) {
+                    onTabSelected!(0);
+                  } else {
+                    context.go('/customer');
+                  }
+                },
               ),
-            ),
+              _navItemCart(context),
+              _navItem(
+                context: context,
+                index: 2,
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Perfil',
+                onTap: () {
+                  final user = Supabase.instance.client.auth.currentUser;
+                  if (user == null) {
+                    context.go('/login');
+                  } else {
+                    if (onTabSelected != null) {
+                      onTabSelected!(2);
+                    } else {
+                      context.go('/customer/profile');
+                    }
+                  }
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -348,42 +320,37 @@ class CustomerLayout extends StatelessWidget {
     final isActive = currentIndex == index;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color:
-                  isActive
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isActive ? activeIcon : icon,
-                  size: 22,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                isActive
+                    ? AppColors.primary.withValues(alpha: 0.08)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isActive ? activeIcon : icon,
+                size: 22,
+                color: isActive ? AppColors.primary : AppColors.textSecondary,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   color: isActive ? AppColors.primary : AppColors.textSecondary,
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        isActive ? AppColors.primary : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -394,87 +361,78 @@ class CustomerLayout extends StatelessWidget {
     final isActive = currentIndex == 1;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () {
-            if (onTabSelected != null) {
-              onTabSelected!(1);
-            } else {
-              context.go('/customer/cart');
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color:
-                  isActive
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Icon(
-                      isActive
-                          ? Icons.shopping_bag_rounded
-                          : Icons.shopping_bag_outlined,
-                      size: 22,
-                      color:
-                          isActive
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                    ),
-                    Consumer<CartProvider>(
-                      builder: (context, cart, _) {
-                        if (cart.itemCount == 0) return const SizedBox.shrink();
-                        return Positioned(
-                          right: -6,
-                          top: -4,
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: AppColors.accent,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 15,
-                              minHeight: 15,
-                            ),
-                            child: Text(
-                              '${cart.itemCount}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w900,
-                              ),
+      child: GestureDetector(
+        onTap: () {
+          if (onTabSelected != null) {
+            onTabSelected!(1);
+          } else {
+            context.go('/customer/cart');
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                isActive
+                    ? AppColors.accent.withValues(alpha: 0.1)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    isActive
+                        ? Icons.shopping_bag_rounded
+                        : Icons.shopping_bag_outlined,
+                    size: 22,
+                    color:
+                        isActive ? AppColors.accent : AppColors.textSecondary,
+                  ),
+                  Consumer<CartProvider>(
+                    builder: (context, cart, _) {
+                      if (cart.itemCount == 0) return const SizedBox.shrink();
+                      return Positioned(
+                        right: -6,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 15,
+                            minHeight: 15,
+                          ),
+                          child: Text(
+                            '${cart.itemCount}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Carrito',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        isActive ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                      );
+                    },
                   ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Carrito',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? AppColors.accent : AppColors.textSecondary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -486,38 +444,7 @@ class CustomerLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Banner de sin conexión + body
-    Widget pageBody = body;
-
-    Widget finalBody = pageBody;
-
-    if (showAppBar && hideAppBarOnScroll) {
-      finalBody = NestedScrollView(
-        headerSliverBuilder:
-            (context, innerBoxIsScrolled) => [
-              SliverAppBar(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.textPrimary,
-                elevation: 0,
-                centerTitle: false,
-                automaticallyImplyLeading: false,
-                surfaceTintColor: Colors.transparent,
-                floating: true,
-                snap: true,
-                titleSpacing: 0,
-                leading: _buildLeading(context),
-                title: _buildTitle(context),
-                actions:
-                    (showCartIcon || showWalletChip)
-                        ? _buildActions(context)
-                        : null,
-              ),
-            ],
-        body: pageBody,
-      );
-    }
-
-    finalBody = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    Widget pageBody = Column(
       children: [
         Consumer<NetworkProvider>(
           builder: (context, network, child) {
@@ -527,7 +454,7 @@ class CustomerLayout extends StatelessWidget {
               curve: Curves.easeInOut,
               child:
                   isOnline
-                      ? const SizedBox.shrink()
+                      ? const SizedBox.shrink() // No ocupa espacio si hay internet
                       : AnimatedSlide(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutCubic,
@@ -564,15 +491,44 @@ class CustomerLayout extends StatelessWidget {
             );
           },
         ),
-        Expanded(child: finalBody),
+        Expanded(child: body),
       ],
     );
+
+    Widget finalBody =
+        showAppBar ? pageBody : SafeArea(bottom: false, child: pageBody);
+
+    if (hideAppBarOnScroll) {
+      finalBody = NestedScrollView(
+        headerSliverBuilder:
+            (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 0,
+                centerTitle: false,
+                automaticallyImplyLeading: false,
+                surfaceTintColor: Colors.transparent,
+                floating: true,
+                snap: true,
+                titleSpacing: 0,
+                leading: _buildLeading(context),
+                title: _buildTitle(context),
+                actions:
+                    (showCartIcon || showWalletChip)
+                        ? _buildActions(context)
+                        : null,
+              ),
+            ],
+        body: pageBody,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar:
           (showAppBar && !hideAppBarOnScroll) ? _buildAppBar(context) : null,
-      body: showAppBar ? finalBody : SafeArea(top: true, bottom: false, child: finalBody),
+      body: finalBody,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar:
           showBottomNav ? _buildBottomNav(context) : bottomNavigationBar,

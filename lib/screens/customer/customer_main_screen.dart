@@ -28,14 +28,17 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // IndexedStack mantiene vivas las pantallas que no se están viendo
-    return IndexedStack(
-      index: _currentIndex,
-      children: [
-        CustomerCatalogScreen(onTabSelected: _onTabSelected),
-        CustomerCartScreen(onTabSelected: _onTabSelected),
-        ProfileScreen(onTabSelected: _onTabSelected),
-      ],
+    // SizedBox.expand le da constraints definidos al IndexedStack,
+    // permitiendo que los Scaffold hijos calculen su tamaño correctamente.
+    return SizedBox.expand(
+      child: IndexedStack(
+        index: _currentIndex,
+        children: [
+          CustomerCatalogScreen(onTabSelected: _onTabSelected),
+          CustomerCartScreen(onTabSelected: _onTabSelected),
+          ProfileScreen(onTabSelected: _onTabSelected),
+        ],
+      ),
     );
   }
 }
