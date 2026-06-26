@@ -24,7 +24,6 @@ class CustomerLayout extends StatelessWidget {
   final bool showWalletChip;
   final bool showAppBar;
   final bool hideAppBarOnScroll;
-  final ValueChanged<int>? onTabSelected;
 
   const CustomerLayout({
     super.key,
@@ -40,7 +39,6 @@ class CustomerLayout extends StatelessWidget {
     this.showWalletChip = true,
     this.showAppBar = true,
     this.hideAppBarOnScroll = false,
-    this.onTabSelected,
   });
 
   // ─── WALLET CHIP ─────────────────────────────────────────────────────────
@@ -142,11 +140,7 @@ class CustomerLayout extends StatelessWidget {
             if (user == null) {
               context.go('/login');
             } else {
-              if (onTabSelected != null) {
-                onTabSelected!(2);
-              } else {
-                context.go('/customer/profile');
-              }
+              context.go('/customer/profile');
             }
           }
         },
@@ -220,11 +214,7 @@ class CustomerLayout extends StatelessWidget {
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
             onTap: () {
-              if (onTabSelected != null) {
-                onTabSelected!(1);
-              } else {
-                context.go('/customer/cart');
-              }
+              context.go('/customer/cart');
             },
             child: Container(
               width: 40,
@@ -298,13 +288,9 @@ class CustomerLayout extends StatelessWidget {
         return;
       }
     }
-    if (onTabSelected != null) {
-      onTabSelected!(index);
-    } else {
-      if (index == 0) context.go('/customer');
-      if (index == 1) context.go('/customer/cart');
-      if (index == 2) context.go('/customer/profile');
-    }
+    if (index == 0) context.go('/customer');
+    if (index == 1) context.go('/customer/cart');
+    if (index == 2) context.go('/customer/profile');
   }
 
   Widget _buildBottomNav(BuildContext context) {

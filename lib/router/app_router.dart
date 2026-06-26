@@ -14,7 +14,7 @@ import 'package:inventory_store_app/screens/shared/product_detail_screen.dart';
 import 'package:inventory_store_app/screens/shared/widgets/full_screen_gallery.dart';
 
 // Pantallas Cliente
-import 'package:inventory_store_app/screens/customer/customer_main_screen.dart';
+import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
 import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/screens/customer/address_management_screen.dart';
 import 'package:inventory_store_app/screens/customer/address_config_screen.dart';
@@ -485,115 +485,125 @@ class AppRouter {
         ),
 
         // CUSTOMER ROUTES
-        GoRoute(
-          path: '/customer',
-          builder: (context, state) => const CustomerMainScreen(),
-          routes: [
-            GoRoute(
-              path: 'profile',
-              builder:
-                  (context, state) =>
-                      const ProfileScreen(openedFromAdmin: false),
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) => navigationShell,
+          branches: [
+            // Rama 0: Catálogo
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/customer',
+                  builder: (context, state) => const CustomerCatalogScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'product/:id',
+                      builder: (context, state) {
+                        final productId = state.pathParameters['id'];
+                        final variantId = state.uri.queryParameters['variantId'];
+                        final product = state.extra as ProductModel?;
+                        if (product != null) {
+                          return ProductDetailScreen(
+                            product: product,
+                            isAdmin: false,
+                            initialVariantId: variantId,
+                          );
+                        }
+                        if (productId == null) {
+                          return const Scaffold(body: Center(child: Text('Error')));
+                        }
+                        return _ProductLoader(
+                          productId: productId,
+                          isAdmin: false,
+                          initialVariantId: variantId,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
-            GoRoute(
-              path: 'cart',
-              builder: (context, state) => const CustomerCartScreen(),
+            // Rama 1: Carrito
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/customer/cart',
+                  builder: (context, state) => const CustomerCartScreen(),
+                ),
+              ],
             ),
-            GoRoute(
-              path: 'address',
-              builder: (context, state) => const AddressManagementScreen(),
-            ),
-            GoRoute(
-              path: 'orders',
-              builder: (context, state) => const CustomerOrdersScreen(),
-            ),
-            GoRoute(
-              path: 'points',
-              builder: (context, state) => const PointsScreen(),
-            ),
-            GoRoute(
-              path: 'wishlist',
-              builder: (context, state) => const WishlistScreen(),
-            ),
-            GoRoute(
-              path: 'address/config',
-              builder:
-                  (context, state) => AddressConfigScreen(
+            // Rama 2: Perfil y otras rutas
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/customer/profile',
+                  builder: (context, state) => const ProfileScreen(openedFromAdmin: false),
+                ),
+                GoRoute(
+                  path: '/customer/address',
+                  builder: (context, state) => const AddressManagementScreen(),
+                ),
+                GoRoute(
+                  path: '/customer/orders',
+                  builder: (context, state) => const CustomerOrdersScreen(),
+                ),
+                GoRoute(
+                  path: '/customer/points',
+                  builder: (context, state) => const PointsScreen(),
+                ),
+                GoRoute(
+                  path: '/customer/wishlist',
+                  builder: (context, state) => const WishlistScreen(),
+                ),
+                GoRoute(
+                  path: '/customer/address/config',
+                  builder: (context, state) => AddressConfigScreen(
                     initialAddress: state.uri.queryParameters['initialAddress'],
                   ),
-            ),
-            // GAMES
-            GoRoute(
-              path: 'games/claw-machine/:profileId',
-              builder:
-                  (context, state) => ClawMachineScreen(
+                ),
+                // GAMES
+                GoRoute(
+                  path: '/customer/games/claw-machine/:profileId',
+                  builder: (context, state) => ClawMachineScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'games/coin-catcher/:profileId',
-              builder:
-                  (context, state) => CoinCatcherGameScreen(
+                ),
+                GoRoute(
+                  path: '/customer/games/coin-catcher/:profileId',
+                  builder: (context, state) => CoinCatcherGameScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'games/dodge/:profileId',
-              builder:
-                  (context, state) => DodgeGameScreen(
+                ),
+                GoRoute(
+                  path: '/customer/games/dodge/:profileId',
+                  builder: (context, state) => DodgeGameScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'games/memorama/:profileId',
-              builder:
-                  (context, state) => MemoramaGameScreen(
+                ),
+                GoRoute(
+                  path: '/customer/games/memorama/:profileId',
+                  builder: (context, state) => MemoramaGameScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'games/pinata/:profileId',
-              builder:
-                  (context, state) => PinataGameScreen(
+                ),
+                GoRoute(
+                  path: '/customer/games/pinata/:profileId',
+                  builder: (context, state) => PinataGameScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'games/stack/:profileId',
-              builder:
-                  (context, state) => StackGameScreen(
+                ),
+                GoRoute(
+                  path: '/customer/games/stack/:profileId',
+                  builder: (context, state) => StackGameScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'games/super-salto/:profileId',
-              builder:
-                  (context, state) => SuperSaltoScreen(
+                ),
+                GoRoute(
+                  path: '/customer/games/super-salto/:profileId',
+                  builder: (context, state) => SuperSaltoScreen(
                     profileId: state.pathParameters['profileId'] ?? '',
                   ),
-            ),
-            GoRoute(
-              path: 'product/:id',
-              builder: (context, state) {
-                final productId = state.pathParameters['id'];
-                final variantId = state.uri.queryParameters['variantId'];
-                final product = state.extra as ProductModel?;
-                if (product != null) {
-                  return ProductDetailScreen(
-                    product: product,
-                    isAdmin: false,
-                    initialVariantId: variantId,
-                  );
-                }
-                if (productId == null) {
-                  return const Scaffold(body: Center(child: Text('Error')));
-                }
-                return _ProductLoader(
-                  productId: productId,
-                  isAdmin: false,
-                  initialVariantId: variantId,
-                );
-              },
+                ),
+              ],
             ),
           ],
         ),

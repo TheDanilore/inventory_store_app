@@ -19,11 +19,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool openedFromAdmin;
-  final ValueChanged<int>? onTabSelected;
   const ProfileScreen({
     super.key,
     this.openedFromAdmin = false,
-    this.onTabSelected,
   });
 
   @override
@@ -171,7 +169,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = Supabase.instance.client.auth.currentUser?.email ?? '';
 
     return CustomerLayout(
-      onTabSelected: widget.onTabSelected,
       title: 'Mi Perfil',
       currentIndex: 2,
       showBackButton: widget.openedFromAdmin,

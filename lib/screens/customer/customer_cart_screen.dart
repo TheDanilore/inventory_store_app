@@ -18,8 +18,7 @@ import 'package:inventory_store_app/models/cart_item_model.dart';
 import 'package:go_router/go_router.dart';
 
 class CustomerCartScreen extends StatefulWidget {
-  final ValueChanged<int>? onTabSelected;
-  const CustomerCartScreen({super.key, this.onTabSelected});
+  const CustomerCartScreen({super.key});
 
   @override
   State<CustomerCartScreen> createState() => _CustomerCartScreenState();
@@ -168,7 +167,6 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
     return CustomerLayout(
-      onTabSelected: widget.onTabSelected,
       title: 'Danilore Store',
       showBackButton: false,
       showProfileIcon: false,

@@ -17,8 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
-  final ValueChanged<int>? onTabSelected;
-  const CustomerCatalogScreen({super.key, this.onTabSelected});
+  const CustomerCatalogScreen({super.key});
 
   @override
   State<CustomerCatalogScreen> createState() => _CustomerCatalogScreenState();
@@ -129,9 +128,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
       title: 'Catálogo',
       currentIndex: 0,
       showAppBar: false,
-      onTabSelected: widget.onTabSelected,
-      // Usaremos el appbar normal de customer layout si es que no queremos hacer uno super custom,
-      // pero CustomerLayout por defecto esconde el AppBar si pasamos child.
       body: Stack(
         children: [
           Positioned.fill(
