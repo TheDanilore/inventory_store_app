@@ -186,93 +186,101 @@ class _SupplierCreditMovementsViewState
           },
           body: RefreshIndicator(
             onRefresh: () => provider.refresh(),
-            child: Column(
-              children: [
-                Expanded(
-                  child: CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: SupplierCreditMovementsSummaryHeader(
-                          supplierName: widget.supplierName,
-                          currentDebt: widget.currentDebt,
-                          creditLimit: widget.creditLimit,
-                          debtPercent: debtPercent,
-                          totalCharged: provider.totalCharged,
-                          totalPaid: provider.totalPaid,
-                        ),
-                      ),
-
-                      if (provider.isLoading)
-                        const SliverFillRemaining(child: _MovementsSkeleton())
-                      else if (provider.movements.isEmpty)
-                        const SliverFillRemaining(
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.receipt_long_outlined,
-                                  size: 56,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Sin movimientos registrados',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: SupplierCreditMovementsSummaryHeader(
+                              supplierName: widget.supplierName,
+                              currentDebt: widget.currentDebt,
+                              creditLimit: widget.creditLimit,
+                              debtPercent: debtPercent,
+                              totalCharged: provider.totalCharged,
+                              totalPaid: provider.totalPaid,
                             ),
                           ),
-                        )
-                      else
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate((
-                              context,
-                              index,
-                            ) {
-                              final movement = provider.movements[index];
-                              final showDateLabel =
-                                  index == 0 ||
-                                  !_sameDay(
-                                    movement.createdAt,
-                                    provider.movements[index - 1].createdAt,
-                                  );
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (showDateLabel) ...[
-                                    const SizedBox(height: 16),
-                                    _DateDivider(date: movement.createdAt),
-                                    const SizedBox(height: 8),
+                          if (provider.isLoading)
+                            const SliverFillRemaining(
+                              child: _MovementsSkeleton(),
+                            )
+                          else if (provider.movements.isEmpty)
+                            const SliverFillRemaining(
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.receipt_long_outlined,
+                                      size: 56,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Sin movimientos registrados',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ],
-                                  SupplierCreditMovementCard(
-                                    movement: movement,
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-                              );
-                            }, childCount: provider.movements.length),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (provider.totalPages > 1)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                    child: AdminPageBlocks(
-                      currentPage: provider.currentPage,
-                      totalPages: provider.totalPages,
-                      onPageChanged: (page) => provider.setPage(page),
+                                ),
+                              ),
+                            )
+                          else
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final movement = provider.movements[index];
+                                  final showDateLabel =
+                                      index == 0 ||
+                                      !_sameDay(
+                                        movement.createdAt,
+                                        provider.movements[index - 1].createdAt,
+                                      );
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (showDateLabel) ...[
+                                        const SizedBox(height: 16),
+                                        _DateDivider(date: movement.createdAt),
+                                        const SizedBox(height: 8),
+                                      ],
+                                      SupplierCreditMovementCard(
+                                        movement: movement,
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+                                  );
+                                }, childCount: provider.movements.length),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                    if (provider.totalPages > 1)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                        child: AdminPageBlocks(
+                          currentPage: provider.currentPage,
+                          totalPages: provider.totalPages,
+                          onPageChanged: (page) => provider.setPage(page),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
