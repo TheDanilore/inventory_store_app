@@ -14,6 +14,7 @@ class ProfileHeaderSection extends StatelessWidget {
   final bool isEditing;
   final VoidCallback? onPickImage;
   final VoidCallback? onEditToggle;
+  final bool isTablet;
 
   const ProfileHeaderSection({
     super.key,
@@ -26,22 +27,28 @@ class ProfileHeaderSection extends StatelessWidget {
     required this.isEditing,
     this.onPickImage,
     this.onEditToggle,
+    this.isTablet = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      margin: isTablet
+          ? const EdgeInsets.only(top: 16, left: 16, right: 16)
+          : null,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           colors: [AppColors.primary, Color(0xFF0F3460)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
+        borderRadius: isTablet
+            ? BorderRadius.circular(32)
+            : const BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
       ),
       child: Stack(
         children: [

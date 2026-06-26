@@ -27,8 +27,9 @@ class ExpandableProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            blurRadius: 14,
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            spreadRadius: 1,
             offset: const Offset(0, 4),
           ),
         ],
@@ -59,11 +60,14 @@ class ExpandableProfileCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.textHint,
+                    AnimatedRotation(
+                      turns: isExpanded ? -0.5 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.textHint,
+                      ),
                     ),
                   ],
                 ),

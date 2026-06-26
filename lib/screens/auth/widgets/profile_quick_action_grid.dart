@@ -29,11 +29,11 @@ class ProfileQuickActionGrid extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: items.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 220,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.55,
+          mainAxisExtent: 78,
         ),
         itemBuilder: (context, index) => _QuickActionCard(item: items[index]),
       ),
@@ -72,8 +72,9 @@ class _QuickActionCardState extends State<_QuickActionCard> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.06),
-                  blurRadius: 14,
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  spreadRadius: 1,
                   offset: const Offset(0, 4),
                 ),
               ],

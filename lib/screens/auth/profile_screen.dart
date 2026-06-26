@@ -12,8 +12,6 @@ import 'package:inventory_store_app/screens/auth/widgets/profile_header_section.
 import 'package:inventory_store_app/screens/auth/widgets/profile_quick_action_grid.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_read_only_info_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_edit_form_section.dart';
-import 'dart:ui';
-import 'package:inventory_store_app/screens/auth/widgets/expandable_profile_card.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_action_buttons_section.dart';
 import 'package:inventory_store_app/screens/auth/widgets/profile_shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -38,8 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _newPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
-  bool _isPersonalDataExpanded = false;
-  bool _isSecurityExpanded = false;
+  bool _isEditing = false;
   String _docType = 'DNI';
   bool _hasInitialized = false;
 
@@ -100,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
 
     if (success) {
-      setState(() => _isPersonalDataExpanded = false);
+      setState(() => _isEditing = false);
       AppSnackbar.show(
         context,
         message: 'Perfil actualizado con éxito',
@@ -152,7 +149,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (success) {
       _newPasswordCtrl.clear();
       _confirmPasswordCtrl.clear();
-      setState(() => _isSecurityExpanded = false);
       AppSnackbar.show(
         context,
         message: 'Contraseña actualizada con éxito.',
@@ -184,301 +180,206 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body:
           provider.isLoading || !_hasInitialized
               ? const ProfileShimmer()
-              : RefreshIndicator(
-                color: AppColors.teal,
-                onRefresh: () async {
-                  await provider.fetchUserProfile();
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final bool isTablet = constraints.maxWidth >= 750;
+              : SizedBox(
+                height: double.infinity,
+                child: RefreshIndicator(
+                  color: AppColors.teal,
+                  onRefresh: () async {
+                    await provider.fetchUserProfile();
+                    // Also might fetch wallet balance if provider handles it?
+                  },
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: ProfileHeaderSection(
+                          displayName:
+                              provider.fullName.isEmpty
+                                  ? 'Usuario'
+                                  : provider.fullName,
+                          userRole: provider.userRole,
+                          email: email,
+                          walletBalance: walletBalance,
+                          avatarUrl: provider.avatarUrl,
+                          imageBytes: provider.imageBytes,
+                          isEditing: _isEditing,
+                          onPickImage: _pickImage,
+                          onEditToggle:
+                              () => setState(() {
+                                if (_isEditing) {
+                                  // Cancelar edición revierte los valores
+                                  _nameCtrl.text = provider.fullName;
+                                  _phoneCtrl.text = provider.phone;
+                                  _docNumCtrl.text = provider.documentNumber;
+                                  _docType = provider.documentType;
+                                  provider.setImageBytes(null);
+                                }
+                                _isEditing = !_isEditing;
+                              }),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-                      final headerSection = ProfileHeaderSection(
-                        displayName:
-                            provider.fullName.isEmpty
-                                ? 'Usuario'
-                                : provider.fullName,
-                        userRole: provider.userRole,
-                        email: email,
-                        walletBalance: walletBalance,
-                        avatarUrl: provider.avatarUrl,
-                        imageBytes: provider.imageBytes,
-                        isEditing: true, // Always show camera icon
-                        onPickImage: _pickImage,
-                        onEditToggle: null, // Removed toggle button
-                      );
-
-                      final quickActions =
-                          widget.openedFromAdmin
-                              ? const SizedBox.shrink()
-                              : Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _sectionLabel('Accesos rápidos'),
-                                  ProfileQuickActionGrid(
-                                    items: [
-                                      ProfileQuickActionItem(
-                                        title: 'Monedas',
-                                        value: 'Canjear ',
-                                        icon: Icons.stars_rounded,
-                                        color: AppColors.gold,
-                                        onTap:
-                                            () => context.push(
-                                              '/customer/points',
-                                            ),
-                                      ),
-                                      ProfileQuickActionItem(
-                                        title: 'Pedidos',
-                                        value: 'Ver historial',
-                                        icon: Icons.receipt_long_rounded,
-                                        color: AppColors.info,
-                                        onTap:
-                                            () => context.push(
-                                              '/customer/orders',
-                                            ),
-                                      ),
-                                      ProfileQuickActionItem(
-                                        title: 'Direcciones',
-                                        value: 'Ver direcciones',
-                                        icon: Icons.location_on_rounded,
-                                        color: AppColors.success,
-                                        onTap:
-                                            () => context.push(
-                                              '/customer/address',
-                                            ),
-                                      ),
-                                      ProfileQuickActionItem(
-                                        title: 'Deseos',
-                                        value: 'Ver wishlist',
-                                        icon: Icons.favorite_rounded,
-                                        color: AppColors.accent,
-                                        onTap:
-                                            () => context.push(
-                                              '/customer/wishlist',
-                                            ),
-                                      ),
-                                    ],
+                      if (!widget.openedFromAdmin)
+                        SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _sectionLabel('Accesos rápidos'),
+                              ProfileQuickActionGrid(
+                                items: [
+                                  ProfileQuickActionItem(
+                                    title: 'Monedas',
+                                    value: 'Canjear ',
+                                    icon: Icons.stars_rounded,
+                                    color: AppColors.gold,
+                                    onTap:
+                                        () => context.push('/customer/points'),
                                   ),
-                                  const SizedBox(height: 4),
+                                  ProfileQuickActionItem(
+                                    title: 'Pedidos',
+                                    value: 'Ver historial',
+                                    icon: Icons.receipt_long_rounded,
+                                    color: AppColors.info,
+                                    onTap:
+                                        () => context.push('/customer/orders'),
+                                  ),
+                                  ProfileQuickActionItem(
+                                    title: 'Direcciones',
+                                    value: 'Ver direcciones',
+                                    icon: Icons.location_on_rounded,
+                                    color: AppColors.success,
+                                    onTap:
+                                        () => context.push('/customer/address'),
+                                  ),
+                                  ProfileQuickActionItem(
+                                    title: 'Deseos',
+                                    value: 'Ver wishlist',
+                                    icon: Icons.favorite_rounded,
+                                    color: AppColors.accent,
+                                    onTap:
+                                        () =>
+                                            context.push('/customer/wishlist'),
+                                  ),
                                 ],
-                              );
-
-                      final profileCards = Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _sectionLabelInline('Datos Personales'),
-                          Stack(
-                            children: [
-                              ExpandableProfileCard(
-                                title: 'Datos Personales',
-                                icon: Icons.person_outline_rounded,
-                                isExpanded: _isPersonalDataExpanded,
-                                onToggle: () {
-                                  setState(() {
-                                    _isPersonalDataExpanded =
-                                        !_isPersonalDataExpanded;
-                                    if (_isPersonalDataExpanded) {
-                                      _nameCtrl.text = provider.fullName;
-                                      _phoneCtrl.text = provider.phone;
-                                      _docNumCtrl.text =
-                                          provider.documentNumber;
-                                      _docType = provider.documentType;
-                                    }
-                                  });
-                                },
-                                collapsedChild: Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: ProfileReadOnlyInfoSection(
-                                    email: email.isEmpty ? 'Sin correo' : email,
-                                    userRole: provider.userRole,
-                                    fullName: provider.fullName,
-                                    phone: provider.phone,
-                                    docType: provider.documentType,
-                                    docNum: provider.documentNumber,
-                                  ),
-                                ),
-                                expandedChild: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: ProfileEditFormSection(
-                                    nameCtrl: _nameCtrl,
-                                    phoneCtrl: _phoneCtrl,
-                                    docNumCtrl: _docNumCtrl,
-                                    docType: _docType,
-                                    onDocTypeChanged:
-                                        (v) => setState(() => _docType = v),
-                                    onSave:
-                                        provider.isSaving
-                                            ? () {}
-                                            : _saveProfile,
-                                  ),
-                                ),
                               ),
-                              if (provider.isSaving)
-                                Positioned.fill(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(
-                                        sigmaX: 4,
-                                        sigmaY: 4,
-                                      ),
-                                      child: Container(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              const SizedBox(height: 4),
                             ],
                           ),
-                          const SizedBox(height: 20),
-                          _sectionLabelInline('Seguridad'),
-                          Stack(
+                        ),
+
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              ExpandableProfileCard(
-                                title: 'Contraseña',
-                                icon: Icons.lock_outline_rounded,
-                                isExpanded: _isSecurityExpanded,
-                                onToggle: () {
-                                  setState(() {
-                                    _isSecurityExpanded = !_isSecurityExpanded;
-                                  });
-                                },
-                                collapsedChild: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.password_rounded,
-                                        size: 16,
-                                        color: AppColors.textHint,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '••••••••',
-                                        style: TextStyle(
-                                          color: AppColors.textSecondary,
-                                          letterSpacing: 2,
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 350),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeIn,
+                                child:
+                                    _isEditing
+                                        ? Column(
+                                          key: const ValueKey('editMode'),
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            _sectionLabelInline(
+                                              'Editar datos personales',
+                                            ),
+                                            Stack(
+                                              children: [
+                                                ProfileEditFormSection(
+                                                  nameCtrl: _nameCtrl,
+                                                  phoneCtrl: _phoneCtrl,
+                                                  docNumCtrl: _docNumCtrl,
+                                                  docType: _docType,
+                                                  onDocTypeChanged:
+                                                      (v) => setState(
+                                                        () => _docType = v,
+                                                      ),
+                                                  onSave:
+                                                      provider.isSaving
+                                                          ? () {}
+                                                          : _saveProfile,
+                                                ),
+                                                if (provider.isSaving)
+                                                  const Positioned.fill(
+                                                    child: ColoredBox(
+                                                      color: Colors.white54,
+                                                      child: Center(
+                                                        child:
+                                                            CircularProgressIndicator(),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 14),
+                                            _sectionLabelInline('Seguridad'),
+                                            PasswordChangeCard(
+                                              newPasswordCtrl: _newPasswordCtrl,
+                                              confirmPasswordCtrl:
+                                                  _confirmPasswordCtrl,
+                                              isUpdating:
+                                                  provider.isUpdatingPassword,
+                                              onSave: _changePassword,
+                                            ),
+                                          ],
+                                        )
+                                        : Column(
+                                          key: const ValueKey('readMode'),
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            _sectionLabelInline(
+                                              'Información de cuenta',
+                                            ),
+                                            ProfileReadOnlyInfoSection(
+                                              email:
+                                                  email.isEmpty
+                                                      ? 'Sin correo'
+                                                      : email,
+                                              userRole: provider.userRole,
+                                              fullName: provider.fullName,
+                                              phone: provider.phone,
+                                              docType: provider.documentType,
+                                              docNum: provider.documentNumber,
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                expandedChild: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: PasswordChangeCard(
-                                    newPasswordCtrl: _newPasswordCtrl,
-                                    confirmPasswordCtrl: _confirmPasswordCtrl,
-                                    isUpdating: provider.isUpdatingPassword,
-                                    onSave: _changePassword,
-                                  ),
-                                ),
                               ),
-                              if (provider.isUpdatingPassword)
-                                Positioned.fill(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(
-                                        sigmaX: 4,
-                                        sigmaY: 4,
-                                      ),
-                                      child: Container(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+
+                              const SizedBox(height: 20),
+
+                              ProfileActionButtonsSection(
+                                isAdmin: provider.userRole == 'Administrador',
+                                openedFromAdmin: widget.openedFromAdmin,
+                                onToggleView: () {
+                                  if (widget.openedFromAdmin) {
+                                    context.go('/customer');
+                                  } else {
+                                    context.go('/admin');
+                                  }
+                                },
+                                onSignOut: () async {
+                                  final authProvider =
+                                      context.read<AuthProvider>();
+                                  authProvider.clearSession();
+                                  try {
+                                    await provider.signOut();
+                                  } catch (e) {
+                                    debugPrint('Logout error: $e');
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 32),
                             ],
                           ),
-                        ],
-                      );
-
-                      final actionButtons = ProfileActionButtonsSection(
-                        isAdmin: provider.userRole == 'Administrador',
-                        openedFromAdmin: widget.openedFromAdmin,
-                        onToggleView: () {
-                          if (widget.openedFromAdmin) {
-                            context.go('/customer');
-                          } else {
-                            context.go('/admin');
-                          }
-                        },
-                        onSignOut: () async {
-                          final authProvider = context.read<AuthProvider>();
-                          authProvider.clearSession();
-                          try {
-                            await provider.signOut();
-                          } catch (e) {
-                            debugPrint('Logout error: $e');
-                          }
-                        },
-                      );
-
-                      if (isTablet) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: Column(
-                                children: [headerSection, quickActions],
-                              ),
-                            ),
-                            Expanded(
-                              flex: 6,
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  24,
-                                  16,
-                                  24,
-                                ),
-                                child: Column(
-                                  children: [
-                                    profileCards,
-                                    const SizedBox(height: 32),
-                                    actionButtons,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Column(
-                        children: [
-                          headerSection,
-                          const SizedBox(height: 8),
-                          quickActions,
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: profileCards,
-                          ),
-                          const SizedBox(height: 20),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: actionButtons,
-                          ),
-                          const SizedBox(height: 32),
-                        ],
-                      );
-                    },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
