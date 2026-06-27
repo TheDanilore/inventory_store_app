@@ -33,6 +33,8 @@ class _KardexView extends StatefulWidget {
 
 class _KardexViewState extends State<_KardexView> {
   final _searchCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
   Timer? _debounce;
 
   @override
@@ -41,11 +43,19 @@ class _KardexViewState extends State<_KardexView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<KardexProvider>().addListener(_onProviderError);
     });
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -368,15 +378,9 @@ class _KardexViewState extends State<_KardexView> {
 
                           // --- LISTADO ---
                           if (provider.isLoading && provider.movements.isEmpty)
-                            SliverToBoxAdapter(
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: KardexSkeleton(),
-                              ),
-                            )
+                            const SliverFillRemaining(child: KardexSkeleton())
                           else if (provider.movements.isEmpty)
                             const SliverFillRemaining(
-                              hasScrollBody: false,
                               child: AppEmptyState(
                                 icon: Icons.history,
                                 title: 'No hay movimientos',
@@ -445,9 +449,17 @@ class _KardexViewState extends State<_KardexView> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         icon: const Icon(Icons.add),
-                        label: const Text(
-                          'Movimiento',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        label: AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child:
+                              _isFabExtended
+                                  ? const Text(
+                                    'Movimiento',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                  : const SizedBox.shrink(),
                         ),
                       )
                       : null,

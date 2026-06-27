@@ -23,16 +23,27 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   // Para los conteos globales mostrados en los tabs
   int _customerTotal = 0;
   int _adminTotal = 0;
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
     _tabController = TabController(length: 2, vsync: this);
     _fetchGlobalCounts();
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _tabController.dispose();
     _searchCtrl.dispose();
     super.dispose();
@@ -287,10 +298,15 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           }
         },
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text(
+        label: AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child: _isFabExtended
+                              ? const Text(
           'Nuevo',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        )
+                              : const SizedBox.shrink(),
+                        ),
       ),
     );
   }

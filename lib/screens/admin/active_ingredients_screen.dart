@@ -16,11 +16,20 @@ class ActiveIngredientsScreen extends StatefulWidget {
 }
 
 class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
   final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final query = context.read<ActiveIngredientsProvider>().searchQuery;
       if (query.isNotEmpty) {
@@ -31,6 +40,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -112,10 +122,15 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
         backgroundColor: AppColors.primary,
         onPressed: () => _showIngredientForm(),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
+        label: AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child: _isFabExtended
+                              ? const Text(
           'Nuevo',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        )
+                              : const SizedBox.shrink(),
+                        ),
       ),
     );
   }
@@ -160,6 +175,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       );
     }
     return ListView.builder(
+                                controller: _scrollController,
       key: const ValueKey('list'),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

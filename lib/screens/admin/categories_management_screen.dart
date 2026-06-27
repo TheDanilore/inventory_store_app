@@ -34,10 +34,20 @@ class _CategoriesManagementScreenState
     if (name.isEmpty) return _categoryColors[0];
     return _categoryColors[name.hashCode.abs() % _categoryColors.length];
   }
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final query = context.read<CategoriesProvider>().searchQuery;
       if (query.isNotEmpty) {
@@ -48,6 +58,7 @@ class _CategoriesManagementScreenState
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -110,10 +121,15 @@ class _CategoriesManagementScreenState
         backgroundColor: AppColors.primary,
         tooltip: 'Crear nueva categoría',
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
+        label: AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child: _isFabExtended
+                              ? const Text(
           'Nueva',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        )
+                              : const SizedBox.shrink(),
+                        ),
       ),
       body: Consumer<CategoriesProvider>(
         builder: (context, provider, child) {

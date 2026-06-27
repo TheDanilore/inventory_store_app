@@ -17,6 +17,21 @@ class AttributesManagementScreen extends StatefulWidget {
 
 class _AttributesManagementScreenState
     extends State<AttributesManagementScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
+  }
+
   void _showAttributeForm([Map<String, dynamic>? attribute]) {
     showModalBottomSheet(
       context: context,
@@ -38,6 +53,12 @@ class _AttributesManagementScreenState
           ),
     );
   }
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -60,10 +81,15 @@ class _AttributesManagementScreenState
         backgroundColor: AppColors.primary,
         onPressed: () => _showAttributeForm(),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
+        label: AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child: _isFabExtended
+                              ? const Text(
           'Nueva Propiedad',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        )
+                              : const SizedBox.shrink(),
+                        ),
       ),
     );
   }
@@ -104,6 +130,7 @@ class _AttributesManagementScreenState
     }
 
     return ListView.separated(
+                                controller: _scrollController,
       key: const ValueKey('list'),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -146,6 +173,20 @@ class _AttributeCard extends StatefulWidget {
 }
 
 class _AttributeCardState extends State<_AttributeCard> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
+  }
   bool _isCardPressed = false;
 
   @override

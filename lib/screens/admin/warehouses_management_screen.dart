@@ -19,10 +19,20 @@ class WarehousesManagementScreen extends StatefulWidget {
 class _WarehousesManagementScreenState
     extends State<WarehousesManagementScreen> {
   final _searchCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isFabExtended = true;
+
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _isFabExtended) {
+        setState(() => _isFabExtended = false);
+      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
+        setState(() => _isFabExtended = true);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final query = context.read<WarehousesProvider>().searchQuery;
       if (query.isNotEmpty) {
@@ -33,6 +43,7 @@ class _WarehousesManagementScreenState
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -177,6 +188,7 @@ class _WarehousesManagementScreenState
                             ],
                           )
                           : ListView.builder(
+                                controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -352,10 +364,15 @@ class _WarehousesManagementScreenState
         onPressed: () => _showWarehouseForm(),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
+        label: AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          child: _isFabExtended
+                              ? const Text(
           'Nuevo',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        )
+                              : const SizedBox.shrink(),
+                        ),
       ),
     );
   }
