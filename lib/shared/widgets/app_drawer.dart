@@ -495,7 +495,7 @@ class _AppDrawerState extends State<AppDrawer> {
     // Si algún sub-ítem es la pantalla activa, auto-expandir el grupo
     final currentPath = GoRouterState.of(context).uri.path;
     final hasActiveChild = item.children.any(
-      (sub) => currentPath.startsWith(sub.routePath),
+      (sub) => currentPath == sub.routePath || currentPath.startsWith('${sub.routePath}/'),
     );
     if (hasActiveChild && !_expanded.contains(item.title)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
