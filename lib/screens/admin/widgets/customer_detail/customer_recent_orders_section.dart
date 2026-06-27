@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/providers/admin/customer_detail_provider.dart'
-    show RecentOrder;
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/admin/customer_detail_provider.dart';
+import 'package:inventory_store_app/providers/admin/orders_provider.dart';
+import 'package:inventory_store_app/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'customer_section_card.dart';
 
@@ -40,7 +42,18 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                     width: double.infinity,
                     child: TextButton(
                       onPressed: () {
-                        // Implementar navegación a lista completa
+                        final customer = context.read<CustomerDetailProvider>().customer;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChangeNotifierProvider(
+                              create: (_) => OrdersProvider(customerIdFilter: customer.id),
+                              child: OrdersScreen(
+                                customTitle: 'Pedidos de ${customer.fullName}',
+                              ),
+                            ),
+                          ),
+                        );
                       },
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primary,

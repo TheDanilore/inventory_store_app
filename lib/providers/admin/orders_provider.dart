@@ -28,6 +28,10 @@ class OrdersProvider extends ChangeNotifier {
   String _searchQuery = '';
   int _currentPage = 0;
 
+  final String? customerIdFilter;
+
+  OrdersProvider({this.customerIdFilter});
+
   // Getters
   List<OrderModel> get orders => _orders;
   bool get isLoading => _isLoading;
@@ -93,6 +97,10 @@ class OrdersProvider extends ChangeNotifier {
       if (_statusFilter != 'ALL') query = query.eq('status', _statusFilter);
       if (_paymentStatusFilter != 'ALL') {
         query = query.eq('payment_status', _paymentStatusFilter);
+      }
+      
+      if (customerIdFilter != null) {
+        query = query.eq('customer_id', customerIdFilter!);
       }
 
       if (_dateRange != null) {

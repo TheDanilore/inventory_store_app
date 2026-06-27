@@ -14,7 +14,9 @@ import 'package:inventory_store_app/providers/admin/orders_provider.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key});
+  final String? customTitle;
+
+  const OrdersScreen({super.key, this.customTitle});
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -449,7 +451,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminLayout(
-      title: 'Gestión de Pedidos',
+      title: widget.customTitle ?? 'Gestión de Pedidos',
       showBackButton: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
