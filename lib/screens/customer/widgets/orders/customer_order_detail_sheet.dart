@@ -1,53 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
-import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/models/order_model.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
-import 'package:inventory_store_app/providers/customer/customer_orders_provider.dart';
 
-class CustomerOrderDetailSheet extends StatefulWidget {
+class CustomerOrderDetailSheet extends StatelessWidget {
   final OrderModel order;
+  final List<OrderItemModel> items;
 
-  const CustomerOrderDetailSheet({super.key, required this.order});
-
-  @override
-  State<CustomerOrderDetailSheet> createState() =>
-      _CustomerOrderDetailSheetState();
-}
-
-class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
-  List<OrderItemModel>? _items;
-  bool _isLoading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadItems();
-  }
-
-  Future<void> _loadItems() async {
-    try {
-      final provider = context.read<CustomerOrdersProvider>();
-      final items = await provider.fetchOrderItems(widget.order.id);
-      if (!mounted) return;
-      setState(() {
-        _items = items;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
+  const CustomerOrderDetailSheet({
+    super.key,
+    required this.order,
+    required this.items,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -85,7 +58,7 @@ class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '#${widget.order.id.toUpperCase()}',
+                        '#${order.id.toUpperCase()}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -109,41 +82,21 @@ class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
           ),
 
           Flexible(
-            child:
-                _isLoading
-                    ? const Padding(
-                      padding: EdgeInsets.all(40.0),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    )
-                    : _error != null
-                    ? Padding(
-                      padding: const EdgeInsets.all(40.0),
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                    : ListView.separated(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
-                      itemCount: _items!.length,
-                      separatorBuilder: (_, _) => const Divider(height: 24),
-                      itemBuilder: (context, index) {
-                        return _buildItemCard(_items![index]);
-                      },
-                    ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 8,
+              ),
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const Divider(height: 24),
+              itemBuilder: (context, index) {
+                return _buildItemCard(context, items[index]);
+              },
+            ),
           ),
 
-          if (!_isLoading && _items != null)
-            Container(
+          Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -161,13 +114,13 @@ class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
                   children: [
                     _buildSummaryRow(
                       'Subtotal',
-                      'S/ ${(widget.order.totalAmount + widget.order.discountAmount).toStringAsFixed(2)}',
+                      'S/ ${(order.totalAmount + order.discountAmount).toStringAsFixed(2)}',
                     ),
-                    if (widget.order.discountAmount > 0) ...[
+                    if (order.discountAmount > 0) ...[
                       const SizedBox(height: 8),
                       _buildSummaryRow(
                         'Descuento',
-                        '-S/ ${widget.order.discountAmount.toStringAsFixed(2)}',
+                        '-S/ ${order.discountAmount.toStringAsFixed(2)}',
                         isDiscount: true,
                       ),
                     ],
@@ -186,7 +139,7 @@ class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
                           ),
                         ),
                         Text(
-                          'S/ ${widget.order.totalAmount.toStringAsFixed(2)}',
+                          'S/ ${order.totalAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
@@ -231,7 +184,7 @@ class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
     );
   }
 
-  Widget _buildItemCard(OrderItemModel item) {
+  Widget _buildItemCard(BuildContext context, OrderItemModel item) {
     String attributesStr = '';
 
     if (item.attributes.isNotEmpty) {
@@ -242,88 +195,106 @@ class _CustomerOrderDetailSheetState extends State<CustomerOrderDetailSheet> {
 
     String? imageUrl = item.displayImageUrl;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child:
-              imageUrl != null
-                  ? CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder:
-                        (context, url) => const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                    errorWidget:
-                        (context, url, error) => const Icon(
-                          Icons.image_not_supported_outlined,
-                          color: Colors.grey,
-                        ),
-                  )
-                  : const Icon(Icons.inventory_2_outlined, color: Colors.grey),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.productName ?? 'Producto Desconocido',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        // Cierra el bottom sheet actual antes de navegar (opcional, pero buena práctica)
+        Navigator.pop(context);
+        final variantQuery =
+            item.variantId != null ? '?variant=${item.variantId}' : '';
+        context.push('/customer/product/${item.productId}$variantQuery');
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
               ),
-              if (attributesStr.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  attributesStr,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              clipBehavior: Clip.antiAlias,
+              child:
+                  imageUrl != null
+                      ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder:
+                            (context, url) => const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                        errorWidget:
+                            (context, url, error) => const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.grey,
+                            ),
+                      )
+                      : const Icon(
+                        Icons.inventory_2_outlined,
+                        color: Colors.grey,
+                      ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${item.quantity} un. x S/ ${item.appliedPrice.toStringAsFixed(2)}',
+                    item.productName ?? 'Producto Desconocido',
                     style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    'S/ ${(item.quantity * item.appliedPrice).toStringAsFixed(2)}',
-                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
+                      color: AppColors.textPrimary,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (attributesStr.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      attributesStr,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${item.quantity} un. x S/ ${item.appliedPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        'S/ ${(item.quantity * item.appliedPrice).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

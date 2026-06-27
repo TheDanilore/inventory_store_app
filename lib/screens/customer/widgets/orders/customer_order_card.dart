@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/order_model.dart';
+import 'package:inventory_store_app/providers/customer/customer_orders_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/orders/customer_order_detail_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
@@ -208,13 +210,25 @@ class CustomerOrderCard extends StatelessWidget {
     );
   }
 
-  void _showOrderDetails(BuildContext context, OrderModel order) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CustomerOrderDetailSheet(order: order),
-    );
+  void _showOrderDetails(BuildContext context, OrderModel order) async {
+    try {
+      final provider = context.read<CustomerOrdersProvider>();
+      final items = await provider.fetchOrderItems(order.id);
+      
+      if (!context.mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => CustomerOrderDetailSheet(order: order, items: items),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   Widget _actionButton({
