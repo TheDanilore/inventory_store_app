@@ -532,55 +532,72 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                 const SizedBox(height: 32),
                 if (_isSaving)
                   const AppLoading()
-                else ...[
-                  if (_score > 0)
-                    AppPrimaryButton(
-                      label: 'Reclamar y Salir',
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primaryDark,
-                      onPressed: _claimRewardAndExit,
-                    ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        if (_score == 0) {
-                          _startGame();
-                        } else {
-                          final limit = context.read<AppConfigProvider>().getDouble('memorama_daily_limit', 1).round();
-                          final played = context.read<PointsProvider>().memoramaPlaysToday;
-                          final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
-                          
-                          if (canPlayAgain) {
-                            _claimAndRestart();
-                          } else {
-                            _claimRewardAndExit();
-                          }
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: BorderSide(color: Colors.amber.shade300, width: 2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: Builder(
-                        builder: (context) {
-                          final limit = context.read<AppConfigProvider>().getDouble('memorama_daily_limit', 1).round();
-                          final played = context.read<PointsProvider>().memoramaPlaysToday;
-                          final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
+                else
+                  Builder(
+                    builder: (context) {
+                      final limit = context.read<AppConfigProvider>().getDouble('memorama_daily_limit', 1).round();
+                      final played = context.read<PointsProvider>().memoramaPlaysToday;
+                      final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
 
-                          return Text(
-                            _score > 0 
-                                ? (canPlayAgain ? 'Reclamar y Jugar de Nuevo' : 'Reclamar y Salir') 
-                                : 'Volver a Intentar', 
-                            style: TextStyle(color: Colors.amber.shade300, fontWeight: FontWeight.bold, fontSize: 16)
-                          );
-                        }
-                      ),
-                    ),
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_score > 0) ...[
+                            if (canPlayAgain) ...[
+                              AppPrimaryButton(
+                                label: 'Reclamar y Jugar de Nuevo',
+                                backgroundColor: Colors.amber,
+                                foregroundColor: AppColors.primaryDark,
+                                onPressed: _claimAndRestart,
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: _claimRewardAndExit,
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    side: const BorderSide(color: Colors.white, width: 2),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  child: const Text('Reclamar y Salir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                ),
+                              ),
+                            ] else ...[
+                              AppPrimaryButton(
+                                label: 'Reclamar y Salir',
+                                backgroundColor: Colors.amber,
+                                foregroundColor: AppColors.primaryDark,
+                                onPressed: _claimRewardAndExit,
+                              ),
+                            ],
+                          ] else ...[
+                            if (canPlayAgain) ...[
+                              AppPrimaryButton(
+                                label: 'Volver a Intentar',
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppColors.primaryDark,
+                                onPressed: _startGame,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context, 0),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  side: const BorderSide(color: Colors.white54, width: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                                child: const Text('Salir', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 16)),
+                              ),
+                            ),
+                          ]
+                        ],
+                      );
+                    },
                   ),
-                ]
               ],
             ),
           ),
