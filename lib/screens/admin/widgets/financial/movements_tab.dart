@@ -25,22 +25,23 @@ class MovementsTab extends StatefulWidget {
 
 class _MovementsTabState extends State<MovementsTab> {
   final ScrollController _scrollController = ScrollController();
-  bool _isFabExtended = true;
+  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      if (_scrollController.offset > 10 && _isFabExtended) {
-        setState(() => _isFabExtended = false);
-      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
-        setState(() => _isFabExtended = true);
+      if (_scrollController.offset > 10 && _isFabExtended.value) {
+        _isFabExtended.value = false;
+      } else if (_scrollController.offset <= 10 && !_isFabExtended.value) {
+        _isFabExtended.value = true;
       }
     });
   }
 
   @override
   void dispose() {
+    _isFabExtended.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -337,12 +338,17 @@ class _MovementsTabState extends State<MovementsTab> {
                 },
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
-                label: AnimatedSize(
+                label: ValueListenableBuilder<bool>(
+                          valueListenable: _isFabExtended,
+                          builder: (context, isExtended, _) {
+                            return AnimatedSize(
                   duration: const Duration(milliseconds: 200),
-                  child: _isFabExtended 
+                  child: isExtended 
                       ? const Text('Registrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))
                       : const SizedBox.shrink(),
-                ),
+                );
+                          },
+                        ),
               ),
             ),
           ],
