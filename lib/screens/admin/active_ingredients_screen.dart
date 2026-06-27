@@ -150,6 +150,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     }
     if (provider.ingredients.isEmpty) {
       return ListView(
+        controller: _scrollController,
         key: const ValueKey('empty'),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [

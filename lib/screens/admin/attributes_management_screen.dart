@@ -106,6 +106,7 @@ class _AttributesManagementScreenState
     }
     if (provider.attributes.isEmpty) {
       return ListView(
+        controller: _scrollController,
         key: const ValueKey('empty'),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [

@@ -251,6 +251,7 @@ class _CategoriesManagementScreenState
 
   Widget _buildEmptyState(CategoriesProvider provider) {
     return ListView(
+      controller: _scrollController,
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.15),
         Center(
@@ -317,6 +318,7 @@ class _CategoriesManagementScreenState
     final crossAxisCount = MediaQuery.of(context).size.width >= 600 ? 2 : 1;
 
     return GridView.builder(
+      controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         16,

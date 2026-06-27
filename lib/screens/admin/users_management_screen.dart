@@ -23,6 +23,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   // Para los conteos globales mostrados en los tabs
   int _customerTotal = 0;
   int _adminTotal = 0;
+  int _employeeTotal = 0;
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
@@ -37,7 +38,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
         _isFabExtended.value = true;
       }
     });
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _fetchGlobalCounts();
   }
 
@@ -63,11 +64,17 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           .select('id')
           .eq('role', AppRoles.admin)
           .count(CountOption.exact);
+      final employeeRes = await supabase
+          .from('profiles_with_email')
+          .select('id')
+          .eq('role', AppRoles.employee)
+          .count(CountOption.exact);
 
       if (mounted) {
         setState(() {
           _customerTotal = customerRes.count;
           _adminTotal = adminRes.count;
+          _employeeTotal = employeeRes.count;
         });
       }
     } catch (_) {}
@@ -255,6 +262,14 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       ),
                       text: 'Admins ($_adminTotal)',
                     ),
+                    Tab(
+                      iconMargin: const EdgeInsets.only(bottom: 6),
+                      icon: const Icon(
+                        Icons.badge_outlined,
+                        size: 20,
+                      ),
+                      text: 'Empleados ($_employeeTotal)',
+                    ),
                   ],
                 ),
               ),
@@ -270,11 +285,19 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                   role: AppRoles.customer,
                   searchQuery: _searchCtrl.text,
                   onlyActive: _onlyActive,
+                  scrollController: _scrollController,
                 ),
                 UsersTab(
                   role: AppRoles.admin,
                   searchQuery: _searchCtrl.text,
                   onlyActive: _onlyActive,
+                  scrollController: _scrollController,
+                ),
+                UsersTab(
+                  role: AppRoles.employee,
+                  searchQuery: _searchCtrl.text,
+                  onlyActive: _onlyActive,
+                  scrollController: _scrollController,
                 ),
               ],
             ),
@@ -284,8 +307,10 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () async {
-          final initialRole =
-              _tabController.index == 0 ? AppRoles.customer : AppRoles.admin;
+          String initialRole = AppRoles.customer;
+          if (_tabController.index == 1) initialRole = AppRoles.admin;
+          if (_tabController.index == 2) initialRole = AppRoles.employee;
+          
           final changed = await context.push<bool?>(
             '/admin/user-form',
             extra: {'initialRole': initialRole},

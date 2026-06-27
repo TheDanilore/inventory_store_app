@@ -157,7 +157,8 @@ class _WarehousesManagementScreenState
                           ? const WarehousesSkeleton(itemCount: 5)
                           : provider.warehouses.isEmpty
                           ? ListView(
-                            children: [
+                              controller: _scrollController,
+                              children: [
                               SizedBox(
                                 height:
                                     MediaQuery.of(context).size.height * 0.2,

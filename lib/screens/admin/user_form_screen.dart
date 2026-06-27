@@ -108,26 +108,46 @@ class _UserFormContentState extends State<_UserFormContent> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
+                      Column(
                         children: [
-                          Expanded(
-                            child: _RoleCard(
-                              title: 'Cliente',
-                              icon: Icons.people_alt_rounded,
-                              isSelected: provider.role == AppRoles.customer,
-                              color: AppColors.primary,
-                              onTap: () => provider.setRole(AppRoles.customer),
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Cliente',
+                                  icon: Icons.people_alt_rounded,
+                                  isSelected: provider.role == AppRoles.customer,
+                                  color: AppColors.primary,
+                                  onTap: () => provider.setRole(AppRoles.customer),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Empleado',
+                                  icon: Icons.badge_rounded,
+                                  isSelected: provider.role == AppRoles.employee,
+                                  color: Colors.teal,
+                                  onTap: () => provider.setRole(AppRoles.employee),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _RoleCard(
-                              title: 'Administrador',
-                              icon: Icons.admin_panel_settings_rounded,
-                              isSelected: provider.role == AppRoles.admin,
-                              color: Colors.indigo,
-                              onTap: () => provider.setRole(AppRoles.admin),
-                            ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Administrador',
+                                  icon: Icons.admin_panel_settings_rounded,
+                                  isSelected: provider.role == AppRoles.admin,
+                                  color: Colors.indigo,
+                                  onTap: () => provider.setRole(AppRoles.admin),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(child: SizedBox()),
+                            ],
                           ),
                         ],
                       ),
@@ -442,7 +462,9 @@ class _UserFormContentState extends State<_UserFormContent> {
                                         ? 'Guardar cambios'
                                         : (provider.role == AppRoles.admin
                                             ? 'Crear Administrador'
-                                            : 'Crear Cliente'),
+                                            : provider.role == AppRoles.employee
+                                                ? 'Crear Empleado'
+                                                : 'Crear Cliente'),
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,

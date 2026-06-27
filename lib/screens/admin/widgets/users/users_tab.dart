@@ -11,12 +11,14 @@ class UsersTab extends StatefulWidget {
   final String role;
   final String searchQuery;
   final bool onlyActive;
+  final ScrollController? scrollController;
 
   const UsersTab({
     super.key,
     required this.role,
     required this.searchQuery,
     required this.onlyActive,
+    this.scrollController,
   });
 
   @override
@@ -117,6 +119,7 @@ class _UsersTabState extends State<UsersTab> {
                 child: Stack(
                   children: [
                     ListView.builder(
+                      controller: widget.scrollController,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       itemCount: provider.users.length,
                       itemBuilder: (context, index) {
