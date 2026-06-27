@@ -155,23 +155,38 @@ class _ShiftsTabState extends State<ShiftsTab> {
                                     ),
                                   ),
                                 ),
-                                if (provider.totalPages > 1)
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                                    child: AdminPageBlocks(
-                                      currentPage: provider.currentPage,
-                                      totalPages: provider.totalPages,
-                                      onPageChanged: (page) => provider.setPage(page),
-                                    ),
-                                  ),
-                                const SizedBox(height: 60), // Space for FAB
+                                const SizedBox(height: 80), // Keep some padding so last item can be seen above pagination/FAB
                               ],
                             ),
                 ),
+                // --- PAGINACIÓN ANCLADA ---
+                if (provider.totalPages > 1 && !isLoading)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: AdminPageBlocks(
+                        currentPage: provider.currentPage,
+                        totalPages: provider.totalPages,
+                        onPageChanged: (page) => provider.setPage(page),
+                      ),
+                    ),
+                  ),
               ],
             ),
             Positioned(
-              bottom: 24,
+              bottom: 16,
               right: 16,
               child: FloatingActionButton.extended(
                 heroTag: 'fab_shifts',
@@ -204,11 +219,18 @@ class _ShiftsTabState extends State<ShiftsTab> {
   }
 }
 
-class _ActiveShiftBanner extends StatelessWidget {
+class _ActiveShiftBanner extends StatefulWidget {
   final CashShiftModel shift;
-  final VoidCallback onClose;
+  final Future<void> Function() onClose;
 
   const _ActiveShiftBanner({required this.shift, required this.onClose});
+
+  @override
+  State<_ActiveShiftBanner> createState() => _ActiveShiftBannerState();
+}
+
+class _ActiveShiftBannerState extends State<_ActiveShiftBanner> {
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -240,22 +262,28 @@ class _ActiveShiftBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Turno abierto en:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                Text(shift.accountName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.success)),
+                Text(widget.shift.accountName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.success)),
               ],
             ),
           ),
           ElevatedButton.icon(
-            onPressed: onClose,
+            onPressed: _isLoading ? null : () async {
+              setState(() => _isLoading = true);
+              await widget.onClose();
+              if (mounted) setState(() => _isLoading = false);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
               minimumSize: const Size(0, 36),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            icon: const Icon(Icons.lock_clock_rounded, size: 16),
-            label: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+            icon: _isLoading
+                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.lock_clock_rounded, size: 16),
+            label: Text(_isLoading ? 'Cargando' : 'Cerrar', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           ),
         ],
       ),
@@ -300,15 +328,23 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _ShiftCard extends StatelessWidget {
+class _ShiftCard extends StatefulWidget {
   final CashShiftModel shift;
-  final VoidCallback? onClose;
+  final Future<void> Function()? onClose;
 
   const _ShiftCard({required this.shift, this.onClose});
 
   @override
+  State<_ShiftCard> createState() => _ShiftCardState();
+}
+
+class _ShiftCardState extends State<_ShiftCard> {
+  bool _isLoading = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isOpen = shift.status == 'OPEN';
+    final isOpen = widget.shift.status == 'OPEN';
+    final shift = widget.shift;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -404,9 +440,13 @@ class _ShiftCard extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (isOpen && onClose != null)
+                if (isOpen && widget.onClose != null)
                   ElevatedButton(
-                    onPressed: onClose,
+                    onPressed: _isLoading ? null : () async {
+                      setState(() => _isLoading = true);
+                      await widget.onClose!();
+                      if (mounted) setState(() => _isLoading = false);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.danger,
                       foregroundColor: Colors.white,
@@ -415,7 +455,9 @@ class _ShiftCard extends StatelessWidget {
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text('Cerrar Turno', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                    child: _isLoading 
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Cerrar Turno', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                   ),
               ],
             ),

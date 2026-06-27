@@ -11,7 +11,10 @@ class DateFilterCalendar extends StatelessWidget {
     required this.dateRange,
     required this.onDateRangeSelected,
     required this.onClear,
+    this.isExpanded = false,
   });
+
+  final bool isExpanded;
 
   Future<void> _pickDateRange(BuildContext context) async {
     final picked = await showDateRangePicker(
@@ -53,13 +56,28 @@ class DateFilterCalendar extends StatelessWidget {
                   : null,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
           children: [
             Icon(
               Icons.date_range_rounded,
               size: 18,
               color: hasDate ? AppColors.primary : AppColors.textSecondary,
             ),
+            if (isExpanded) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasDate 
+                    ? '${dateRange!.start.day}/${dateRange!.start.month}/${dateRange!.start.year} - ${dateRange!.end.day}/${dateRange!.end.month}/${dateRange!.end.year}'
+                    : 'Seleccionar fechas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: hasDate ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
             if (hasDate) ...[
               const SizedBox(width: 4),
               GestureDetector(

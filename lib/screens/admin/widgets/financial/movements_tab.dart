@@ -149,6 +149,7 @@ class _MovementsTabState extends State<MovementsTab> {
                   const Text('Rango de Fechas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
                   DateFilterCalendar(
+                    isExpanded: true,
                     dateRange: movProvider.dateFrom != null && movProvider.dateTo != null
                         ? DateTimeRange(start: movProvider.dateFrom!, end: movProvider.dateTo!)
                         : null,
@@ -293,23 +294,37 @@ class _MovementsTabState extends State<MovementsTab> {
                                     ),
                                   ),
                                 ),
-                                if (movProvider.totalPages > 1)
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                                    child: AdminPageBlocks(
-                                      currentPage: movProvider.currentPage,
-                                      totalPages: movProvider.totalPages,
-                                      onPageChanged: (page) => movProvider.setPage(page),
-                                    ),
-                                  ),
-                                const SizedBox(height: 60), // Space for FAB
-                              ],
+                                ],
                             ),
                 ),
+                // --- PAGINACIÓN ANCLADA ---
+                if (movProvider.totalPages > 1 && !isLoading)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: AdminPageBlocks(
+                        currentPage: movProvider.currentPage,
+                        totalPages: movProvider.totalPages,
+                        onPageChanged: (page) => movProvider.setPage(page),
+                      ),
+                    ),
+                  ),
               ],
             ),
             Positioned(
-              bottom: 24,
+              bottom: 16,
               right: 16,
               child: FloatingActionButton.extended(
                 heroTag: 'fab_movements',
@@ -493,12 +508,14 @@ class _MovementCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.account_balance_wallet_rounded, size: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
-                      const SizedBox(width: 4),
-                      Text(
-                        movement.accountName ?? 'Sin cuenta',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      Flexible(
+                        child: Text(
+                          movement.accountName ?? 'Sin cuenta',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Icon(Icons.access_time_rounded, size: 12, color: AppColors.textSecondary.withValues(alpha: 0.8)),
                       const SizedBox(width: 4),
                       Text(
