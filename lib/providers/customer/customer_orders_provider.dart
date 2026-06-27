@@ -234,15 +234,6 @@ class CustomerOrdersProvider extends ChangeNotifier {
     fetchOrders(reset: true);
   }
 
-  void _setOrderProcessing(String orderId, bool isProcessing) {
-    if (isProcessing) {
-      _processingOrders[orderId] = true;
-    } else {
-      _processingOrders.remove(orderId);
-    }
-    notifyListeners();
-  }
-
   // ─── Cache helpers ────────────────────────────────────────────────────────
   Future<void> _saveToCache(String profileId, List<OrderModel> orders) async {
     try {

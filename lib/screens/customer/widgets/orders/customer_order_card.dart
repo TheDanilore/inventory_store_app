@@ -53,7 +53,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
           onTap:
               (widget.isProcessing || _isLoadingDetails)
                   ? null
-                  : () => _showOrderDetails(context, widget.order),
+                  : () => _showOrderDetails(widget.order),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -196,8 +196,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
                         onTap:
                             (widget.isProcessing || _isLoadingDetails)
                                 ? null
-                                : () =>
-                                    _showOrderDetails(context, widget.order),
+                                : () => _showOrderDetails(widget.order),
                         filled: false,
                         isProcessing: _isLoadingDetails,
                       ),
@@ -207,10 +206,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
                       child: _actionButton(
                         label: 'Repetir pedido',
                         icon: Icons.add_shopping_cart_rounded,
-                        onTap:
-                            (widget.isProcessing || _isLoadingDetails)
-                                ? null
-                                : widget.onReorder,
+                        onTap: widget.isProcessing ? null : widget.onReorder,
                         filled: true,
                         isProcessing: widget.isProcessing,
                       ),
@@ -225,7 +221,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
     );
   }
 
-  void _showOrderDetails(BuildContext context, OrderModel order) async {
+  void _showOrderDetails(OrderModel order) async {
     setState(() => _isLoadingDetails = true);
     try {
       final provider = context.read<CustomerOrdersProvider>();
