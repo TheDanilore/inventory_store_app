@@ -17,17 +17,17 @@ class ActiveIngredientsScreen extends StatefulWidget {
 
 class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _isFabExtended = true;
+  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
   final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      if (_scrollController.offset > 10 && _isFabExtended) {
-        setState(() => _isFabExtended = false);
-      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
-        setState(() => _isFabExtended = true);
+      if (_scrollController.offset > 10 && _isFabExtended.value) {
+        _isFabExtended.value = false;
+      } else if (_scrollController.offset <= 10 && !_isFabExtended.value) {
+        _isFabExtended.value = true;
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -40,6 +40,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
 
   @override
   void dispose() {
+    _isFabExtended.dispose();
     _scrollController.dispose();
     _searchCtrl.dispose();
     super.dispose();
@@ -122,14 +123,19 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
         backgroundColor: AppColors.primary,
         onPressed: () => _showIngredientForm(),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: AnimatedSize(
+        label: ValueListenableBuilder<bool>(
+                          valueListenable: _isFabExtended,
+                          builder: (context, isExtended, _) {
+                            return AnimatedSize(
                           duration: const Duration(milliseconds: 200),
-                          child: _isFabExtended
+                          child: isExtended
                               ? const Text(
           'Nuevo',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         )
                               : const SizedBox.shrink(),
+                        );
+                          },
                         ),
       ),
     );

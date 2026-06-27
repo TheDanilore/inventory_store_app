@@ -34,7 +34,7 @@ class _KardexView extends StatefulWidget {
 class _KardexViewState extends State<_KardexView> {
   final _searchCtrl = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isFabExtended = true;
+  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
   Timer? _debounce;
 
   @override
@@ -44,10 +44,10 @@ class _KardexViewState extends State<_KardexView> {
       context.read<KardexProvider>().addListener(_onProviderError);
     });
     _scrollController.addListener(() {
-      if (_scrollController.offset > 10 && _isFabExtended) {
-        setState(() => _isFabExtended = false);
-      } else if (_scrollController.offset <= 10 && !_isFabExtended) {
-        setState(() => _isFabExtended = true);
+      if (_scrollController.offset > 10 && _isFabExtended.value) {
+        _isFabExtended.value = false;
+      } else if (_scrollController.offset <= 10 && !_isFabExtended.value) {
+        _isFabExtended.value = true;
       }
     });
   }
@@ -55,6 +55,7 @@ class _KardexViewState extends State<_KardexView> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _isFabExtended.dispose();
     _scrollController.dispose();
     _debounce?.cancel();
     super.dispose();
@@ -272,6 +273,7 @@ class _KardexViewState extends State<_KardexView> {
                       color: AppColors.primary,
                       onRefresh: provider.refresh,
                       child: CustomScrollView(
+                        controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
                           // --- STICKY HEADER (FILTROS Y BÚSQUEDA) ---
@@ -449,10 +451,13 @@ class _KardexViewState extends State<_KardexView> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         icon: const Icon(Icons.add),
-                        label: AnimatedSize(
+                        label: ValueListenableBuilder<bool>(
+                          valueListenable: _isFabExtended,
+                          builder: (context, isExtended, _) {
+                            return AnimatedSize(
                           duration: const Duration(milliseconds: 200),
                           child:
-                              _isFabExtended
+                              isExtended
                                   ? const Text(
                                     'Movimiento',
                                     style: TextStyle(
@@ -460,6 +465,8 @@ class _KardexViewState extends State<_KardexView> {
                                     ),
                                   )
                                   : const SizedBox.shrink(),
+                        );
+                          },
                         ),
                       )
                       : null,
