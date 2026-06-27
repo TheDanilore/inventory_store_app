@@ -124,22 +124,22 @@ class _ShiftsTabState extends State<ShiftsTab> {
                         },
                       ),
                       const Spacer(),
-                      TextButton(
-                        onPressed:
-                            () => context.push('/admin/all-cash-shifts'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Historial global',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                      Tooltip(
+                        message: 'Historial global',
+                        child: Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          child: InkWell(
+                            onTap: () => context.push('/admin/all-cash-shifts'),
+                            borderRadius: BorderRadius.circular(14),
+                            child: const Padding(
+                              padding: EdgeInsets.all(11),
+                              child: Icon(
+                                Icons.manage_search_rounded,
+                                size: 18,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ),
                         ),
                       ),
