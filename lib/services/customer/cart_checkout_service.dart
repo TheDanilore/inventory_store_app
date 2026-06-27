@@ -61,6 +61,7 @@ class CartCheckoutService {
             .from('orders')
             .insert({
               'customer_id': customerId,
+              'created_by': customerId,
               'total_amount': totalAmount,
               'points_used': pointsUsed,
               'points_earned': pointsEarned,
