@@ -441,6 +441,7 @@ class _CustomerCreditsSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: 6,
       physics: const NeverScrollableScrollPhysics(),

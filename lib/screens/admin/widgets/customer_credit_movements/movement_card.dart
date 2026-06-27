@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/models/credit_movement_model.dart';
+import 'package:inventory_store_app/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/services/admin/orders_service.dart';
+import 'package:inventory_store_app/screens/admin/widgets/orders/order_detail_sheet.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
 class MovementCard extends StatefulWidget {
   final CustomerCreditMovementModel movement;
@@ -14,6 +17,34 @@ class MovementCard extends StatefulWidget {
 
 class _MovementCardState extends State<MovementCard> {
   bool _expanded = false;
+  bool _isLoadingOrder = false;
+
+  void _openOrder() async {
+    final orderId = widget.movement.orderId;
+    if (orderId == null) return;
+    
+    setState(() => _isLoadingOrder = true);
+    final order = await OrdersService().getOrderById(orderId);
+    if (!mounted) return;
+    setState(() => _isLoadingOrder = false);
+
+    if (order == null) {
+      AppSnackbar.show(
+        context,
+        message: 'No se pudo cargar el pedido. Es posible que haya sido eliminado.',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => OrderDetailSheet(order: order),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,14 +186,20 @@ class _MovementCardState extends State<MovementCard> {
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              // Podría navegar al detalle del pedido
-                            },
-                            icon: const Icon(
-                              Icons.receipt_long_outlined,
-                              size: 16,
-                            ),
-                            label: const Text('Ver pedido'),
+                            onPressed: _isLoadingOrder ? null : _openOrder,
+                            icon: _isLoadingOrder
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.receipt_long_outlined,
+                                    size: 16,
+                                  ),
+                            label: Text(_isLoadingOrder ? 'Cargando...' : 'Ver pedido'),
                             style: OutlinedButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               foregroundColor: AppColors.primary,

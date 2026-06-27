@@ -1,6 +1,6 @@
 class CustomerCreditMovementModel {
   final String id;
-  final String creditId;
+  final String customerCreditId;
   final String? orderId;
   final String movementType; // 'CHARGE' o 'PAYMENT'
   final double amount;
@@ -18,7 +18,7 @@ class CustomerCreditMovementModel {
 
   CustomerCreditMovementModel({
     required this.id,
-    required this.creditId,
+    required this.customerCreditId,
     this.orderId,
     required this.movementType,
     required this.amount,
@@ -37,7 +37,7 @@ class CustomerCreditMovementModel {
   factory CustomerCreditMovementModel.fromJson(Map<String, dynamic> json) {
     return CustomerCreditMovementModel(
       id: json['id'] as String,
-      creditId: json['customer_credit_id'] as String,
+      customerCreditId: json['customer_credit_id'] as String,
       orderId: json['order_id'] as String?,
       movementType: json['movement_type'] as String,
       // Conversión segura de campos numéricos (numeric de SQL a double de Dart)
@@ -62,7 +62,7 @@ class CustomerCreditMovementModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'customer_credit_id': creditId,
+      'customer_credit_id': customerCreditId,
       'order_id': orderId,
       'movement_type': movementType,
       'amount': amount,
@@ -85,7 +85,7 @@ class CustomerCreditMovementModel {
   /// Método copyWith ideal para el manejo de estados (Bloc, Riverpod, etc.)
   CustomerCreditMovementModel copyWith({
     String? id,
-    String? creditId,
+    String? customerCreditId,
     String? orderId,
     String? movementType,
     double? amount,
@@ -102,7 +102,7 @@ class CustomerCreditMovementModel {
   }) {
     return CustomerCreditMovementModel(
       id: id ?? this.id,
-      creditId: creditId ?? this.creditId,
+      customerCreditId: customerCreditId ?? this.customerCreditId,
       orderId: orderId ?? this.orderId,
       movementType: movementType ?? this.movementType,
       amount: amount ?? this.amount,

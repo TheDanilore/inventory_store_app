@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/order_item_model.dart';
+import 'package:inventory_store_app/models/order_model.dart';
+import 'package:flutter/foundation.dart';
 
 /// Servicio para operaciones pesadas sobre pedidos (órdenes).
 /// Centraliza la lógica de negocio que antes vivía directamente en OrdersScreen.
@@ -21,6 +23,38 @@ class OrdersService {
             .eq('auth_user_id', authUserId)
             .maybeSingle();
     return resp?['id'] as String?;
+  }
+
+  /// Obtiene un pedido por su ID con todos los detalles necesarios para OrderModel
+  Future<OrderModel?> getOrderById(String orderId) async {
+    try {
+      final data = await _supabase.from('orders').select('''
+        id,
+        customer_id,
+        customer_name,
+        total_amount,
+        total_profit,
+        discount_amount,
+        payment_method,
+        payment_status,
+        amount_paid,
+        status,
+        due_date,
+        points_used,
+        points_earned,
+        created_at,
+        warehouse_id,
+        created_by,
+        profiles!orders_customer_id_fkey ( id, full_name, phone ),
+        warehouses ( id, name )
+      ''').eq('id', orderId).maybeSingle();
+
+      if (data == null) return null;
+      return OrderModel.fromJson(data);
+    } catch (e) {
+      debugPrint('Error en getOrderById: $e');
+      return null;
+    }
   }
 
   /// Completa un pedido PENDING:

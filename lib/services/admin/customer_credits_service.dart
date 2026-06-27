@@ -1,4 +1,4 @@
-import 'package:inventory_store_app/models/credit_movement_model.dart';
+import 'package:inventory_store_app/models/customer_credit_movement_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/models/customer_credit_models.dart';
 
@@ -372,9 +372,9 @@ class CustomerCreditsService {
     final to = from + pageSize - 1;
 
     var query = _supabase
-        .from('credit_movements_summary')
+        .from('customer_credit_movements_summary')
         .select()
-        .eq('credit_id', creditId);
+        .eq('customer_credit_id', creditId);
 
     // Filtros de fecha
     if (dateFilter == '30_days') {
@@ -406,9 +406,9 @@ class CustomerCreditsService {
     String? dateFilter,
   }) async {
     var query = _supabase
-        .from('credit_movements_summary')
+        .from('customer_credit_movements_summary')
         .select('movement_type, amount')
-        .eq('credit_id', creditId);
+        .eq('customer_credit_id', creditId);
 
     // Filtros de fecha
     if (dateFilter == '30_days') {

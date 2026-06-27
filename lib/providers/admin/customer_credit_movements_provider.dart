@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/models/credit_movement_model.dart';
+import 'package:inventory_store_app/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/services/admin/customer_credits_service.dart';
 
 class CustomerCreditMovementsProvider extends ChangeNotifier {
