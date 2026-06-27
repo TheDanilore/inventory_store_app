@@ -629,7 +629,7 @@ class _SubItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentPath = GoRouterState.of(context).uri.path;
-    final active = currentPath.startsWith(item.routePath);
+    final active = currentPath == item.routePath || currentPath.startsWith('${item.routePath}/');
     return Padding(
       padding: const EdgeInsets.only(left: 8, right: 0, top: 2, bottom: 2),
       child: Container(

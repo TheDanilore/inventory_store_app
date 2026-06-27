@@ -479,7 +479,7 @@ class _StickyKardexFiltersDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return child;
+    return SizedBox.expand(child: child);
   }
 
   @override
