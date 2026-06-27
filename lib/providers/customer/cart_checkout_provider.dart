@@ -119,7 +119,7 @@ class CartCheckoutProvider extends ChangeNotifier {
 
   Future<List<String>> verifyStock(
     List<CartItemModel> itemsToBuy,
-    String warehouseId,
+    CartProvider cart,
   ) async {
     _isVerifyingStock = true;
     notifyListeners();
@@ -133,14 +133,13 @@ class CartCheckoutProvider extends ChangeNotifier {
               .cast<String>()
               .toList();
 
-      final stockMap = await _service.fetchStockForVariants(
-        warehouseId,
-        variantIds,
-      );
+      final stockMap = await _service.fetchStockForVariants(variantIds);
 
       for (final item in itemsToBuy) {
         if (item.variantId == null) continue;
         final currentStock = stockMap[item.variantId] ?? 0;
+        cart.updateAvailableStock(item.cartKey, currentStock);
+        
         if (currentStock < item.quantity) {
           final variantLabel =
               item.variantLabel != null ? ' - ${item.variantLabel}' : '';
@@ -183,7 +182,7 @@ class CartCheckoutProvider extends ChangeNotifier {
       final warehouseId = await _service.getActiveWarehouseId();
       if (warehouseId == null) throw Exception('No hay almacenes activos.');
 
-      final outOfStockMessages = await verifyStock(itemsToBuy, warehouseId);
+      final outOfStockMessages = await verifyStock(itemsToBuy, cart);
       if (outOfStockMessages.isNotEmpty) {
         _isSending = false;
         notifyListeners();
@@ -246,7 +245,7 @@ class CartCheckoutProvider extends ChangeNotifier {
       notifyListeners();
       debugPrint('Error confirming order: $e');
       final errStr = e.toString().toLowerCase();
-      String errorMsg = 'Ocurrió un error inesperado al confirmar el pedido.';
+      String errorMsg = e.toString();
       if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
         errorMsg = 'Sin conexión a internet.';
       }

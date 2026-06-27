@@ -25,22 +25,22 @@ class CartCheckoutService {
   }
 
   Future<Map<String, int>> fetchStockForVariants(
-    String warehouseId,
     List<String> variantIds,
   ) async {
     if (variantIds.isEmpty) return {};
 
     final stockResp = await _supabase
-        .from('warehouse_stock_batches')
-        .select('variant_id, available_quantity')
-        .eq('warehouse_id', warehouseId)
+        .from('product_stock_summary')
+        .select('variant_id, total_stock')
         .inFilter('variant_id', variantIds);
 
     final Map<String, int> stockMap = {};
     for (final row in stockResp) {
-      final vId = row['variant_id'] as String;
-      final qty = (row['available_quantity'] as num?)?.toInt() ?? 0;
-      stockMap[vId] = (stockMap[vId] ?? 0) + qty;
+      final vId = row['variant_id'] as String?;
+      final qty = (row['total_stock'] as num?)?.toInt() ?? 0;
+      if (vId != null) {
+        stockMap[vId] = (stockMap[vId] ?? 0) + qty;
+      }
     }
 
     return stockMap;

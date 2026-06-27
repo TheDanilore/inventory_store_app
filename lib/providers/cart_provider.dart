@@ -252,6 +252,21 @@ class CartProvider with ChangeNotifier {
     _saveAndSync();
   }
 
+  void updateAvailableStock(String cartKey, int newStock) {
+    if (_items.containsKey(cartKey)) {
+      _items.update(cartKey, (existing) {
+        existing.availableStock = newStock;
+        if (newStock <= 0) {
+          existing.isSelected = false;
+        } else if (existing.quantity > newStock) {
+          existing.quantity = newStock;
+        }
+        return existing;
+      });
+      _saveAndSync();
+    }
+  }
+
   void setQuantity(String cartKey, int quantity) {
     if (!_items.containsKey(cartKey)) return;
     if (quantity <= 0) {

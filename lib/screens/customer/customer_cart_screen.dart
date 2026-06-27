@@ -166,6 +166,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final saldoPuntos = wallet.balance ?? 0;
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
+    final sortedCartItems = cart.items.values.toList()
+      ..sort((a, b) {
+        final aInStock = a.availableStock > 0 ? 1 : 0;
+        final bInStock = b.availableStock > 0 ? 1 : 0;
+        return bInStock.compareTo(aInStock);
+      });
+
     return CustomerLayout(
       title: 'Danilore Store',
       showBackButton: false,
@@ -231,10 +238,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                 }
 
                                 final index = i - 3;
-                                final cartItem =
-                                    cart.items.values.toList()[index];
-                                final productId =
-                                    cart.items.keys.toList()[index];
+                                final cartItem = sortedCartItems[index];
+                                final productId = cartItem.product.id;
                                 return CartItemCard(
                                   productId: productId,
                                   item: cartItem,
