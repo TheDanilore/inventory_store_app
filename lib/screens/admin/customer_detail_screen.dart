@@ -78,9 +78,13 @@ class _CustomerDetailContent extends StatelessWidget {
           ),
         ),
         if (provider.isLoading)
-          const SliverFillRemaining(child: _CustomerDetailSkeleton())
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: _CustomerDetailSkeleton(),
+          )
         else if (provider.errorMessage != null)
           SliverFillRemaining(
+            hasScrollBody: false,
             child: Center(
               child: Text(
                 provider.errorMessage!,
@@ -149,6 +153,7 @@ class _CustomerDetailContent extends StatelessWidget {
                 )
               else if (provider.errorMessage != null)
                 SliverFillRemaining(
+                  hasScrollBody: false,
                   child: Center(
                     child: Text(
                       provider.errorMessage!,
@@ -246,47 +251,53 @@ class _CustomerDetailSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isTabletRightColumn) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            AppShimmer(height: 120, borderRadius: 16),
-            SizedBox(height: 24),
-            AppShimmer(height: 200, borderRadius: 16),
-            SizedBox(height: 24),
-            AppShimmer(height: 250, borderRadius: 16),
-          ],
+      return SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppShimmer(height: 120, borderRadius: 16),
+              SizedBox(height: 24),
+              AppShimmer(height: 200, borderRadius: 16),
+              SizedBox(height: 24),
+              AppShimmer(height: 250, borderRadius: 16),
+            ],
+          ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isTabletLeftColumn) const SizedBox(height: 16),
-          Row(
-            children: const [
-              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
-              SizedBox(width: 10),
-              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
-              SizedBox(width: 10),
-              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
-              SizedBox(width: 10),
-              Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isTabletLeftColumn) const SizedBox(height: 16),
+            Row(
+              children: const [
+                Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+                SizedBox(width: 10),
+                Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+                SizedBox(width: 10),
+                Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+                SizedBox(width: 10),
+                Expanded(child: AppShimmer(height: 80, borderRadius: 16)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const AppShimmer(height: 180, borderRadius: 16),
+            if (!isTabletLeftColumn) ...const [
+              SizedBox(height: 24),
+              AppShimmer(height: 120, borderRadius: 16),
+              SizedBox(height: 24),
+              AppShimmer(height: 250, borderRadius: 16),
             ],
-          ),
-          const SizedBox(height: 24),
-          const AppShimmer(height: 180, borderRadius: 16),
-          if (!isTabletLeftColumn) ...const [
-            SizedBox(height: 24),
-            AppShimmer(height: 120, borderRadius: 16),
-            SizedBox(height: 24),
-            AppShimmer(height: 250, borderRadius: 16),
           ],
-        ],
+        ),
       ),
     );
   }

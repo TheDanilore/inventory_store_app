@@ -259,7 +259,7 @@ class CustomerDetailProvider extends ChangeNotifier {
     final resp = await _supabase
         .from('customer_credit_movements')
         .select('movement_type, amount, payment_method, notes, created_at')
-        .eq('credit_id', creditId)
+        .eq('customer_credit_id', creditId)
         .order('created_at', ascending: false)
         .limit(10);
 
