@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
@@ -97,6 +99,47 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   void _markChanged() {
     if (!_hasChanges) setState(() => _hasChanges = true);
+  }
+
+  Future<void> _pickLogoImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+    
+    if (!mounted) return;
+    final provider = context.read<AppConfigProvider>();
+    final bytes = await pickedFile.readAsBytes();
+
+    final compressed = await FlutterImageCompress.compressWithList(
+      bytes,
+      minWidth: 800,
+      minHeight: 800,
+      quality: 80,
+    );
+
+    final url = await provider.uploadBusinessLogo(compressed);
+    if (url != null) {
+      setState(() {
+        _logoUrlCtrl.text = url;
+        _previewLogoUrl = url;
+        _markChanged();
+      });
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Logo subido y URL generada correctamente.',
+          type: SnackbarType.success,
+        );
+      }
+    } else {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al subir el logo. Intenta nuevamente.',
+          type: SnackbarType.error,
+        );
+      }
+    }
   }
 
   Future<void> _save() async {
@@ -322,16 +365,57 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               const SizedBox(height: 14),
 
               // ── Campo 5: URL Logo (preview se actualiza al perder foco) ─
-              AppTextField(
-                controller: _logoUrlCtrl,
-                label: 'URL del logo',
-                icon: Icons.image_outlined,
-                hintText: 'https://...',
-                keyboardType: TextInputType.url,
-                focusNode: _logoUrlFocus,
-                textInputAction: TextInputAction.done,
-                helperText: 'URL pública de la imagen (jpg, png, webp)',
-                onChanged: (_) => _markChanged(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _logoUrlCtrl,
+                      label: 'URL del logo',
+                      icon: Icons.image_outlined,
+                      hintText: 'https://...',
+                      keyboardType: TextInputType.url,
+                      focusNode: _logoUrlFocus,
+                      textInputAction: TextInputAction.done,
+                      helperText: 'URL pública de la imagen (jpg, png, webp)',
+                      validator: (val) {
+                        if (val != null && val.trim().isNotEmpty) {
+                          final uri = Uri.tryParse(val.trim());
+                          if (uri == null ||
+                              !uri.hasAbsolutePath ||
+                              !uri.scheme.startsWith('http')) {
+                            return 'Ingresa una URL válida (ej. https://...)';
+                          }
+                        }
+                        return null;
+                      },
+                      onChanged: (_) => _markChanged(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: ElevatedButton.icon(
+                      onPressed: context.watch<AppConfigProvider>().isUploadingLogo
+                          ? null
+                          : _pickLogoImage,
+                      icon: context.watch<AppConfigProvider>().isUploadingLogo
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload_file_rounded, size: 20),
+                      label: const Text('Subir'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

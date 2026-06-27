@@ -19,11 +19,13 @@ class AppConfigProvider extends ChangeNotifier {
   bool _businessInfoLoaded = false;
   bool _isSavingBusinessInfo = false;
   bool _isSavingSettings = false;
+  bool _isUploadingLogo = false;
 
   Map<String, double> get values => Map.unmodifiable(_values);
   bool get isLoaded => _isLoaded;
   bool get isSavingBusinessInfo => _isSavingBusinessInfo;
   bool get isSavingSettings => _isSavingSettings;
+  bool get isUploadingLogo => _isUploadingLogo;
   String get businessName => _businessName;
   String get businessTaxId => _businessTaxId;
   String get businessAddress => _businessAddress;
@@ -216,6 +218,26 @@ class AppConfigProvider extends ChangeNotifier {
       return false;
     } finally {
       _isSavingBusinessInfo = false;
+      _safeNotify();
+    }
+  }
+
+  Future<String?> uploadBusinessLogo(Uint8List bytes) async {
+    if (_isUploadingLogo) return null;
+    _isUploadingLogo = true;
+    _safeNotify();
+    try {
+      final fileName = 'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
+      final path = 'logos/$fileName';
+      // Asume que el bucket "business" existe y es público
+      await _supabase.storage.from('business').uploadBinary(path, bytes);
+      final publicUrl = _supabase.storage.from('business').getPublicUrl(path);
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading logo: $e');
+      return null;
+    } finally {
+      _isUploadingLogo = false;
       _safeNotify();
     }
   }
