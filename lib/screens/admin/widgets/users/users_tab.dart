@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/providers/admin/users_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/users/user_detail_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/users/user_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/users/users_skeleton.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/supplier_model.dart';
 import 'package:inventory_store_app/providers/admin/suppliers_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/suppliers/supplier_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/suppliers/supplier_form_modal.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';

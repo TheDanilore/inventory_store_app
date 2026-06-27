@@ -3,7 +3,7 @@ import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/providers/admin/supplier_credits_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';

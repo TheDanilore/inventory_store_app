@@ -22,6 +22,7 @@ class CashShiftsProvider extends ChangeNotifier {
   String _filterStatus = 'Todos'; // Todos, OPEN, CLOSED
   DateTime? _dateFrom;
   DateTime? _dateTo;
+  String? _profileFilter;
 
   List<CashShiftModel> get shifts => _shifts;
   List<FinancialAccountModel> get cajaAccounts => _cajaAccounts;
@@ -62,6 +63,14 @@ class CashShiftsProvider extends ChangeNotifier {
   void setPage(int page) {
     if (page >= 0 && page < totalPages) {
       _currentPage = page;
+      fetchShifts();
+    }
+  }
+
+  void setProfileFilter(String? profileId) {
+    if (_profileFilter != profileId) {
+      _profileFilter = profileId;
+      _currentPage = 0;
       fetchShifts();
     }
   }
@@ -110,6 +119,9 @@ class CashShiftsProvider extends ChangeNotifier {
       if (_dateTo != null) {
         query = query.lte('opened_at', _dateTo!.toIso8601String());
       }
+      if (_profileFilter != null) {
+        query = query.eq('opened_by', _profileFilter!);
+      }
 
       final response = await query
           .order('status', ascending: false) // OPEN first
@@ -144,10 +156,18 @@ class CashShiftsProvider extends ChangeNotifier {
 
   Future<void> _fetchCounts() async {
     try {
-      final openRes = await _supabase.from('cash_shifts').select('id').eq('status', 'OPEN').count(CountOption.exact);
+      var openQuery = _supabase.from('cash_shifts').select('id').eq('status', 'OPEN');
+      var closedQuery = _supabase.from('cash_shifts').select('id').eq('status', 'CLOSED');
+
+      if (_profileFilter != null) {
+        openQuery = openQuery.eq('opened_by', _profileFilter!);
+        closedQuery = closedQuery.eq('opened_by', _profileFilter!);
+      }
+
+      final openRes = await openQuery.count(CountOption.exact);
       _totalOpenCount = openRes.count;
       
-      final closedRes = await _supabase.from('cash_shifts').select('id').eq('status', 'CLOSED').count(CountOption.exact);
+      final closedRes = await closedQuery.count(CountOption.exact);
       _totalClosedCount = closedRes.count;
     } catch (_) {}
   }

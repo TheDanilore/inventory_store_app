@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/providers/admin/supplier_credit_movements_provider.dart';
 
 // Widgets extraídos

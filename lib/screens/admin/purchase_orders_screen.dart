@@ -16,7 +16,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {

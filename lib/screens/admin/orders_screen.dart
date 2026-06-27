@@ -6,7 +6,7 @@ import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/orders/admin_order_card.dart';
 import 'package:provider/provider.dart';

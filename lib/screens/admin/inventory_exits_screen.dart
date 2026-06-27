@@ -8,7 +8,7 @@ import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.d
 import 'package:inventory_store_app/screens/admin/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/services/admin/inventory_exits_service.dart';
 import 'package:inventory_store_app/services/admin/inventory_exits_pdf_generator.dart';

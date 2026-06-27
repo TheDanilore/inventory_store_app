@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/active_ingredients_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/screens/admin/widgets/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';

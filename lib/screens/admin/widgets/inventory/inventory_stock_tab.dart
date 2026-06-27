@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/inventory_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/inventory/inventory_stock_card.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'dart:async';

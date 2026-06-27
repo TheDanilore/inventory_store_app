@@ -8,7 +8,7 @@ import 'package:inventory_store_app/models/account_movement_model.dart';
 import 'package:inventory_store_app/models/financial_account_model.dart';
 import 'package:inventory_store_app/providers/admin/account_movements_provider.dart';
 import 'package:inventory_store_app/providers/admin/financial_accounts_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/financial/movement_form_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';

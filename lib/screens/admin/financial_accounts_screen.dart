@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/financial_accounts_provider.dart';
 import 'package:inventory_store_app/providers/admin/account_movements_provider.dart';
 import 'package:inventory_store_app/providers/admin/cash_shifts_provider.dart';
+import 'package:inventory_store_app/providers/profile_provider.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FINANCIAL ACCOUNTS SCREEN — Cuentas · Movimientos · Turnos de Caja
@@ -38,7 +39,9 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
       if (mounted) {
         context.read<FinancialAccountsProvider>().fetchAccounts();
         context.read<AccountMovementsProvider>().fetchMovements();
-        context.read<CashShiftsProvider>().fetchShifts();
+        
+        final profileId = context.read<ProfileProvider>().profileId;
+        context.read<CashShiftsProvider>().setProfileFilter(profileId);
       }
     });
   }

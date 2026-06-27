@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/providers/admin/customer_credit_movements_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
 import 'widgets/customer_credit_movements/movements_summary_header.dart';

@@ -11,7 +11,7 @@ import 'package:inventory_store_app/screens/admin/widgets/customer_credits/credi
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/credit_account_modal.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_credits/register_payment_modal.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 
 class CustomerCreditsScreen extends StatefulWidget {

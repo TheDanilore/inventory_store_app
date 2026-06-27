@@ -6,7 +6,7 @@ import 'package:inventory_store_app/models/inventory_entry_model.dart';
 import 'package:inventory_store_app/providers/admin/inventory_entries_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/screens/admin/widgets/inventory_entries/inventory_entry_detail_sheet.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/services/admin/inventory_entries_service.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';

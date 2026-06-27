@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/providers/admin/categories_provider.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/categories/categories_skeleton.dart';
 import 'package:inventory_store_app/screens/admin/widgets/categories/category_form_sheet.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
