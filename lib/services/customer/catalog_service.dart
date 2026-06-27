@@ -21,7 +21,7 @@ class CatalogService {
         .from('products')
         .select('''
           *,
-          product_images!inner(*),
+          product_images(*),
           product_variants(
             *,
             product_images(id, image_url, is_main, display_order),

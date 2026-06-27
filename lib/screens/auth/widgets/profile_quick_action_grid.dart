@@ -79,7 +79,7 @@ class _QuickActionCardState extends State<_QuickActionCard> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Row(
               children: [
                 Container(
@@ -95,7 +95,7 @@ class _QuickActionCardState extends State<_QuickActionCard> {
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,6 +103,8 @@ class _QuickActionCardState extends State<_QuickActionCard> {
                     children: [
                       Text(
                         widget.item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
