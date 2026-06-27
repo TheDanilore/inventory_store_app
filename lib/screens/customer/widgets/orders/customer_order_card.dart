@@ -6,7 +6,7 @@ import 'package:inventory_store_app/providers/customer/customer_orders_provider.
 import 'package:inventory_store_app/screens/customer/widgets/orders/customer_order_detail_sheet.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
-class CustomerOrderCard extends StatelessWidget {
+class CustomerOrderCard extends StatefulWidget {
   final OrderModel order;
   final bool isProcessing;
   final VoidCallback onReorder;
@@ -19,10 +19,18 @@ class CustomerOrderCard extends StatelessWidget {
   });
 
   @override
+  State<CustomerOrderCard> createState() => _CustomerOrderCardState();
+}
+
+class _CustomerOrderCardState extends State<CustomerOrderCard> {
+  bool _isLoadingDetails = false;
+
+  @override
   Widget build(BuildContext context) {
-    final createdAt = order.createdAt ?? DateTime.now();
-    final hasPoints = (order.pointsUsed) > 0 || (order.pointsEarned) > 0;
-    final statusColor = _statusColor(order.status);
+    final createdAt = widget.order.createdAt ?? DateTime.now();
+    final hasPoints =
+        (widget.order.pointsUsed) > 0 || (widget.order.pointsEarned) > 0;
+    final statusColor = _statusColor(widget.order.status);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -42,7 +50,10 @@ class CustomerOrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          onTap: isProcessing ? null : () => _showOrderDetails(context, order),
+          onTap:
+              (widget.isProcessing || _isLoadingDetails)
+                  ? null
+                  : () => _showOrderDetails(context, widget.order),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -71,7 +82,7 @@ class CustomerOrderCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pedido #${order.id.substring(0, 8).toUpperCase()}',
+                            'Pedido #${widget.order.id.substring(0, 8).toUpperCase()}',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 15,
@@ -98,7 +109,7 @@ class CustomerOrderCard extends StatelessWidget {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  order.warehouseName,
+                                  widget.order.warehouseName,
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 12,
@@ -118,7 +129,7 @@ class CustomerOrderCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                          'S/ ${widget.order.totalAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 18,
@@ -127,7 +138,7 @@ class CustomerOrderCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        _statusBadge(order.status),
+                        _statusBadge(widget.order.status),
                       ],
                     ),
                   ],
@@ -155,10 +166,10 @@ class CustomerOrderCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           [
-                            if ((order.pointsUsed) > 0)
-                              '−${order.pointsUsed} usadas',
-                            if ((order.pointsEarned) > 0)
-                              '+${order.pointsEarned} ganadas',
+                            if ((widget.order.pointsUsed) > 0)
+                              '−${widget.order.pointsUsed} usadas',
+                            if ((widget.order.pointsEarned) > 0)
+                              '+${widget.order.pointsEarned} ganadas',
                           ].join('  ·  '),
                           style: const TextStyle(
                             fontSize: 12,
@@ -183,11 +194,12 @@ class CustomerOrderCard extends StatelessWidget {
                         label: 'Ver detalle',
                         icon: Icons.receipt_long_outlined,
                         onTap:
-                            isProcessing
+                            (widget.isProcessing || _isLoadingDetails)
                                 ? null
-                                : () => _showOrderDetails(context, order),
+                                : () =>
+                                    _showOrderDetails(context, widget.order),
                         filled: false,
-                        isProcessing: isProcessing,
+                        isProcessing: _isLoadingDetails,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -195,9 +207,12 @@ class CustomerOrderCard extends StatelessWidget {
                       child: _actionButton(
                         label: 'Repetir pedido',
                         icon: Icons.add_shopping_cart_rounded,
-                        onTap: isProcessing ? null : onReorder,
+                        onTap:
+                            (widget.isProcessing || _isLoadingDetails)
+                                ? null
+                                : widget.onReorder,
                         filled: true,
-                        isProcessing: isProcessing,
+                        isProcessing: widget.isProcessing,
                       ),
                     ),
                   ],
@@ -211,23 +226,27 @@ class CustomerOrderCard extends StatelessWidget {
   }
 
   void _showOrderDetails(BuildContext context, OrderModel order) async {
+    setState(() => _isLoadingDetails = true);
     try {
       final provider = context.read<CustomerOrdersProvider>();
       final items = await provider.fetchOrderItems(order.id);
-      
-      if (!context.mounted) return;
+
+      if (!mounted) return;
+      setState(() => _isLoadingDetails = false);
 
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => CustomerOrderDetailSheet(order: order, items: items),
+        builder:
+            (context) => CustomerOrderDetailSheet(order: order, items: items),
       );
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      if (!mounted) return;
+      setState(() => _isLoadingDetails = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 

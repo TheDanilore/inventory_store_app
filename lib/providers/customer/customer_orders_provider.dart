@@ -166,7 +166,6 @@ class CustomerOrdersProvider extends ChangeNotifier {
   }
 
   Future<List<OrderItemModel>> fetchOrderItems(String orderId) async {
-    _setOrderProcessing(orderId, true);
     try {
       // Uso de !inner para evitar traer items vacíos si hubiese un filtrado en tablas relacionales,
       // aunque aquí traemos por order_id. Especificamos solo las columnas necesarias.
@@ -185,8 +184,6 @@ class CustomerOrdersProvider extends ChangeNotifier {
       ).map(OrderItemModel.fromJson).toList();
     } catch (e) {
       throw Exception('Error al cargar detalle del pedido: $e');
-    } finally {
-      _setOrderProcessing(orderId, false);
     }
   }
 
