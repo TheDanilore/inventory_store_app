@@ -712,16 +712,16 @@ class _ProductDetailScreenContentState
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder:
-                              (dialogCtx) => const AlertDialog(
-                                content: Row(
-                                  children: [
-                                    CircularProgressIndicator(),
-                                    SizedBox(width: 20),
-                                    Expanded(child: Text('Generando PDF...')),
-                                  ],
-                                ),
-                              ),
+                          builder: (dialogCtx) => const AlertDialog(
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 20),
+                                Text('Generando PDF...', textAlign: TextAlign.center),
+                              ],
+                            ),
+                          ),
                         );
                         try {
                           await ProductPdfGenerator.shareProduct(

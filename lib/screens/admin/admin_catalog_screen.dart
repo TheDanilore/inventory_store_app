@@ -106,25 +106,47 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         return;
       }
 
-      final productIds = filteredProducts.map((p) => p.id).toList();
-      final variantsByProduct = await service.loadVariantsByProductIds(
-        productIds,
-      );
-      final allVariantIds =
-          variantsByProduct.values
-              .expand((v) => v)
-              .map((v) => v.id)
-              .whereType<String>()
-              .toList();
-      final stockByVariant = await service.loadVariantStockByVariantIds(
-        allVariantIds,
+      // Mostrar diálogo de carga bloqueante
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text('Generando Catálogo PDF...', textAlign: TextAlign.center),
+            ],
+          ),
+        ),
       );
 
-      CatalogPdfGenerator.shareCatalog(
-        products: filteredProducts,
-        variantsByProduct: variantsByProduct,
-        stockByVariant: stockByVariant,
-      );
+      try {
+        final productIds = filteredProducts.map((p) => p.id).toList();
+        final variantsByProduct = await service.loadVariantsByProductIds(
+          productIds,
+        );
+        final allVariantIds =
+            variantsByProduct.values
+                .expand((v) => v)
+                .map((v) => v.id)
+                .whereType<String>()
+                .toList();
+        final stockByVariant = await service.loadVariantStockByVariantIds(
+          allVariantIds,
+        );
+
+        await CatalogPdfGenerator.shareCatalog(
+          products: filteredProducts,
+          variantsByProduct: variantsByProduct,
+          stockByVariant: stockByVariant,
+        );
+      } finally {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(
