@@ -117,60 +117,49 @@ class CustomerLayout extends StatelessWidget {
   // ─── LEADING ─────────────────────────────────────────────────────────────
 
   Widget? _buildLeading(BuildContext context) {
-    if (showBackButton) {
-      return IconButton(
-        icon: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 16,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        onPressed: () {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          } else {
-            final user = Supabase.instance.client.auth.currentUser;
-            if (user == null) {
-              context.go('/login');
+    if (!showBackButton && !showProfileIcon) return null;
+
+    final child = showBackButton
+        ? const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: AppColors.textPrimary)
+        : const Icon(Icons.person_outline_rounded, size: 18, color: AppColors.textPrimary);
+
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.only(left: 16.0),
+      child: Material(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            if (showBackButton) {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                final user = Supabase.instance.client.auth.currentUser;
+                if (user == null) {
+                  context.go('/login');
+                } else {
+                  context.go('/customer/profile');
+                }
+              }
             } else {
-              context.go('/customer/profile');
+              final user = Supabase.instance.client.auth.currentUser;
+              if (user == null) {
+                context.push('/login');
+              } else {
+                context.push('/customer/profile');
+              }
             }
-          }
-        },
-      );
-    } else if (showProfileIcon) {
-      return IconButton(
-        icon: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(
-            Icons.person_outline_rounded,
-            size: 18,
-            color: AppColors.textPrimary,
+          },
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: child,
           ),
         ),
-        onPressed: () {
-          final user = Supabase.instance.client.auth.currentUser;
-          if (user == null) {
-            context.push('/login');
-          } else {
-            context.push('/customer/profile');
-          }
-        },
-      );
-    }
-    return null;
+      ),
+    );
   }
 
   // ─── TITLE ───────────────────────────────────────────────────────────────
@@ -181,7 +170,7 @@ class CustomerLayout extends StatelessWidget {
     final bool noLeadingIcon = !showBackButton && !showProfileIcon;
 
     return Padding(
-      padding: EdgeInsets.only(left: noLeadingIcon ? 16.0 : 4.0),
+      padding: EdgeInsets.only(left: noLeadingIcon ? 16.0 : 0.0),
       child: Consumer<AppConfigProvider>(
         builder: (context, config, child) {
           final liveTitle = config.businessName;
@@ -207,55 +196,60 @@ class CustomerLayout extends StatelessWidget {
 
   List<Widget> _buildActions(BuildContext context) {
     return [
-      if (showWalletChip) _buildWalletChip(context),
-      const SizedBox(width: 8),
+      if (showWalletChip)
+        Center(child: _buildWalletChip(context)),
+      if (showWalletChip && showCartIcon)
+        const SizedBox(width: 10),
       if (showCartIcon)
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () {
-              context.go('/customer/cart');
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              margin: const EdgeInsets.only(right: 4),
-              decoration: BoxDecoration(
-                color: AppColors.background,
+        Center(
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Material(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Center(
-                    child: Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 20,
-                      color: AppColors.textPrimary,
-                    ),
+                onTap: () {
+                  context.go('/customer/cart');
+                },
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Center(
+                        child: Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 20,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Consumer<CartProvider>(
+                        builder: (context, cart, _) {
+                          if (cart.itemCount == 0) return const SizedBox.shrink();
+                          return Positioned(
+                            right: 4,
+                            top: 4,
+                            child: _AnimatedCartBadge(itemCount: cart.itemCount),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  Consumer<CartProvider>(
-                    builder: (context, cart, _) {
-                      if (cart.itemCount == 0) return const SizedBox.shrink();
-                      return Positioned(
-                        right: 4,
-                        top: 4,
-                        child: _AnimatedCartBadge(itemCount: cart.itemCount),
-                      );
-                    },
-                  ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-      const SizedBox(width: 12),
+      const SizedBox(width: 16),
     ];
   }
 
   // ─── APPBAR ──────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final bool hasLeading = showBackButton || showProfileIcon;
     return AppBar(
       backgroundColor: AppColors.surface.withValues(alpha: 0.85),
       flexibleSpace: ClipRect(
@@ -268,6 +262,7 @@ class CustomerLayout extends StatelessWidget {
       elevation: 0,
       centerTitle: false,
       automaticallyImplyLeading: false,
+      leadingWidth: hasLeading ? 64.0 : 0.0,
       surfaceTintColor: Colors.transparent,
       shadowColor: AppColors.cardShadow(opacity: 0.1).first.color,
       scrolledUnderElevation: 2,
@@ -514,6 +509,7 @@ class CustomerLayout extends StatelessWidget {
                 elevation: 0,
                 centerTitle: false,
                 automaticallyImplyLeading: false,
+                leadingWidth: (showBackButton || showProfileIcon) ? 64.0 : 0.0,
                 surfaceTintColor: Colors.transparent,
                 floating: true,
                 snap: true,
