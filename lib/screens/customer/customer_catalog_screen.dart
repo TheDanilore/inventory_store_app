@@ -10,7 +10,9 @@ import 'package:inventory_store_app/screens/customer/widgets/cart/cart_variant_p
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_search_bar.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_category_list.dart';
 import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_banners.dart';
-import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_product_grid.dart';
+import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_product_card.dart';
+import 'package:inventory_store_app/screens/customer/widgets/catalog/catalog_shimmers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
@@ -236,10 +238,99 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 ),
               ]
               // --- Product Grid ---
-              else ...[
-                SliverToBoxAdapter(
-                  child: CatalogProductGrid(onAddToCart: _handleAddToCart),
+              else if (provider.isInitialLoad && provider.isLoadingProducts) ...[
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 220,
+                      childAspectRatio: 0.58,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (_, _) => const CatalogProductShimmer(),
+                      childCount: 8,
+                    ),
+                  ),
                 ),
+              ] else if (provider.productsError != null && provider.products.isEmpty) ...[
+                SliverToBoxAdapter(
+                  child: AppEmptyState(
+                    icon: Icons.error_outline_rounded,
+                    color: Colors.red,
+                    title: 'Ocurrió un error',
+                    message: provider.productsError!,
+                    action: ElevatedButton.icon(
+                      onPressed: provider.refreshProducts,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Reintentar'),
+                    ),
+                  ),
+                ),
+              ] else if (provider.products.isEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 64,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No se encontraron productos',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Prueba buscando otra cosa o cambiando de categoría.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 220,
+                      childAspectRatio: 0.58,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final product = provider.products[index];
+                        return CatalogProductCard(
+                          product: product,
+                          onAddToCart: _handleAddToCart,
+                        );
+                      },
+                      childCount: provider.products.length,
+                    ),
+                  ),
+                ),
+                if (provider.isLoadingProducts && !provider.isInitialLoad)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ],
           ),
