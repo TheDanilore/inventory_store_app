@@ -6,7 +6,7 @@ import 'package:inventory_store_app/services/customer/catalog_service.dart';
 
 class CustomerCatalogProvider extends ChangeNotifier {
   final CatalogService _service = CatalogService();
-  static const int pageSize = 4;
+  static const int pageSize = 24;
 
   // Search History
   List<String> _searchHistory = [];
