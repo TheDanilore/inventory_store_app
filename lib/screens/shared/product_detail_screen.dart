@@ -622,7 +622,6 @@ class _ProductDetailScreenContentState
     });
   }
 
-
   List<ProductVariantModel> get _thumbnailVariants {
     if (_attributeKeys.length <= 1) return _variants;
     final list = <ProductVariantModel>[];
@@ -693,7 +692,7 @@ class _ProductDetailScreenContentState
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    onSelected: (value) {
+                    onSelected: (value) async {
                       if (value == 'export') {
                         final currentProvider = provider;
                         final Map<String, int> stockMap = {};
@@ -709,12 +708,36 @@ class _ProductDetailScreenContentState
                             );
                           }
                         }
-
-                        ProductPdfGenerator.shareProduct(
-                          currentProvider.product,
-                          variants: currentProvider.variants,
-                          stockByVariant: stockMap,
+                        // Mostrar diálogo de carga
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder:
+                              (dialogCtx) => const AlertDialog(
+                                content: Row(
+                                  children: [
+                                    CircularProgressIndicator(),
+                                    SizedBox(width: 20),
+                                    Expanded(child: Text('Generando PDF...')),
+                                  ],
+                                ),
+                              ),
                         );
+                        try {
+                          await ProductPdfGenerator.shareProduct(
+                            currentProvider.product,
+                            variants: currentProvider.variants,
+                            stockByVariant: stockMap,
+                          );
+                        } catch (e) {
+                          if (context.mounted) {
+                            _showSnack('Error al generar PDF: $e');
+                          }
+                        } finally {
+                          if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                        }
                       }
                     },
                     itemBuilder:
