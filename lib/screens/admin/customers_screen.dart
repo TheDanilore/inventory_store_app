@@ -368,7 +368,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child:
-                        provider.isLoading
+                        provider.hasMore
                             ? const CircularProgressIndicator()
                             : const Text(
                               'No hay más clientes',

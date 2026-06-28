@@ -51,6 +51,9 @@ class CustomersProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+
   bool _isSearching = false;
   bool get isSearching => _isSearching;
 
@@ -226,7 +229,10 @@ class CustomersProvider extends ChangeNotifier {
       _hasMore = true;
     }
 
-    if (!_hasMore) return;
+    if (!_hasMore || _isLoadingMore) return;
+
+    _isLoadingMore = true;
+    if (!reset) notifyListeners();
 
     try {
       final start = _currentPage * pageSize;
@@ -336,6 +342,7 @@ class CustomersProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error en fetchCustomers: $e');
     } finally {
+      _isLoadingMore = false;
       notifyListeners();
     }
   }
