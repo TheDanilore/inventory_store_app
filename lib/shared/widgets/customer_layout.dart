@@ -414,6 +414,22 @@ class CustomerLayout extends StatelessWidget {
       onDestinationSelected: (idx) => _onNavDestinationSelected(context, idx),
       backgroundColor: AppColors.surface,
       labelType: NavigationRailLabelType.all,
+      indicatorColor: AppColors.primary.withValues(alpha: 0.08),
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      selectedIconTheme: const IconThemeData(color: AppColors.primary),
+      unselectedIconTheme: const IconThemeData(color: AppColors.textSecondary),
+      selectedLabelTextStyle: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        color: AppColors.primary,
+      ),
+      unselectedLabelTextStyle: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textSecondary,
+      ),
       destinations: const [
         NavigationRailDestination(
           icon: Icon(Icons.home_outlined),
