@@ -1,5 +1,3 @@
-// ignore_for_file: unused_element_parameter
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -61,7 +59,7 @@ class ProductDetailScreen extends StatelessWidget {
 
 class _ProductDetailScreenContent extends StatefulWidget {
   final bool isEmbedded;
-  const _ProductDetailScreenContent({super.key, this.isEmbedded = false});
+  const _ProductDetailScreenContent({this.isEmbedded = false});
 
   @override
   State<_ProductDetailScreenContent> createState() =>
@@ -96,8 +94,6 @@ class _ProductDetailScreenContentState
   bool get _isWishlisted => providerWatch.isWishlisted;
   bool get _showVariantImage => providerWatch.showVariantImage;
   List<ProductVariantModel> get _variants => providerWatch.variants;
-  List<Map<String, dynamic>> get _warehouseStocks =>
-      providerWatch.warehouseStocks;
   List<Map<String, dynamic>> get _reviewsList => providerWatch.reviewsList;
   List<Map<String, dynamic>> get _activeIngredients =>
       providerWatch.activeIngredients;
@@ -148,7 +144,6 @@ class _ProductDetailScreenContentState
 
   void _selectVariant(
     ProductVariantModel variant, {
-    bool resetQuantity = true,
     bool animateGallery = true,
   }) {
     provider.selectVariant(variant);
@@ -627,20 +622,6 @@ class _ProductDetailScreenContentState
     });
   }
 
-  Map<String, int> get _stockByVariant {
-    final Map<String, int> result = {};
-    for (final row in _warehouseStocks) {
-      final variantId = row['variant_id'] as String?;
-      final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-      if (variantId == null) continue;
-      result.update(
-        variantId,
-        (current) => current + stock,
-        ifAbsent: () => stock,
-      );
-    }
-    return result;
-  }
 
   List<ProductVariantModel> get _thumbnailVariants {
     if (_attributeKeys.length <= 1) return _variants;
@@ -714,10 +695,25 @@ class _ProductDetailScreenContentState
                     ),
                     onSelected: (value) {
                       if (value == 'export') {
+                        final currentProvider = provider;
+                        final Map<String, int> stockMap = {};
+                        for (final row in currentProvider.warehouseStocks) {
+                          final variantId = row['variant_id'] as String?;
+                          final stock =
+                              (row['available_quantity'] as num?)?.toInt() ?? 0;
+                          if (variantId != null) {
+                            stockMap.update(
+                              variantId,
+                              (current) => current + stock,
+                              ifAbsent: () => stock,
+                            );
+                          }
+                        }
+
                         ProductPdfGenerator.shareProduct(
-                          product,
-                          variants: _variants,
-                          stockByVariant: _stockByVariant,
+                          currentProvider.product,
+                          variants: currentProvider.variants,
+                          stockByVariant: stockMap,
                         );
                       }
                     },

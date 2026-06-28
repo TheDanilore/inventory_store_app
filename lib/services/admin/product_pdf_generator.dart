@@ -26,11 +26,20 @@ class ProductPdfGenerator {
     // 2. Descargar imágenes de las variantes
     Map<String, pw.ImageProvider> variantImages = {};
     for (var v in variants) {
-      // Verificamos que id no sea nulo antes de usarlo como llave
+      String? variantImgUrl;
       if (v.images.isNotEmpty) {
+        variantImgUrl = v.images.first.imageUrl;
+      } else {
+        // Buscar la imagen de la variante en las imágenes del producto
         try {
-          // Usamos el operador ! porque ya validamos que v.id no es nulo
-          variantImages[v.id] = await networkImage(v.images.first.imageUrl);
+          final match = product.images.firstWhere((img) => img.variantId == v.id);
+          variantImgUrl = match.imageUrl;
+        } catch (_) {}
+      }
+
+      if (variantImgUrl != null && variantImgUrl.isNotEmpty) {
+        try {
+          variantImages[v.id] = await networkImage(variantImgUrl);
         } catch (_) {}
       }
     }
