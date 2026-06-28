@@ -112,17 +112,15 @@ class _QuickActionCardState extends State<_QuickActionCard> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          widget.item.value,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: widget.item.color,
-                            letterSpacing: -0.2,
-                          ),
+                      Text(
+                        widget.item.value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: widget.item.color,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ],
