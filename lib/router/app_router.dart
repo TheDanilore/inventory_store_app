@@ -34,6 +34,7 @@ import 'package:inventory_store_app/screens/admin/customer_credit_movements_scre
 import 'package:inventory_store_app/screens/admin/customer_credits_screen.dart';
 import 'package:inventory_store_app/screens/admin/customer_detail_screen.dart';
 import 'package:inventory_store_app/screens/admin/customers_screen.dart';
+import 'package:inventory_store_app/screens/admin/top_customers_screen.dart';
 import 'package:inventory_store_app/screens/admin/dashboard_screen.dart';
 import 'package:inventory_store_app/screens/admin/financial_accounts_screen.dart';
 import 'package:inventory_store_app/screens/admin/inventory_entries_screen.dart';
@@ -324,6 +325,10 @@ class AppRouter {
             GoRoute(
               path: 'customers',
               builder: (context, state) => const CustomersScreen(),
+            ),
+            GoRoute(
+              path: 'top-customers',
+              builder: (context, state) => const TopCustomersScreen(),
             ),
             GoRoute(
               path: 'dashboard',

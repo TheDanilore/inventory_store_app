@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
@@ -39,6 +40,11 @@ class TopCustomersSection extends StatelessWidget {
                   fontSize: 15,
                   color: AppColors.textPrimary,
                 ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => context.push('/admin/top-customers'),
+                child: const Text('Ver todos'),
               ),
             ],
           ),
