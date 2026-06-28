@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/models/product_model.dart';
@@ -7,6 +5,28 @@ import 'package:inventory_store_app/models/product_variant_model.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+
+import 'package:flutter/foundation.dart';
+
+class _PdfIsolateArgs {
+  final List<ProductModel> products;
+  final Map<String, List<ProductVariantModel>> variantsByProduct;
+  final Map<String, int> stockByVariant;
+
+  _PdfIsolateArgs({
+    required this.products,
+    required this.variantsByProduct,
+    required this.stockByVariant,
+  });
+}
+
+Future<Uint8List> _generatePdfInIsolate(_PdfIsolateArgs args) async {
+  return await CatalogPdfGenerator._buildPdfInternal(
+    products: args.products,
+    variantsByProduct: args.variantsByProduct,
+    stockByVariant: args.stockByVariant,
+  );
+}
 
 class CatalogPdfGenerator {
   // Formato de moneda idéntico al que usaba el screen
@@ -24,6 +44,21 @@ class CatalogPdfGenerator {
     required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
+    return await compute(
+      _generatePdfInIsolate,
+      _PdfIsolateArgs(
+        products: products,
+        variantsByProduct: variantsByProduct,
+        stockByVariant: stockByVariant,
+      ),
+    );
+  }
+
+  static Future<Uint8List> _buildPdfInternal({
+    required List<ProductModel> products,
+    required Map<String, List<ProductVariantModel>> variantsByProduct,
+    required Map<String, int> stockByVariant,
+  }) async {
     final baseFont = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
     final italicFont = await PdfGoogleFonts.notoSansItalic();
@@ -31,26 +66,30 @@ class CatalogPdfGenerator {
     final doc = pw.Document();
     final generatedAt = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
 
-    // Descarga de imágenes en paralelo
+    // Descarga de imágenes en lotes pequeños (máximo 5 a la vez) para no saturar sockets
     final Map<String, Uint8List?> productImages = {};
-    await Future.wait(
-      products.map((product) async {
-        final url = product.primaryImageUrl;
-        if (url != null && url.trim().isNotEmpty) {
-          try {
-            final resp = await http
-                .get(Uri.parse(url))
-                .timeout(const Duration(seconds: 10));
-            productImages[product.id] =
-                resp.statusCode == 200 ? resp.bodyBytes : null;
-          } catch (_) {
+    const batchSize = 5;
+    for (int i = 0; i < products.length; i += batchSize) {
+      final chunk = products.skip(i).take(batchSize);
+      await Future.wait(
+        chunk.map((product) async {
+          final url = product.primaryImageUrl;
+          if (url != null && url.trim().isNotEmpty) {
+            try {
+              final resp = await http
+                  .get(Uri.parse(url))
+                  .timeout(const Duration(seconds: 10));
+              productImages[product.id] =
+                  resp.statusCode == 200 ? resp.bodyBytes : null;
+            } catch (_) {
+              productImages[product.id] = null;
+            }
+          } else {
             productImages[product.id] = null;
           }
-        } else {
-          productImages[product.id] = null;
-        }
-      }),
-    );
+        }),
+      );
+    }
 
     doc.addPage(
       pw.MultiPage(

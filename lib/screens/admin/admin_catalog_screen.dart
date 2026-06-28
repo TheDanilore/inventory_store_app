@@ -122,6 +122,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         ),
       );
 
+      // Dar tiempo para que la animación del diálogo termine y el UI se pinte
+      await Future.delayed(const Duration(milliseconds: 400));
+
       try {
         final productIds = filteredProducts.map((p) => p.id).toList();
         final variantsByProduct = await service.loadVariantsByProductIds(
