@@ -40,7 +40,8 @@ class TopCustomersProvider extends ChangeNotifier {
       // 1. Obtener los totales gastados por cliente
       final ordersRes = await _supabase
           .from('orders')
-          .select('customer_id, total_amount');
+          .select('customer_id, total_amount')
+          .eq('status', 'COMPLETED');
 
       final Map<String, double> spentByCustomer = {};
       for (final o in ordersRes) {

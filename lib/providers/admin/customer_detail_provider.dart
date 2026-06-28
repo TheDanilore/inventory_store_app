@@ -180,16 +180,18 @@ class CustomerDetailProvider extends ChangeNotifier {
             )
             .toList();
 
+    final completedOrders = ordersResp.where((o) => o['status'] == 'COMPLETED').toList();
+
     double sum = 0;
-    for (final o in orders) {
-      sum += o.totalAmount;
+    for (final o in completedOrders) {
+      sum += (o['total_amount'] as num?)?.toDouble() ?? 0;
     }
 
     _recentOrders = orders;
-    _avgOrderValue = orders.isEmpty ? 0 : sum / orders.length;
+    _avgOrderValue = completedOrders.isEmpty ? 0 : sum / completedOrders.length;
 
     // TOP PRODUCTS logic
-    final orderIds = ordersResp.map((o) => o['id'] as String).toList();
+    final orderIds = completedOrders.map((o) => o['id'] as String).toList();
     if (orderIds.isEmpty) {
       _topProducts = [];
       return;

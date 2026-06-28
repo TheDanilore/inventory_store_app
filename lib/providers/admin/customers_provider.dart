@@ -151,7 +151,8 @@ class CustomersProvider extends ChangeNotifier {
       // 2. Traer órdenes ligeras para sumar ingresos y encontrar Top 5
       final ordersRes = await _supabase
           .from('orders')
-          .select('customer_id, total_amount');
+          .select('customer_id, total_amount')
+          .eq('status', 'COMPLETED');
 
       double rev = 0;
       final Map<String, double> spentByCustomer = {};
@@ -283,6 +284,7 @@ class CustomersProvider extends ChangeNotifier {
       final ordersAggRes = await _supabase
           .from('orders')
           .select('customer_id, total_amount, created_at')
+          .eq('status', 'COMPLETED')
           .inFilter('customer_id', cIds);
 
       final creditsRes = await _supabase
