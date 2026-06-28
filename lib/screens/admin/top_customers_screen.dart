@@ -14,6 +14,7 @@ import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:vibration/vibration.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 class TopCustomersScreen extends StatelessWidget {
   const TopCustomersScreen({super.key});
@@ -97,14 +98,15 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 850),
+          constraints: const BoxConstraints(maxWidth: 900), // Ampliado un poco para dar aire al grid
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header & Filtros Modernos
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Listado de Mejores Clientes',
@@ -112,47 +114,42 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    PopupMenuButton<int>(
-                      tooltip: 'Filtrar cantidad',
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      onSelected: provider.isLoading ? null : provider.setLimit,
-                      itemBuilder:
-                          (context) =>
-                              [5, 10, 15, 20, 30, 50, 100]
-                                  .map(
-                                    (val) => PopupMenuItem(
-                                      value: val,
-                                      child: Text('Top $val'),
-                                    ),
-                                  )
-                                  .toList(),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Top ${provider.limit}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                    const SizedBox(height: 16),
+                    // Chips de Filtro
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [5, 10, 15, 20, 30, 50, 100].map((val) {
+                          final isSelected = provider.limit == val;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ChoiceChip(
+                              label: Text(
+                                'Top $val',
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: provider.isLoading
+                                  ? null
+                                  : (selected) {
+                                      if (selected) provider.setLimit(val);
+                                    },
+                              selectedColor: theme.colorScheme.primaryContainer,
+                              backgroundColor: theme.colorScheme.surface,
+                              side: BorderSide(
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 20,
-                            ),
-                          ],
-                        ),
+                          );
+                        }).toList(),
                       ),
                     ),
                   ],
@@ -161,44 +158,71 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
 
               // Contenido Principal (Shimmer o Listado)
               Expanded(
-                child:
-                    provider.isLoading
-                        ? const _ShimmerList()
-                        : provider.participants.isEmpty
+                child: provider.isLoading
+                    ? const _ShimmerList()
+                    : provider.participants.isEmpty
                         ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.group_off_rounded,
-                                size: 64,
-                                color: theme.colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No hay clientes con compras.',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.group_off_rounded,
+                                  size: 64,
+                                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No hay clientes con compras.',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth > 700;
+
+                              if (isWide) {
+                                return GridView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8).copyWith(bottom: 100),
+                                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 450,
+                                    mainAxisExtent: 96, // Ajustado para contener la altura de la tarjeta + margen
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 0,
+                                  ),
+                                  itemCount: provider.participants.length,
+                                  itemBuilder: (context, index) {
+                                    final c = provider.participants[index];
+                                    return _AnimatedEntrance(
+                                      index: index,
+                                      child: _PremiumCustomerCard(
+                                        customer: c,
+                                        position: index + 1,
+                                      ),
+                                    );
+                                  },
+                                );
+                              } else {
+                                return ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8).copyWith(bottom: 100),
+                                  itemCount: provider.participants.length,
+                                  itemBuilder: (context, index) {
+                                    final c = provider.participants[index];
+                                    return _AnimatedEntrance(
+                                      index: index,
+                                      child: _PremiumCustomerCard(
+                                        customer: c,
+                                        position: index + 1,
+                                      ),
+                                    );
+                                  },
+                                );
+                              }
+                            },
                           ),
-                        )
-                        : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 8,
-                          ).copyWith(bottom: 100),
-                          itemCount: provider.participants.length,
-                          itemBuilder: (context, index) {
-                            final c = provider.participants[index];
-                            return _PremiumCustomerCard(
-                              customer: c,
-                              position: index + 1,
-                            );
-                          },
-                        ),
               ),
             ],
           ),
@@ -208,11 +232,63 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
   }
 }
 
-class _PremiumCustomerCard extends StatelessWidget {
+class _AnimatedEntrance extends StatefulWidget {
+  final Widget child;
+  final int index;
+  const _AnimatedEntrance({required this.child, required this.index});
+  @override
+  State<_AnimatedEntrance> createState() => _AnimatedEntranceState();
+}
+
+class _AnimatedEntranceState extends State<_AnimatedEntrance> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    // Staggered delay (cap max delay to avoid too long waiting for large lists)
+    final delay = (widget.index * 50).clamp(0, 500);
+    Future.delayed(Duration(milliseconds: delay), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _PremiumCustomerCard extends StatefulWidget {
   final CustomerSummary customer;
   final int position;
 
   const _PremiumCustomerCard({required this.customer, required this.position});
+
+  @override
+  State<_PremiumCustomerCard> createState() => _PremiumCustomerCardState();
+}
+
+class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -222,139 +298,148 @@ class _PremiumCustomerCard extends StatelessWidget {
       decimalDigits: 2,
     );
 
-    // Colores base para top 3
+    final isTop3 = widget.position <= 3;
     Color? borderColor;
-    Color? backgroundColor;
+    List<Color>? gradientColors;
     Widget? medalIcon;
 
-    if (position == 1) {
+    if (widget.position == 1) {
       borderColor = const Color(0xFFFFD700); // Oro
-      backgroundColor = const Color(0xFFFFD700).withValues(alpha: 0.05);
+      gradientColors = [const Color(0xFFFFD700).withValues(alpha: 0.15), const Color(0xFFFFD700).withValues(alpha: 0.02)];
       medalIcon = const Text('🥇', style: TextStyle(fontSize: 24));
-    } else if (position == 2) {
+    } else if (widget.position == 2) {
       borderColor = const Color(0xFFC0C0C0); // Plata
-      backgroundColor = const Color(0xFFC0C0C0).withValues(alpha: 0.05);
+      gradientColors = [const Color(0xFFC0C0C0).withValues(alpha: 0.15), const Color(0xFFC0C0C0).withValues(alpha: 0.02)];
       medalIcon = const Text('🥈', style: TextStyle(fontSize: 24));
-    } else if (position == 3) {
+    } else if (widget.position == 3) {
       borderColor = const Color(0xFFCD7F32); // Bronce
-      backgroundColor = const Color(0xFFCD7F32).withValues(alpha: 0.05);
+      gradientColors = [const Color(0xFFCD7F32).withValues(alpha: 0.15), const Color(0xFFCD7F32).withValues(alpha: 0.02)];
       medalIcon = const Text('🥉', style: TextStyle(fontSize: 24));
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: backgroundColor ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              borderColor ??
-              theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: position <= 3 ? 1.5 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.only(bottom: 12),
+        transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          gradient: isTop3
+              ? LinearGradient(colors: gradientColors!, begin: Alignment.topLeft, end: Alignment.bottomRight)
+              : null,
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            // Futuro: Navegar al detalle del cliente
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Posición / Medalla
-                SizedBox(
-                  width: 40,
-                  child: Center(
-                    child:
-                        medalIcon ??
-                        Text(
-                          '#$position',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurfaceVariant,
+          border: Border.all(
+            color: borderColor ?? theme.colorScheme.outlineVariant.withValues(alpha: _isHovered ? 0.8 : 0.3),
+            width: isTop3 ? 1.5 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (borderColor ?? theme.colorScheme.shadow).withValues(alpha: _isHovered ? 0.15 : 0.03),
+              blurRadius: _isHovered ? 20 : 12,
+              offset: Offset(0, _isHovered ? 8 : 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              context.push('/admin/customer-detail/${widget.customer.id}', extra: widget.customer);
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Posición / Medalla
+                  SizedBox(
+                    width: 40,
+                    child: Center(
+                      child: medalIcon ??
+                          Text(
+                            '#${widget.position}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
 
-                // Avatar
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage:
-                      customer.avatarUrl != null
-                          ? CachedNetworkImageProvider(customer.avatarUrl!)
-                          : null,
-                  child:
-                      customer.avatarUrl == null
-                          ? Text(
-                            customer.fullName[0].toUpperCase(),
+                  // Avatar
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    backgroundImage: widget.customer.avatarUrl != null
+                        ? CachedNetworkImageProvider(widget.customer.avatarUrl!)
+                        : null,
+                    child: widget.customer.avatarUrl == null
+                        ? Text(
+                            widget.customer.fullName[0].toUpperCase(),
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
                               fontSize: 18,
                             ),
                           )
-                          : null,
-                ),
-                const SizedBox(width: 16),
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
 
-                // Info del Cliente
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Info del Cliente
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.customer.fullName,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Cliente Destacado',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Monto Total
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        customer.fullName,
+                        formatCurrency.format(widget.customer.totalSpent),
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.primary,
+                          fontSize: 18,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Cliente Destacado',
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        'Total Comprado',
+                        style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                ),
-
-                // Monto Total
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      formatCurrency.format(customer.totalSpent),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Total Comprado',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -372,53 +457,77 @@ class _ShimmerList extends StatelessWidget {
     final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      itemCount: 8,
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: baseColor,
-          highlightColor: highlightColor,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Container(width: 32, height: 24, color: Colors.white),
-                const SizedBox(width: 12),
-                const CircleAvatar(radius: 24, backgroundColor: Colors.white),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 700;
+
+        Widget buildItem() {
+          return Shimmer.fromColors(
+            baseColor: baseColor,
+            highlightColor: highlightColor,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(width: 32, height: 24, color: Colors.white),
+                  const SizedBox(width: 12),
+                  const CircleAvatar(radius: 24, backgroundColor: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(width: 100, height: 12, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: double.infinity,
-                        height: 16,
-                        color: Colors.white,
-                      ),
+                      Container(width: 80, height: 16, color: Colors.white),
                       const SizedBox(height: 8),
-                      Container(width: 100, height: 12, color: Colors.white),
+                      Container(width: 60, height: 12, color: Colors.white),
                     ],
                   ),
-                ),
-                const SizedBox(width: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(width: 80, height: 16, color: Colors.white),
-                    const SizedBox(height: 8),
-                    Container(width: 60, height: 12, color: Colors.white),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
+          );
+        }
+
+        if (isWide) {
+          return GridView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 450,
+              mainAxisExtent: 96,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 0,
+            ),
+            itemCount: 8,
+            itemBuilder: (context, index) => buildItem(),
+          );
+        } else {
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            itemCount: 8,
+            itemBuilder: (context, index) => buildItem(),
+          );
+        }
       },
     );
   }
@@ -691,7 +800,7 @@ class _WinnerDialog extends StatelessWidget {
                   formatCurrency.format(winner.totalSpent),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
-                    color: Colors.green[700], // Más accesible que el verde puro
+                    color: Colors.green[700],
                   ),
                 ),
               ),
