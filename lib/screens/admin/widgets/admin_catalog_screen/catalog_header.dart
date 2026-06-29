@@ -35,7 +35,7 @@ class CatalogHeader extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               color: Colors.white.withValues(alpha: 0.85),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: EdgeInsets.fromLTRB(isDesktop ? 0 : 16, 12, isDesktop ? 0 : 16, 0),
               child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
             ),
           ),

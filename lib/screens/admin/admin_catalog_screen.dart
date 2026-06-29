@@ -368,8 +368,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       );
 
                       // Header colapsable: se reduce a solo el search bar al scrollear
-                      final headerMaxHeight =
-                          provider.searchByIngredient ? 175.0 : 115.0;
+                      final isDesktop = MediaQuery.of(context).size.width >= 900;
+                      
+                      double headerMaxHeight;
+                      if (isDesktop) {
+                        headerMaxHeight = provider.searchByIngredient ? 120.0 : 70.0;
+                      } else {
+                        headerMaxHeight = provider.searchByIngredient ? 175.0 : 115.0;
+                      }
                       const double headerMinHeight = 60.0;
 
                       final headerSliver = SliverPersistentHeader(
