@@ -344,6 +344,34 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           ),
                         ),
                         actions: [
+                          if (MediaQuery.of(context).size.width >= 900)
+                            ElevatedButton.icon(
+                              onPressed: () => context.push('/admin/pos'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E293B),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.point_of_sale_rounded,
+                                size: 16,
+                              ),
+                              label: const Text(
+                                'Abrir Caja',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
                           AdminSettingsMenuButton(
                             items: _buildMenuItems(provider),
                             onSelected:
@@ -368,13 +396,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       );
 
                       // Header colapsable: se reduce a solo el search bar al scrollear
-                      final isDesktop = MediaQuery.of(context).size.width >= 900;
-                      
+                      final isDesktop =
+                          MediaQuery.of(context).size.width >= 900;
+
                       double headerMaxHeight;
                       if (isDesktop) {
-                        headerMaxHeight = provider.searchByIngredient ? 120.0 : 70.0;
+                        headerMaxHeight =
+                            provider.searchByIngredient ? 120.0 : 70.0;
                       } else {
-                        headerMaxHeight = provider.searchByIngredient ? 175.0 : 115.0;
+                        headerMaxHeight =
+                            provider.searchByIngredient ? 175.0 : 115.0;
                       }
                       const double headerMinHeight = 60.0;
 
@@ -463,7 +494,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                         mainAxisSpacing: 16,
                                       ),
                                   delegate: SliverChildBuilderDelegate(
-                                    (context, index) => const AdminProductSkeleton(),
+                                    (context, index) =>
+                                        const AdminProductSkeleton(),
                                     childCount: AdminCatalogProvider.pageSize,
                                   ),
                                 ),
@@ -633,31 +665,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       ],
                     );
 
-            final bodyContent = Stack(
-              children: [
-                buildBody(),
-                if (isDesktop)
-                  Positioned(
-                    bottom: 24,
-                    left: 24,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'go_to_pos_btn',
-                      backgroundColor: const Color(0xFF1E293B),
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      onPressed: () => context.push('/admin/pos'),
-                      icon: const Icon(Icons.point_of_sale_rounded, size: 20),
-                      label: const Text(
-                        'Abrir Caja (POS)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
+            final bodyContent = buildBody();
 
             return AdminLayout(
               title: 'Catálogo',

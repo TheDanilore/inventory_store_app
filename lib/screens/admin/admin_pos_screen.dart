@@ -141,55 +141,67 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leadingWidth: 150,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8.0, top: 4, bottom: 4),
-          child: TextButton.icon(
-            onPressed: () => context.pop(),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: AppColors.textPrimary,
-            ),
-            label: const Text(
-              'Catálogo',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        title: const Text(
-          'CAJA POS',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
-          ),
-        ),
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey.shade200, height: 1),
-        ),
-      ),
+      // Se eliminó la AppBar para dar espacio al catálogo y los Breadcrumbs
       body: Consumer<AdminCatalogProvider>(
         builder: (context, provider, child) {
           Widget catalogContent = Column(
             children: [
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () => context.pop(),
+                          borderRadius: BorderRadius.circular(6),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 16,
+                                  color: AppColors.textMuted,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Catálogo',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '/',
+                          style: TextStyle(
+                            color: AppColors.border,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Punto de Venta (POS)',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     CatalogHeader(
                       searchController: _searchCtrl,
                       isExporting: provider.isLoadingAction,
@@ -198,6 +210,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       searchByIngredient: provider.searchByIngredient,
                       onToggleIngredientSearch:
                           provider.toggleSearchByIngredient,
+                      isPosMode: true,
                       onAddProduct: () async {
                         final result = await context.push(
                           '/admin/product-form',

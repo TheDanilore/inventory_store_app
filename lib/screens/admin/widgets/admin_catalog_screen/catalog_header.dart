@@ -11,6 +11,7 @@ class CatalogHeader extends StatelessWidget {
   final bool searchByIngredient;
   final ValueChanged<bool> onToggleIngredientSearch;
   final VoidCallback onAddProduct;
+  final bool isPosMode;
 
   const CatalogHeader({
     super.key,
@@ -21,6 +22,7 @@ class CatalogHeader extends StatelessWidget {
     required this.searchByIngredient,
     required this.onToggleIngredientSearch,
     required this.onAddProduct,
+    this.isPosMode = false,
   });
 
   @override
@@ -35,7 +37,7 @@ class CatalogHeader extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               color: Colors.white.withValues(alpha: 0.85),
-              padding: EdgeInsets.fromLTRB(isDesktop ? 0 : 16, 12, isDesktop ? 0 : 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
             ),
           ),
@@ -117,7 +119,7 @@ class CatalogHeader extends StatelessWidget {
                         onTap:
                             () => onToggleIngredientSearch(!searchByIngredient),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.only(left: 12, right: 16),
                           color: Colors.transparent, // expande área de toque
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 250),
@@ -156,27 +158,29 @@ class CatalogHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: onAddProduct,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+            if (!isPosMode) ...[
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: onAddProduct,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radius),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text(
+                  'Crear Producto',
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text(
-                'Crear Producto',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
+            ],
           ],
         ),
         AnimatedSize(
