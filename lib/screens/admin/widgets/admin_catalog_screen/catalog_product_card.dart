@@ -30,6 +30,7 @@ class AdminProductCard extends StatefulWidget {
 class _AdminProductCardState extends State<AdminProductCard> {
   bool _isToggling = false;
   bool _isCardPressed = false;
+  bool _isHovered = false;
 
   /// Devuelve el color del badge de stock según nivel de alerta.
   Color _stockBadgeColor(int stock) {
@@ -71,6 +72,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
           ).colorScheme.primary.withValues(alpha: 0.04),
           onHighlightChanged:
               (isPressed) => setState(() => _isCardPressed = isPressed),
+          onHover: (hover) => setState(() => _isHovered = hover),
           onTap:
               () => context.go(
                 '/admin/product/${widget.product.id}',
@@ -88,17 +90,25 @@ class _AdminProductCardState extends State<AdminProductCard> {
                 color:
                     isDesactivado
                         ? const Color(0xFFE2E8F0)
-                        : const Color(0xFFEDF2F7),
+                        : const Color(0xFFE5E7EB),
+                width: 1.0,
               ),
               boxShadow:
                   isDesactivado
                       ? null
                       : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
+                        if (_isHovered)
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          )
+                        else
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
                       ],
             ),
             child: Column(

@@ -99,4 +99,12 @@ class PosCalculatorUtils {
     final disp = limit - debt;
     return disp > 0 ? disp : 0;
   }
+
+  static double getMaxCustomDiscount(PosProvider pos, double ratio, int puntosSeguros) {
+    return pos.totalAmount - (puntosSeguros * ratio);
+  }
+
+  static int calcularPuntosGanados({required double total, required double rate}) {
+    return (total * rate).floor();
+  }
 }
