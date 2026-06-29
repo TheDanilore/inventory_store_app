@@ -14,7 +14,6 @@ import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
-
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_header.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_category_chips.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_grid_view.dart';
@@ -22,7 +21,6 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/a
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_fab_buttons.dart';
-import 'package:inventory_store_app/screens/admin/widgets/pos_checkout/desktop_pos_panel.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
@@ -225,8 +223,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     }
   }
 
-  void _irAVenta(ProductModel product) {
+  Future<void> _irAVenta(ProductModel product) async {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
+
+    if (!mounted) return;
+
     if (isDesktop) {
       showDialog(
         context: context,
@@ -289,6 +290,378 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         final isDesktop = constraints.maxWidth >= 900;
         return Consumer<AdminCatalogProvider>(
           builder: (context, provider, child) {
+            Widget buildBody() {
+              return Builder(
+                builder: (context) {
+                  const double fabsBottomPadding = 54;
+
+                  Widget mainContent = Builder(
+                    builder: (context) {
+                      final topBarSliver = SliverAppBar(
+                        systemOverlayStyle: const SystemUiOverlayStyle(
+                          statusBarColor: Colors.transparent,
+                          statusBarIconBrightness: Brightness.dark,
+                          statusBarBrightness: Brightness.light,
+                        ),
+                        backgroundColor: const Color(0xFFF7F8FC),
+                        elevation: 0,
+                        shadowColor: Colors.black.withValues(alpha: 0.06),
+                        surfaceTintColor: Colors.transparent,
+                        titleSpacing: 0,
+                        floating: true,
+                        pinned: false,
+                        title: const Padding(
+                          padding: EdgeInsets.only(left: 4),
+                          child: Text(
+                            'Catálogo',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                        leadingWidth: 60,
+                        leading: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(width: 12),
+                              AdminProfileAvatar(
+                                onTap: () {
+                                  final user =
+                                      Supabase.instance.client.auth.currentUser;
+                                  if (user == null) {
+                                    context.go('/login');
+                                  } else {
+                                    context.push('/admin/profile');
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          AdminSettingsMenuButton(
+                            items: _buildMenuItems(provider),
+                            onSelected:
+                                (value) => _handleMenuSelection(
+                                  value,
+                                  provider,
+                                  context,
+                                ),
+                          ),
+                          const SizedBox(width: 8),
+                          Builder(
+                            builder:
+                                (context) => AdminAppBarIconButton(
+                                  icon: Icons.menu_rounded,
+                                  onTap:
+                                      () =>
+                                          Scaffold.of(context).openEndDrawer(),
+                                ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                      );
+
+                      // Header colapsable: se reduce a solo el search bar al scrollear
+                      final headerMaxHeight =
+                          provider.searchByIngredient ? 175.0 : 115.0;
+                      const double headerMinHeight = 60.0;
+
+                      final headerSliver = SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _CatalogHeaderDelegate(
+                          minHeight: headerMinHeight,
+                          maxHeight: headerMaxHeight,
+                          child: ClipRect(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: 12.0,
+                                sigmaY: 12.0,
+                              ),
+                              child: Container(
+                                color: const Color(
+                                  0xFFF9FAFB,
+                                ).withValues(alpha: 0.85),
+                                child: OverflowBox(
+                                  alignment: Alignment.topCenter,
+                                  maxHeight: double.infinity,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CatalogHeader(
+                                        searchController: _searchCtrl,
+                                        isExporting: provider.isLoadingAction,
+                                        onExport:
+                                            () => _exportCatalogPdf(provider),
+                                        onSearchChanged: provider.setSearchTerm,
+                                        searchByIngredient:
+                                            provider.searchByIngredient,
+                                        onToggleIngredientSearch:
+                                            provider.toggleSearchByIngredient,
+                                        onAddProduct:
+                                            () => context.push(
+                                              '/admin/product-form',
+                                            ),
+                                      ),
+                                      if (provider.isLoadingAction)
+                                        const LinearProgressIndicator(
+                                          color: AppColors.teal,
+                                          minHeight: 2,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+
+                      final chipsSliver =
+                          (provider.categories.isNotEmpty &&
+                                  !provider.searchByIngredient)
+                              ? SliverToBoxAdapter(
+                                child: CategoryChips(
+                                  categories: provider.categories,
+                                  selectedCategoryId:
+                                      provider.selectedCategoryId,
+                                  onSelected: provider.setCategory,
+                                  filterIsActive: provider.filterIsActive,
+                                  onStatusSelected: provider.setFilterIsActive,
+                                ),
+                              )
+                              : null;
+
+                      if (provider.isLoading) {
+                        return RefreshIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                          onRefresh: () async => provider.refreshProducts(),
+                          child: CustomScrollView(
+                            slivers: [
+                              topBarSliver,
+                              headerSliver,
+                              if (chipsSliver != null) chipsSliver,
+                              SliverPadding(
+                                padding: const EdgeInsets.all(16),
+                                sliver: SliverGrid(
+                                  gridDelegate:
+                                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                                        maxCrossAxisExtent: 220,
+                                        mainAxisExtent: 280,
+                                        crossAxisSpacing: 16,
+                                        mainAxisSpacing: 16,
+                                      ),
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) => AppShimmer(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      borderRadius: AppColors.radiusLg,
+                                    ),
+                                    childCount: AdminCatalogProvider.pageSize,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (provider.error != null && provider.products.isEmpty) {
+                        return RefreshIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                          onRefresh: () async => provider.refreshProducts(),
+                          child: CustomScrollView(
+                            slivers: [
+                              topBarSliver,
+                              headerSliver,
+                              if (chipsSliver != null) chipsSliver,
+                              SliverFillRemaining(
+                                child: CatalogErrorState(
+                                  message: provider.error!,
+                                  onRetry: () => provider.refreshProducts(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (provider.products.isEmpty && !provider.isLoading) {
+                        return RefreshIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                          onRefresh: () async => provider.refreshProducts(),
+                          child: CustomScrollView(
+                            slivers: [
+                              topBarSliver,
+                              headerSliver,
+                              if (chipsSliver != null) chipsSliver,
+                              SliverFillRemaining(
+                                child: CatalogEmptyState(
+                                  searchByIngredient:
+                                      provider.searchByIngredient,
+                                  searchTerm: provider.searchTerm,
+                                  onRetry: () {
+                                    if (provider.searchTerm.isNotEmpty) {
+                                      _searchCtrl.clear();
+                                      provider.setSearchTerm('');
+                                    } else {
+                                      provider.refreshProducts();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        color: Theme.of(context).colorScheme.primary,
+                        onRefresh: () async => provider.refreshProducts(),
+                        child: CatalogGridScrollView(
+                          products: provider.products,
+                          pageSize: AdminCatalogProvider.pageSize,
+                          currentPage: provider.currentPage,
+                          onPageChanged: provider.setPage,
+                          onSale: _irAVenta,
+                          onToggleActive:
+                              (p) => _toggleProductoActivo(p, provider),
+                          searchByIngredient: provider.searchByIngredient,
+                          matchedIngredients: provider.matchedIngredients,
+                          bottomPadding: fabsBottomPadding,
+                          topBarSliver: topBarSliver,
+                          headerSliver: headerSliver,
+                          chipsSliver: chipsSliver,
+                          onEdit: (product) async {
+                            final result = await context.push(
+                              '/admin/product-form',
+                              extra: {'productToEdit': product},
+                            );
+                            if (result == true) {
+                              CatalogService.clearCache();
+                              provider.refreshProducts();
+                            }
+                          },
+                          isPosMode: false,
+                        ),
+                      );
+                    },
+                  );
+
+                  Widget catalogBody = Column(
+                    children: [
+                      Expanded(child: mainContent),
+                      if (provider.products.isNotEmpty &&
+                          provider.totalPages > 1)
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, -4),
+                              ),
+                            ],
+                          ),
+                          child: SafeArea(
+                            top: false,
+                            child: AdminPageBlocks(
+                              currentPage: provider.currentPage,
+                              totalPages: provider.totalPages,
+                              onPageChanged: provider.setPage,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+
+                  if (isDesktop) {
+                    return Container(
+                      color: const Color(0xFFF9FAFB),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1100),
+                          child: catalogBody,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return catalogBody;
+                },
+              );
+            }
+
+            final floatingBtn =
+                isDesktop
+                    ? null
+                    : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Consumer<PosProvider>(
+                          builder: (posContext, pos, child) {
+                            if (pos.itemCount == 0) {
+                              return const SizedBox.shrink();
+                            }
+                            return CatalogPosCartButton(
+                              itemCount: pos.itemCount,
+                              total: pos.totalAmount,
+                              onTap: () async {
+                                await context.push('/admin/pos-checkout');
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        CatalogAddProductFab(
+                          onTap: () async {
+                            final result = await context.push(
+                              '/admin/product-form',
+                            );
+                            if (result == true) {
+                              CatalogService.clearCache();
+                              provider.setPage(0);
+                            }
+                          },
+                        ),
+                      ],
+                    );
+
+            final bodyContent = Stack(
+              children: [
+                buildBody(),
+                if (isDesktop)
+                  Positioned(
+                    bottom: 24,
+                    left: 24,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'go_to_pos_btn',
+                      backgroundColor: const Color(0xFF1E293B),
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      onPressed: () => context.push('/admin/pos'),
+                      icon: const Icon(Icons.point_of_sale_rounded, size: 20),
+                      label: const Text(
+                        'Abrir Caja (POS)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+
             return AdminLayout(
               title: 'Catálogo',
               showSettingsButton: true,
@@ -296,391 +669,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               onSettingsSelected:
                   (value) => _handleMenuSelection(value, provider, context),
               showAppBar: false,
-              body: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        const double fabsBottomPadding = 54;
-
-                        Widget mainContent = Builder(
-                          builder: (context) {
-                            final topBarSliver = SliverAppBar(
-                              systemOverlayStyle: const SystemUiOverlayStyle(
-                                statusBarColor: Colors.transparent,
-                                statusBarIconBrightness: Brightness.dark,
-                                statusBarBrightness: Brightness.light,
-                              ),
-                              backgroundColor: const Color(0xFFF7F8FC),
-                              elevation: 0,
-                              shadowColor: Colors.black.withValues(alpha: 0.06),
-                              surfaceTintColor: Colors.transparent,
-                              titleSpacing: 0,
-                              floating: true,
-                              pinned: false,
-                              title: const Padding(
-                                padding: EdgeInsets.only(left: 4),
-                                child: Text(
-                                  'Catálogo',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF0F172A),
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ),
-                              leadingWidth: 60,
-                              leading: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const SizedBox(width: 12),
-                                    AdminProfileAvatar(
-                                      onTap: () {
-                                        final user =
-                                            Supabase
-                                                .instance
-                                                .client
-                                                .auth
-                                                .currentUser;
-                                        if (user == null) {
-                                          context.go('/login');
-                                        } else {
-                                          context.push('/admin/profile');
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              actions: [
-                                AdminSettingsMenuButton(
-                                  items: _buildMenuItems(provider),
-                                  onSelected:
-                                      (value) => _handleMenuSelection(
-                                        value,
-                                        provider,
-                                        context,
-                                      ),
-                                ),
-                                const SizedBox(width: 8),
-                                Builder(
-                                  builder:
-                                      (context) => AdminAppBarIconButton(
-                                        icon: Icons.menu_rounded,
-                                        onTap:
-                                            () =>
-                                                Scaffold.of(
-                                                  context,
-                                                ).openEndDrawer(),
-                                      ),
-                                ),
-                                const SizedBox(width: 12),
-                              ],
-                            );
-
-                            // Header colapsable: se reduce a solo el search bar al scrollear
-                            final headerMaxHeight =
-                                provider.searchByIngredient ? 175.0 : 115.0;
-                            const double headerMinHeight = 60.0;
-
-                            final headerSliver = SliverPersistentHeader(
-                              pinned: true,
-                              delegate: _CatalogHeaderDelegate(
-                                minHeight: headerMinHeight,
-                                maxHeight: headerMaxHeight,
-                                child: ClipRect(
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(
-                                      sigmaX: 12.0,
-                                      sigmaY: 12.0,
-                                    ),
-                                    child: Container(
-                                      color: const Color(
-                                        0xFFF9FAFB,
-                                      ).withValues(alpha: 0.85),
-                                      child: OverflowBox(
-                                        alignment: Alignment.topCenter,
-                                        maxHeight: double.infinity,
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            CatalogHeader(
-                                              searchController: _searchCtrl,
-                                              isExporting:
-                                                  provider.isLoadingAction,
-                                              onExport:
-                                                  () => _exportCatalogPdf(
-                                                    provider,
-                                                  ),
-                                              onSearchChanged:
-                                                  provider.setSearchTerm,
-                                              searchByIngredient:
-                                                  provider.searchByIngredient,
-                                              onToggleIngredientSearch:
-                                                  provider
-                                                      .toggleSearchByIngredient,
-                                            ),
-                                            if (provider.isLoadingAction)
-                                              const LinearProgressIndicator(
-                                                color: AppColors.teal,
-                                                minHeight: 2,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-
-                            final chipsSliver =
-                                (provider.categories.isNotEmpty &&
-                                        !provider.searchByIngredient)
-                                    ? SliverToBoxAdapter(
-                                      child: CategoryChips(
-                                        categories: provider.categories,
-                                        selectedCategoryId:
-                                            provider.selectedCategoryId,
-                                        onSelected: provider.setCategory,
-                                        filterIsActive: provider.filterIsActive,
-                                        onStatusSelected:
-                                            provider.setFilterIsActive,
-                                      ),
-                                    )
-                                    : null;
-
-                            if (provider.isLoading) {
-                              return RefreshIndicator(
-                                color: Theme.of(context).colorScheme.primary,
-                                onRefresh:
-                                    () async => provider.refreshProducts(),
-                                child: CustomScrollView(
-                                  slivers: [
-                                    topBarSliver,
-                                    headerSliver,
-                                    if (chipsSliver != null) chipsSliver,
-                                    SliverPadding(
-                                      padding: const EdgeInsets.all(16),
-                                      sliver: SliverGrid(
-                                        gridDelegate:
-                                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                                              maxCrossAxisExtent: 220,
-                                              mainAxisExtent: 280,
-                                              crossAxisSpacing: 16,
-                                              mainAxisSpacing: 16,
-                                            ),
-                                        delegate: SliverChildBuilderDelegate(
-                                          (context, index) => AppShimmer(
-                                            width: double.infinity,
-                                            height: double.infinity,
-                                            borderRadius: AppColors.radiusLg,
-                                          ),
-                                          childCount:
-                                              AdminCatalogProvider.pageSize,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (provider.error != null &&
-                                provider.products.isEmpty) {
-                              return RefreshIndicator(
-                                color: Theme.of(context).colorScheme.primary,
-                                onRefresh:
-                                    () async => provider.refreshProducts(),
-                                child: CustomScrollView(
-                                  slivers: [
-                                    topBarSliver,
-                                    headerSliver,
-                                    if (chipsSliver != null) chipsSliver,
-                                    SliverFillRemaining(
-                                      child: CatalogErrorState(
-                                        message: provider.error!,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (provider.products.isEmpty &&
-                                !provider.isLoading) {
-                              return RefreshIndicator(
-                                color: Theme.of(context).colorScheme.primary,
-                                onRefresh:
-                                    () async => provider.refreshProducts(),
-                                child: CustomScrollView(
-                                  slivers: [
-                                    topBarSliver,
-                                    headerSliver,
-                                    if (chipsSliver != null) chipsSliver,
-                                    SliverFillRemaining(
-                                      child: CatalogEmptyState(
-                                        searchByIngredient:
-                                            provider.searchByIngredient,
-                                        searchTerm: provider.searchTerm,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            return RefreshIndicator(
-                              color: Theme.of(context).colorScheme.primary,
-                              onRefresh: () async => provider.refreshProducts(),
-                              child: CatalogGridScrollView(
-                                products: provider.products,
-                                pageSize: AdminCatalogProvider.pageSize,
-                                currentPage: provider.currentPage,
-                                onPageChanged: provider.setPage,
-                                onSale: _irAVenta,
-                                onToggleActive:
-                                    (p) => _toggleProductoActivo(p, provider),
-                                searchByIngredient: provider.searchByIngredient,
-                                matchedIngredients: provider.matchedIngredients,
-                                bottomPadding: fabsBottomPadding,
-                                topBarSliver: topBarSliver,
-                                headerSliver: headerSliver,
-                                chipsSliver: chipsSliver,
-                                onEdit: (product) async {
-                                  final result = await context.push(
-                                    '/admin/product-form',
-                                    extra: {'productToEdit': product},
-                                  );
-                                  if (result == true) {
-                                    CatalogService.clearCache();
-                                    provider.refreshProducts();
-                                  }
-                                },
-                              ),
-                            );
-                          },
-                        );
-
-                        Widget catalogBody = Column(
-                          children: [
-                            Expanded(child: mainContent),
-                            if (provider.products.isNotEmpty &&
-                                provider.totalPages > 1)
-                              Container(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surface,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, -4),
-                                    ),
-                                  ],
-                                ),
-                                child: SafeArea(
-                                  top: false,
-                                  child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: provider.setPage,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-
-                        if (isDesktop) {
-                          return Container(
-                            color: const Color(0xFFF9FAFB),
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 1100,
-                                ),
-                                child: catalogBody,
-                              ),
-                            ),
-                          );
-                        }
-
-                        return catalogBody;
-                      },
-                    ),
-                  ), // Cierre de Expanded
-                  if (isDesktop)
-                    Container(
-                      width: 420, // Ancho fijo para el panel POS en desktop
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          left: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(-5, 0),
-                          ),
-                        ],
-                      ),
-                      child: DesktopPosPanel(
-                        onSaleCompleted: () {
-                          // Refrescar el catálogo al terminar una venta para actualizar el stock visible
-                          provider.refreshProducts();
-                        },
-                      ),
-                    ),
-                ],
-              ), // Cierre de Row
-              floatingActionButton:
-                  isDesktop
-                      ? null
-                      : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Consumer<PosProvider>(
-                            builder: (posContext, pos, child) {
-                              if (pos.itemCount == 0) {
-                                return const SizedBox.shrink();
-                              }
-                              return CatalogPosCartButton(
-                                itemCount: pos.itemCount,
-                                total: pos.totalAmount,
-                                onTap: () async {
-                                  await context.push('/admin/pos-checkout');
-                                },
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          CatalogAddProductFab(
-                            onTap: () async {
-                              final result = await context.push(
-                                '/admin/product-form',
-                              );
-                              if (result == true) {
-                                CatalogService.clearCache();
-                                provider.setPage(0);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+              body: bodyContent,
+              floatingActionButton: floatingBtn,
             );
           },
         );

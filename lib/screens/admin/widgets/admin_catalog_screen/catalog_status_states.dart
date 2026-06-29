@@ -7,11 +7,13 @@ import 'package:inventory_store_app/shared/widgets/app_empty_state.dart';
 class CatalogEmptyState extends StatelessWidget {
   final bool searchByIngredient;
   final String searchTerm;
+  final VoidCallback? onRetry;
 
   const CatalogEmptyState({
     super.key,
     this.searchByIngredient = false,
     this.searchTerm = '',
+    this.onRetry,
   });
 
   @override
@@ -27,13 +29,26 @@ class CatalogEmptyState extends StatelessWidget {
               ? 'Ningún producto tiene ese ingrediente activo registrado. '
                   'Verifica el nombre o agrégalo desde el formulario del producto.'
               : 'No se encontraron productos\ncon los filtros actuales.',
+      action: onRetry != null
+          ? FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reintentar / Limpiar'),
+            )
+          : null,
     );
   }
 }
 
 class CatalogErrorState extends StatelessWidget {
   final String message;
-  const CatalogErrorState({super.key, required this.message});
+  final VoidCallback? onRetry;
+  
+  const CatalogErrorState({
+    super.key, 
+    required this.message,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +64,16 @@ class CatalogErrorState extends StatelessWidget {
       title: isOffline ? 'Sin conexión a internet' : 'Ocurrió un error',
       message:
           isOffline ? 'Revisa tu conexión para cargar el catálogo.' : message,
+      action: onRetry != null
+          ? FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: isOffline ? Colors.orange : AppColors.danger,
+              ),
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reintentar'),
+            )
+          : null,
     );
   }
 }

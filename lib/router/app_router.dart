@@ -25,6 +25,7 @@ import 'package:inventory_store_app/screens/auth/profile_screen.dart';
 
 // Pantallas Admin
 import 'package:inventory_store_app/screens/admin/admin_catalog_screen.dart';
+import 'package:inventory_store_app/screens/admin/admin_pos_screen.dart';
 import 'package:inventory_store_app/screens/admin/all_cash_shifts_screen.dart';
 import 'package:inventory_store_app/screens/admin/active_ingredients_screen.dart';
 import 'package:inventory_store_app/screens/admin/attributes_management_screen.dart';
@@ -395,6 +396,10 @@ class AppRouter {
                   onSaleCompleted: args['onSaleCompleted'],
                 );
               },
+            ),
+            GoRoute(
+              path: 'pos',
+              builder: (context, state) => const AdminPosScreen(),
             ),
             GoRoute(
               path: 'product-form',

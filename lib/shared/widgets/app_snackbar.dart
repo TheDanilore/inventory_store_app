@@ -1,7 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 
 enum SnackbarType { success, error, warning, info }
@@ -62,17 +60,7 @@ class AppSnackbar {
       duration: duration,
     );
 
-    if (type == SnackbarType.error) {
-      // Solo vibrar si no es web para evitar MissingPluginException
-      if (!kIsWeb) {
-        Vibration.vibrate(duration: 50, amplitude: 128);
-      }
-    } else {
-      // Solo vibrar si no es web para evitar MissingPluginException
-      if (!kIsWeb) {
-        Vibration.vibrate(duration: 50, amplitude: 128);
-      }
-    }
+    // Vibración eliminada por auditoría UX para reducir estrés
 
     // Insertamos al inicio para que la más nueva tome la posición frontal
     _queue.insert(0, newSnackbar);
@@ -299,17 +287,21 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                       filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: widget.item.backgroundColor.withValues(alpha: 0.85),
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1F2937).withValues(alpha: 0.95)
+                              : Colors.white.withValues(alpha: 0.95),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF374151)
+                                : const Color(0xFFE5E7EB),
                             width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: (12 - (widget.index * 2)).toDouble(),
-                              offset: Offset(0, (4 + widget.index).toDouble()),
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: (16 - (widget.index * 2)).toDouble(),
+                              offset: Offset(0, (8 + widget.index).toDouble()),
                             ),
                           ],
                         ),
@@ -323,19 +315,29 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                               ),
                               child: Row(
                                 children: [
-                                  Icon(
-                                    widget.item.iconData,
-                                    color: Colors.white,
-                                    size: 20,
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: widget.item.backgroundColor.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      widget.item.iconData,
+                                      color: widget.item.backgroundColor,
+                                      size: 18,
+                                    ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
                                       widget.item.message,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? const Color(0xFFF9FAFB)
+                                            : const Color(0xFF1F2937),
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
+                                        letterSpacing: -0.2,
                                       ),
                                     ),
                                   ),
@@ -350,9 +352,11 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                                     value: _progressController.value,
                                     backgroundColor: Colors.transparent,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white.withValues(alpha: 0.4),
+                                      Theme.of(context).brightness == Brightness.dark
+                                          ? const Color(0xFF374151)
+                                          : const Color(0xFFF3F4F6),
                                     ),
-                                    minHeight: 3,
+                                    minHeight: 2,
                                   );
                                 },
                               ),

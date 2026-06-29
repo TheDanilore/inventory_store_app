@@ -13,6 +13,7 @@ class AdminProductCard extends StatefulWidget {
   final Future<void> Function() onToggleActive;
   final VoidCallback onEdit;
   final String? highlightIngredient;
+  final bool isFullPosMode;
 
   const AdminProductCard({
     super.key,
@@ -21,6 +22,7 @@ class AdminProductCard extends StatefulWidget {
     required this.onToggleActive,
     required this.onEdit,
     this.highlightIngredient,
+    this.isFullPosMode = false,
   });
 
   @override
@@ -390,32 +392,35 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 : null,
                       ),
                       // Divisor visual
-                      Container(width: 1, height: 18, color: AppColors.border),
+                      if (!widget.isFullPosMode)
+                        Container(width: 1, height: 18, color: AppColors.border),
                       // Botón Editar
-                      _IconCardAction(
-                        icon: Icons.edit_rounded,
-                        tooltip: 'Editar producto',
-                        color: Colors.blue,
-                        onTap: widget.onEdit,
-                      ),
+                      if (!widget.isFullPosMode)
+                        _IconCardAction(
+                          icon: Icons.edit_rounded,
+                          tooltip: 'Editar producto',
+                          color: Colors.blue,
+                          onTap: widget.onEdit,
+                        ),
                       // Botón Activar / Desactivar
-                      _IconCardAction(
-                        icon:
-                            _isToggling
-                                ? Icons.hourglass_top_rounded
-                                : (isDesactivado
-                                    ? Icons.check_circle_outline_rounded
-                                    : Icons.visibility_off_rounded),
-                        tooltip:
-                            isDesactivado
-                                ? 'Activar producto'
-                                : 'Desactivar producto',
-                        color:
-                            isDesactivado
-                                ? AppColors.success
-                                : AppColors.textSecondary,
-                        onTap: _isToggling ? null : _handleToggle,
-                      ),
+                      if (!widget.isFullPosMode)
+                        _IconCardAction(
+                          icon:
+                              _isToggling
+                                  ? Icons.hourglass_top_rounded
+                                  : (isDesactivado
+                                      ? Icons.check_circle_outline_rounded
+                                      : Icons.visibility_off_rounded),
+                          tooltip:
+                              isDesactivado
+                                  ? 'Activar producto'
+                                  : 'Desactivar producto',
+                          color:
+                              isDesactivado
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                          onTap: _isToggling ? null : _handleToggle,
+                        ),
                     ],
                   ),
                 ),

@@ -15,9 +15,10 @@ class CatalogGridScrollView extends StatelessWidget {
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
   final double bottomPadding;
-  final Widget topBarSliver;
-  final Widget headerSliver;
+  final Widget? topBarSliver;
+  final Widget? headerSliver;
   final Widget? chipsSliver;
+  final bool isPosMode;
 
   const CatalogGridScrollView({
     super.key,
@@ -28,12 +29,13 @@ class CatalogGridScrollView extends StatelessWidget {
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
-    required this.topBarSliver,
-    required this.headerSliver,
+    this.topBarSliver,
+    this.headerSliver,
     this.chipsSliver,
     this.searchByIngredient = false,
     this.matchedIngredients = const {},
     this.bottomPadding = 0,
+    this.isPosMode = false,
   });
 
   @override
@@ -49,8 +51,8 @@ class CatalogGridScrollView extends StatelessWidget {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        topBarSliver,
-        headerSliver,
+        if (topBarSliver != null) topBarSliver!,
+        if (headerSliver != null) headerSliver!,
         if (chipsSliver != null) chipsSliver!,
         SliverToBoxAdapter(
           child: Padding(
@@ -93,19 +95,16 @@ class CatalogGridScrollView extends StatelessWidget {
                 onSale: () => onSale(product),
                 onToggleActive: () => onToggleActive(product),
                 onEdit: () => onEdit(product),
+                isFullPosMode: isPosMode,
                 highlightIngredient:
-                    searchByIngredient
-                        ? matchedIngredients[product.id]
-                        : null,
+                    searchByIngredient ? matchedIngredients[product.id] : null,
               );
             }, childCount: pageItems.length),
           ),
         ),
         // La paginación (AdminPageBlocks) fue extraída a la pantalla principal
         // para estar anclada abajo fuera del scroll.
-        SliverToBoxAdapter(
-          child: SizedBox(height: bottomPadding),
-        ),
+        SliverToBoxAdapter(child: SizedBox(height: bottomPadding)),
       ],
     );
   }
