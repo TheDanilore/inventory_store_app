@@ -587,12 +587,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   if (isDesktop) {
                     return Container(
                       color: const Color(0xFFF9FAFB),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1100),
-                          child: catalogBody,
-                        ),
-                      ),
+                      child: catalogBody,
                     );
                   }
 
