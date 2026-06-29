@@ -57,6 +57,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
     final isAgotado =
         widget.product.stockControl && widget.product.totalStock <= 0;
     final isDesactivado = !widget.product.isActive;
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Material(
       color: Colors.transparent,
@@ -392,10 +393,10 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 : null,
                       ),
                       // Divisor visual
-                      if (!widget.isFullPosMode)
+                      if (!widget.isFullPosMode && (!isDesktop || _isHovered))
                         Container(width: 1, height: 18, color: AppColors.border),
                       // Botón Editar
-                      if (!widget.isFullPosMode)
+                      if (!widget.isFullPosMode && (!isDesktop || _isHovered))
                         _IconCardAction(
                           icon: Icons.edit_rounded,
                           tooltip: 'Editar producto',
@@ -403,7 +404,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           onTap: widget.onEdit,
                         ),
                       // Botón Activar / Desactivar
-                      if (!widget.isFullPosMode)
+                      if (!widget.isFullPosMode && (!isDesktop || _isHovered))
                         _IconCardAction(
                           icon:
                               _isToggling

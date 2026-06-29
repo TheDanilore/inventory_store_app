@@ -12,11 +12,11 @@ import 'package:inventory_store_app/services/admin/catalog_service.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_header.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_category_chips.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_grid_view.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_product_skeleton.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/admin_add_to_cart_sheet.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_status_states.dart';
@@ -463,11 +463,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                         mainAxisSpacing: 16,
                                       ),
                                   delegate: SliverChildBuilderDelegate(
-                                    (context, index) => AppShimmer(
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      borderRadius: AppColors.radiusLg,
-                                    ),
+                                    (context, index) => const AdminProductSkeleton(),
                                     childCount: AdminCatalogProvider.pageSize,
                                   ),
                                 ),
