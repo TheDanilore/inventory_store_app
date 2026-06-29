@@ -329,7 +329,8 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => _showQuantityDialog(context, _quantity, stock),
+                      onTap:
+                          () => _showQuantityDialog(context, _quantity, stock),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Text(

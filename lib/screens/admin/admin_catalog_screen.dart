@@ -110,16 +110,20 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (dialogCtx) => const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text('Generando Catálogo PDF...', textAlign: TextAlign.center),
-            ],
-          ),
-        ),
+        builder:
+            (dialogCtx) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text(
+                    'Generando Catálogo PDF...',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
       );
 
       // Dar tiempo para que la animación del diálogo termine y el UI se pinte
