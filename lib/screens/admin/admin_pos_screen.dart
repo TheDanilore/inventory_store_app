@@ -141,67 +141,18 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
-      // Se eliminó la AppBar para dar espacio al catálogo y los Breadcrumbs
       body: Consumer<AdminCatalogProvider>(
         builder: (context, provider, child) {
           Widget catalogContent = Column(
             children: [
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      children: [
-                        InkWell(
-                          onTap: () => context.pop(),
-                          borderRadius: BorderRadius.circular(6),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 4,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.arrow_back_rounded,
-                                  size: 16,
-                                  color: AppColors.textMuted,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Catálogo',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '/',
-                          style: TextStyle(
-                            color: AppColors.border,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Punto de Venta (POS)',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                     CatalogHeader(
                       searchController: _searchCtrl,
                       isExporting: provider.isLoadingAction,
@@ -211,6 +162,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       onToggleIngredientSearch:
                           provider.toggleSearchByIngredient,
                       isPosMode: true,
+                      onBack: () => context.pop(),
                       onAddProduct: () async {
                         final result = await context.push(
                           '/admin/product-form',

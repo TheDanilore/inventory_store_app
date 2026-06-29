@@ -12,6 +12,7 @@ class CatalogHeader extends StatelessWidget {
   final ValueChanged<bool> onToggleIngredientSearch;
   final VoidCallback onAddProduct;
   final bool isPosMode;
+  final VoidCallback? onBack;
 
   const CatalogHeader({
     super.key,
@@ -23,6 +24,7 @@ class CatalogHeader extends StatelessWidget {
     required this.onToggleIngredientSearch,
     required this.onAddProduct,
     this.isPosMode = false,
+    this.onBack,
   });
 
   @override
@@ -51,6 +53,24 @@ class CatalogHeader extends StatelessWidget {
       children: [
         Row(
           children: [
+            if (isPosMode && onBack != null) ...[
+              IconButton(
+                onPressed: onBack,
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.textPrimary,
+                ),
+                tooltip: 'Volver al Catálogo',
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
