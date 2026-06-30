@@ -8,6 +8,7 @@ import 'package:inventory_store_app/providers/pos_provider.dart';
 import 'package:inventory_store_app/data/admin/products_repository.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/shared/widgets/admin_page_blocks.dart';
 
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_header.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_category_chips.dart';
@@ -185,6 +186,28 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                 ),
               ),
               Expanded(child: _buildMainContent(provider)),
+              if (provider.products.isNotEmpty && provider.totalPages > 1)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: AdminPageBlocks(
+                      currentPage: provider.currentPage,
+                      totalPages: provider.totalPages,
+                      onPageChanged: provider.setPage,
+                    ),
+                  ),
+                ),
             ],
           );
 
