@@ -8,7 +8,7 @@ class AdminCatalogProvider extends ChangeNotifier {
   final CatalogService _service = CatalogService();
   Timer? _debounce;
 
-  static const int pageSize = 10;
+  static const int pageSize = 24;
 
   List<CategoryModel> _categories = [];
   List<CategoryModel> get categories => _categories;

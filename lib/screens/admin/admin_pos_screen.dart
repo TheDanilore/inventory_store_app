@@ -162,7 +162,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       onToggleIngredientSearch:
                           provider.toggleSearchByIngredient,
                       isPosMode: true,
-                      onBack: () => context.pop(),
+                      onBack: () => context.go('/admin'),
                       onAddProduct: () async {
                         final result = await context.push(
                           '/admin/product-form',

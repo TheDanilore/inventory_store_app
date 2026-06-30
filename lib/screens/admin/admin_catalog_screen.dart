@@ -346,7 +346,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         actions: [
                           if (MediaQuery.of(context).size.width >= 900)
                             ElevatedButton.icon(
-                              onPressed: () => context.push('/admin/pos'),
+                              onPressed: () => context.go('/admin/pos'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1E293B),
                                 foregroundColor: Colors.white,
