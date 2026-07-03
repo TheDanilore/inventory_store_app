@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
 import 'package:inventory_store_app/models/customer_location.dart';
 
-// ── Marcador decorativo para ubicaciones guardadas ────────────────────────────────────
+/// Marcador estático para ubicaciones ya guardadas en el mapa.
 class MapMarker extends StatelessWidget {
   final CustomerLocation location;
   final Color color;
@@ -17,32 +16,33 @@ class MapMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Center(
+        child: Container(
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
             ],
             border: Border.all(color: Colors.white, width: 2),
           ),
           child: Icon(icon, color: Colors.white, size: 16),
         ),
-        CustomPaint(size: const Size(12, 8), painter: PinTailPainter(color)),
-      ],
+      ),
     );
   }
 }
 
-// ── Pin Central (Modo Selección Estilo Uber) ────────────────────────────────────
+/// Pin central fijo que se muestra en modo selección (estilo Uber).
 class MapPin extends StatelessWidget {
   final Color color;
   final IconData icon;
@@ -57,49 +57,29 @@ class MapPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Center(
+        child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.5),
-                blurRadius: isPicked ? 14 : 6,
+                blurRadius: isPicked ? 16 : 6,
                 offset: const Offset(0, 3),
               ),
             ],
             border: Border.all(color: Colors.white, width: 2.5),
           ),
-          child: Icon(icon, color: Colors.white, size: 20),
+          child: Icon(icon, color: Colors.white, size: 22),
         ),
-        CustomPaint(size: const Size(12, 8), painter: PinTailPainter(color)),
-      ],
+      ),
     );
   }
-}
-
-// ── Cola (Triángulo) para los pines ────────────────────────────────────
-class PinTailPainter extends CustomPainter {
-  final Color color;
-  const PinTailPainter(this.color);
-
-  @override
-  void paint(ui.Canvas canvas, ui.Size size) {
-    final paint = ui.Paint()..color = color;
-    final path =
-        ui.Path()
-          ..moveTo(0, 0)
-          ..lineTo(size.width / 2, size.height)
-          ..lineTo(size.width, 0)
-          ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
