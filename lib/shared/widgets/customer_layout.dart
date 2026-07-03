@@ -123,9 +123,18 @@ class CustomerLayout extends StatelessWidget {
   Widget? _buildLeading(BuildContext context) {
     if (!showBackButton && !showProfileIcon) return null;
 
-    final child = showBackButton
-        ? const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: AppColors.textPrimary)
-        : const Icon(Icons.person_outline_rounded, size: 18, color: AppColors.textPrimary);
+    final child =
+        showBackButton
+            ? const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 16,
+              color: AppColors.textPrimary,
+            )
+            : const Icon(
+              Icons.person_outline_rounded,
+              size: 18,
+              color: AppColors.textPrimary,
+            );
 
     return Container(
       alignment: Alignment.centerLeft,
@@ -156,11 +165,7 @@ class CustomerLayout extends StatelessWidget {
               }
             }
           },
-          child: SizedBox(
-            width: 36,
-            height: 36,
-            child: child,
-          ),
+          child: SizedBox(width: 36, height: 36, child: child),
         ),
       ),
     );
@@ -200,10 +205,8 @@ class CustomerLayout extends StatelessWidget {
 
   List<Widget> _buildActions(BuildContext context) {
     return [
-      if (showWalletChip)
-        Center(child: _buildWalletChip(context)),
-      if (showWalletChip && showCartIcon)
-        const SizedBox(width: 10),
+      if (showWalletChip) Center(child: _buildWalletChip(context)),
+      if (showWalletChip && showCartIcon) const SizedBox(width: 10),
       if (showCartIcon)
         Center(
           child: MouseRegion(
@@ -231,11 +234,14 @@ class CustomerLayout extends StatelessWidget {
                       ),
                       Consumer<CartProvider>(
                         builder: (context, cart, _) {
-                          if (cart.itemCount == 0) return const SizedBox.shrink();
+                          if (cart.itemCount == 0)
+                            return const SizedBox.shrink();
                           return Positioned(
                             right: 4,
                             top: 4,
-                            child: _AnimatedCartBadge(itemCount: cart.itemCount),
+                            child: _AnimatedCartBadge(
+                              itemCount: cart.itemCount,
+                            ),
                           );
                         },
                       ),

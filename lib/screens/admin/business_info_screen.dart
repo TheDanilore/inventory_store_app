@@ -32,7 +32,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   bool _isInitialized = false;
   bool _hasChanges = false;
-  
+
   bool _loyaltyGlobalEnabled = true;
   bool _loyaltyCustomerVisible = true;
 
@@ -69,7 +69,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     _addressCtrl.text = config.businessAddress;
     _phoneCtrl.text = config.businessPhone;
     _logoUrlCtrl.text = config.businessLogoUrl;
-    
+
     _loyaltyGlobalEnabled = config.loyaltyGlobalEnabled;
     _loyaltyCustomerVisible = config.loyaltyCustomerVisible;
 
@@ -112,7 +112,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
-    
+
     if (!mounted) return;
     final provider = context.read<AppConfigProvider>();
     final bytes = await pickedFile.readAsBytes();
@@ -405,19 +405,26 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: ElevatedButton.icon(
-                      onPressed: context.watch<AppConfigProvider>().isUploadingLogo
-                          ? null
-                          : _pickLogoImage,
-                      icon: context.watch<AppConfigProvider>().isUploadingLogo
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file_rounded, size: 20),
+                      onPressed:
+                          context.watch<AppConfigProvider>().isUploadingLogo
+                              ? null
+                              : _pickLogoImage,
+                      icon:
+                          context.watch<AppConfigProvider>().isUploadingLogo
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.upload_file_rounded, size: 20),
                       label: const Text('Subir'),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -439,8 +446,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Habilitar Sistema Globalmente', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Si se apaga, el sistema desaparece para todos (clientes y admins).'),
+                title: const Text(
+                  'Habilitar Sistema Globalmente',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Si se apaga, el sistema desaparece para todos (clientes y admins).',
+                ),
                 value: _loyaltyGlobalEnabled,
                 activeThumbColor: Theme.of(context).colorScheme.primary,
                 onChanged: (val) {
@@ -455,16 +467,24 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Visible para Clientes', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Si se apaga, los clientes no lo ven, pero los administradores sí.'),
+                title: const Text(
+                  'Visible para Clientes',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Si se apaga, los clientes no lo ven, pero los administradores sí.',
+                ),
                 value: _loyaltyCustomerVisible,
                 activeThumbColor: Theme.of(context).colorScheme.primary,
-                onChanged: _loyaltyGlobalEnabled ? (val) {
-                  setState(() {
-                    _loyaltyCustomerVisible = val;
-                    _markChanged();
-                  });
-                } : null,
+                onChanged:
+                    _loyaltyGlobalEnabled
+                        ? (val) {
+                          setState(() {
+                            _loyaltyCustomerVisible = val;
+                            _markChanged();
+                          });
+                        }
+                        : null,
               ),
             ],
           ),

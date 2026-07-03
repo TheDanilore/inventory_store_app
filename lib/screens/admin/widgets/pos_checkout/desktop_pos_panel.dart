@@ -625,11 +625,18 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                     const SizedBox(height: 32),
 
                     // Cliente
-                    _buildClientAndPaymentSection(pointsToSolesRatio, isLoyaltyEnabled),
+                    _buildClientAndPaymentSection(
+                      pointsToSolesRatio,
+                      isLoyaltyEnabled,
+                    ),
                     const SizedBox(height: 32),
 
                     // Resumen Total
-                    _buildSummarySection(pointsToSolesRatio, earningRate, isLoyaltyEnabled),
+                    _buildSummarySection(
+                      pointsToSolesRatio,
+                      earningRate,
+                      isLoyaltyEnabled,
+                    ),
                   ],
                 ),
               ),
@@ -749,7 +756,11 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
-  Widget _buildSummarySection(double ratio, double earningRate, bool isLoyaltyEnabled) {
+  Widget _buildSummarySection(
+    double ratio,
+    double earningRate,
+    bool isLoyaltyEnabled,
+  ) {
     return Consumer<PosProvider>(
       builder: (context, pos, _) {
         final isCredito = pos.paymentMethod == 'CRÉDITO';
@@ -926,9 +937,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFE5E7EB), width: 1.0),
-        ),
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1.0)),
       ),
       child: SafeArea(
         top: false,

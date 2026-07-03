@@ -53,7 +53,8 @@ class _CustomerDetailContent extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth > 750;
-            final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+            final isLoyaltyEnabled =
+                context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
 
             if (isTablet) {
               return _buildTabletLayout(context, provider, isLoyaltyEnabled);

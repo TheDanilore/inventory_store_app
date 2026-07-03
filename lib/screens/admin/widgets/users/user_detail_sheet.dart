@@ -106,7 +106,8 @@ class _UserDetailContentState extends State<_UserDetailContent> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+    final isLoyaltyEnabled =
+        context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
 
     return Consumer<UserDetailProvider>(
       builder: (context, provider, child) {
@@ -360,192 +361,198 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                     if (isLoyaltyEnabled)
                       Container(
                         padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.amberLight.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.amberLight),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Monedas de Fidelidad',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.amberDark,
-                                ),
-                              ),
-                              Icon(
-                                Icons.stars_rounded,
-                                color: Colors.amber.shade500,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              if (provider.isSaving)
-                                const AppShimmer(
-                                  width: 80,
-                                  height: 32,
-                                  borderRadius: 4,
-                                )
-                              else
-                                Text(
-                                  balance.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.amberDark,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              const SizedBox(width: 8),
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  'monedas actuales',
+                        decoration: BoxDecoration(
+                          color: AppColors.amberLight.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.amberLight),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Monedas de Fidelidad',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.amberDark,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          const Text(
-                            'Ajustar saldo manualmente',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
+                                Icon(
+                                  Icons.stars_rounded,
+                                  color: Colors.amber.shade500,
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.amber.shade200,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: _pointsCtrl,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                    ],
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                if (provider.isSaving)
+                                  const AppShimmer(
+                                    width: 80,
+                                    height: 32,
+                                    borderRadius: 4,
+                                  )
+                                else
+                                  Text(
+                                    balance.toString(),
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.amberDark,
+                                      height: 1.0,
                                     ),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Cantidad...',
-                                      hintStyle: TextStyle(color: Colors.grey),
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 16,
+                                  ),
+                                const SizedBox(width: 8),
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    'monedas actuales',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            const Text(
+                              'Ajustar saldo manualmente',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.amber.shade200,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: _pointsCtrl,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        hintText: 'Cantidad...',
+                                        hintStyle: TextStyle(
+                                          color: Colors.grey,
+                                        ),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 1,
-                                child: SizedBox(
-                                  height: 48,
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.danger,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 1,
+                                  child: SizedBox(
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.danger,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                       ),
+                                      onPressed:
+                                          provider.isSaving
+                                              ? null
+                                              : () {
+                                                if (_pointsCtrl.text
+                                                    .trim()
+                                                    .isEmpty) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message: 'Ingresa un monto',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
+                                                final amount =
+                                                    int.tryParse(
+                                                      _pointsCtrl.text.trim(),
+                                                    ) ??
+                                                    0;
+                                                provider.adjustPoints(-amount);
+                                              },
+                                      child: const Icon(Icons.remove_rounded),
                                     ),
-                                    onPressed:
-                                        provider.isSaving
-                                            ? null
-                                            : () {
-                                              if (_pointsCtrl.text
-                                                  .trim()
-                                                  .isEmpty) {
-                                                AppSnackbar.show(
-                                                  context,
-                                                  message: 'Ingresa un monto',
-                                                  type: SnackbarType.warning,
-                                                );
-                                                return;
-                                              }
-                                              final amount =
-                                                  int.tryParse(
-                                                    _pointsCtrl.text.trim(),
-                                                  ) ??
-                                                  0;
-                                              provider.adjustPoints(-amount);
-                                            },
-                                    child: const Icon(Icons.remove_rounded),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                flex: 1,
-                                child: SizedBox(
-                                  height: 48,
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.success,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 1,
+                                  child: SizedBox(
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.success,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                       ),
+                                      onPressed:
+                                          provider.isSaving
+                                              ? null
+                                              : () {
+                                                if (_pointsCtrl.text
+                                                    .trim()
+                                                    .isEmpty) {
+                                                  AppSnackbar.show(
+                                                    context,
+                                                    message: 'Ingresa un monto',
+                                                    type: SnackbarType.warning,
+                                                  );
+                                                  return;
+                                                }
+                                                final amount =
+                                                    int.tryParse(
+                                                      _pointsCtrl.text.trim(),
+                                                    ) ??
+                                                    0;
+                                                provider.adjustPoints(amount);
+                                              },
+                                      child: const Icon(Icons.add_rounded),
                                     ),
-                                    onPressed:
-                                        provider.isSaving
-                                            ? null
-                                            : () {
-                                              if (_pointsCtrl.text
-                                                  .trim()
-                                                  .isEmpty) {
-                                                AppSnackbar.show(
-                                                  context,
-                                                  message: 'Ingresa un monto',
-                                                  type: SnackbarType.warning,
-                                                );
-                                                return;
-                                              }
-                                              final amount =
-                                                  int.tryParse(
-                                                    _pointsCtrl.text.trim(),
-                                                  ) ??
-                                                  0;
-                                              provider.adjustPoints(amount);
-                                            },
-                                    child: const Icon(Icons.add_rounded),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
                     // ─── HISTORIAL RECIENTE (Extra Proposal) ─────────────────────────────
                     if (provider.isLoading) ...[

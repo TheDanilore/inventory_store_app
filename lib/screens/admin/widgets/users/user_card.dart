@@ -59,7 +59,8 @@ class _UserCardState extends State<UserCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+    final isLoyaltyEnabled =
+        context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
     final String fullName = widget.user['full_name'] ?? 'Sin nombre';
     final String? email = widget.user['email'];
     final String? phone = widget.user['phone'];

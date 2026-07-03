@@ -272,7 +272,8 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+    final isLoyaltyEnabled =
+        context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -434,7 +435,10 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                                   ),
                                   DropdownMenuItem(
                                     value: 'Pasaporte',
-                                    child: Text('Pasaporte', overflow: TextOverflow.ellipsis),
+                                    child: Text(
+                                      'Pasaporte',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ],
                                 onChanged:

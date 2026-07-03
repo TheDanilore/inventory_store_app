@@ -27,8 +27,10 @@ class PosTotalSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final puntosGanadosEstimados = isLoyaltyEnabled ? 
-        (totalFinal * earningRate / pointsToSolesRatio).toInt() : 0;
+    final puntosGanadosEstimados =
+        isLoyaltyEnabled
+            ? (totalFinal * earningRate / pointsToSolesRatio).toInt()
+            : 0;
 
     return Container(
       decoration: BoxDecoration(

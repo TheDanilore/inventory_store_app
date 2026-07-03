@@ -119,7 +119,9 @@ class AppConfigProvider extends ChangeNotifier {
       // CORRECCIÓN: Ordenamos de forma descendente por actualización por si existen registros duplicados huérfanos
       final rawResponse = await _supabase
           .from('business_info')
-          .select('id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible')
+          .select(
+            'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
+          )
           .order('updated_at', ascending: false)
           .limit(1);
 
@@ -177,7 +179,7 @@ class AppConfigProvider extends ChangeNotifier {
         'logo_url': logoUrl?.trim().isNotEmpty == true ? logoUrl!.trim() : null,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
-      
+
       if (loyaltyGlobalEnabled != null) {
         payload['loyalty_global_enabled'] = loyaltyGlobalEnabled;
       }
@@ -244,7 +246,8 @@ class AppConfigProvider extends ChangeNotifier {
     _isUploadingLogo = true;
     _safeNotify();
     try {
-      final fileName = 'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
+      final fileName =
+          'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
       final path = 'logos/$fileName';
       // Asume que el bucket "business" existe y es público
       await _supabase.storage.from('business').uploadBinary(path, bytes);
@@ -296,10 +299,12 @@ class AppConfigProvider extends ChangeNotifier {
       }
 
       if (payloadList.isNotEmpty) {
-        await _supabase.from('app_settings').upsert(payloadList, onConflict: 'key');
+        await _supabase
+            .from('app_settings')
+            .upsert(payloadList, onConflict: 'key');
         _values.addAll(newValues);
       }
-      
+
       return true;
     } catch (e) {
       debugPrint('Error saving multiple settings: $e');

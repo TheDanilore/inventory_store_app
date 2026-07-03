@@ -556,7 +556,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       provider.wasModified = true;
                                       provider.fetchData(_manualNameCtrl.text);
                                     },
-                                    isLoyaltyEnabled: config.loyaltyGlobalEnabled,
+                                    isLoyaltyEnabled:
+                                        config.loyaltyGlobalEnabled,
                                   ),
                                 const SizedBox(height: 16),
                                 if (provider.selectedCustomerId != null &&

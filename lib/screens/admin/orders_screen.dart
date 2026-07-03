@@ -194,7 +194,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ],
                 ),
-                if (isLoyaltyEnabled && isCompleting && !isCredit && pendingPoints > 0) ...[
+                if (isLoyaltyEnabled &&
+                    isCompleting &&
+                    !isCredit &&
+                    pendingPoints > 0) ...[
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -486,7 +489,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: _buildListSliver(provider, isWide, isLoyaltyEnabled),
+                    sliver: _buildListSliver(
+                      provider,
+                      isWide,
+                      isLoyaltyEnabled,
+                    ),
                   ),
                 ],
               );
@@ -534,7 +541,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildListSliver(OrdersProvider provider, bool isWide, bool isLoyaltyEnabled) {
+  Widget _buildListSliver(
+    OrdersProvider provider,
+    bool isWide,
+    bool isLoyaltyEnabled,
+  ) {
     final totalPages = provider.totalPages;
     final pageItems = provider.orders;
 

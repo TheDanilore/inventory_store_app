@@ -7,18 +7,20 @@ import 'package:provider/provider.dart';
 
 class OfflineGamesSuggestion extends StatelessWidget {
   final String? errorMessage;
-  
+
   const OfflineGamesSuggestion({super.key, this.errorMessage});
 
   @override
   Widget build(BuildContext context) {
     final config = context.watch<AppConfigProvider>();
-    final isLoyaltyEnabled = config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
+    final isLoyaltyEnabled =
+        config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
 
-    final isOffline = !context.watch<NetworkProvider>().isOnline || 
-                      (errorMessage?.toLowerCase().contains('conexión') ?? false) || 
-                      (errorMessage?.toLowerCase().contains('internet') ?? false) ||
-                      (errorMessage?.toLowerCase().contains('offline') ?? false);
+    final isOffline =
+        !context.watch<NetworkProvider>().isOnline ||
+        (errorMessage?.toLowerCase().contains('conexión') ?? false) ||
+        (errorMessage?.toLowerCase().contains('internet') ?? false) ||
+        (errorMessage?.toLowerCase().contains('offline') ?? false);
 
     if (!isOffline || !isLoyaltyEnabled) return const SizedBox.shrink();
 

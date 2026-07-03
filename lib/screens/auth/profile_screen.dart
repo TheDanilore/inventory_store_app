@@ -20,10 +20,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool openedFromAdmin;
-  const ProfileScreen({
-    super.key,
-    this.openedFromAdmin = false,
-  });
+  const ProfileScreen({super.key, this.openedFromAdmin = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -168,10 +165,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final provider = context.watch<ProfileProvider>();
     final config = context.watch<AppConfigProvider>();
     final walletBalance = context.watch<WalletProvider>().balance ?? 0;
-    
-    final isLoyaltyEnabled = widget.openedFromAdmin 
-      ? config.loyaltyGlobalEnabled 
-      : (config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible);
+
+    final isLoyaltyEnabled =
+        widget.openedFromAdmin
+            ? config.loyaltyGlobalEnabled
+            : (config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible);
 
     final email = Supabase.instance.client.auth.currentUser?.email ?? '';
 

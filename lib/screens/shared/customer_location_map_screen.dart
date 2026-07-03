@@ -31,8 +31,7 @@ class CustomerLocationMapScreen extends StatefulWidget {
       _CustomerLocationMapScreenState();
 }
 
-class _CustomerLocationMapScreenState
-    extends State<CustomerLocationMapScreen> {
+class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
   final MapController _mapController = MapController();
   late final ValueNotifier<LatLng> _pickerPointNotifier;
   StreamSubscription<MapEvent>? _mapEventSubscription;
@@ -44,8 +43,9 @@ class _CustomerLocationMapScreenState
   @override
   void initState() {
     super.initState();
-    _pickerPointNotifier =
-        ValueNotifier(widget.initialPickerPoint ?? _initialCenter);
+    _pickerPointNotifier = ValueNotifier(
+      widget.initialPickerPoint ?? _initialCenter,
+    );
 
     if (widget.isPickerMode) {
       // Escuchar eventos del mapa para actualizar al TERMINAR el movimiento
@@ -236,8 +236,7 @@ class _CustomerLocationMapScreenState
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.inventorystore.app',
                 // keepBuffer bajo: menos tiles en memoria → menos crash en Web
                 keepBuffer: 1,
@@ -298,15 +297,16 @@ class _CustomerLocationMapScreenState
                       const SizedBox(width: 4),
                       ValueListenableBuilder<LatLng>(
                         valueListenable: _pickerPointNotifier,
-                        builder: (_, point, _) => Text(
-                          'Lat: ${point.latitude.toStringAsFixed(5)},  '
-                          'Lng: ${point.longitude.toStringAsFixed(5)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        builder:
+                            (_, point, _) => Text(
+                              'Lat: ${point.latitude.toStringAsFixed(5)},  '
+                              'Lng: ${point.longitude.toStringAsFixed(5)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                       ),
                     ],
                   ),
@@ -320,10 +320,7 @@ class _CustomerLocationMapScreenState
             right: 8,
             child: IgnorePointer(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(4),
@@ -340,15 +337,15 @@ class _CustomerLocationMapScreenState
       floatingActionButton:
           widget.isPickerMode
               ? FloatingActionButton.extended(
-                  onPressed: _confirmPickerPoint,
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text(
-                    'Usar este punto',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                )
+                onPressed: _confirmPickerPoint,
+                backgroundColor: AppColors.teal,
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.check_rounded),
+                label: const Text(
+                  'Usar este punto',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              )
               : null,
     );
   }

@@ -42,16 +42,20 @@ class CartItemCard extends StatelessWidget {
             : null);
 
     final isWholesale = item.quantity >= (product.wholesaleMinQuantity);
-    
+
     final config = context.read<AppConfigProvider>();
-    final isLoyaltyEnabled = config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
-    
-    final appliedPoints = isLoyaltyEnabled ? checkoutProvider.getAppliedPointsForItem(
-      item,
-      cart,
-      pointsToSolesRatio,
-      saldoPuntos,
-    ) : 0;
+    final isLoyaltyEnabled =
+        config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
+
+    final appliedPoints =
+        isLoyaltyEnabled
+            ? checkoutProvider.getAppliedPointsForItem(
+              item,
+              cart,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : 0;
     final hasPointDiscount = appliedPoints > 0;
 
     final displayUnitPrice = isWholesale ? wPrice : item.unitPrice;

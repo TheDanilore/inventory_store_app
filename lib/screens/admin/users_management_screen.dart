@@ -27,7 +27,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
-
   @override
   void initState() {
     super.initState();
@@ -264,10 +263,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                     ),
                     Tab(
                       iconMargin: const EdgeInsets.only(bottom: 6),
-                      icon: const Icon(
-                        Icons.badge_outlined,
-                        size: 20,
-                      ),
+                      icon: const Icon(Icons.badge_outlined, size: 20),
                       text: 'Empleados ($_employeeTotal)',
                     ),
                   ],
@@ -310,7 +306,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           String initialRole = AppRoles.customer;
           if (_tabController.index == 1) initialRole = AppRoles.admin;
           if (_tabController.index == 2) initialRole = AppRoles.employee;
-          
+
           final changed = await context.push<bool?>(
             '/admin/user-form',
             extra: {'initialRole': initialRole},
@@ -325,19 +321,23 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
         },
         icon: const Icon(Icons.person_add_rounded, color: Colors.white),
         label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                          duration: const Duration(milliseconds: 200),
-                          child: isExtended
-                              ? const Text(
-          'Nuevo',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        )
-                              : const SizedBox.shrink(),
-                        );
-                          },
+          valueListenable: _isFabExtended,
+          builder: (context, isExtended, _) {
+            return AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child:
+                  isExtended
+                      ? const Text(
+                        'Nuevo',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
+                      )
+                      : const SizedBox.shrink(),
+            );
+          },
+        ),
       ),
     );
   }

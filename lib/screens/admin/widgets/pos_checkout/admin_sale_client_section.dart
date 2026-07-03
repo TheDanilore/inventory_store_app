@@ -316,7 +316,8 @@ class _ClientMatchesList extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.teal : AppColors.background,
+                        color:
+                            isSelected ? AppColors.teal : AppColors.background,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected ? AppColors.teal : AppColors.border,
@@ -351,7 +352,8 @@ class _ClientMatchesList extends StatelessWidget {
                               if (doc != null && doc.isNotEmpty) 'Doc: $doc',
                               if (phone != null && phone.isNotEmpty)
                                 'Tel: $phone',
-                              if (wallet > 0 && isLoyaltyEnabled) '$wallet monedas',
+                              if (wallet > 0 && isLoyaltyEnabled)
+                                '$wallet monedas',
                             ].join(' · '),
                             style: const TextStyle(
                               fontSize: 11,

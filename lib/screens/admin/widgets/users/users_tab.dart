@@ -53,17 +53,18 @@ class _UsersTabState extends State<UsersTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.90,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: UserDetailSheet(
-          userData: user,
-          onUserUpdated: () => _provider.refresh(),
-        ),
-      ),
+      builder:
+          (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.90,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: UserDetailSheet(
+              userData: user,
+              onUserUpdated: () => _provider.refresh(),
+            ),
+          ),
     );
   }
 
@@ -101,7 +102,10 @@ class _UsersTabState extends State<UsersTab> {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Text(
@@ -120,7 +124,10 @@ class _UsersTabState extends State<UsersTab> {
                   children: [
                     ListView.builder(
                       controller: widget.scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
                       itemCount: provider.users.length,
                       itemBuilder: (context, index) {
                         final user = provider.users[index];
@@ -148,7 +155,11 @@ class _UsersTabState extends State<UsersTab> {
                     currentPage: provider.currentPage,
                     totalPages: provider.totalPages,
                     onPageChanged: (page) {
-                      provider.setPage(page, widget.searchQuery, widget.onlyActive);
+                      provider.setPage(
+                        page,
+                        widget.searchQuery,
+                        widget.onlyActive,
+                      );
                     },
                   ),
                 ),
