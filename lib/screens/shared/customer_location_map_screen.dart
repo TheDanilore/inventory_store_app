@@ -30,8 +30,7 @@ class CustomerLocationMapScreen extends StatefulWidget {
       _CustomerLocationMapScreenState();
 }
 
-class _CustomerLocationMapScreenState
-    extends State<CustomerLocationMapScreen> {
+class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
   final MapController _mapController = MapController();
   LatLng? _pickerPoint;
 
@@ -120,12 +119,14 @@ class _CustomerLocationMapScreenState
       markers.add(
         Marker(
           point: _pickerPoint!,
-          width: 48,
-          height: 56,
-          child: _MapPin(
-            color: AppColors.accent,
-            icon: Icons.push_pin_rounded,
-            isPicked: true,
+          width: 100,
+          height: 100,
+          child: const UnconstrainedBox(
+            child: _MapPin(
+              color: AppColors.accent,
+              icon: Icons.push_pin_rounded,
+              isPicked: true,
+            ),
           ),
         ),
       );
@@ -138,12 +139,14 @@ class _CustomerLocationMapScreenState
         markers.add(
           Marker(
             point: LatLng(loc.latitude, loc.longitude),
-            width: 52,
-            height: 62,
-            child: _MapMarker(
-              location: loc,
-              color: _typeColor(loc.locationType),
-              icon: _typeIcon(loc.locationType),
+            width: 100,
+            height: 100,
+            child: UnconstrainedBox(
+              child: _MapMarker(
+                location: loc,
+                color: _typeColor(loc.locationType),
+                icon: _typeIcon(loc.locationType),
+              ),
             ),
           ),
         );
@@ -170,7 +173,11 @@ class _CustomerLocationMapScreenState
           if (widget.isPickerMode && _pickerPoint != null)
             TextButton.icon(
               onPressed: _confirmPickerPoint,
-              icon: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              icon: const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
               label: const Text(
                 'Confirmar',
                 style: TextStyle(
@@ -188,6 +195,7 @@ class _CustomerLocationMapScreenState
             options: MapOptions(
               initialCenter: _initialCenter,
               initialZoom: _initialZoom,
+              maxZoom: 19.0,
               onTap: _handleMapTap,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
@@ -195,9 +203,10 @@ class _CustomerLocationMapScreenState
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.inventorystore.app',
+                maxZoom: 19.0,
+                maxNativeZoom: 19,
               ),
               MarkerLayer(markers: markers),
             ],
@@ -297,6 +306,7 @@ class _MapMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: const EdgeInsets.all(6),
@@ -334,6 +344,7 @@ class _MapPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -365,11 +376,12 @@ class _PinTailPainter extends CustomPainter {
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
     final paint = ui.Paint()..color = color;
-    final path = ui.Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..lineTo(size.width, 0)
-      ..close();
+    final path =
+        ui.Path()
+          ..moveTo(0, 0)
+          ..lineTo(size.width / 2, size.height)
+          ..lineTo(size.width, 0)
+          ..close();
     canvas.drawPath(path, paint);
   }
 
