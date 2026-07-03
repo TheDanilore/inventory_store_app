@@ -4,6 +4,8 @@ import 'package:inventory_store_app/providers/admin/customers_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 
 // ─── PUNTO DE ENTRADA ─────────────────────────────────────────────────────────
 //
@@ -270,6 +272,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -477,7 +480,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       const SizedBox(height: 24),
 
                       // ══ SECCIÓN: Billetera (solo edición) ═════════════════
-                      if (_isEditing) ...[
+                      if (_isEditing && isLoyaltyEnabled) ...[
                         _SectionHeader(
                           icon: Icons.stars_rounded,
                           title: 'Billetera de monedas',

@@ -6,6 +6,7 @@ class CustomerKpiRow extends StatelessWidget {
   final int orderCount;
   final double avgOrder;
   final int walletBalance;
+  final bool isLoyaltyEnabled;
 
   const CustomerKpiRow({
     super.key,
@@ -13,6 +14,7 @@ class CustomerKpiRow extends StatelessWidget {
     required this.orderCount,
     required this.avgOrder,
     required this.walletBalance,
+    required this.isLoyaltyEnabled,
   });
 
   @override
@@ -44,14 +46,16 @@ class CustomerKpiRow extends StatelessWidget {
             label: 'Promedio',
             color: Colors.blue,
           ),
-          const SizedBox(width: 10),
-          _KpiCard(
-            icon: Icons.stars_rounded,
-            value: walletBalance.toDouble(),
-            prefix: '',
-            label: 'Monedas',
-            color: AppColors.gold,
-          ),
+          if (isLoyaltyEnabled) ...[
+            const SizedBox(width: 10),
+            _KpiCard(
+              icon: Icons.stars_rounded,
+              value: walletBalance.toDouble(),
+              prefix: '',
+              label: 'Monedas',
+              color: AppColors.gold,
+            ),
+          ],
         ],
       ),
     );

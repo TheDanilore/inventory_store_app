@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/providers/customer/cart_checkout_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -25,17 +26,27 @@ class CartCheckoutFooter extends StatelessWidget {
       (p) => p.isSending,
     );
 
+    final config = context.read<AppConfigProvider>();
+    final isLoyaltyEnabled =
+        config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
+
     final subtotal = cart.selectedTotalAmount;
-    final totalAPagar = checkoutProvider.calculateFinalTotal(
-      cart,
-      pointsToSolesRatio,
-      saldoPuntos,
-    );
-    final puntosUsados = checkoutProvider.calculateApplicablePoints(
-      cart,
-      pointsToSolesRatio,
-      saldoPuntos,
-    );
+    final totalAPagar =
+        isLoyaltyEnabled
+            ? checkoutProvider.calculateFinalTotal(
+              cart,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : subtotal;
+    final puntosUsados =
+        isLoyaltyEnabled
+            ? checkoutProvider.calculateApplicablePoints(
+              cart,
+              pointsToSolesRatio,
+              saldoPuntos,
+            )
+            : 0;
     final descuentoSoles = puntosUsados * pointsToSolesRatio;
 
     final selectedCount = cart.selectedItems.length;

@@ -349,63 +349,103 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final config = context.watch<AppConfigProvider>();
+    final isGlobalEnabled = config.loyaltyGlobalEnabled;
+
     return AdminLayout(
       title: 'Configuración de Juegos',
       showBackButton: true,
       body:
           !_isInitialized
               ? const Center(child: CircularProgressIndicator())
-              : LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 800;
-
-                  if (isWide) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildNavigationRail(),
-                        Container(width: 1, color: Colors.grey.shade200),
-                        Expanded(
-                          child: Container(
-                            color: AppColors.background,
-                            alignment: Alignment.topCenter,
-                            child: _buildSelectedTabContent(_selectedIndex),
+              : Column(
+                children: [
+                  if (!isGlobalEnabled)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_rounded,
+                            color: Colors.red.shade700,
                           ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        labelColor: AppColors.primary,
-                        unselectedLabelColor: Colors.grey,
-                        indicatorColor: AppColors.primary,
-                        isScrollable: true,
-                        tabs: const [
-                          Tab(text: 'Sistema y Ratio'),
-                          Tab(text: 'Límites Diarios'),
-                          Tab(text: 'Premios'),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'El módulo de Lealtad (Monedas) está desactivado globalmente en la Información del Negocio. Estos ajustes no tendrán efecto hasta que lo actives.',
+                              style: TextStyle(
+                                color: Colors.red.shade900,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      Expanded(
-                        child: Container(
-                          color: AppColors.background,
-                          child: TabBarView(
-                            controller: _tabController,
+                    ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 800;
+
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSelectedTabContent(0),
-                              _buildSelectedTabContent(1),
-                              _buildSelectedTabContent(2),
+                              _buildNavigationRail(),
+                              Container(width: 1, color: Colors.grey.shade200),
+                              Expanded(
+                                child: Container(
+                                  color: AppColors.background,
+                                  alignment: Alignment.topCenter,
+                                  child: _buildSelectedTabContent(
+                                    _selectedIndex,
+                                  ),
+                                ),
+                              ),
                             ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            TabBar(
+                              controller: _tabController,
+                              labelColor: AppColors.primary,
+                              unselectedLabelColor: Colors.grey,
+                              indicatorColor: AppColors.primary,
+                              isScrollable: true,
+                              tabs: const [
+                                Tab(text: 'Sistema y Ratio'),
+                                Tab(text: 'Límites Diarios'),
+                                Tab(text: 'Premios'),
+                              ],
+                            ),
+                            Expanded(
+                              child: Container(
+                                color: AppColors.background,
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    _buildSelectedTabContent(0),
+                                    _buildSelectedTabContent(1),
+                                    _buildSelectedTabContent(2),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
     );
   }

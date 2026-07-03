@@ -556,6 +556,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       provider.wasModified = true;
                                       provider.fetchData(_manualNameCtrl.text);
                                     },
+                                    isLoyaltyEnabled: config.loyaltyGlobalEnabled,
                                   ),
                                 const SizedBox(height: 16),
                                 if (provider.selectedCustomerId != null &&
@@ -616,11 +617,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                       (item) => _showBatchEditSheet(item),
                                 ),
                                 const SizedBox(height: 16),
-                                if (config.getDouble(
-                                          'enable_loyalty_system',
-                                          1,
-                                        ) ==
-                                        1.0 &&
+                                if (config.loyaltyGlobalEnabled &&
                                     provider.selectedCustomerId != null &&
                                     provider.selectedCustomerId!.isNotEmpty &&
                                     provider.paymentMethod != 'CRÉDITO') ...[
@@ -659,6 +656,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   isCompleted:
                                       isCompleted &&
                                       provider.order.paymentStatus == 'PAID',
+                                  isLoyaltyEnabled: config.loyaltyGlobalEnabled,
                                 ),
                               ],
                             ),

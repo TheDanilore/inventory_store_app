@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/order_model.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/screens/admin/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
@@ -119,6 +120,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final isReturning = newStatus == 'RETURNED';
     final isCredit = order.paymentMethod == 'CRÉDITO';
     final pendingPoints = order.pointsEarned;
+    final config = context.read<AppConfigProvider>();
+    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
 
     return showDialog<bool>(
       context: context,
@@ -191,7 +194,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ],
                 ),
-                if (isCompleting && !isCredit && pendingPoints > 0) ...[
+                if (isLoyaltyEnabled && isCompleting && !isCredit && pendingPoints > 0) ...[
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -450,6 +453,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final config = context.watch<AppConfigProvider>();
+    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
+
     return AdminLayout(
       title: widget.customTitle ?? 'Gestión de Pedidos',
       showBackButton: true,
@@ -480,7 +486,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: _buildListSliver(provider, isWide),
+                    sliver: _buildListSliver(provider, isWide, isLoyaltyEnabled),
                   ),
                 ],
               );
@@ -528,7 +534,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildListSliver(OrdersProvider provider, bool isWide) {
+  Widget _buildListSliver(OrdersProvider provider, bool isWide, bool isLoyaltyEnabled) {
     final totalPages = provider.totalPages;
     final pageItems = provider.orders;
 
@@ -601,6 +607,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             isProcessing: provider.isOrderProcessing(order.id),
             isGeneratingPDF: provider.isGeneratingPDF(order.id),
             isSelected: isSelected,
+            isLoyaltyEnabled: isLoyaltyEnabled,
             onTap: () => _showOrderDetails(order, isWide),
             onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
             onPrint: () => _printOrderTicket(order),

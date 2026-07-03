@@ -44,9 +44,13 @@ class CustomerLayout extends StatelessWidget {
   // ─── WALLET CHIP ─────────────────────────────────────────────────────────
 
   Widget _buildWalletChip(BuildContext context) {
-    // Usamos Consumer para que SOLO el chip se reconstruya al cambiar el saldo
-    return Consumer<WalletProvider>(
-      builder: (context, wallet, child) {
+    // Usamos Consumer2 para reaccionar a cambios en configuración y saldo
+    return Consumer2<AppConfigProvider, WalletProvider>(
+      builder: (context, config, wallet, child) {
+        if (!config.loyaltyGlobalEnabled || !config.loyaltyCustomerVisible) {
+          return const SizedBox.shrink();
+        }
+
         // Si no hay saldo y tampoco está cargando, ocultamos
         if (!wallet.hasBalance && !wallet.isLoading) {
           return const SizedBox.shrink();

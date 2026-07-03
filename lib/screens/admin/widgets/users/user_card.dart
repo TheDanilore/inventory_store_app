@@ -5,6 +5,7 @@ import 'package:inventory_store_app/shared/constants/app_roles.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 
 class UserCard extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -58,6 +59,7 @@ class _UserCardState extends State<UserCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
     final String fullName = widget.user['full_name'] ?? 'Sin nombre';
     final String? email = widget.user['email'];
     final String? phone = widget.user['phone'];
@@ -141,26 +143,28 @@ class _UserCardState extends State<UserCard> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                    const SizedBox(height: 6),
-                    // Monedas
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.stars_rounded,
-                          size: 13,
-                          color: Colors.amber.shade600,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$walletBalance monedas',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.amber.shade700,
+                    if (isLoyaltyEnabled) ...[
+                      const SizedBox(height: 6),
+                      // Monedas
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.stars_rounded,
+                            size: 13,
+                            color: Colors.amber.shade600,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$walletBalance monedas',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.amber.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -9,6 +9,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
   final double discountAmount;
   final bool isCompleted;
   final bool isCredit;
+  final bool isLoyaltyEnabled;
 
   const OrderDetailTotalSummarySection({
     super.key,
@@ -19,6 +20,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
     this.discountAmount = 0.0,
     this.isCompleted = true,
     this.isCredit = false,
+    required this.isLoyaltyEnabled,
   });
 
   double get _rawDiscount => pointsUsed * pointsToSolesRatio;
@@ -115,12 +117,13 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             valueColor: Colors.teal,
           ),
           const SizedBox(height: 6),
-          _buildRow(
-            (isCompleted && !isCredit)
-                ? 'Monedas ganadas'
-                : 'Pendientes de otorgar',
-            '$pointsEarned monedas',
-          ),
+          if (isLoyaltyEnabled || pointsEarned > 0)
+            _buildRow(
+              (isCompleted && !isCredit)
+                  ? 'Monedas ganadas'
+                  : 'Pendientes de otorgar',
+              '$pointsEarned monedas',
+            ),
         ],
       ),
     );

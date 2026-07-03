@@ -516,6 +516,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     final config = context.watch<AppConfigProvider>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
+    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
 
     return AdminLayout(
       title: 'Caja POS',
@@ -584,6 +585,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                           child: _buildRightPanel(
                             pointsToSolesRatio,
                             earningRate,
+                            isLoyaltyEnabled,
                             isWide: true,
                           ),
                         ),
@@ -609,11 +611,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                     ),
                               ),
                               const SizedBox(height: 24),
-                              _buildClientAndPaymentSection(pointsToSolesRatio),
+                              _buildClientAndPaymentSection(pointsToSolesRatio, isLoyaltyEnabled),
                               const SizedBox(height: 24),
                               _buildSummarySection(
                                 pointsToSolesRatio,
                                 earningRate,
+                                isLoyaltyEnabled,
                               ),
                             ],
                           ),
@@ -629,7 +632,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
   Widget _buildRightPanel(
     double ratio,
-    double earningRate, {
+    double earningRate,
+    bool isLoyaltyEnabled, {
     required bool isWide,
   }) {
     return Column(
@@ -640,9 +644,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildClientAndPaymentSection(ratio),
+                _buildClientAndPaymentSection(ratio, isLoyaltyEnabled),
                 const SizedBox(height: 24),
-                _buildSummarySection(ratio, earningRate),
+                _buildSummarySection(ratio, earningRate, isLoyaltyEnabled),
               ],
             ),
           ),
@@ -652,7 +656,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  Widget _buildClientAndPaymentSection(double ratio) {
+  Widget _buildClientAndPaymentSection(double ratio, bool isLoyaltyEnabled) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -670,6 +674,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               saldoActualCliente: pos.saldoActualCliente,
               creditInfo: _creditInfo,
               isCredito: isCredito,
+              isLoyaltyEnabled: isLoyaltyEnabled,
             );
           },
         ),
@@ -678,6 +683,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             final isCredito = pos.paymentMethod == 'CRÉDITO';
             return AdminSalePointsSection(
               show:
+                  isLoyaltyEnabled &&
                   pos.selectedClientId != null &&
                   pos.saldoActualCliente > 0 &&
                   !isCredito,
@@ -753,7 +759,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  Widget _buildSummarySection(double ratio, double earningRate) {
+  Widget _buildSummarySection(double ratio, double earningRate, bool isLoyaltyEnabled) {
     return Consumer<PosProvider>(
       builder: (context, pos, _) {
         final isCredito = pos.paymentMethod == 'CRÉDITO';
@@ -791,8 +797,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
             PosTotalSummarySection(
               subtotalAntesDePuntos: pos.totalAmount,
-              puntosAplicables: isCredito ? 0 : puntosSeguros,
-              descuentoPuntos: isCredito ? 0 : puntosSeguros * ratio,
+              puntosAplicables: isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros,
+              descuentoPuntos: isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros * ratio,
               descuentoExtra:
                   isCredito
                       ? 0
@@ -811,6 +817,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               pointsToSolesRatio: ratio,
               earningRate: earningRate,
               isCredito: isCredito,
+              isLoyaltyEnabled: isLoyaltyEnabled,
             ),
           ],
         );

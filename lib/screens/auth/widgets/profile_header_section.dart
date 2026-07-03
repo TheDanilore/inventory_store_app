@@ -12,6 +12,7 @@ class ProfileHeaderSection extends StatelessWidget {
   final String? avatarUrl;
   final Uint8List? imageBytes;
   final bool isEditing;
+  final bool isLoyaltyEnabled;
   final VoidCallback? onPickImage;
   final VoidCallback? onEditToggle;
   final bool isTablet;
@@ -25,6 +26,7 @@ class ProfileHeaderSection extends StatelessWidget {
     required this.avatarUrl,
     required this.imageBytes,
     required this.isEditing,
+    required this.isLoyaltyEnabled,
     this.onPickImage,
     this.onEditToggle,
     this.isTablet = false,
@@ -76,23 +78,28 @@ class ProfileHeaderSection extends StatelessWidget {
                             child: CircleAvatar(
                               radius: 38,
                               backgroundColor: AppColors.primary,
-                              backgroundImage: imageBytes != null
-                                  ? MemoryImage(imageBytes!) as ImageProvider
-                                  : (avatarUrl != null
-                                      ? CachedNetworkImageProvider(avatarUrl!)
-                                      : null),
-                              child: (imageBytes == null && avatarUrl == null)
-                                  ? Text(
-                                      displayName.isNotEmpty
-                                          ? displayName[0].toUpperCase()
-                                          : 'U',
-                                      style: const TextStyle(
-                                        fontSize: 30,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : null,
+                              backgroundImage:
+                                  imageBytes != null
+                                      ? MemoryImage(imageBytes!)
+                                          as ImageProvider
+                                      : (avatarUrl != null
+                                          ? CachedNetworkImageProvider(
+                                            avatarUrl!,
+                                          )
+                                          : null),
+                              child:
+                                  (imageBytes == null && avatarUrl == null)
+                                      ? Text(
+                                        displayName.isNotEmpty
+                                            ? displayName[0].toUpperCase()
+                                            : 'U',
+                                        style: const TextStyle(
+                                          fontSize: 30,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : null,
                             ),
                           ),
                           if (isEditing)
@@ -185,9 +192,10 @@ class ProfileHeaderSection extends StatelessWidget {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: isEditing
-                                  ? AppColors.accent.withValues(alpha: 0.25)
-                                  : Colors.white.withValues(alpha: 0.12),
+                              color:
+                                  isEditing
+                                      ? AppColors.accent.withValues(alpha: 0.25)
+                                      : Colors.white.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.2),
@@ -207,70 +215,72 @@ class ProfileHeaderSection extends StatelessWidget {
                 ),
 
                 // Wallet balance strip
-                const SizedBox(height: 18),
-                InkWell(
-                  onTap: () {
-                    context.push('/customer/points');
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.15),
+                if (isLoyaltyEnabled) ...[
+                  const SizedBox(height: 18),
+                  InkWell(
+                    onTap: () {
+                      context.push('/customer/points');
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.stars_rounded,
+                              size: 18,
+                              color: AppColors.gold,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Saldo de monedas',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              Text(
+                                '$walletBalance monedas',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.white38,
+                            size: 20,
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.stars_rounded,
-                            size: 18,
-                            color: AppColors.gold,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Saldo de monedas',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            Text(
-                              '$walletBalance monedas',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Colors.white38,
-                          size: 20,
-                        ),
-                      ],
-                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

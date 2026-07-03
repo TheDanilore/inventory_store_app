@@ -10,6 +10,7 @@ class PosTotalSummarySection extends StatelessWidget {
   final double pointsToSolesRatio;
   final double earningRate;
   final bool isCredito;
+  final bool isLoyaltyEnabled;
 
   const PosTotalSummarySection({
     super.key,
@@ -21,12 +22,13 @@ class PosTotalSummarySection extends StatelessWidget {
     required this.pointsToSolesRatio,
     required this.earningRate,
     required this.isCredito,
+    required this.isLoyaltyEnabled,
   });
 
   @override
   Widget build(BuildContext context) {
-    final puntosGanadosEstimados =
-        (totalFinal * earningRate / pointsToSolesRatio).toInt();
+    final puntosGanadosEstimados = isLoyaltyEnabled ? 
+        (totalFinal * earningRate / pointsToSolesRatio).toInt() : 0;
 
     return Container(
       decoration: BoxDecoration(

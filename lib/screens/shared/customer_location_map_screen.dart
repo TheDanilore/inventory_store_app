@@ -298,7 +298,7 @@ class _CustomerLocationMapScreenState
                       const SizedBox(width: 4),
                       ValueListenableBuilder<LatLng>(
                         valueListenable: _pickerPointNotifier,
-                        builder: (_, point, __) => Text(
+                        builder: (_, point, _) => Text(
                           'Lat: ${point.latitude.toStringAsFixed(5)},  '
                           'Lng: ${point.longitude.toStringAsFixed(5)}',
                           style: const TextStyle(

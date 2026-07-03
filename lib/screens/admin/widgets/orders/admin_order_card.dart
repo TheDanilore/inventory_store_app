@@ -8,6 +8,7 @@ class AdminOrderCard extends StatelessWidget {
   final bool isProcessing;
   final bool isGeneratingPDF;
   final bool isSelected;
+  final bool isLoyaltyEnabled;
   final VoidCallback onTap;
   final Function(OrderModel, String) onUpdateStatus;
   final VoidCallback onPrint;
@@ -18,6 +19,7 @@ class AdminOrderCard extends StatelessWidget {
     required this.isProcessing,
     this.isGeneratingPDF = false,
     this.isSelected = false,
+    required this.isLoyaltyEnabled,
     required this.onTap,
     required this.onUpdateStatus,
     required this.onPrint,
@@ -47,6 +49,7 @@ class AdminOrderCard extends StatelessWidget {
 
     // Chip de puntos pendientes (crédito completado con puntos a ganar)
     final showPendingPointsChip =
+        isLoyaltyEnabled &&
         status == 'COMPLETED' &&
         isCredit &&
         paymentStatus != 'PAID' &&

@@ -16,6 +16,7 @@ class PaymentStatusSection extends StatefulWidget {
   final String? customerId;
   final int pointsEarned;
   final VoidCallback onPaymentRegistered;
+  final bool isLoyaltyEnabled;
 
   const PaymentStatusSection({
     super.key,
@@ -30,6 +31,7 @@ class PaymentStatusSection extends StatefulWidget {
     required this.customerId,
     required this.pointsEarned,
     required this.onPaymentRegistered,
+    required this.isLoyaltyEnabled,
   });
 
   @override
@@ -214,7 +216,8 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
           .eq('id', widget.orderId);
 
       // 3.5 Otorgar monedas si el pedido a crédito fue pagado completamente
-      if (newPaymentStatus == 'PAID' &&
+      if (widget.isLoyaltyEnabled &&
+          newPaymentStatus == 'PAID' &&
           widget.paymentMethod == 'CRÉDITO' &&
           widget.customerId != null &&
           widget.pointsEarned > 0) {

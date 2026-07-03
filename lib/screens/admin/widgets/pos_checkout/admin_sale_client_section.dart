@@ -15,6 +15,7 @@ class AdminSaleClientSection extends StatelessWidget {
   final int saldoActualCliente;
   final Map<String, dynamic>? creditInfo;
   final bool isCredito;
+  final bool isLoyaltyEnabled;
 
   const AdminSaleClientSection({
     super.key,
@@ -27,6 +28,7 @@ class AdminSaleClientSection extends StatelessWidget {
     required this.saldoActualCliente,
     required this.creditInfo,
     required this.isCredito,
+    required this.isLoyaltyEnabled,
   });
 
   @override
@@ -86,6 +88,7 @@ class AdminSaleClientSection extends StatelessWidget {
               saldo: saldoActualCliente,
               creditInfo: creditInfo,
               isCredito: isCredito,
+              isLoyaltyEnabled: isLoyaltyEnabled,
             )
           else if (controller.text.trim().isEmpty)
             const _ClientSearchState(
@@ -103,6 +106,7 @@ class AdminSaleClientSection extends StatelessWidget {
               matches: matches,
               selectedClientId: selectedClientId,
               onClientTap: onClientTap,
+              isLoyaltyEnabled: isLoyaltyEnabled,
             ),
         ],
       ),
@@ -159,11 +163,13 @@ class _SelectedClientBanner extends StatelessWidget {
   final int saldo;
   final Map<String, dynamic>? creditInfo;
   final bool isCredito;
+  final bool isLoyaltyEnabled;
 
   const _SelectedClientBanner({
     required this.saldo,
     required this.creditInfo,
     required this.isCredito,
+    required this.isLoyaltyEnabled,
   });
 
   @override
@@ -242,7 +248,7 @@ class _SelectedClientBanner extends StatelessWidget {
                     color: AppColors.success,
                   ),
                 ),
-                if (saldo > 0)
+                if (saldo > 0 && isLoyaltyEnabled)
                   Text(
                     '$saldo monedas disponibles',
                     style: const TextStyle(
@@ -263,11 +269,13 @@ class _ClientMatchesList extends StatelessWidget {
   final List<Map<String, dynamic>> matches;
   final String? selectedClientId;
   final ClientTapCallback onClientTap;
+  final bool isLoyaltyEnabled;
 
   const _ClientMatchesList({
     required this.matches,
     required this.selectedClientId,
     required this.onClientTap,
+    required this.isLoyaltyEnabled,
   });
 
   @override
@@ -343,7 +351,7 @@ class _ClientMatchesList extends StatelessWidget {
                               if (doc != null && doc.isNotEmpty) 'Doc: $doc',
                               if (phone != null && phone.isNotEmpty)
                                 'Tel: $phone',
-                              if (wallet > 0) '$wallet monedas',
+                              if (wallet > 0 && isLoyaltyEnabled) '$wallet monedas',
                             ].join(' · '),
                             style: const TextStyle(
                               fontSize: 11,

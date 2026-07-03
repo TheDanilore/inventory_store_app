@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/providers/profile_provider.dart';
 import 'package:inventory_store_app/providers/wallet_provider.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/providers/auth_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
@@ -165,7 +166,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProfileProvider>();
+    final config = context.watch<AppConfigProvider>();
     final walletBalance = context.watch<WalletProvider>().balance ?? 0;
+    
+    final isLoyaltyEnabled = widget.openedFromAdmin 
+      ? config.loyaltyGlobalEnabled 
+      : (config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible);
+
     final email = Supabase.instance.client.auth.currentUser?.email ?? '';
 
     return CustomerLayout(
@@ -208,6 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 avatarUrl: provider.avatarUrl,
                                 imageBytes: provider.imageBytes,
                                 isEditing: _isEditing,
+                                isLoyaltyEnabled: isLoyaltyEnabled,
                                 onPickImage: _pickImage,
                                 onEditToggle:
                                     () => setState(() {
@@ -234,16 +242,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     _sectionLabel('Accesos rápidos'),
                                     ProfileQuickActionGrid(
                                       items: [
-                                        ProfileQuickActionItem(
-                                          title: 'Monedas',
-                                          value: 'Canjear ',
-                                          icon: Icons.stars_rounded,
-                                          color: AppColors.gold,
-                                          onTap:
-                                              () => context.push(
-                                                '/customer/points',
-                                              ),
-                                        ),
+                                        if (isLoyaltyEnabled)
+                                          ProfileQuickActionItem(
+                                            title: 'Monedas',
+                                            value: 'Canjear ',
+                                            icon: Icons.stars_rounded,
+                                            color: AppColors.gold,
+                                            onTap:
+                                                () => context.push(
+                                                  '/customer/points',
+                                                ),
+                                          ),
                                         ProfileQuickActionItem(
                                           title: 'Pedidos',
                                           value: 'Ver historial',

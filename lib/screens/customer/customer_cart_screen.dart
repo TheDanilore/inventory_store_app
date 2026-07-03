@@ -166,12 +166,12 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final saldoPuntos = wallet.balance ?? 0;
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
-    final sortedCartItems = cart.items.values.toList()
-      ..sort((a, b) {
-        final aInStock = a.availableStock > 0 ? 1 : 0;
-        final bInStock = b.availableStock > 0 ? 1 : 0;
-        return bInStock.compareTo(aInStock);
-      });
+    final sortedCartItems =
+        cart.items.values.toList()..sort((a, b) {
+          final aInStock = a.availableStock > 0 ? 1 : 0;
+          final bInStock = b.availableStock > 0 ? 1 : 0;
+          return bInStock.compareTo(aInStock);
+        });
 
     return CustomerLayout(
       title: 'Danilore Store',
@@ -198,67 +198,66 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                       'Agrega productos desde el catálogo para armar tu pedido.',
                 )
                 : SizedBox(
-                      height: double.infinity,
-                      child: Column(
-                        children: [
-                          if (checkout.isVerifyingStock)
-                            const LinearProgressIndicator(
-                              color: AppColors.primary,
-                            ),
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.only(
-                                top: 4,
-                                bottom: 20,
-                              ),
-                              itemCount: cart.items.length + 3,
-                              itemBuilder: (context, i) {
-                                if (i == 0) {
-                                  return CartWalletSummary(
-                                    cart: cart,
-                                    saldoPuntos: saldoPuntos,
-                                  );
-                                }
-                                if (i == 1) {
-                                  return CartAddressCard(
-                                    address: checkout.defaultAddress,
-                                    isLoading: checkout.isLoadingAddress,
-                                    onTap: () async {
-                                      await context.push('/customer/locations');
-                                      if (context.mounted) {
-                                        context
-                                            .read<CartCheckoutProvider>()
-                                            .loadAddress();
-                                      }
-                                    },
-                                  );
-                                }
-                                if (i == 2) {
-                                  return CartActionHeader(cart: cart);
-                                }
+                  height: double.infinity,
+                  child: Column(
+                    children: [
+                      if (checkout.isVerifyingStock)
+                        const LinearProgressIndicator(color: AppColors.primary),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.only(top: 4, bottom: 20),
+                          itemCount: cart.items.length + 3,
+                          itemBuilder: (context, i) {
+                            if (i == 0) {
+                              if (!config.loyaltyGlobalEnabled ||
+                                  !config.loyaltyCustomerVisible) {
+                                return const SizedBox.shrink();
+                              }
+                              return CartWalletSummary(
+                                cart: cart,
+                                saldoPuntos: saldoPuntos,
+                              );
+                            }
+                            if (i == 1) {
+                              return CartAddressCard(
+                                address: checkout.defaultAddress,
+                                isLoading: checkout.isLoadingAddress,
+                                onTap: () async {
+                                  await context.push('/customer/locations');
+                                  if (context.mounted) {
+                                    context
+                                        .read<CartCheckoutProvider>()
+                                        .loadAddress();
+                                  }
+                                },
+                              );
+                            }
+                            if (i == 2) {
+                              return CartActionHeader(cart: cart);
+                            }
 
-                                final index = i - 3;
-                                final cartItem = sortedCartItems[index];
-                                final productId = cartItem.product.id;
-                                return CartItemCard(
-                                  productId: productId,
-                                  item: cartItem,
-                                  cart: cart,
-                                  saldoPuntos: saldoPuntos,
-                                  pointsToSolesRatio: pointsToSolesRatio,
-                                );
-                              },
-                            ),
-                          ),
-                          CartCheckoutFooter(
-                            cart: cart,
-                            saldoPuntos: saldoPuntos,
-                            pointsToSolesRatio: pointsToSolesRatio,
-                            onProcessCheckout: _handleCheckout,
-                          ),
-                        ],
+                            final index = i - 3;
+                            final cartItem = sortedCartItems[index];
+                            final productId = cartItem.product.id;
+                            return CartItemCard(
+                              productId: productId,
+                              item: cartItem,
+                              cart: cart,
+                              saldoPuntos: saldoPuntos,
+                              pointsToSolesRatio: pointsToSolesRatio,
+                            );
+                          },
+                        ),
                       ),
-                    ),
+                      CartCheckoutFooter(
+                        cart: cart,
+                        saldoPuntos: saldoPuntos,
+                        pointsToSolesRatio: pointsToSolesRatio,
+                        onProcessCheckout: _handleCheckout,
+                      ),
+                    ],
+                  ),
+                ),
       ),
     );
   }

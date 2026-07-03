@@ -518,6 +518,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     final config = context.watch<AppConfigProvider>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
+    final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
 
     return Stack(
       children: [
@@ -624,11 +625,11 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                     const SizedBox(height: 32),
 
                     // Cliente
-                    _buildClientAndPaymentSection(pointsToSolesRatio),
+                    _buildClientAndPaymentSection(pointsToSolesRatio, isLoyaltyEnabled),
                     const SizedBox(height: 32),
 
                     // Resumen Total
-                    _buildSummarySection(pointsToSolesRatio, earningRate),
+                    _buildSummarySection(pointsToSolesRatio, earningRate, isLoyaltyEnabled),
                   ],
                 ),
               ),
@@ -645,7 +646,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
-  Widget _buildClientAndPaymentSection(double ratio) {
+  Widget _buildClientAndPaymentSection(double ratio, bool isLoyaltyEnabled) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -663,6 +664,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               saldoActualCliente: pos.saldoActualCliente,
               creditInfo: _creditInfo,
               isCredito: isCredito,
+              isLoyaltyEnabled: isLoyaltyEnabled,
             );
           },
         ),
@@ -671,6 +673,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             final isCredito = pos.paymentMethod == 'CRÉDITO';
             return AdminSalePointsSection(
               show:
+                  isLoyaltyEnabled &&
                   pos.selectedClientId != null &&
                   pos.saldoActualCliente > 0 &&
                   !isCredito,
@@ -746,7 +749,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
-  Widget _buildSummarySection(double ratio, double earningRate) {
+  Widget _buildSummarySection(double ratio, double earningRate, bool isLoyaltyEnabled) {
     return Consumer<PosProvider>(
       builder: (context, pos, _) {
         final isCredito = pos.paymentMethod == 'CRÉDITO';
@@ -786,6 +789,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               subtotalAntesDePuntos: pos.totalAmount,
               puntosAplicables: isCredito ? 0 : puntosSeguros,
               descuentoPuntos: isCredito ? 0 : puntosSeguros * ratio,
+              isLoyaltyEnabled: isLoyaltyEnabled,
               descuentoExtra:
                   isCredito
                       ? 0

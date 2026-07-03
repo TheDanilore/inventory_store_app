@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/admin/customer_detail_provider.dart';
@@ -52,11 +53,12 @@ class _CustomerDetailContent extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth > 750;
+            final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
 
             if (isTablet) {
-              return _buildTabletLayout(context, provider);
+              return _buildTabletLayout(context, provider, isLoyaltyEnabled);
             }
-            return _buildMobileLayout(context, provider);
+            return _buildMobileLayout(context, provider, isLoyaltyEnabled);
           },
         ),
       ),
@@ -66,6 +68,7 @@ class _CustomerDetailContent extends StatelessWidget {
   Widget _buildMobileLayout(
     BuildContext context,
     CustomerDetailProvider provider,
+    bool isLoyaltyEnabled,
   ) {
     final c = provider.customer;
     return CustomScrollView(
@@ -102,6 +105,7 @@ class _CustomerDetailContent extends StatelessWidget {
                 orderCount: c.orderCount,
                 avgOrder: provider.avgOrderValue,
                 walletBalance: c.walletBalance,
+                isLoyaltyEnabled: isLoyaltyEnabled,
               ),
               const SizedBox(height: 24),
               if (provider.hasCredit)
@@ -128,6 +132,7 @@ class _CustomerDetailContent extends StatelessWidget {
   Widget _buildTabletLayout(
     BuildContext context,
     CustomerDetailProvider provider,
+    bool isLoyaltyEnabled,
   ) {
     final c = provider.customer;
 
@@ -170,6 +175,7 @@ class _CustomerDetailContent extends StatelessWidget {
                       orderCount: c.orderCount,
                       avgOrder: provider.avgOrderValue,
                       walletBalance: c.walletBalance,
+                      isLoyaltyEnabled: isLoyaltyEnabled,
                     ),
                     const SizedBox(height: 24),
                     if (provider.hasCredit)

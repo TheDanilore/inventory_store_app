@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/cart_item_model.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:inventory_store_app/providers/cart_provider.dart';
 import 'package:inventory_store_app/providers/customer/cart_checkout_provider.dart';
 import 'package:inventory_store_app/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
@@ -41,12 +42,16 @@ class CartItemCard extends StatelessWidget {
             : null);
 
     final isWholesale = item.quantity >= (product.wholesaleMinQuantity);
-    final appliedPoints = checkoutProvider.getAppliedPointsForItem(
+    
+    final config = context.read<AppConfigProvider>();
+    final isLoyaltyEnabled = config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
+    
+    final appliedPoints = isLoyaltyEnabled ? checkoutProvider.getAppliedPointsForItem(
       item,
       cart,
       pointsToSolesRatio,
       saldoPuntos,
-    );
+    ) : 0;
     final hasPointDiscount = appliedPoints > 0;
 
     final displayUnitPrice = isWholesale ? wPrice : item.unitPrice;

@@ -32,6 +32,9 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   bool _isInitialized = false;
   bool _hasChanges = false;
+  
+  bool _loyaltyGlobalEnabled = true;
+  bool _loyaltyCustomerVisible = true;
 
   // Estado local para la preview reactiva (no depende del provider guardado)
   String _previewName = '';
@@ -66,6 +69,10 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     _addressCtrl.text = config.businessAddress;
     _phoneCtrl.text = config.businessPhone;
     _logoUrlCtrl.text = config.businessLogoUrl;
+    
+    _loyaltyGlobalEnabled = config.loyaltyGlobalEnabled;
+    _loyaltyCustomerVisible = config.loyaltyCustomerVisible;
+
     setState(() {
       _isInitialized = true;
       _hasChanges = false;
@@ -152,6 +159,8 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
       address: _addressCtrl.text,
       phone: _phoneCtrl.text,
       logoUrl: _logoUrlCtrl.text,
+      loyaltyGlobalEnabled: _loyaltyGlobalEnabled,
+      loyaltyCustomerVisible: _loyaltyCustomerVisible,
     );
 
     if (mounted) {
@@ -416,6 +425,46 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                'Módulo de Monedas y Lealtad',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Habilitar Sistema Globalmente', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Si se apaga, el sistema desaparece para todos (clientes y admins).'),
+                value: _loyaltyGlobalEnabled,
+                activeThumbColor: Theme.of(context).colorScheme.primary,
+                onChanged: (val) {
+                  setState(() {
+                    _loyaltyGlobalEnabled = val;
+                    if (!val) {
+                      _loyaltyCustomerVisible = false; // Auto-disable
+                    }
+                    _markChanged();
+                  });
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Visible para Clientes', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Si se apaga, los clientes no lo ven, pero los administradores sí.'),
+                value: _loyaltyCustomerVisible,
+                activeThumbColor: Theme.of(context).colorScheme.primary,
+                onChanged: _loyaltyGlobalEnabled ? (val) {
+                  setState(() {
+                    _loyaltyCustomerVisible = val;
+                    _markChanged();
+                  });
+                } : null,
               ),
             ],
           ),

@@ -21,6 +21,9 @@ class AppConfigProvider extends ChangeNotifier {
   bool _isSavingSettings = false;
   bool _isUploadingLogo = false;
 
+  bool _loyaltyGlobalEnabled = true;
+  bool _loyaltyCustomerVisible = true;
+
   Map<String, double> get values => Map.unmodifiable(_values);
   bool get isLoaded => _isLoaded;
   bool get isSavingBusinessInfo => _isSavingBusinessInfo;
@@ -31,6 +34,8 @@ class AppConfigProvider extends ChangeNotifier {
   String get businessAddress => _businessAddress;
   String get businessPhone => _businessPhone;
   String get businessLogoUrl => _businessLogoUrl;
+  bool get loyaltyGlobalEnabled => _loyaltyGlobalEnabled;
+  bool get loyaltyCustomerVisible => _loyaltyCustomerVisible;
 
   double getDouble(String key, [double defaultValue = 0]) =>
       _values[key] ?? defaultValue;
@@ -114,7 +119,7 @@ class AppConfigProvider extends ChangeNotifier {
       // CORRECCIÓN: Ordenamos de forma descendente por actualización por si existen registros duplicados huérfanos
       final rawResponse = await _supabase
           .from('business_info')
-          .select('id, business_name, tax_id, address, phone, logo_url')
+          .select('id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible')
           .order('updated_at', ascending: false)
           .limit(1);
 
@@ -146,6 +151,8 @@ class AppConfigProvider extends ChangeNotifier {
     _businessAddress = data['address']?.toString() ?? '';
     _businessPhone = data['phone']?.toString() ?? '';
     _businessLogoUrl = data['logo_url']?.toString() ?? '';
+    _loyaltyGlobalEnabled = data['loyalty_global_enabled'] as bool? ?? true;
+    _loyaltyCustomerVisible = data['loyalty_customer_visible'] as bool? ?? true;
   }
 
   Future<bool> saveBusinessInfo({
@@ -154,6 +161,8 @@ class AppConfigProvider extends ChangeNotifier {
     String? address,
     String? phone,
     String? logoUrl,
+    bool? loyaltyGlobalEnabled,
+    bool? loyaltyCustomerVisible,
   }) async {
     if (_isSavingBusinessInfo) return false;
     _isSavingBusinessInfo = true;
@@ -168,6 +177,14 @@ class AppConfigProvider extends ChangeNotifier {
         'logo_url': logoUrl?.trim().isNotEmpty == true ? logoUrl!.trim() : null,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
+      
+      if (loyaltyGlobalEnabled != null) {
+        payload['loyalty_global_enabled'] = loyaltyGlobalEnabled;
+      }
+      if (loyaltyCustomerVisible != null) {
+        payload['loyalty_customer_visible'] = loyaltyCustomerVisible;
+      }
+
       payload.removeWhere((_, value) => value == null);
 
       // CORRECCIÓN MEDIDA DE SEGURIDAD: Si el ID local está vacío, verificamos si existe alguna fila en la BD

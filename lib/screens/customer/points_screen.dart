@@ -82,6 +82,39 @@ class _PointsScreenState extends State<PointsScreen> {
       body: Consumer<PointsProvider>(
         builder: (context, provider, child) {
           final config = context.watch<AppConfigProvider>();
+
+          if (!config.loyaltyGlobalEnabled || !config.loyaltyCustomerVisible) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.stars_rounded, size: 64, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text(
+                      'Sistema No Disponible',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'El sistema de monedas se encuentra desactivado en este momento. Vuelve más tarde.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           final pointsToSolesRatio = config.getDouble(
             'points_to_soles_ratio',
             0.01,

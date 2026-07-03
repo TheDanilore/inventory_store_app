@@ -5,6 +5,7 @@ import 'package:inventory_store_app/providers/admin/user_detail_provider.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/providers/app_config_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -105,6 +106,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final isLoyaltyEnabled = context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
 
     return Consumer<UserDetailProvider>(
       builder: (context, provider, child) {
@@ -355,8 +357,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                     const SizedBox(height: 20),
 
                     // ─── SECCIÓN DE MONEDAS / BILLETERA ─────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(20),
+                    if (isLoyaltyEnabled)
+                      Container(
+                        padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: AppColors.amberLight.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(16),
