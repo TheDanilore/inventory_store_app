@@ -455,11 +455,11 @@ class _CustomerLocationFormSheetState
                     const SizedBox(height: 16),
 
                     // Toggle principal
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
+                    Material(
+                      color: AppColors.background,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
+                        side: const BorderSide(color: AppColors.border),
                       ),
                       child: SwitchListTile(
                         dense: true,
