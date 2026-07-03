@@ -62,25 +62,16 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     final result = await CustomerLocationFormSheet.show(
       context,
       isFirstLocation: provider.locations.isEmpty,
+      onSave: (loc) async {
+        await provider.addLocation(loc);
+      },
     );
-    if (result == null || !mounted) return;
-    try {
-      await provider.addLocation(result);
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Ubicación guardada.',
-          type: SnackbarType.success,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: e.toString(),
-          type: SnackbarType.error,
-        );
-      }
+    if (result == true && mounted) {
+      AppSnackbar.show(
+        context,
+        message: 'Ubicación guardada.',
+        type: SnackbarType.success,
+      );
     }
   }
 
@@ -91,25 +82,16 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     final result = await CustomerLocationFormSheet.show(
       context,
       existing: loc,
+      onSave: (updatedLoc) async {
+        await provider.updateLocation(loc.id, updatedLoc);
+      },
     );
-    if (result == null || !mounted) return;
-    try {
-      await provider.updateLocation(loc.id, result);
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Ubicación actualizada.',
-          type: SnackbarType.success,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: e.toString(),
-          type: SnackbarType.error,
-        );
-      }
+    if (result == true && mounted) {
+      AppSnackbar.show(
+        context,
+        message: 'Ubicación actualizada.',
+        type: SnackbarType.success,
+      );
     }
   }
 

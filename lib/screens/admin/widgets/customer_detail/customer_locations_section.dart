@@ -50,20 +50,16 @@ class CustomerLocationsSection extends StatelessWidget {
     final result = await CustomerLocationFormSheet.show(
       context,
       isFirstLocation: locations.isEmpty,
+      onSave: (loc) async {
+        await provider.addLocation(loc);
+      },
     );
-    if (result == null) return;
-    try {
-      await provider.addLocation(result);
+    
+    if (result == true) {
       AppSnackbar.showMessenger(
         messenger,
         message: 'Ubicación agregada.',
         type: SnackbarType.success,
-      );
-    } catch (e) {
-      AppSnackbar.showMessenger(
-        messenger,
-        message: 'Error al guardar: $e',
-        type: SnackbarType.error,
       );
     }
   }
@@ -77,20 +73,16 @@ class CustomerLocationsSection extends StatelessWidget {
     final result = await CustomerLocationFormSheet.show(
       context,
       existing: loc,
+      onSave: (updatedLoc) async {
+        await provider.updateLocation(loc.id, updatedLoc);
+      },
     );
-    if (result == null) return;
-    try {
-      await provider.updateLocation(loc.id, result);
+    
+    if (result == true) {
       AppSnackbar.showMessenger(
         messenger,
         message: 'Ubicación actualizada.',
         type: SnackbarType.success,
-      );
-    } catch (e) {
-      AppSnackbar.showMessenger(
-        messenger,
-        message: 'Error al actualizar: $e',
-        type: SnackbarType.error,
       );
     }
   }

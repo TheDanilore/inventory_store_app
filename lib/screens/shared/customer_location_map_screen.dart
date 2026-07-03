@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:inventory_store_app/models/customer_location.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/screens/shared/widgets/map_markers.dart';
 
 /// Pantalla de mapa compartida.
 ///
@@ -32,12 +32,19 @@ class CustomerLocationMapScreen extends StatefulWidget {
 
 class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
   final MapController _mapController = MapController();
-  LatLng? _pickerPoint;
+  late final ValueNotifier<LatLng> _pickerPointNotifier;
 
   @override
   void initState() {
     super.initState();
-    _pickerPoint = widget.initialPickerPoint;
+    _pickerPointNotifier = ValueNotifier(widget.initialPickerPoint ?? _initialCenter);
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    _pickerPointNotifier.dispose();
+    super.dispose();
   }
 
   LatLng get _initialCenter {
@@ -102,35 +109,24 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
   }
 
   void _handleMapTap(TapPosition tapPos, LatLng latLng) {
-    if (!widget.isPickerMode) return;
-    setState(() => _pickerPoint = latLng);
+    // Ya no usamos tap para poner el pin, el pin está fijo al centro.
+  }
+
+  void _onPositionChanged(MapCamera position, bool hasGesture) {
+    if (widget.isPickerMode) {
+      _pickerPointNotifier.value = position.center;
+    }
   }
 
   void _confirmPickerPoint() {
-    if (_pickerPoint == null) return;
-    Navigator.of(context).pop(_pickerPoint);
+    Navigator.of(context).pop(_pickerPointNotifier.value);
   }
 
   @override
   Widget build(BuildContext context) {
     final markers = <Marker>[];
 
-    if (widget.isPickerMode && _pickerPoint != null) {
-      markers.add(
-        Marker(
-          point: _pickerPoint!,
-          width: 100,
-          height: 100,
-          child: const UnconstrainedBox(
-            child: _MapPin(
-              color: AppColors.accent,
-              icon: Icons.push_pin_rounded,
-              isPicked: true,
-            ),
-          ),
-        ),
-      );
-    } else {
+    if (!widget.isPickerMode) {
       final locs =
           widget.focusedLocation != null
               ? [widget.focusedLocation!]
@@ -142,7 +138,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
             width: 100,
             height: 100,
             child: UnconstrainedBox(
-              child: _MapMarker(
+              child: MapMarker(
                 location: loc,
                 color: _typeColor(loc.locationType),
                 icon: _typeIcon(loc.locationType),
@@ -170,7 +166,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
           ),
         ),
         actions: [
-          if (widget.isPickerMode && _pickerPoint != null)
+          if (widget.isPickerMode)
             TextButton.icon(
               onPressed: _confirmPickerPoint,
               icon: const Icon(
@@ -197,8 +193,9 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
               initialZoom: _initialZoom,
               maxZoom: 19.0,
               onTap: _handleMapTap,
+              onPositionChanged: _onPositionChanged,
               interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all,
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
             ),
             children: [
@@ -211,6 +208,21 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
               MarkerLayer(markers: markers),
             ],
           ),
+          
+          // Pin central fijo (Modo Uber)
+          if (widget.isPickerMode)
+            const Center(
+              child: FractionalTranslation(
+                // Desplaza el pin hacia arriba para que la punta inferior coincida con el centro exacto
+                translation: Offset(0, -0.5),
+                child: MapPin(
+                  color: AppColors.accent,
+                  icon: Icons.push_pin_rounded,
+                  isPicked: true,
+                ),
+              ),
+            ),
+
           // Instrucción en modo picker
           if (widget.isPickerMode)
             Positioned(
@@ -241,15 +253,18 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                       size: 16,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      _pickerPoint == null
-                          ? 'Toca el mapa para colocar el marcador'
-                          : 'Lat: ${_pickerPoint!.latitude.toStringAsFixed(5)}, Lng: ${_pickerPoint!.longitude.toStringAsFixed(5)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    ValueListenableBuilder<LatLng>(
+                      valueListenable: _pickerPointNotifier,
+                      builder: (context, currentPoint, child) {
+                        return Text(
+                          'Lat: ${currentPoint.latitude.toStringAsFixed(5)}, Lng: ${currentPoint.longitude.toStringAsFixed(5)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -274,7 +289,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
         ],
       ),
       floatingActionButton:
-          widget.isPickerMode && _pickerPoint != null
+          widget.isPickerMode
               ? FloatingActionButton.extended(
                 onPressed: _confirmPickerPoint,
                 backgroundColor: AppColors.teal,
@@ -288,103 +303,4 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
               : null,
     );
   }
-}
-
-// ── Marcador decorativo para ubicaciones ────────────────────────────────────
-
-class _MapMarker extends StatelessWidget {
-  final CustomerLocation location;
-  final Color color;
-  final IconData icon;
-
-  const _MapMarker({
-    required this.location,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-            border: Border.all(color: Colors.white, width: 2),
-          ),
-          child: Icon(icon, color: Colors.white, size: 16),
-        ),
-        CustomPaint(size: const Size(12, 8), painter: _PinTailPainter(color)),
-      ],
-    );
-  }
-}
-
-class _MapPin extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final bool isPicked;
-
-  const _MapPin({
-    required this.color,
-    required this.icon,
-    this.isPicked = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.5),
-                blurRadius: isPicked ? 14 : 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-            border: Border.all(color: Colors.white, width: 2.5),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        CustomPaint(size: const Size(12, 8), painter: _PinTailPainter(color)),
-      ],
-    );
-  }
-}
-
-class _PinTailPainter extends CustomPainter {
-  final Color color;
-  const _PinTailPainter(this.color);
-
-  @override
-  void paint(ui.Canvas canvas, ui.Size size) {
-    final paint = ui.Paint()..color = color;
-    final path =
-        ui.Path()
-          ..moveTo(0, 0)
-          ..lineTo(size.width / 2, size.height)
-          ..lineTo(size.width, 0)
-          ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

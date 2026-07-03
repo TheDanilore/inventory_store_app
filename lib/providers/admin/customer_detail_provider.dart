@@ -320,16 +320,12 @@ class CustomerDetailProvider extends ChangeNotifier {
   }
 
   Future<void> setDefaultLocation(String id) async {
-    // Quitar default de todos primero
-    await _supabase
-        .from('customer_locations')
-        .update({'is_default': false})
-        .eq('profile_id', customer.id);
-    // Poner default al seleccionado
-    await _supabase
-        .from('customer_locations')
-        .update({'is_default': true})
-        .eq('id', id);
+    // Usar el RPC para asegurar atomicidad
+    await _supabase.rpc('set_default_location', params: {
+      'p_profile_id': customer.id,
+      'p_location_id': id,
+    });
+    
     await _loadLocations();
     notifyListeners();
   }

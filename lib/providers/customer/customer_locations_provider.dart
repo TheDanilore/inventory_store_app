@@ -130,15 +130,10 @@ class CustomerLocationsProvider extends ChangeNotifier {
 
     _setItemProcessing(id, true);
     try {
-      await _supabase
-          .from('customer_locations')
-          .update({'is_default': false})
-          .eq('profile_id', _profileId!);
-
-      await _supabase
-          .from('customer_locations')
-          .update({'is_default': true})
-          .eq('id', id);
+      await _supabase.rpc('set_default_location', params: {
+        'p_profile_id': _profileId,
+        'p_location_id': id,
+      });
 
       await loadLocations();
     } catch (e) {

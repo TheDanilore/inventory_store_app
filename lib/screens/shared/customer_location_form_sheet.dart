@@ -11,19 +11,22 @@ import 'package:inventory_store_app/screens/shared/customer_location_map_screen.
 class CustomerLocationFormSheet extends StatefulWidget {
   final CustomerLocation? existing; // null = nueva ubicación
   final bool isFirstLocation;
+  final Future<void> Function(CustomerLocation)? onSave;
 
   const CustomerLocationFormSheet({
     super.key,
     this.existing,
     this.isFirstLocation = false,
+    this.onSave,
   });
 
-  static Future<CustomerLocation?> show(
+  static Future<bool?> show(
     BuildContext context, {
     CustomerLocation? existing,
     bool isFirstLocation = false,
+    Future<void> Function(CustomerLocation)? onSave,
   }) async {
-    return showModalBottomSheet<CustomerLocation>(
+    return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -31,6 +34,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
           (_) => CustomerLocationFormSheet(
             existing: existing,
             isFirstLocation: isFirstLocation,
+            onSave: onSave,
           ),
     );
   }
@@ -53,6 +57,7 @@ class _CustomerLocationFormSheetState
   String _selectedType = 'otro';
   bool _isDefault = false;
   bool _isGettingGps = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -155,8 +160,9 @@ class _CustomerLocationFormSheetState
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isSaving) return;
 
     final lat = double.tryParse(_latCtrl.text);
     final lng = double.tryParse(_lngCtrl.text);
@@ -190,7 +196,27 @@ class _CustomerLocationFormSheetState
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
 
-    Navigator.of(context).pop(result);
+    if (widget.onSave == null) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await widget.onSave!(result);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -490,7 +516,7 @@ class _CustomerLocationFormSheetState
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton.icon(
-                        onPressed: _submit,
+                        onPressed: _isSaving ? null : _submit,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.teal,
                           foregroundColor: Colors.white,
@@ -498,12 +524,24 @@ class _CustomerLocationFormSheetState
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
+                          disabledBackgroundColor: AppColors.teal.withValues(alpha: 0.6),
                         ),
-                        icon: const Icon(Icons.save_rounded, size: 18),
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.save_rounded, size: 18),
                         label: Text(
-                          widget.existing == null
-                              ? 'Guardar ubicación'
-                              : 'Actualizar',
+                          _isSaving
+                              ? 'Guardando...'
+                              : (widget.existing == null
+                                  ? 'Guardar ubicación'
+                                  : 'Actualizar'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
