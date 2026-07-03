@@ -16,8 +16,7 @@ import 'package:inventory_store_app/screens/shared/widgets/full_screen_gallery.d
 // Pantallas Cliente
 import 'package:inventory_store_app/screens/customer/customer_catalog_screen.dart';
 import 'package:inventory_store_app/screens/customer/customer_cart_screen.dart';
-import 'package:inventory_store_app/screens/customer/address_management_screen.dart';
-import 'package:inventory_store_app/screens/customer/address_config_screen.dart';
+import 'package:inventory_store_app/screens/customer/location_management_screen.dart';
 import 'package:inventory_store_app/screens/customer/customer_orders_screen.dart';
 import 'package:inventory_store_app/screens/customer/points_screen.dart';
 import 'package:inventory_store_app/screens/customer/wishlist_screen.dart';
@@ -554,8 +553,8 @@ class AppRouter {
                   builder: (context, state) => const ProfileScreen(openedFromAdmin: false),
                 ),
                 GoRoute(
-                  path: '/customer/address',
-                  builder: (context, state) => const AddressManagementScreen(),
+                  path: '/customer/locations',
+                  builder: (context, state) => const LocationManagementScreen(),
                 ),
                 GoRoute(
                   path: '/customer/orders',
@@ -568,12 +567,6 @@ class AppRouter {
                 GoRoute(
                   path: '/customer/wishlist',
                   builder: (context, state) => const WishlistScreen(),
-                ),
-                GoRoute(
-                  path: '/customer/address/config',
-                  builder: (context, state) => AddressConfigScreen(
-                    initialAddress: state.uri.queryParameters['initialAddress'],
-                  ),
                 ),
                 // GAMES
                 GoRoute(

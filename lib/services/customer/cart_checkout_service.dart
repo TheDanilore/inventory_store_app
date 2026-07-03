@@ -6,7 +6,7 @@ class CartCheckoutService {
 
   Future<Map<String, dynamic>?> fetchDefaultAddress(String profileId) async {
     return await _supabase
-        .from('user_addresses')
+        .from('customer_locations')
         .select('*')
         .eq('profile_id', profileId)
         .eq('is_default', true)

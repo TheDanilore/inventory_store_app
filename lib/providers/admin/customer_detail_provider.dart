@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/providers/admin/customers_provider.dart'
     show CustomerSummary;
+import 'package:inventory_store_app/models/customer_location.dart';
 
 class TopProduct {
   final String productName;
@@ -45,24 +46,6 @@ class RecentOrder {
   double get pendingAmount => totalAmount - amountPaid;
 }
 
-class UserAddress {
-  final String addressLine;
-  final String district;
-  final String province;
-  final String department;
-  final String? reference;
-  final bool isDefault;
-
-  UserAddress({
-    required this.addressLine,
-    required this.district,
-    required this.province,
-    required this.department,
-    this.reference,
-    required this.isDefault,
-  });
-}
-
 class CreditMovement {
   final String movementType; // 'CHARGE' | 'PAYMENT'
   final double amount;
@@ -95,8 +78,8 @@ class CustomerDetailProvider extends ChangeNotifier {
   List<RecentOrder> _recentOrders = [];
   List<RecentOrder> get recentOrders => _recentOrders;
 
-  List<UserAddress> _addresses = [];
-  List<UserAddress> get addresses => _addresses;
+  List<CustomerLocation> _locations = [];
+  List<CustomerLocation> get locations => _locations;
 
   List<CreditMovement> _creditMovements = [];
   List<CreditMovement> get creditMovements => _creditMovements;
@@ -130,12 +113,14 @@ class CustomerDetailProvider extends ChangeNotifier {
       await Future.wait([
         _loadOrdersAndTopProducts(),
         _loadCredit(),
-        _loadAddresses(),
+        _loadLocations(),
       ]);
     } catch (e) {
       debugPrint('Error loading customer details: $e');
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+      if (errStr.contains('socketexception') ||
+          errStr.contains('clientexception') ||
+          errStr.contains('failed host lookup')) {
         _errorMessage = 'Sin conexión a internet.';
       } else {
         _errorMessage = 'Error al cargar los datos del cliente.';
@@ -166,7 +151,8 @@ class CustomerDetailProvider extends ChangeNotifier {
                 createdAt: DateTime.parse(o['created_at'] as String),
                 totalAmount: (o['total_amount'] as num?)?.toDouble() ?? 0,
                 amountPaid: (o['amount_paid'] as num?)?.toDouble() ?? 0,
-                discountAmount: (o['discount_amount'] as num?)?.toDouble() ?? 0,
+                discountAmount:
+                    (o['discount_amount'] as num?)?.toDouble() ?? 0,
                 status: o['status'] as String? ?? 'UNKNOWN',
                 paymentStatus: o['payment_status'] as String? ?? 'UNKNOWN',
                 paymentMethod: o['payment_method'] as String? ?? 'UNKNOWN',
@@ -180,7 +166,8 @@ class CustomerDetailProvider extends ChangeNotifier {
             )
             .toList();
 
-    final completedOrders = ordersResp.where((o) => o['status'] == 'COMPLETED').toList();
+    final completedOrders =
+        ordersResp.where((o) => o['status'] == 'COMPLETED').toList();
 
     double sum = 0;
     for (final o in completedOrders) {
@@ -188,7 +175,8 @@ class CustomerDetailProvider extends ChangeNotifier {
     }
 
     _recentOrders = orders;
-    _avgOrderValue = completedOrders.isEmpty ? 0 : sum / completedOrders.length;
+    _avgOrderValue =
+        completedOrders.isEmpty ? 0 : sum / completedOrders.length;
 
     // TOP PRODUCTS logic
     final orderIds = completedOrders.map((o) => o['id'] as String).toList();
@@ -197,7 +185,6 @@ class CustomerDetailProvider extends ChangeNotifier {
       return;
     }
 
-    // Process in batches if there are too many orders to avoid long query
     List<dynamic> allItems = [];
     for (var i = 0; i < orderIds.length; i += 50) {
       final batchIds = orderIds.skip(i).take(50).toList();
@@ -279,28 +266,72 @@ class CustomerDetailProvider extends ChangeNotifier {
             .toList();
   }
 
-  Future<void> _loadAddresses() async {
+  Future<void> _loadLocations() async {
     final resp = await _supabase
-        .from('user_addresses')
+        .from('customer_locations')
         .select(
-          'address_line, district, province, department, reference, is_default',
+          'id, profile_id, name, location_type, latitude, longitude, address_line, reference, notes, is_default, created_at',
         )
         .eq('profile_id', customer.id)
-        .order('is_default', ascending: false);
+        .order('is_default', ascending: false)
+        .order('created_at', ascending: false);
 
-    _addresses =
-        (resp as List)
-            .map(
-              (a) => UserAddress(
-                addressLine: a['address_line'] as String? ?? '',
-                district: a['district'] as String? ?? '',
-                province: a['province'] as String? ?? '',
-                department: a['department'] as String? ?? '',
-                reference: a['reference'] as String?,
-                isDefault: a['is_default'] as bool? ?? false,
-              ),
-            )
-            .toList();
+    _locations =
+        (resp as List).map((m) => CustomerLocation.fromMap(m)).toList();
+  }
+
+  // ── CRUD de ubicaciones ─────────────────────────────────────────────────────
+
+  Future<void> addLocation(CustomerLocation loc) async {
+    await _supabase.from('customer_locations').insert({
+      'profile_id': customer.id,
+      'name': loc.name,
+      'location_type': loc.locationType,
+      'latitude': loc.latitude,
+      'longitude': loc.longitude,
+      'address_line': loc.addressLine,
+      'reference': loc.reference,
+      'notes': loc.notes,
+      'is_default': loc.isDefault,
+    });
+    await _loadLocations();
+    notifyListeners();
+  }
+
+  Future<void> updateLocation(String id, CustomerLocation loc) async {
+    await _supabase.from('customer_locations').update({
+      'name': loc.name,
+      'location_type': loc.locationType,
+      'latitude': loc.latitude,
+      'longitude': loc.longitude,
+      'address_line': loc.addressLine,
+      'reference': loc.reference,
+      'notes': loc.notes,
+      'is_default': loc.isDefault,
+    }).eq('id', id);
+    await _loadLocations();
+    notifyListeners();
+  }
+
+  Future<void> deleteLocation(String id) async {
+    await _supabase.from('customer_locations').delete().eq('id', id);
+    _locations.removeWhere((l) => l.id == id);
+    notifyListeners();
+  }
+
+  Future<void> setDefaultLocation(String id) async {
+    // Quitar default de todos primero
+    await _supabase
+        .from('customer_locations')
+        .update({'is_default': false})
+        .eq('profile_id', customer.id);
+    // Poner default al seleccionado
+    await _supabase
+        .from('customer_locations')
+        .update({'is_default': true})
+        .eq('id', id);
+    await _loadLocations();
+    notifyListeners();
   }
 }
 

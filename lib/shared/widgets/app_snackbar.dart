@@ -99,6 +99,61 @@ class AppSnackbar {
       _queue.clear();
     }
   }
+
+  /// Variante que usa [ScaffoldMessengerState] capturado antes del await
+  /// para evitar el warning use_build_context_synchronously.
+  static void showMessenger(
+    ScaffoldMessengerState messenger, {
+    required String message,
+    SnackbarType type = SnackbarType.success,
+    Color? backgroundColor,
+    Duration duration = const Duration(milliseconds: 2500),
+  }) {
+    final resolvedBackgroundColor =
+        backgroundColor ??
+        switch (type) {
+          SnackbarType.success => AppColors.success,
+          SnackbarType.error => AppColors.accent,
+          SnackbarType.warning => AppColors.warning,
+          SnackbarType.info => AppColors.info,
+        };
+
+    final IconData iconData = switch (type) {
+      SnackbarType.success => Icons.check_circle_outline_rounded,
+      SnackbarType.error || SnackbarType.warning => Icons.warning_amber_rounded,
+      SnackbarType.info => Icons.info_outline_rounded,
+    };
+
+    final newSnackbar = _SnackbarModel(
+      id: UniqueKey().toString(),
+      message: message,
+      type: type,
+      backgroundColor: resolvedBackgroundColor,
+      iconData: iconData,
+      duration: duration,
+    );
+
+    _queue.insert(0, newSnackbar);
+
+    final overlayState = messenger.context
+        .findAncestorStateOfType<OverlayState>();
+    if (overlayState == null) return;
+
+    if (_overlayEntry == null) {
+      _overlayEntry = OverlayEntry(
+        builder: (context) {
+          return _SnackbarStackWidget(
+            key: _stackKey,
+            items: _queue,
+            onRemove: (id) => _removeItem(id),
+          );
+        },
+      );
+      overlayState.insert(_overlayEntry!);
+    } else {
+      _stackKey.currentState?.refresh();
+    }
+  }
 }
 
 // Contenedor que usa Positioned tradicional (Garantiza que SIEMPRE aparezca en pantalla)

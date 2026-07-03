@@ -224,7 +224,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                     address: checkout.defaultAddress,
                                     isLoading: checkout.isLoadingAddress,
                                     onTap: () async {
-                                      await context.push('/customer/address');
+                                      await context.push('/customer/locations');
                                       if (context.mounted) {
                                         context
                                             .read<CartCheckoutProvider>()

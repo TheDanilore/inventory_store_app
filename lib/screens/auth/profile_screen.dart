@@ -255,13 +255,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               ),
                                         ),
                                         ProfileQuickActionItem(
-                                          title: 'Direcciones',
-                                          value: 'Ver direcciones',
-                                          icon: Icons.location_on_rounded,
-                                          color: AppColors.success,
+                                          title: 'Ubicaciones',
+                                          value: 'Mis ubicaciones',
+                                          icon: Icons.map_rounded,
+                                          color: AppColors.teal,
                                           onTap:
                                               () => context.push(
-                                                '/customer/address',
+                                                '/customer/locations',
                                               ),
                                         ),
                                         ProfileQuickActionItem(

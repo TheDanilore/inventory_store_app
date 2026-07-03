@@ -31,7 +31,7 @@ import 'package:inventory_store_app/providers/customer/cart_checkout_provider.da
 import 'package:inventory_store_app/providers/customer/points_provider.dart';
 import 'package:inventory_store_app/providers/customer/customer_orders_provider.dart';
 import 'package:inventory_store_app/providers/customer/customer_wishlist_provider.dart';
-import 'package:inventory_store_app/providers/customer/customer_addresses_provider.dart';
+import 'package:inventory_store_app/providers/customer/customer_locations_provider.dart';
 
 class AppProviders {
   // Lista COMPLETA (por compatibilidad, aunque ya no se usa en main.dart)
@@ -59,7 +59,7 @@ class AppProviders {
       lazy: true,
     ),
     ChangeNotifierProvider(
-      create: (_) => CustomerAddressesProvider(),
+      create: (_) => CustomerLocationsProvider(),
       lazy: true,
     ),
     ChangeNotifierProvider(
@@ -137,7 +137,7 @@ class AppProviders {
       lazy: true,
     ),
     ChangeNotifierProvider(
-      create: (_) => CustomerAddressesProvider(),
+      create: (_) => CustomerLocationsProvider(),
       lazy: true,
     ),
     ChangeNotifierProvider(

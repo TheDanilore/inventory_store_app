@@ -8,6 +8,10 @@
     <!-- Permiso para Feedback Háptico (Vibración) -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Permisos de GPS / Ubicación (geolocator) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- Permisos de Almacenamiento (Compatibilidad con Android 10 e inferiores para guardar PDFs) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     

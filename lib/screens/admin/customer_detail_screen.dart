@@ -8,7 +8,7 @@ import 'package:inventory_store_app/screens/admin/widgets/customers/customer_for
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_header_card.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_kpi_row.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_credit_section.dart';
-import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_addresses_section.dart';
+import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_locations_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_top_products_section.dart';
 import 'package:inventory_store_app/screens/admin/widgets/customer_detail/customer_recent_orders_section.dart';
 import 'package:inventory_store_app/shared/widgets/app_shimmer.dart';
@@ -114,8 +114,7 @@ class _CustomerDetailContent extends StatelessWidget {
                   movements: provider.creditMovements,
                   onPaymentRegistered: provider.loadAllData,
                 ),
-              if (provider.addresses.isNotEmpty)
-                CustomerAddressesSection(addresses: provider.addresses),
+              CustomerLocationsSection(locations: provider.locations),
               if (provider.topProducts.isNotEmpty)
                 CustomerTopProductsSection(products: provider.topProducts),
               CustomerRecentOrdersSection(orders: provider.recentOrders),
@@ -201,8 +200,7 @@ class _CustomerDetailContent extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 16),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      if (provider.addresses.isNotEmpty)
-                        CustomerAddressesSection(addresses: provider.addresses),
+                      CustomerLocationsSection(locations: provider.locations),
                       if (provider.topProducts.isNotEmpty)
                         CustomerTopProductsSection(
                           products: provider.topProducts,
