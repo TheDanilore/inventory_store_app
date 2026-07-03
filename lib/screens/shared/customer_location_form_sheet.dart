@@ -11,12 +11,14 @@ import 'package:inventory_store_app/screens/shared/customer_location_map_screen.
 class CustomerLocationFormSheet extends StatefulWidget {
   final CustomerLocation? existing; // null = nueva ubicación
   final bool isFirstLocation;
+  final bool isDialog;
   final Future<void> Function(CustomerLocation)? onSave;
 
   const CustomerLocationFormSheet({
     super.key,
     this.existing,
     this.isFirstLocation = false,
+    this.isDialog = false,
     this.onSave,
   });
 
@@ -26,6 +28,31 @@ class CustomerLocationFormSheet extends StatefulWidget {
     bool isFirstLocation = false,
     Future<void> Function(CustomerLocation)? onSave,
   }) async {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width > 600) {
+      return showDialog<bool>(
+        context: context,
+        builder:
+            (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 500,
+                  maxHeight: 800,
+                ),
+                child: CustomerLocationFormSheet(
+                  existing: existing,
+                  isFirstLocation: isFirstLocation,
+                  isDialog: true,
+                  onSave: onSave,
+                ),
+              ),
+            ),
+      );
+    }
+
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -34,6 +61,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
           (_) => CustomerLocationFormSheet(
             existing: existing,
             isFirstLocation: isFirstLocation,
+            isDialog: false,
             onSave: onSave,
           ),
     );
@@ -44,8 +72,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
       _CustomerLocationFormSheetState();
 }
 
-class _CustomerLocationFormSheetState
-    extends State<CustomerLocationFormSheet> {
+class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
@@ -190,8 +217,7 @@ class _CustomerLocationFormSheetState
           _referenceCtrl.text.trim().isEmpty
               ? null
               : _referenceCtrl.text.trim(),
-      notes:
-          _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+      notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       isDefault: _isDefault,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
@@ -224,24 +250,28 @@ class _CustomerLocationFormSheetState
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      margin: const EdgeInsets.only(top: 60),
-      decoration: const BoxDecoration(
+      margin: EdgeInsets.only(top: widget.isDialog ? 0 : 60),
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            widget.isDialog
+                ? BorderRadius.circular(28)
+                : const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 6),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
+          // Handle bar (solo en bottom sheet)
+          if (!widget.isDialog)
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
           // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 16, 0),
@@ -423,10 +453,7 @@ class _CustomerLocationFormSheetState
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
-                            icon: const Icon(
-                              Icons.map_rounded,
-                              size: 16,
-                            ),
+                            icon: const Icon(Icons.map_rounded, size: 16),
                             label: const Text(
                               'Elegir en mapa',
                               style: TextStyle(
@@ -524,18 +551,21 @@ class _CustomerLocationFormSheetState
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          disabledBackgroundColor: AppColors.teal.withValues(alpha: 0.6),
+                          disabledBackgroundColor: AppColors.teal.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
-                        icon: _isSaving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.save_rounded, size: 18),
+                        icon:
+                            _isSaving
+                                ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Icon(Icons.save_rounded, size: 18),
                         label: Text(
                           _isSaving
                               ? 'Guardando...'
@@ -631,45 +661,60 @@ class _TypeSelector extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: _types.map((t) {
-          final (type, label, icon, color) = t;
-          final isSelected = selected == type;
-          return GestureDetector(
-            onTap: () => onChanged(type),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? color.withValues(alpha: 0.12) : AppColors.background,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected ? color : AppColors.border,
-                  width: isSelected ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: isSelected ? color : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? color : AppColors.textSecondary,
+        children:
+            _types.map((t) {
+              final (type, label, icon, color) = t;
+              final isSelected = selected == type;
+              return Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: Material(
+                  color:
+                      isSelected
+                          ? color.withValues(alpha: 0.12)
+                          : AppColors.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: isSelected ? color : AppColors.border,
+                      width: isSelected ? 1.5 : 1,
                     ),
                   ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => onChanged(type),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            icon,
+                            size: 16,
+                            color: isSelected ? color : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                              color:
+                                  isSelected ? color : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
       ),
     );
   }

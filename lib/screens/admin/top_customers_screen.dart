@@ -128,7 +128,7 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
                                 'Top $val',
                                 style: TextStyle(
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
+                                  color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               selected: isSelected,
@@ -137,11 +137,11 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
                                   : (selected) {
                                       if (selected) provider.setLimit(val);
                                     },
-                              selectedColor: theme.colorScheme.primaryContainer,
+                              selectedColor: AppColors.primary,
                               backgroundColor: theme.colorScheme.surface,
                               side: BorderSide(
                                 color: isSelected
-                                    ? theme.colorScheme.primary
+                                    ? AppColors.primary
                                     : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                               ),
                               shape: RoundedRectangleBorder(
@@ -640,9 +640,10 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
               // Ruleta
               Expanded(
                 child: FortuneWheel(
+                  animateFirst: false,
                   selected: _selectedController.stream,
                   physics: CircularPanPhysics(
-                    duration: const Duration(seconds: 1),
+                    duration: const Duration(seconds: 5),
                     curve: Curves.decelerate,
                   ),
                   onFling: () {

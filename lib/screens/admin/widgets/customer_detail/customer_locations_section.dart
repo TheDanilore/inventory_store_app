@@ -54,7 +54,7 @@ class CustomerLocationsSection extends StatelessWidget {
         await provider.addLocation(loc);
       },
     );
-    
+
     if (result == true) {
       AppSnackbar.showMessenger(
         messenger,
@@ -64,10 +64,7 @@ class CustomerLocationsSection extends StatelessWidget {
     }
   }
 
-  Future<void> _editLocation(
-    BuildContext context,
-    CustomerLocation loc,
-  ) async {
+  Future<void> _editLocation(BuildContext context, CustomerLocation loc) async {
     final provider = context.read<CustomerDetailProvider>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await CustomerLocationFormSheet.show(
@@ -77,7 +74,7 @@ class CustomerLocationsSection extends StatelessWidget {
         await provider.updateLocation(loc.id, updatedLoc);
       },
     );
-    
+
     if (result == true) {
       AppSnackbar.showMessenger(
         messenger,
@@ -146,65 +143,73 @@ class CustomerLocationsSection extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (locations.isNotEmpty)
-            GestureDetector(
-              onTap: () => _openAllMap(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.info.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+            FilledButton.tonalIcon(
+              onPressed: () => _openAllMap(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.info.withValues(alpha: 0.1),
+                foregroundColor: AppColors.info,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 0,
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.map_outlined, size: 13, color: AppColors.info),
-                    SizedBox(width: 4),
-                    Text(
-                      'Ver mapa',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.info,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                visualDensity: VisualDensity.compact,
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.map_outlined, size: 16),
+              label: const Text(
+                'Ver mapa',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
             ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => _addLocation(context),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.tealLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                size: 16,
-                color: AppColors.teal,
-              ),
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
+            onPressed: () => _addLocation(context),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.tealLight,
+              foregroundColor: AppColors.teal,
             ),
+            icon: const Icon(Icons.add_rounded, size: 20),
+            tooltip: 'Añadir ubicación',
           ),
         ],
       ),
       child:
           locations.isEmpty
               ? _EmptyLocations(onAdd: () => _addLocation(context))
-              : Column(
-                children: locations
-                    .map(
-                      (loc) => _LocationItem(
-                        location: loc,
-                        typeColor: _typeColor(loc.locationType),
-                        typeIcon: _typeIcon(loc.locationType),
-                        onView: () => _openMap(context, loc),
-                        onEdit: () => _editLocation(context, loc),
-                        onDelete: () => _deleteLocation(context, loc),
-                      ),
-                    )
-                    .toList(),
+              : LayoutBuilder(
+                builder: (context, constraints) {
+                  // Adaptive layout: Wrap para comportarse como Bento Grid
+                  // En móvil ocupará el 100%, en PC ocupará el 50% (2 columnas) o 33% (3 columnas)
+                  final double width = constraints.maxWidth;
+                  int crossAxisCount = 1;
+                  if (width > 800) {
+                    crossAxisCount = 3;
+                  } else if (width > 500) {
+                    crossAxisCount = 2;
+                  }
+
+                  final double itemWidth =
+                      (width - (12 * (crossAxisCount - 1))) / crossAxisCount;
+
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children:
+                        locations.map((loc) {
+                          return SizedBox(
+                            width: itemWidth,
+                            child: _LocationItem(
+                              location: loc,
+                              typeColor: _typeColor(loc.locationType),
+                              typeIcon: _typeIcon(loc.locationType),
+                              onView: () => _openMap(context, loc),
+                              onEdit: () => _editLocation(context, loc),
+                              onDelete: () => _deleteLocation(context, loc),
+                            ),
+                          );
+                        }).toList(),
+                  );
+                },
               ),
     );
   }
@@ -303,153 +308,176 @@ class _LocationItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
         border: Border.all(
-          color: location.isDefault
-              ? typeColor.withValues(alpha: 0.3)
-              : AppColors.border,
+          color:
+              location.isDefault
+                  ? typeColor.withValues(alpha: 0.4)
+                  : AppColors.border.withValues(alpha: 0.5),
         ),
       ),
-      child: InkWell(
-        onTap: onView,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Ícono tipo
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: typeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onView,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Ícono tipo
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(typeIcon, size: 20, color: typeColor),
                 ),
-                child: Icon(typeIcon, size: 18, color: typeColor),
-              ),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            location.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
+                const SizedBox(width: 14),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              location.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          if (location.isDefault) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: typeColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Principal',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: typeColor,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        CustomerLocation.typeLabel(location.locationType),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: typeColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (location.addressLine != null &&
+                          location.addressLine!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            location.addressLine!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (location.isDefault)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: typeColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Principal',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: typeColor,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      CustomerLocation.typeLabel(location.locationType),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: typeColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (location.addressLine != null &&
-                        location.addressLine!.isNotEmpty)
-                      Text(
-                        location.addressLine!,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    Text(
-                      '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              // Acciones
-              Column(
-                children: [
-                  GestureDetector(
-                    onTap: onView,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.info.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.map_outlined,
-                        size: 14,
-                        color: AppColors.info,
-                      ),
-                    ),
+                // Acciones (Menu Kebab)
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 6),
-                  GestureDetector(
-                    onTap: onEdit,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.edit_rounded,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                    ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 6),
-                  GestureDetector(
-                    onTap: onDelete,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.errorLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.delete_outline_rounded,
-                        size: 14,
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  position: PopupMenuPosition.under,
+                  onSelected: (val) {
+                    if (val == 'map') onView();
+                    if (val == 'edit') onEdit();
+                    if (val == 'delete') onDelete();
+                  },
+                  itemBuilder:
+                      (context) => [
+                        const PopupMenuItem(
+                          value: 'map',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.map_outlined,
+                                size: 18,
+                                color: AppColors.info,
+                              ),
+                              SizedBox(width: 12),
+                              Text('Ver mapa'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.edit_rounded,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 12),
+                              Text('Editar'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Eliminar',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
