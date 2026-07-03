@@ -799,6 +799,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               subtotalAntesDePuntos: pos.totalAmount,
               puntosAplicables: isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros,
               descuentoPuntos: isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros * ratio,
+              isLoyaltyEnabled: isLoyaltyEnabled,
               descuentoExtra:
                   isCredito
                       ? 0
@@ -817,7 +818,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               pointsToSolesRatio: ratio,
               earningRate: earningRate,
               isCredito: isCredito,
-              isLoyaltyEnabled: isLoyaltyEnabled,
             ),
           ],
         );
