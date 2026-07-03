@@ -234,8 +234,9 @@ class CustomerLayout extends StatelessWidget {
                       ),
                       Consumer<CartProvider>(
                         builder: (context, cart, _) {
-                          if (cart.itemCount == 0)
+                          if (cart.itemCount == 0) {
                             return const SizedBox.shrink();
+                          }
                           return Positioned(
                             right: 4,
                             top: 4,
