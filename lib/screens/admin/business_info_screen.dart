@@ -24,19 +24,17 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   final _phoneCtrl = TextEditingController();
   final _logoUrlCtrl = TextEditingController();
 
-  // FocusNodes para cadena textInputAction y debounce del logo
   final _taxIdFocus = FocusNode();
   final _addressFocus = FocusNode();
   final _phoneFocus = FocusNode();
   final _logoUrlFocus = FocusNode();
 
-  bool _isInitialized = false;
   bool _hasChanges = false;
+  bool _formInitialized = false;
 
   bool _loyaltyGlobalEnabled = true;
   bool _loyaltyCustomerVisible = true;
 
-  // Estado local para la preview reactiva (no depende del provider guardado)
   String _previewName = '';
   String _previewAddress = '';
   String _previewLogoUrl = '';
@@ -44,7 +42,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   @override
   void initState() {
     super.initState();
-    // Actualiza la preview del logo solo al perder el foco (evita requests por cada tecla)
     _logoUrlFocus.addListener(() {
       if (!_logoUrlFocus.hasFocus) {
         setState(() => _previewLogoUrl = _logoUrlCtrl.text);
@@ -55,16 +52,18 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   void _initControllers() {
     final config = context.read<AppConfigProvider>();
-    if (config.businessName != 'Cargando...') {
+    if (config.businessInfoState == ViewState.success || config.businessInfoState == ViewState.empty) {
       _loadValues(config);
     } else {
-      config.addListener(_onConfigLoaded);
+      // Si no ha cargado, lo cargamos
+      config.loadBusinessInfo();
     }
   }
 
   void _loadValues(AppConfigProvider config) {
-    _businessNameCtrl.text =
-        config.businessName == 'Sin configurar' ? '' : config.businessName;
+    if (_formInitialized) return;
+
+    _businessNameCtrl.text = config.businessName == 'Sin configurar' ? '' : config.businessName;
     _taxIdCtrl.text = config.businessTaxId;
     _addressCtrl.text = config.businessAddress;
     _phoneCtrl.text = config.businessPhone;
@@ -73,21 +72,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     _loyaltyGlobalEnabled = config.loyaltyGlobalEnabled;
     _loyaltyCustomerVisible = config.loyaltyCustomerVisible;
 
-    setState(() {
-      _isInitialized = true;
-      _hasChanges = false;
-      _previewName = _businessNameCtrl.text;
-      _previewAddress = _addressCtrl.text;
-      _previewLogoUrl = _logoUrlCtrl.text;
-    });
-  }
+    _previewName = _businessNameCtrl.text;
+    _previewAddress = _addressCtrl.text;
+    _previewLogoUrl = _logoUrlCtrl.text;
 
-  void _onConfigLoaded() {
-    final config = context.read<AppConfigProvider>();
-    if (config.businessName != 'Cargando...') {
-      config.removeListener(_onConfigLoaded);
-      if (mounted) _loadValues(config);
-    }
+    _formInitialized = true;
+    _hasChanges = false;
   }
 
   @override
@@ -186,50 +176,72 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     final config = context.watch<AppConfigProvider>();
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
+    // Listener para cargar valores cuando pase de loading a success/empty
+    if (!_formInitialized && (config.businessInfoState == ViewState.success || config.businessInfoState == ViewState.empty)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _loadValues(config);
+        });
+      });
+    }
+
+    final isSaving = config.saveState == ViewState.loading;
+    final isLoading = config.businessInfoState == ViewState.initial || config.businessInfoState == ViewState.loading;
+    final hasError = config.businessInfoState == ViewState.error;
+
     return AdminLayout(
       title: 'Información del Negocio',
       showBackButton: true,
-      // ── Botón sticky fuera del scroll, siempre visible ──────────────────────
-      bottomNavigationBar:
-          _isInitialized
-              ? SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: AppPrimaryButton(
-                      key: ValueKey(_hasChanges),
-                      label: _hasChanges ? 'Guardar cambios' : 'Todo guardado',
-                      // ── Fix bug: ahora sí pasa la prop loading correctamente ──
-                      loading: config.isSavingBusinessInfo,
-                      icon: Icon(
-                        _hasChanges
-                            ? Icons.save_rounded
-                            : Icons.check_circle_outline_rounded,
-                        size: 18,
-                      ),
-                      backgroundColor:
-                          _hasChanges ? null : Colors.grey.shade400,
-                      onPressed:
-                          (_hasChanges && !config.isSavingBusinessInfo)
-                              ? _save
-                              : null,
+      bottomNavigationBar: (!isLoading && !hasError)
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: AppPrimaryButton(
+                    key: ValueKey(_hasChanges),
+                    label: _hasChanges ? 'Guardar cambios' : 'Todo guardado',
+                    loading: isSaving,
+                    icon: Icon(
+                      _hasChanges ? Icons.save_rounded : Icons.check_circle_outline_rounded,
+                      size: 18,
                     ),
+                    backgroundColor: _hasChanges ? null : Colors.grey.shade400,
+                    onPressed: (_hasChanges && !isSaving) ? _save : null,
                   ),
                 ),
-              )
-              : null,
-      body:
-          !_isInitialized
-              ? const Center(child: CircularProgressIndicator())
+              ),
+            )
+          : null,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : hasError
+              ? _buildErrorState(config)
               : isTablet
-              ? _buildTabletLayout()
-              : _buildMobileLayout(),
+                  ? _buildTabletLayout(isSaving)
+                  : _buildMobileLayout(isSaving),
     );
   }
 
-  // ── Layout móvil: columna única ────────────────────────────────────────────
-  Widget _buildMobileLayout() {
+  Widget _buildErrorState(AppConfigProvider config) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text('Error al cargar la información del negocio.'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => config.loadBusinessInfo(force: true),
+            child: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(bool isSaving) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Column(
@@ -237,55 +249,49 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         children: [
           _buildPreviewCard(),
           const SizedBox(height: 16),
-          _buildFormCard(),
+          _buildFormCard(isSaving),
           const SizedBox(height: 12),
-          _buildInfoNote(),
+          const _InfoNote(),
           const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  // ── Layout tablet: Master-Detail en 2 columnas ────────────────────────────
-  Widget _buildTabletLayout() {
+  Widget _buildTabletLayout(bool isSaving) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Columna izquierda: preview + nota
             Expanded(
               flex: 4,
               child: Column(
                 children: [
                   _buildPreviewCard(),
                   const SizedBox(height: 16),
-                  _buildInfoNote(),
+                  const _InfoNote(),
                 ],
               ),
             ),
             const SizedBox(width: 20),
-            // Columna derecha: formulario
-            Expanded(flex: 6, child: _buildFormCard()),
+            Expanded(flex: 6, child: _buildFormCard(isSaving)),
           ],
         ),
       ),
     );
   }
 
-  // ── Preview card reactiva ──────────────────────────────────────────────────
   Widget _buildPreviewCard() {
     return _BusinessPreviewCard(
       businessName: _previewName.isEmpty ? 'Nombre del negocio' : _previewName,
       businessLogoUrl: _previewLogoUrl,
-      businessAddress:
-          _previewAddress.isEmpty ? 'Dirección principal' : _previewAddress,
+      businessAddress: _previewAddress.isEmpty ? 'Dirección principal' : _previewAddress,
     );
   }
 
-  // ── Formulario migrado a AppTextField ────────────────────────────────────
-  Widget _buildFormCard() {
+  Widget _buildFormCard(bool isSaving) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -302,13 +308,11 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               Text(
                 'Datos del negocio',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
               ),
               const SizedBox(height: 20),
-
-              // ── Campo 1: Nombre ──────────────────────────────────────────
               AppTextField(
                 controller: _businessNameCtrl,
                 label: 'Nombre del negocio',
@@ -316,19 +320,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 hintText: 'Mi Tienda',
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                validator:
-                    (val) =>
-                        val == null || val.trim().isEmpty
-                            ? 'El nombre del negocio es requerido'
-                            : null,
+                validator: (val) => val == null || val.trim().isEmpty ? 'El nombre del negocio es requerido' : null,
                 onChanged: (val) {
                   setState(() => _previewName = val);
                   _markChanged();
                 },
               ),
               const SizedBox(height: 14),
-
-              // ── Campo 2: RUC ────────────────────────────────────────────
               AppTextField(
                 controller: _taxIdCtrl,
                 label: 'RUC / Tax ID',
@@ -341,8 +339,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 onChanged: (_) => _markChanged(),
               ),
               const SizedBox(height: 14),
-
-              // ── Campo 3: Dirección ──────────────────────────────────────
               AppTextField(
                 controller: _addressCtrl,
                 label: 'Dirección',
@@ -358,8 +354,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 },
               ),
               const SizedBox(height: 14),
-
-              // ── Campo 4: Teléfono ───────────────────────────────────────
               AppTextField(
                 controller: _phoneCtrl,
                 label: 'Teléfono',
@@ -372,8 +366,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 onChanged: (_) => _markChanged(),
               ),
               const SizedBox(height: 14),
-
-              // ── Campo 5: URL Logo (preview se actualiza al perder foco) ─
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -390,9 +382,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       validator: (val) {
                         if (val != null && val.trim().isNotEmpty) {
                           final uri = Uri.tryParse(val.trim());
-                          if (uri == null ||
-                              !uri.hasAbsolutePath ||
-                              !uri.scheme.startsWith('http')) {
+                          if (uri == null || !uri.hasAbsolutePath || !uri.scheme.startsWith('http')) {
                             return 'Ingresa una URL válida (ej. https://...)';
                           }
                         }
@@ -405,29 +395,18 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: ElevatedButton.icon(
-                      onPressed:
-                          context.watch<AppConfigProvider>().isUploadingLogo
-                              ? null
-                              : _pickLogoImage,
-                      icon:
-                          context.watch<AppConfigProvider>().isUploadingLogo
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Icon(Icons.upload_file_rounded, size: 20),
+                      onPressed: isSaving ? null : _pickLogoImage,
+                      icon: isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload_file_rounded, size: 20),
                       label: const Text('Subir'),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -436,55 +415,26 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 16),
-              Text(
-                'Módulo de Monedas y Lealtad',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Habilitar Sistema Globalmente',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: const Text(
-                  'Si se apaga, el sistema desaparece para todos (clientes y admins).',
-                ),
-                value: _loyaltyGlobalEnabled,
-                activeThumbColor: Theme.of(context).colorScheme.primary,
-                onChanged: (val) {
+              _LoyaltySection(
+                globalEnabled: _loyaltyGlobalEnabled,
+                customerVisible: _loyaltyCustomerVisible,
+                onGlobalChanged: (val) {
                   setState(() {
                     _loyaltyGlobalEnabled = val;
                     if (!val) {
-                      _loyaltyCustomerVisible = false; // Auto-disable
+                      _loyaltyCustomerVisible = false;
                     }
                     _markChanged();
                   });
                 },
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Visible para Clientes',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: const Text(
-                  'Si se apaga, los clientes no lo ven, pero los administradores sí.',
-                ),
-                value: _loyaltyCustomerVisible,
-                activeThumbColor: Theme.of(context).colorScheme.primary,
-                onChanged:
-                    _loyaltyGlobalEnabled
-                        ? (val) {
-                          setState(() {
-                            _loyaltyCustomerVisible = val;
-                            _markChanged();
-                          });
-                        }
-                        : null,
+                onCustomerVisibleChanged: _loyaltyGlobalEnabled
+                    ? (val) {
+                        setState(() {
+                          _loyaltyCustomerVisible = val;
+                          _markChanged();
+                        });
+                      }
+                    : null,
               ),
             ],
           ),
@@ -492,9 +442,66 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
       ),
     );
   }
+}
 
-  // ── Nota informativa con ColorScheme (sin teal hardcoded) ─────────────────
-  Widget _buildInfoNote() {
+class _LoyaltySection extends StatelessWidget {
+  final bool globalEnabled;
+  final bool customerVisible;
+  final ValueChanged<bool> onGlobalChanged;
+  final ValueChanged<bool>? onCustomerVisibleChanged;
+
+  const _LoyaltySection({
+    required this.globalEnabled,
+    required this.customerVisible,
+    required this.onGlobalChanged,
+    required this.onCustomerVisibleChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Módulo de Monedas y Lealtad',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            'Habilitar Sistema Globalmente',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: const Text('Si se apaga, el sistema desaparece para todos (clientes y admins).'),
+          value: globalEnabled,
+          activeThumbColor: Theme.of(context).colorScheme.primary,
+          onChanged: onGlobalChanged,
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            'Visible para Clientes',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: const Text('Si se apaga, los clientes no lo ven, pero los administradores sí.'),
+          value: customerVisible,
+          activeThumbColor: Theme.of(context).colorScheme.primary,
+          onChanged: onCustomerVisibleChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoNote extends StatelessWidget {
+  const _InfoNote();
+
+  @override
+  Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -520,8 +527,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   }
 }
 
-// ─── Vista previa del negocio ────────────────────────────────────────────────
-
 class _BusinessPreviewCard extends StatelessWidget {
   final String businessName;
   final String businessLogoUrl;
@@ -546,22 +551,18 @@ class _BusinessPreviewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header: título + badge "En tiempo real" ──────────────────
             Row(
               children: [
                 Text(
                   'Vista previa',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade100,
                     borderRadius: BorderRadius.circular(6),
@@ -579,11 +580,8 @@ class _BusinessPreviewCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-
-            // ── Banner del negocio con gradiente ─────────────────────────
             Semantics(
-              label:
-                  'Vista previa del negocio: $businessName, $businessAddress',
+              label: 'Vista previa del negocio: $businessName, $businessAddress',
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -600,13 +598,9 @@ class _BusinessPreviewCard extends StatelessWidget {
                   children: [
                     _LogoBadge(logoUrl: businessLogoUrl),
                     const SizedBox(height: 14),
-
-                    // Nombre con fade animado al cambiar
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
-                      transitionBuilder:
-                          (child, animation) =>
-                              FadeTransition(opacity: animation, child: child),
+                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -621,14 +615,9 @@ class _BusinessPreviewCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-
-                    // Dirección con fade animado al cambiar
-                    // Fix WCAG: white70 (3.2:1) → white con alpha 0.9 (≈4.6:1)
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
-                      transitionBuilder:
-                          (child, animation) =>
-                              FadeTransition(opacity: animation, child: child),
+                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -652,8 +641,6 @@ class _BusinessPreviewCard extends StatelessWidget {
     );
   }
 }
-
-// ─── Logo del negocio (ícono o imagen de red) ────────────────────────────────
 
 class _LogoBadge extends StatelessWidget {
   final String logoUrl;
@@ -681,23 +668,18 @@ class _LogoBadge extends StatelessWidget {
       child: CachedNetworkImage(
         imageUrl: logoUrl,
         fit: BoxFit.cover,
-        placeholder:
-            (context, url) => const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              ),
-            ),
-        errorWidget:
-            (context, url, error) => const Icon(
-              Icons.storefront_rounded,
-              color: Colors.white,
-              size: 34,
-            ),
+        placeholder: (context, url) => const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (context, url, error) => const Icon(
+          Icons.storefront_rounded,
+          color: Colors.white,
+          size: 34,
+        ),
       ),
     );
   }

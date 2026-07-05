@@ -252,7 +252,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   void _loadData() {
     final config = context.read<AppConfigProvider>();
-    if (config.isLoaded) {
+    if (config.settingsState == ViewState.success) {
       _fillControllers(config);
       setState(() => _isInitialized = true);
     } else {
@@ -262,7 +262,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   void _onConfigLoaded() {
     final config = context.read<AppConfigProvider>();
-    if (config.isLoaded) {
+    if (config.settingsState == ViewState.success) {
       config.removeListener(_onConfigLoaded);
       if (mounted) {
         _fillControllers(config);
@@ -742,16 +742,14 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   Widget _buildSaveButton(int tabIndex, List<String> keys) {
     final provider = context.watch<AppConfigProvider>();
+    final isSaving = provider.saveState == ViewState.loading;
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
         width: 250,
         child: AppPrimaryButton(
-          label: provider.isSavingSettings ? 'Guardando...' : 'Guardar Cambios',
-          onPressed:
-              provider.isSavingSettings
-                  ? null
-                  : () => _saveSection(tabIndex, keys),
+          label: isSaving ? 'Guardando...' : 'Guardar Cambios',
+          onPressed: isSaving ? null : () => _saveSection(tabIndex, keys),
         ),
       ),
     );

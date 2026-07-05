@@ -1,41 +1,38 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/models/business_info_model.dart';
+import 'package:inventory_store_app/models/app_setting_model.dart';
+import 'package:inventory_store_app/data/admin/app_config_repository.dart';
+
+enum ViewState { initial, loading, success, empty, error }
 
 class AppConfigProvider extends ChangeNotifier {
-  final _supabase = Supabase.instance.client;
+  final AppConfigRepository _repository;
   bool _disposed = false;
 
   final Map<String, double> _values = {};
-  String? _businessInfoId;
-  String _businessName = 'Cargando...';
-  String _businessTaxId = '';
-  String _businessAddress = '';
-  String _businessPhone = '';
-  String _businessLogoUrl = '';
-  bool _isLoading = false;
-  bool _isLoaded = false;
-  bool _businessInfoLoaded = false;
-  bool _isSavingBusinessInfo = false;
-  bool _isSavingSettings = false;
-  bool _isUploadingLogo = false;
+  BusinessInfoModel? _businessInfo;
 
-  bool _loyaltyGlobalEnabled = true;
-  bool _loyaltyCustomerVisible = true;
+  ViewState _settingsState = ViewState.initial;
+  ViewState _businessInfoState = ViewState.initial;
+  ViewState _saveState = ViewState.initial;
+
+  AppConfigProvider({AppConfigRepository? repository})
+      : _repository = repository ?? AppConfigRepository();
 
   Map<String, double> get values => Map.unmodifiable(_values);
-  bool get isLoaded => _isLoaded;
-  bool get isSavingBusinessInfo => _isSavingBusinessInfo;
-  bool get isSavingSettings => _isSavingSettings;
-  bool get isUploadingLogo => _isUploadingLogo;
-  String get businessName => _businessName;
-  String get businessTaxId => _businessTaxId;
-  String get businessAddress => _businessAddress;
-  String get businessPhone => _businessPhone;
-  String get businessLogoUrl => _businessLogoUrl;
-  bool get loyaltyGlobalEnabled => _loyaltyGlobalEnabled;
-  bool get loyaltyCustomerVisible => _loyaltyCustomerVisible;
+  BusinessInfoModel? get businessInfo => _businessInfo;
+
+  ViewState get settingsState => _settingsState;
+  ViewState get businessInfoState => _businessInfoState;
+  ViewState get saveState => _saveState;
+
+  String get businessName => _businessInfo?.businessName ?? 'Sin configurar';
+  String get businessTaxId => _businessInfo?.taxId ?? '';
+  String get businessAddress => _businessInfo?.address ?? '';
+  String get businessPhone => _businessInfo?.phone ?? '';
+  String get businessLogoUrl => _businessInfo?.logoUrl ?? '';
+  bool get loyaltyGlobalEnabled => _businessInfo?.loyaltyGlobalEnabled ?? true;
+  bool get loyaltyCustomerVisible => _businessInfo?.loyaltyCustomerVisible ?? true;
 
   double getDouble(String key, [double defaultValue = 0]) =>
       _values[key] ?? defaultValue;
@@ -45,116 +42,87 @@ class AppConfigProvider extends ChangeNotifier {
   }
 
   Future<void> loadConfig({bool force = false}) async {
-    if (_isLoading) return;
-    if (_isLoaded && !force) return;
+    if (_settingsState == ViewState.loading) return;
+    if (_settingsState == ViewState.success && !force) return;
 
-    _isLoading = true;
-    final prefs = await SharedPreferences.getInstance();
+    _settingsState = ViewState.loading;
+    _safeNotify();
 
-    final cachedString = prefs.getString('cached_app_settings');
-    if (cachedString != null) {
-      try {
-        final List decoded = jsonDecode(cachedString);
-        for (final item in decoded) {
-          final key = item['key'] as String?;
-          final value = item['value'];
-          if (key != null && value != null) {
-            _values[key] = (value as num).toDouble();
-          }
-        }
-        _isLoaded = true;
-        _safeNotify();
-      } catch (_) {}
+    // Try cache first
+    final cached = await _repository.fetchCachedSettings();
+    if (cached != null) {
+      _values.addAll(cached);
+      _settingsState = ViewState.success;
+      _safeNotify();
     }
 
     try {
-      final response = await _supabase
-          .from('app_settings')
-          .select('key, value');
-
-      final nextValues = <String, double>{};
-      for (final item in List<Map<String, dynamic>>.from(response)) {
-        final key = item['key'] as String?;
-        final value = item['value'];
-        if (key != null && value != null) {
-          nextValues[key] = (value as num).toDouble();
-        }
-      }
+      final remoteValues = await _repository.fetchAppSettings();
       _values
         ..clear()
-        ..addAll(nextValues);
-      _isLoaded = true;
-      await prefs.setString('cached_app_settings', jsonEncode(response));
+        ..addAll(remoteValues);
+      
+      // Update cache
+      final rawData = remoteValues.entries.map((e) => {'key': e.key, 'value': e.value}).toList();
+      await _repository.cacheAppSettings(rawData);
+
+      _settingsState = ViewState.success;
     } catch (e) {
-      debugPrint('Error red AppSettings: $e');
+      debugPrint('Error loading app settings: $e');
+      if (cached == null) {
+        _settingsState = ViewState.error;
+      }
     } finally {
-      _isLoading = false;
+      if (_settingsState == ViewState.loading) {
+        _settingsState = ViewState.error; // Should not reach here typically
+      }
       _safeNotify();
     }
   }
 
   Future<void> loadBusinessInfo({bool force = false}) async {
-    if (_businessInfoLoaded && !force) return;
+    if (_businessInfoState == ViewState.loading) return;
+    if (_businessInfoState == ViewState.success && !force) return;
 
-    final prefs = await SharedPreferences.getInstance();
+    _businessInfoState = ViewState.loading;
+    _safeNotify();
 
-    final cachedString = prefs.getString('cached_business_info');
-    if (cachedString != null) {
-      try {
-        final decoded = jsonDecode(cachedString);
-        Map<String, dynamic>? cached;
-        if (decoded is Map) {
-          cached = Map<String, dynamic>.from(decoded);
-        } else if (decoded is List && decoded.isNotEmpty) {
-          cached = Map<String, dynamic>.from(decoded.first as Map);
-        }
-        if (cached != null) {
-          _applyBusinessInfo(cached);
-          _safeNotify();
-        }
-      } catch (_) {}
+    final cached = await _repository.fetchCachedBusinessInfo();
+    if (cached != null) {
+      _businessInfo = cached;
+      _businessInfoState = ViewState.success;
+      _safeNotify();
     }
 
     try {
-      // CORRECCIÓN: Ordenamos de forma descendente por actualización por si existen registros duplicados huérfanos
-      final rawResponse = await _supabase
-          .from('business_info')
-          .select(
-            'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
-          )
-          .order('updated_at', ascending: false)
-          .limit(1);
-
-      Map<String, dynamic>? response;
-
-      if (rawResponse.isNotEmpty) {
-        response = rawResponse.first;
-      }
-
-      if (response != null) {
-        _applyBusinessInfo(response);
-        await prefs.setString('cached_business_info', jsonEncode(response));
+      final remoteInfo = await _repository.fetchBusinessInfo();
+      if (remoteInfo != null) {
+        _businessInfo = remoteInfo;
+        await _repository.cacheBusinessInfo(remoteInfo);
+        _businessInfoState = ViewState.success;
       } else {
-        _businessName = 'Sin configurar';
-        _businessInfoLoaded = true;
+        _businessInfo = const BusinessInfoModel(
+          businessName: 'Sin configurar',
+          taxId: '',
+          address: '',
+          phone: '',
+          logoUrl: '',
+          loyaltyGlobalEnabled: true,
+          loyaltyCustomerVisible: true,
+        );
+        _businessInfoState = ViewState.empty;
       }
     } catch (e) {
-      debugPrint('Error red BusinessInfo: $e');
+      debugPrint('Error loading business info: $e');
+      if (cached == null) {
+         _businessInfoState = ViewState.error;
+      }
     } finally {
+      if (_businessInfoState == ViewState.loading) {
+        _businessInfoState = ViewState.error;
+      }
       _safeNotify();
     }
-  }
-
-  void _applyBusinessInfo(Map<String, dynamic> data) {
-    _businessInfoLoaded = true;
-    _businessInfoId = data['id']?.toString();
-    _businessName = data['business_name']?.toString() ?? 'Sin configurar';
-    _businessTaxId = data['tax_id']?.toString() ?? '';
-    _businessAddress = data['address']?.toString() ?? '';
-    _businessPhone = data['phone']?.toString() ?? '';
-    _businessLogoUrl = data['logo_url']?.toString() ?? '';
-    _loyaltyGlobalEnabled = data['loyalty_global_enabled'] as bool? ?? true;
-    _loyaltyCustomerVisible = data['loyalty_customer_visible'] as bool? ?? true;
   }
 
   Future<bool> saveBusinessInfo({
@@ -166,99 +134,52 @@ class AppConfigProvider extends ChangeNotifier {
     bool? loyaltyGlobalEnabled,
     bool? loyaltyCustomerVisible,
   }) async {
-    if (_isSavingBusinessInfo) return false;
-    _isSavingBusinessInfo = true;
+    if (_saveState == ViewState.loading) return false;
+    _saveState = ViewState.loading;
     _safeNotify();
 
     try {
-      final payload = <String, dynamic>{
-        'business_name': businessName.trim(),
-        'tax_id': taxId?.trim().isNotEmpty == true ? taxId!.trim() : null,
-        'address': address?.trim().isNotEmpty == true ? address!.trim() : null,
-        'phone': phone?.trim().isNotEmpty == true ? phone!.trim() : null,
-        'logo_url': logoUrl?.trim().isNotEmpty == true ? logoUrl!.trim() : null,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      };
+      final newInfo = BusinessInfoModel(
+        id: _businessInfo?.id,
+        businessName: businessName.trim(),
+        taxId: taxId?.trim() ?? '',
+        address: address?.trim() ?? '',
+        phone: phone?.trim() ?? '',
+        logoUrl: logoUrl?.trim() ?? '',
+        loyaltyGlobalEnabled: loyaltyGlobalEnabled ?? this.loyaltyGlobalEnabled,
+        loyaltyCustomerVisible: loyaltyCustomerVisible ?? this.loyaltyCustomerVisible,
+      );
 
-      if (loyaltyGlobalEnabled != null) {
-        payload['loyalty_global_enabled'] = loyaltyGlobalEnabled;
-      }
-      if (loyaltyCustomerVisible != null) {
-        payload['loyalty_customer_visible'] = loyaltyCustomerVisible;
-      }
+      final savedInfo = await _repository.saveBusinessInfo(newInfo);
+      _businessInfo = savedInfo;
+      await _repository.cacheBusinessInfo(savedInfo);
 
-      payload.removeWhere((_, value) => value == null);
-
-      // CORRECCIÓN MEDIDA DE SEGURIDAD: Si el ID local está vacío, verificamos si existe alguna fila en la BD
-      // antes de arriesgarnos a un insert() para mitigar la creación de registros múltiples redundantes.
-      if (_businessInfoId == null) {
-        try {
-          final checkDb =
-              await _supabase
-                  .from('business_info')
-                  .select('id')
-                  .order('updated_at', ascending: false)
-                  .limit(1)
-                  .maybeSingle();
-          if (checkDb != null) {
-            _businessInfoId = checkDb['id']?.toString();
-          }
-        } catch (_) {}
-      }
-
-      if (_businessInfoId != null) {
-        await _supabase
-            .from('business_info')
-            .update(payload)
-            .eq('id', _businessInfoId!);
-      } else {
-        final inserted =
-            await _supabase
-                .from('business_info')
-                .insert(payload)
-                .select('id')
-                .maybeSingle();
-        _businessInfoId = inserted?['id']?.toString();
-      }
-
-      _businessName =
-          businessName.trim().isNotEmpty
-              ? businessName.trim()
-              : 'Sin configurar';
-      _businessTaxId = taxId?.trim() ?? '';
-      _businessAddress = address?.trim() ?? '';
-      _businessPhone = phone?.trim() ?? '';
-      _businessLogoUrl = logoUrl?.trim() ?? '';
-
-      await loadBusinessInfo(force: true);
+      _saveState = ViewState.success;
+      _safeNotify();
       return true;
     } catch (e) {
-      debugPrint('Error saving BusinessInfo: $e');
-      return false;
-    } finally {
-      _isSavingBusinessInfo = false;
+      debugPrint('Error saving business info: $e');
+      _saveState = ViewState.error;
       _safeNotify();
+      return false;
     }
   }
 
   Future<String?> uploadBusinessLogo(Uint8List bytes) async {
-    if (_isUploadingLogo) return null;
-    _isUploadingLogo = true;
+    if (_saveState == ViewState.loading) return null;
+    _saveState = ViewState.loading;
     _safeNotify();
+
     try {
-      final fileName =
-          'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
-      final path = 'logos/$fileName';
-      // Asume que el bucket "business" existe y es público
-      await _supabase.storage.from('business').uploadBinary(path, bytes);
-      final publicUrl = _supabase.storage.from('business').getPublicUrl(path);
-      return publicUrl;
+      final url = await _repository.uploadBusinessLogo(bytes);
+      _saveState = ViewState.success;
+      _safeNotify();
+      return url;
     } catch (e) {
       debugPrint('Error uploading logo: $e');
-      return null;
-    } finally {
-      _isUploadingLogo = false;
+      _saveState = ViewState.error;
       _safeNotify();
+      return null;
     }
   }
 
@@ -267,51 +188,44 @@ class AppConfigProvider extends ChangeNotifier {
     double value, {
     String? description,
   }) async {
-    final payload = <String, dynamic>{'key': key, 'value': value};
-    if (description != null && description.isNotEmpty) {
-      payload['description'] = description;
-    }
-    await _supabase.from('app_settings').upsert(payload, onConflict: 'key');
-    _values[key] = value;
-    _safeNotify();
+    await saveMultipleValues(
+      {key: value},
+      descriptions: description != null ? {key: description} : null,
+    );
   }
 
   Future<bool> saveMultipleValues(
     Map<String, double> newValues, {
     Map<String, String>? descriptions,
   }) async {
-    if (_isSavingSettings) return false;
-    _isSavingSettings = true;
+    if (_saveState == ViewState.loading) return false;
+    _saveState = ViewState.loading;
     _safeNotify();
 
     try {
-      final List<Map<String, dynamic>> payloadList = [];
+      final settings = newValues.entries.map((entry) {
+        return AppSettingModel(
+          key: entry.key,
+          value: entry.value,
+          description: descriptions?[entry.key],
+        );
+      }).toList();
 
-      for (final entry in newValues.entries) {
-        final payload = <String, dynamic>{
-          'key': entry.key,
-          'value': entry.value,
-        };
-        if (descriptions != null && descriptions.containsKey(entry.key)) {
-          payload['description'] = descriptions[entry.key];
-        }
-        payloadList.add(payload);
-      }
+      await _repository.upsertAppSettings(settings);
+      _values.addAll(newValues);
 
-      if (payloadList.isNotEmpty) {
-        await _supabase
-            .from('app_settings')
-            .upsert(payloadList, onConflict: 'key');
-        _values.addAll(newValues);
-      }
+      // Actualizar caché
+      final rawData = _values.entries.map((e) => {'key': e.key, 'value': e.value}).toList();
+      await _repository.cacheAppSettings(rawData);
 
+      _saveState = ViewState.success;
+      _safeNotify();
       return true;
     } catch (e) {
       debugPrint('Error saving multiple settings: $e');
-      return false;
-    } finally {
-      _isSavingSettings = false;
+      _saveState = ViewState.error;
       _safeNotify();
+      return false;
     }
   }
 
