@@ -14,9 +14,14 @@ class CatalogService {
   static List<CategoryModel>? _memCategories;
   static final Map<String, List<ProductModel>> _memProducts = {};
 
-  static void clearCache() {
+  static Future<void> clearCache() async {
     _memCategories = null;
     _memProducts.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_admin_categories');
+      await prefs.remove('cached_admin_products');
+    } catch (_) {}
   }
 
   Future<List<CategoryModel>> loadCategories() async {

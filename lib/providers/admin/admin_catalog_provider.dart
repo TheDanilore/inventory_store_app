@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/models/category_model.dart';
 import 'package:inventory_store_app/models/product_model.dart';
 import 'package:inventory_store_app/services/admin/catalog_service.dart';
+import 'package:inventory_store_app/services/admin/catalog_pdf_generator.dart';
+import 'package:inventory_store_app/shared/enums/view_state.dart';
+import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
 class AdminCatalogProvider extends ChangeNotifier {
-  final CatalogService _service = CatalogService();
+  final CatalogService _service;
   Timer? _debounce;
 
   static const int pageSize = 24;
@@ -31,14 +35,14 @@ class AdminCatalogProvider extends ChangeNotifier {
   bool? _filterIsActive;
   bool? get filterIsActive => _filterIsActive;
 
-  bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  ViewState _catalogState = ViewState.initial;
+  ViewState get catalogState => _catalogState;
 
-  final bool _isFetchingMore = false;
-  bool get isFetchingMore => _isFetchingMore;
+  ViewState _actionState = ViewState.initial;
+  ViewState get actionState => _actionState;
 
-  bool _isLoadingAction = false;
-  bool get isLoadingAction => _isLoadingAction;
+  bool get isLoading => _catalogState == ViewState.loading;
+  bool get isLoadingAction => _actionState == ViewState.loading;
 
   bool _hasMore = true;
   bool get hasMore => _hasMore;
@@ -54,7 +58,8 @@ class AdminCatalogProvider extends ChangeNotifier {
 
   int get totalPages => _totalCount == 0 ? 1 : (_totalCount / pageSize).ceil();
 
-  AdminCatalogProvider() {
+  AdminCatalogProvider({CatalogService? service})
+    : _service = service ?? CatalogService() {
     _init();
   }
 
@@ -73,7 +78,7 @@ class AdminCatalogProvider extends ChangeNotifier {
   }
 
   Future<void> refreshProducts() async {
-    _isLoading = true;
+    _catalogState = ViewState.loading;
     _error = null;
     notifyListeners();
 
@@ -83,10 +88,13 @@ class AdminCatalogProvider extends ChangeNotifier {
       _products = result.products;
       _totalCount = result.totalCount;
       _matchedIngredients = result.matches;
-      if (result.products.length < pageSize) {
-        _hasMore = false;
+
+      _hasMore = result.products.length >= pageSize;
+
+      if (_products.isEmpty) {
+        _catalogState = ViewState.empty;
       } else {
-        _hasMore = true;
+        _catalogState = ViewState.success;
       }
     } catch (e) {
       final errStr = e.toString().toLowerCase();
@@ -99,8 +107,8 @@ class AdminCatalogProvider extends ChangeNotifier {
       } else {
         _error = e.toString();
       }
+      _catalogState = ViewState.error;
     } finally {
-      _isLoading = false;
       notifyListeners();
     }
   }
@@ -110,8 +118,6 @@ class AdminCatalogProvider extends ChangeNotifier {
     _currentPage = page;
     refreshProducts();
   }
-
-  // fetchMoreProducts has been replaced by setPage
 
   Future<
     ({List<ProductModel> products, Map<String, String> matches, int totalCount})
@@ -157,6 +163,7 @@ class AdminCatalogProvider extends ChangeNotifier {
 
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
+      _currentPage = 0;
       refreshProducts();
     });
   }
@@ -164,6 +171,7 @@ class AdminCatalogProvider extends ChangeNotifier {
   void setCategory(String? categoryId) {
     if (_selectedCategoryId == categoryId) return;
     _selectedCategoryId = categoryId;
+    _currentPage = 0;
     refreshProducts();
   }
 
@@ -171,34 +179,185 @@ class AdminCatalogProvider extends ChangeNotifier {
     if (_searchByIngredient == value) return;
     _searchByIngredient = value;
     if (value) {
-      _selectedCategoryId =
-          null; // Clear category when ingredient search is active
+      _selectedCategoryId = null;
     }
+    _currentPage = 0;
     refreshProducts();
   }
 
   void setFilterIsActive(bool? value) {
     if (_filterIsActive == value) return;
     _filterIsActive = value;
+    _currentPage = 0;
     refreshProducts();
   }
 
   Future<void> forceSync() async {
-    _isLoadingAction = true;
+    _actionState = ViewState.loading;
     notifyListeners();
     try {
-      CatalogService.clearCache();
+      await CatalogService.clearCache();
       await fetchCategories();
       await refreshProducts();
+      _actionState = ViewState.success;
+    } catch (_) {
+      _actionState = ViewState.error;
     } finally {
-      _isLoadingAction = false;
       notifyListeners();
     }
   }
 
-  void setLoadingAction(bool value) {
-    _isLoadingAction = value;
+  // --- NUEVOS MÉTODOS DE NEGOCIO ---
+
+  Future<bool> toggleProductActive(ProductModel product) async {
+    if (isLoadingAction) return false;
+    final willActivate = !product.isActive;
+
+    _actionState = ViewState.loading;
     notifyListeners();
+
+    try {
+      await _service.setProductActive(
+        productId: product.id,
+        isActive: willActivate,
+      );
+      _actionState = ViewState.success;
+      await refreshProducts();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _actionState = ViewState.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> exportCatalogPdf(BuildContext context) async {
+    if (isLoadingAction) return;
+
+    _actionState = ViewState.loading;
+    notifyListeners();
+
+    try {
+      final allProductsResult = await _service.loadProducts(
+        categoryId: _selectedCategoryId,
+        searchTerm: _searchTerm,
+        isAdmin: true,
+        filterIsActive: _filterIsActive,
+      );
+      final allProducts = allProductsResult.products;
+
+      if (!context.mounted) return;
+
+      if (allProducts.isEmpty) {
+        AppSnackbar.show(
+          context,
+          message: 'No hay productos para exportar.',
+          type: SnackbarType.error,
+        );
+        _actionState = ViewState.initial;
+        notifyListeners();
+        return;
+      }
+
+      final visibleProducts = _products;
+      final max50Products = allProducts.take(50).toList();
+
+      final options = await CatalogDialogs.showExportOptionsDialog(
+        context,
+        max50Products,
+        visibleProducts.length,
+      );
+
+      if (!context.mounted || options == null) {
+        _actionState = ViewState.initial;
+        notifyListeners();
+        return;
+      }
+
+      List<ProductModel> filteredProducts = [];
+      if (options.mode == 0) {
+        filteredProducts = visibleProducts;
+      } else if (options.mode == 1) {
+        filteredProducts = max50Products;
+      } else if (options.mode == 2) {
+        filteredProducts =
+            max50Products
+                .where((p) => options.selectedIds.contains(p.id))
+                .toList();
+      }
+
+      if (filteredProducts.isEmpty) {
+        AppSnackbar.show(
+          context,
+          message: 'No hay productos seleccionados para exportar.',
+          type: SnackbarType.error,
+        );
+        _actionState = ViewState.initial;
+        notifyListeners();
+        return;
+      }
+
+      // Dialog bloqueante controlado
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (dialogCtx) => const AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text(
+                    'Generando Catálogo PDF...',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      try {
+        final productIds = filteredProducts.map((p) => p.id).toList();
+        final variantsByProduct = await _service.loadVariantsByProductIds(
+          productIds,
+        );
+        final allVariantIds =
+            variantsByProduct.values
+                .expand((v) => v)
+                .map((v) => v.id)
+                .whereType<String>()
+                .toList();
+        final stockByVariant = await _service.loadVariantStockByVariantIds(
+          allVariantIds,
+        );
+
+        await CatalogPdfGenerator.shareCatalog(
+          products: filteredProducts,
+          variantsByProduct: variantsByProduct,
+          stockByVariant: stockByVariant,
+        );
+      } finally {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+
+      _actionState = ViewState.success;
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackbar.show(
+        context,
+        message: 'No se pudo exportar el PDF: $e',
+        type: SnackbarType.error,
+      );
+      _actionState = ViewState.error;
+    } finally {
+      notifyListeners();
+    }
   }
 
   @override

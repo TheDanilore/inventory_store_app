@@ -6,9 +6,9 @@ import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/providers/admin/admin_catalog_provider.dart';
 import 'package:inventory_store_app/providers/pos_provider.dart';
+import 'package:inventory_store_app/providers/auth_provider.dart';
+import 'package:inventory_store_app/shared/enums/view_state.dart';
 import 'package:inventory_store_app/models/product_model.dart';
-import 'package:inventory_store_app/services/admin/catalog_pdf_generator.dart';
-import 'package:inventory_store_app/services/admin/catalog_service.dart';
 import 'package:inventory_store_app/shared/theme/app_colors.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
@@ -18,11 +18,8 @@ import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/c
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_grid_view.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_product_skeleton.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/admin_add_to_cart_sheet.dart';
-import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/screens/admin/widgets/admin_catalog_screen/catalog_fab_buttons.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 class AdminCatalogScreen extends StatefulWidget {
   const AdminCatalogScreen({super.key});
 
@@ -48,178 +45,34 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     super.dispose();
   }
 
-  Future<void> _exportCatalogPdf(AdminCatalogProvider provider) async {
-    if (provider.isLoadingAction) return;
-    try {
-      provider.setLoadingAction(true);
-
-      // Usar _service directamente para traer un bloque crudo sin afectar la paginación de la pantalla
-      final service = CatalogService();
-      final allProductsResult = await service.loadProducts(
-        categoryId: provider.selectedCategoryId,
-        searchTerm: provider.searchTerm,
-        isAdmin: true,
-        filterIsActive: provider.filterIsActive,
-      );
-      final allProducts = allProductsResult.products;
-
-      if (!mounted) return;
-
-      if (allProducts.isEmpty) {
-        AppSnackbar.show(
-          context,
-          message: 'No hay productos para exportar.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-
-      final visibleProducts = provider.products;
-      final max50Products = allProducts.take(50).toList();
-
-      final options = await CatalogDialogs.showExportOptionsDialog(
-        context,
-        max50Products,
-        visibleProducts.length,
-      );
-
-      if (!mounted || options == null) return;
-
-      List<ProductModel> filteredProducts = [];
-      if (options.mode == 0) {
-        filteredProducts = visibleProducts;
-      } else if (options.mode == 1) {
-        filteredProducts = max50Products;
-      } else if (options.mode == 2) {
-        filteredProducts =
-            max50Products
-                .where((p) => options.selectedIds.contains(p.id))
-                .toList();
-      }
-
-      if (filteredProducts.isEmpty) {
-        AppSnackbar.show(
-          context,
-          message: 'No hay productos seleccionados para exportar.',
-          type: SnackbarType.error,
-        );
-        return;
-      }
-
-      // Mostrar diálogo de carga bloqueante
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (dialogCtx) => const AlertDialog(
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text(
-                    'Generando Catálogo PDF...',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-      );
-
-      // Dar tiempo para que la animación del diálogo termine y el UI se pinte
-      await Future.delayed(const Duration(milliseconds: 400));
-
-      try {
-        final productIds = filteredProducts.map((p) => p.id).toList();
-        final variantsByProduct = await service.loadVariantsByProductIds(
-          productIds,
-        );
-        final allVariantIds =
-            variantsByProduct.values
-                .expand((v) => v)
-                .map((v) => v.id)
-                .whereType<String>()
-                .toList();
-        final stockByVariant = await service.loadVariantStockByVariantIds(
-          allVariantIds,
-        );
-
-        await CatalogPdfGenerator.shareCatalog(
-          products: filteredProducts,
-          variantsByProduct: variantsByProduct,
-          stockByVariant: stockByVariant,
-        );
-      } finally {
-        if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackbar.show(
-        context,
-        message: 'No se pudo exportar el PDF: $e',
-        type: SnackbarType.error,
-      );
-    } finally {
-      if (mounted) provider.setLoadingAction(false);
-    }
-  }
-
   Future<void> _toggleProductoActivo(
     ProductModel product,
     AdminCatalogProvider provider,
   ) async {
-    if (provider.isLoadingAction) return;
     final willActivate = !product.isActive;
-    final service = CatalogService();
-
-    provider.setLoadingAction(true);
-    try {
-      await service.setProductActive(
-        productId: product.id,
-        isActive: willActivate,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              willActivate
-                  ? '${product.name} ha sido activado'
-                  : '${product.name} ha sido desactivado',
-            ),
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'Deshacer',
-              onPressed: () async {
-                provider.setLoadingAction(true);
-                try {
-                  await service.setProductActive(
-                    productId: product.id,
-                    isActive: !willActivate,
-                  );
-                  if (mounted) await provider.refreshProducts();
-                } catch (_) {
-                } finally {
-                  if (mounted) provider.setLoadingAction(false);
-                }
-              },
-            ),
+    
+    final success = await provider.toggleProductActive(product);
+    
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            willActivate
+                ? '${product.name} ha sido activado'
+                : '${product.name} ha sido desactivado',
           ),
-        );
-        await provider.refreshProducts();
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'Error: $e',
-          type: SnackbarType.error,
-        );
-      }
-    } finally {
-      if (mounted) provider.setLoadingAction(false);
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Deshacer',
+            onPressed: () async {
+              await provider.toggleProductActive(
+                product.copyWith(isActive: willActivate),
+              );
+            },
+          ),
+        ),
+      );
     }
   }
 
@@ -268,7 +121,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   ) async {
     switch (value) {
       case 'export':
-        await _exportCatalogPdf(provider);
+        await provider.exportCatalogPdf(context);
         break;
       case 'sync':
         await provider.forceSync();
@@ -331,9 +184,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               const SizedBox(width: 12),
                               AdminProfileAvatar(
                                 onTap: () {
-                                  final user =
-                                      Supabase.instance.client.auth.currentUser;
-                                  if (user == null) {
+                                  final auth = context.read<AuthProvider>();
+                                  if (auth.currentUser == null) {
                                     context.go('/login');
                                   } else {
                                     context.push('/admin/profile');
@@ -432,9 +284,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                     children: [
                                       CatalogHeader(
                                         searchController: _searchCtrl,
-                                        isExporting: provider.isLoadingAction,
+                                        isExporting: provider.actionState == ViewState.loading,
                                         onExport:
-                                            () => _exportCatalogPdf(provider),
+                                            () => provider.exportCatalogPdf(context),
                                         onSearchChanged: provider.setSearchTerm,
                                         searchByIngredient:
                                             provider.searchByIngredient,
@@ -445,7 +297,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                               '/admin/product-form',
                                             ),
                                       ),
-                                      if (provider.isLoadingAction)
+                                      if (provider.actionState == ViewState.loading)
                                         const LinearProgressIndicator(
                                           color: AppColors.teal,
                                           minHeight: 2,
@@ -474,7 +326,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               )
                               : null;
 
-                      if (provider.isLoading) {
+                      if (provider.catalogState == ViewState.loading || provider.catalogState == ViewState.initial) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
                           onRefresh: () async => provider.refreshProducts(),
@@ -525,7 +377,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         );
                       }
 
-                      if (provider.products.isEmpty && !provider.isLoading) {
+                      if (provider.products.isEmpty && (provider.catalogState == ViewState.success || provider.catalogState == ViewState.empty)) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
                           onRefresh: () async => provider.refreshProducts(),
@@ -577,8 +429,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               extra: {'productToEdit': product},
                             );
                             if (result == true) {
-                              CatalogService.clearCache();
-                              provider.refreshProducts();
+                              await provider.forceSync();
                             }
                           },
                           isPosMode: false,
@@ -657,8 +508,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               '/admin/product-form',
                             );
                             if (result == true) {
-                              CatalogService.clearCache();
-                              provider.setPage(0);
+                              await provider.forceSync();
                             }
                           },
                         ),

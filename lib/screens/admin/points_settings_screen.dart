@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/providers/app_config_provider.dart';
+import 'package:inventory_store_app/shared/enums/view_state.dart';
 import 'package:inventory_store_app/shared/widgets/admin_layout.dart';
 import 'package:inventory_store_app/shared/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';

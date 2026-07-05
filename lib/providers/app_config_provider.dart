@@ -3,7 +3,7 @@ import 'package:inventory_store_app/models/business_info_model.dart';
 import 'package:inventory_store_app/models/app_setting_model.dart';
 import 'package:inventory_store_app/data/admin/app_config_repository.dart';
 
-enum ViewState { initial, loading, success, empty, error }
+import 'package:inventory_store_app/shared/enums/view_state.dart';
 
 class AppConfigProvider extends ChangeNotifier {
   final AppConfigRepository _repository;

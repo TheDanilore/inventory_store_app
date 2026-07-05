@@ -16,6 +16,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isSessionReady => _isSessionReady;
   String? get currentUserRole => _currentUserRole;
+  User? get currentUser => _supabase.auth.currentUser;
 
   bool _disposed = false;
 
