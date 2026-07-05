@@ -187,39 +187,6 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          widget.isPickerMode
-              ? 'Mueve el mapa para elegir'
-              : widget.focusedLocation?.name ?? 'Ubicaciones',
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          if (widget.isPickerMode)
-            TextButton.icon(
-              onPressed: _confirmPickerPoint,
-              icon: const Icon(
-                Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              label: const Text(
-                'Confirmar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-        ],
-      ),
       body: Stack(
         children: [
           // ── Mapa ──────────────────────────────────────────────────────
@@ -265,15 +232,91 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
               ),
             ),
 
-          // ── Coordenadas (solo actualiza al terminar el gesto) ─────────
+          // ── Header Flotante (Reemplaza el AppBar) ─────────────────────
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 16,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                // Botón Atrás
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.5),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Título
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.border.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          widget.isPickerMode
+                              ? 'Mueve el mapa para elegir'
+                              : widget.focusedLocation?.name ?? 'Ubicaciones',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // ── Panel de Coordenadas Glassmorphism ────────────────────────
           if (widget.isPickerMode)
             Positioned(
-              top: 16,
+              bottom: 90, // Por encima del FAB
               left: 16,
               right: 16,
               child: Align(
-                alignment: Alignment.topCenter,
+                alignment: Alignment.center,
                 child: IgnorePointer(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -350,15 +393,17 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton:
           widget.isPickerMode
               ? FloatingActionButton.extended(
                 onPressed: _confirmPickerPoint,
                 backgroundColor: AppColors.teal,
                 foregroundColor: Colors.white,
+                elevation: 4,
                 icon: const Icon(Icons.check_rounded),
                 label: const Text(
-                  'Usar este punto',
+                  'Confirmar Ubicación',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               )
