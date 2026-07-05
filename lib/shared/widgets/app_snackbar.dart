@@ -342,19 +342,15 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                       filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF1F2937).withValues(alpha: 0.95)
-                              : Colors.white.withValues(alpha: 0.95),
+                          color: widget.item.backgroundColor.withValues(alpha: 0.95),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF374151)
-                                : const Color(0xFFE5E7EB),
+                            color: widget.item.backgroundColor,
                             width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
+                              color: widget.item.backgroundColor.withValues(alpha: 0.3),
                               blurRadius: (16 - (widget.index * 2)).toDouble(),
                               offset: Offset(0, (8 + widget.index).toDouble()),
                             ),
@@ -373,12 +369,12 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                                   Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
-                                      color: widget.item.backgroundColor.withValues(alpha: 0.1),
+                                      color: Colors.white.withValues(alpha: 0.2),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
                                       widget.item.iconData,
-                                      color: widget.item.backgroundColor,
+                                      color: Colors.white,
                                       size: 18,
                                     ),
                                   ),
@@ -386,10 +382,8 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                                   Expanded(
                                     child: Text(
                                       widget.item.message,
-                                      style: TextStyle(
-                                        color: Theme.of(context).brightness == Brightness.dark
-                                            ? const Color(0xFFF9FAFB)
-                                            : const Color(0xFF1F2937),
+                                      style: const TextStyle(
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
                                         letterSpacing: -0.2,
@@ -407,9 +401,7 @@ class _AnimatedSnackbarWidgetState extends State<_AnimatedSnackbarWidget>
                                     value: _progressController.value,
                                     backgroundColor: Colors.transparent,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      Theme.of(context).brightness == Brightness.dark
-                                          ? const Color(0xFF374151)
-                                          : const Color(0xFFF3F4F6),
+                                      Colors.white.withValues(alpha: 0.5),
                                     ),
                                     minHeight: 2,
                                   );
