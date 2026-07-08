@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
@@ -52,7 +53,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   }
 
   void _initControllers() {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     if (config.businessInfoState == ViewState.success || config.businessInfoState == ViewState.empty) {
       _loadValues(config);
     } else {
@@ -61,7 +62,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     }
   }
 
-  void _loadValues(AppConfigProvider config) {
+  void _loadValues(AppConfigCubit config) {
     if (_formInitialized) return;
 
     _businessNameCtrl.text = config.businessName == 'Sin configurar' ? '' : config.businessName;
@@ -105,7 +106,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     if (pickedFile == null) return;
 
     if (!mounted) return;
-    final provider = context.read<AppConfigProvider>();
+    final provider = context.read<AppConfigCubit>();
     final bytes = await pickedFile.readAsBytes();
 
     final compressed = await FlutterImageCompress.compressWithList(
@@ -143,13 +144,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final provider = context.read<AppConfigProvider>();
+    final provider = context.read<AppConfigCubit>();
     final success = await provider.saveBusinessInfo(
       businessName: _businessNameCtrl.text,
       taxId: _taxIdCtrl.text,
       address: _addressCtrl.text,
       phone: _phoneCtrl.text,
-      logoUrl: _logoUrlCtrl.text,
+      // logoUrl: _logoUrlCtrl.text,
       loyaltyGlobalEnabled: _loyaltyGlobalEnabled,
       loyaltyCustomerVisible: _loyaltyCustomerVisible,
     );
@@ -174,7 +175,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
     // Listener para cargar valores cuando pase de loading a success/empty
@@ -224,7 +225,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     );
   }
 
-  Widget _buildErrorState(AppConfigProvider config) {
+  Widget _buildErrorState(AppConfigCubit config) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -74,7 +75,7 @@ class _ClawMachineScreenState extends State<ClawMachineScreen> {
   }
 
   void _initializePrizes() {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     final p1 = config.getDouble('claw_prize_1', 5).toInt();
     final p2 = config.getDouble('claw_prize_2', 20).toInt();
     final p3 = config.getDouble('claw_prize_3', 50).toInt();

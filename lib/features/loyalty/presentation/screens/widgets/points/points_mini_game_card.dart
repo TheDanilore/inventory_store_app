@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/widgets/points/points_design_tokens.dart';
@@ -20,7 +21,7 @@ class _PointsMiniGameCardState extends State<PointsMiniGameCard> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PointsProvider>();
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
 
     final dailyLimit = config.getDouble('boxes_daily_limit', 1).round();
     final canPlay = provider.boxesPlaysToday < dailyLimit;

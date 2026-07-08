@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/orders/data/models/order_item_model
 import 'package:inventory_store_app/features/pos/data/repositories/pos_checkout_service.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
 import 'package:inventory_store_app/core/utils/pos_calculator_utils.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -266,7 +266,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       }
     }
 
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
 
@@ -515,7 +515,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
     final isLoyaltyEnabled = config.loyaltyGlobalEnabled;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
-import 'package:inventory_store_app/core/network/presentation/providers/network_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/core/network/presentation/bloc/network_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'dart:ui';
@@ -45,7 +45,7 @@ class CustomerLayout extends StatelessWidget {
 
   Widget _buildWalletChip(BuildContext context) {
     // Usamos Consumer2 para reaccionar a cambios en configuración y saldo
-    return Consumer2<AppConfigProvider, WalletProvider>(
+    return Consumer2<AppConfigCubit, WalletProvider>(
       builder: (context, config, wallet, child) {
         if (!config.loyaltyGlobalEnabled || !config.loyaltyCustomerVisible) {
           return const SizedBox.shrink();
@@ -180,7 +180,7 @@ class CustomerLayout extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(left: noLeadingIcon ? 16.0 : 0.0),
-      child: Consumer<AppConfigProvider>(
+      child: Consumer<AppConfigCubit>(
         builder: (context, config, child) {
           final liveTitle = config.businessName;
           final displayTitle =
@@ -468,7 +468,7 @@ class CustomerLayout extends StatelessWidget {
     // Banner de sin conexión + body
     Widget pageBody = Column(
       children: [
-        Consumer<NetworkProvider>(
+        Consumer<NetworkCubit>(
           builder: (context, network, child) {
             final isOnline = network.isOnline;
             return AnimatedSize(

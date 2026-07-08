@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
@@ -39,7 +40,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     double totalAPagar,
     int puntosUsados,
   ) async {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     final whatsappNumber = config.businessPhone;
     if (whatsappNumber.isEmpty) {
       if (mounted) {
@@ -87,7 +88,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   void _handleCheckout() async {
     final cart = context.read<CartProvider>();
     final wallet = context.read<WalletProvider>();
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     final checkout = context.read<CartCheckoutProvider>();
 
     final result = await checkout.processCheckout(
@@ -161,7 +162,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final cart = context.watch<CartProvider>();
     final wallet = context.watch<WalletProvider>();
     final checkout = context.watch<CartCheckoutProvider>();
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
 
     final saldoPuntos = wallet.balance ?? 0;
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);

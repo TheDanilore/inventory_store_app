@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_models.dart';
 import 'package:inventory_store_app/features/customers/data/repositories/customer_credits_service.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
@@ -187,7 +188,7 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
     try {
       final adminProfileId = await _service.getAdminProfileId();
       if (!mounted) return;
-      final config = context.read<AppConfigProvider>();
+      final config = context.read<AppConfigCubit>();
       final ratio = config.getDouble('points_to_soles_ratio', 0.01);
       final rate = config.getDouble('points_earning_rate', 0.03);
 
@@ -261,7 +262,7 @@ class _RegisterPaymentModalState extends State<RegisterPaymentModal> {
         _amountCtrl.text.trim().isNotEmpty &&
         _errorMessage == null;
 
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final ratio = config.getDouble('points_to_soles_ratio', 0.01);
     final rate = config.getDouble('points_earning_rate', 0.03);
 

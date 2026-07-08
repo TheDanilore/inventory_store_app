@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -64,12 +65,12 @@ class _CoinCatcherGameScreenState extends State<CoinCatcherGameScreen> {
   Timer? _clockTimer;
 
   final _random = Random();
-  late AppConfigProvider _config;
+  late AppConfigCubit _config;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _config = context.read<AppConfigProvider>();
+    _config = context.read<AppConfigCubit>();
   }
 
   @override

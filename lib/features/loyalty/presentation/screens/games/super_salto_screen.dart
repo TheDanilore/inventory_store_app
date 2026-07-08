@@ -7,7 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:vibration/vibration.dart';
@@ -499,7 +500,7 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                 else
                   Builder(
                     builder: (context) {
-                      final limit = context.read<AppConfigProvider>().getDouble('jump_daily_limit', 1).round();
+                      final limit = context.read<AppConfigCubit>().getDouble('jump_daily_limit', 1).round();
                       final played = context.read<PointsProvider>().superSaltoPlaysToday;
                       final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
 

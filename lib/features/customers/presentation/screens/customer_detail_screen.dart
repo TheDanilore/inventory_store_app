@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/customers/presentation/providers/customer_detail_provider.dart';
@@ -54,7 +54,7 @@ class _CustomerDetailContent extends StatelessWidget {
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth > 750;
             final isLoyaltyEnabled =
-                context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+                context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
             if (isTablet) {
               return _buildTabletLayout(context, provider, isLoyaltyEnabled);

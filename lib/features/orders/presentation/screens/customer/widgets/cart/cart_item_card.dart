@@ -1,7 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
@@ -43,7 +44,7 @@ class CartItemCard extends StatelessWidget {
 
     final isWholesale = item.quantity >= (product.wholesaleMinQuantity);
 
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     final isLoyaltyEnabled =
         config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
 

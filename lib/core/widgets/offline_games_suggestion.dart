@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/network/presentation/providers/network_provider.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/network/presentation/bloc/network_cubit.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
 import 'package:provider/provider.dart';
 
 class OfflineGamesSuggestion extends StatelessWidget {
@@ -12,12 +12,12 @@ class OfflineGamesSuggestion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final isLoyaltyEnabled =
         config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
 
     final isOffline =
-        !context.watch<NetworkProvider>().isOnline ||
+        !context.watch<NetworkCubit>().isOnline ||
         (errorMessage?.toLowerCase().contains('conexión') ?? false) ||
         (errorMessage?.toLowerCase().contains('internet') ?? false) ||
         (errorMessage?.toLowerCase().contains('offline') ?? false);

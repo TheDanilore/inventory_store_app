@@ -4,7 +4,8 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -38,7 +39,7 @@ class MemoramaGameScreen extends StatefulWidget {
 
 class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
   final _random = Random();
-  late AppConfigProvider _config;
+  late AppConfigCubit _config;
 
   final List<_MemoryCard> _cards = [];
   Timer? _clockTimer;
@@ -57,7 +58,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _config = context.read<AppConfigProvider>();
+    _config = context.read<AppConfigCubit>();
   }
 
   @override
@@ -535,7 +536,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                 else
                   Builder(
                     builder: (context) {
-                      final limit = context.read<AppConfigProvider>().getDouble('memorama_daily_limit', 1).round();
+                      final limit = context.read<AppConfigCubit>().getDouble('memorama_daily_limit', 1).round();
                       final played = context.read<PointsProvider>().memoramaPlaysToday;
                       final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
 

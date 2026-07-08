@@ -10,6 +10,11 @@ import 'package:inventory_store_app/features/auth/presentation/providers/auth_pr
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/network/presentation/bloc/network_cubit.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+
 // ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
 // En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
 // el entrypoint varias veces. Usar `late final` sin guard causaría
@@ -22,6 +27,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   usePathUrlStrategy();
+
+  // Inicializar Inyección de Dependencias
+  await initDI();
 
   // Supabase.initialize lanza si ya fue inicializado (en hot restart).
   // Lo envolvemos para que sea idempotente.
@@ -56,24 +64,34 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return MultiBlocProvider(
       providers: [
-        // Inyectamos la instancia global con .value (no crea una nueva).
-        ChangeNotifierProvider<AuthProvider>.value(value: _authProvider!),
-        ...AppProviders.providersExcludingAuth,
+        BlocProvider(create: (_) => sl<NetworkCubit>()),
+        BlocProvider(
+          create: (_) => sl<AppConfigCubit>()
+            ..fetchSettings()
+            ..loadBusinessInfo(),
+        ),
       ],
-      child: MaterialApp.router(
-        restorationScopeId: 'app',
-        title: 'Inventario Store',
-        theme: AppTheme.light(),
-        debugShowCheckedModeBanner: false,
-        supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
+      child: MultiProvider(
+        providers: [
+          // Inyectamos la instancia global con .value (no crea una nueva).
+          ChangeNotifierProvider<AuthProvider>.value(value: _authProvider!),
+          ...AppProviders.providersExcludingAuth,
         ],
-        routerConfig: _router!,
+        child: MaterialApp.router(
+          restorationScopeId: 'app',
+          title: 'Inventario Store',
+          theme: AppTheme.light(),
+          debugShowCheckedModeBanner: false,
+          supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          routerConfig: _router!,
+        ),
       ),
     );
   }

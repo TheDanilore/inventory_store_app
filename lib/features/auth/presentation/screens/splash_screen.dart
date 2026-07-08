@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     // 1. OBLIGAMOS a que espere la configuración ANTES de entrar a la app
-    final configProvider = context.read<AppConfigProvider>();
+    final configProvider = context.read<AppConfigCubit>();
     try {
       await Future.wait([
         configProvider.loadConfig(),

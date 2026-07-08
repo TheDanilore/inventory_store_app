@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/dashboard/data/repositories/dashboard_service.dart';
@@ -116,7 +117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double currentAmount,
     double targetAmount,
   ) {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     double newCurrent = currentAmount;
     double newTarget = targetAmount;
 
@@ -182,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final adminGoalTarget = config.getDouble('admin_goal_target', 2600.0);
     final adminGoalCurrent = config.getDouble('admin_goal_current', 0.0);
 

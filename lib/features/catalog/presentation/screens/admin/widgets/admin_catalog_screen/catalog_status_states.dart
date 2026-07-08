@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/network/presentation/providers/network_provider.dart';
+import 'package:inventory_store_app/core/network/presentation/bloc/network_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
@@ -53,7 +54,7 @@ class CatalogErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOffline =
-        !context.watch<NetworkProvider>().isOnline ||
+        !context.watch<NetworkCubit>().isOnline ||
         message.toLowerCase().contains('conexión') ||
         message.toLowerCase().contains('internet') ||
         message.toLowerCase().contains('offline');

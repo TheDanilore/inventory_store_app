@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -26,7 +27,7 @@ class CartCheckoutFooter extends StatelessWidget {
       (p) => p.isSending,
     );
 
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     final isLoyaltyEnabled =
         config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
 

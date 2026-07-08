@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
@@ -19,7 +20,7 @@ class CartWalletSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     if (saldoPuntos <= 0) return const SizedBox.shrink();
 
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final checkout = context.watch<CartCheckoutProvider>();
 
     final earningRate = config.getDouble('points_earning_rate', 0.03);

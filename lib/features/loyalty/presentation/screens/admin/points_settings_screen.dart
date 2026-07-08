@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
@@ -252,7 +253,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   void _loadData() {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     if (config.settingsState == ViewState.success) {
       _fillControllers(config);
       setState(() => _isInitialized = true);
@@ -262,7 +263,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   void _onConfigLoaded() {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     if (config.settingsState == ViewState.success) {
       config.removeListener(_onConfigLoaded);
       if (mounted) {
@@ -272,7 +273,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     }
   }
 
-  void _fillControllers(AppConfigProvider config) {
+  void _fillControllers(AppConfigCubit config) {
     for (final def in _settings.values) {
       double val = config.getDouble(def.key, def.fallback);
       if (def.format == SettingFormat.percent) {
@@ -325,7 +326,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       descriptions[def.key] = def.description;
     }
 
-    final provider = context.read<AppConfigProvider>();
+    final provider = context.read<AppConfigCubit>();
     final success = await provider.saveMultipleValues(
       newValues,
       descriptions: descriptions,
@@ -350,7 +351,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final isGlobalEnabled = config.loyaltyGlobalEnabled;
 
     return AdminLayout(
@@ -742,7 +743,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   Widget _buildSaveButton(int tabIndex, List<String> keys) {
-    final provider = context.watch<AppConfigProvider>();
+    final provider = context.watch<AppConfigCubit>();
     final isSaving = provider.saveState == ViewState.loading;
     return Align(
       alignment: Alignment.centerRight,

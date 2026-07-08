@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/loyalty/data/repositories/points_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -91,7 +91,7 @@ class PointsProvider extends ChangeNotifier {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  List<int> _buildMiniGameBoxes(AppConfigProvider config) {
+  List<int> _buildMiniGameBoxes(AppConfigCubit config) {
     final prize1 = config.getDouble('boxes_prize_1', 10).toInt();
     final prize2 = config.getDouble('boxes_prize_2', 20).toInt();
     final prize3 = config.getDouble('boxes_prize_3', 30).toInt();
@@ -99,7 +99,7 @@ class PointsProvider extends ChangeNotifier {
     return pool;
   }
 
-  Future<void> fetchPointsData(AppConfigProvider config) async {
+  Future<void> fetchPointsData(AppConfigCubit config) async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
       _isLoading = false;
@@ -326,7 +326,7 @@ class PointsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> startBoxesRound(AppConfigProvider config) async {
+  Future<void> startBoxesRound(AppConfigCubit config) async {
     if (_isPlayingMiniGame || _isPreparingBoxes) {
       return;
     }
@@ -357,7 +357,7 @@ class PointsProvider extends ChangeNotifier {
 
   Future<int?> playBoxMiniGame(
     int boxIndex,
-    AppConfigProvider config, [
+    AppConfigCubit config, [
     WalletProvider? wallet,
   ]) async {
     final boxesLimit = config.getDouble('boxes_daily_limit', 1).round();

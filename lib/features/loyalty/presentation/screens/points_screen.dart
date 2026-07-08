@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/widgets/points/points_balance_hero_card.dart';
@@ -33,7 +33,7 @@ class _PointsScreenState extends State<PointsScreen> {
   }
 
   Future<void> _loadData() async {
-    final config = context.read<AppConfigProvider>();
+    final config = context.read<AppConfigCubit>();
     await context.read<PointsProvider>().fetchPointsData(config);
   }
 
@@ -81,7 +81,7 @@ class _PointsScreenState extends State<PointsScreen> {
       showWalletChip: false,
       body: Consumer<PointsProvider>(
         builder: (context, provider, child) {
-          final config = context.watch<AppConfigProvider>();
+          final config = context.watch<AppConfigCubit>();
 
           if (!config.loyaltyGlobalEnabled || !config.loyaltyCustomerVisible) {
             return const Center(

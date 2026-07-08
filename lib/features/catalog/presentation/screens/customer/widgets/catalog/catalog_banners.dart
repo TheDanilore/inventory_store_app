@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CatalogWelcomeBanner extends StatelessWidget {
@@ -8,7 +9,7 @@ class CatalogWelcomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final businessName = config.businessName;
     final businessAddress = config.businessAddress;
 

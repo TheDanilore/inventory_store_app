@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -163,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProfileProvider>();
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
     final walletBalance = context.watch<WalletProvider>().balance ?? 0;
 
     final isLoyaltyEnabled =

@@ -5,7 +5,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 // ─── PUNTO DE ENTRADA ─────────────────────────────────────────────────────────
 //
@@ -273,7 +274,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final isLoyaltyEnabled =
-        context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,

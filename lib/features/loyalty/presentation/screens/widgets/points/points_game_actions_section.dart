@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/widgets/points/points_design_tokens.dart';
@@ -35,7 +36,7 @@ class PointsGameActionsSection extends StatelessWidget {
       // Refresh points data after playing
       if (context.mounted && provider.profileId != null) {
         await context.read<PointsProvider>().fetchPointsData(
-          context.read<AppConfigProvider>(),
+          context.read<AppConfigCubit>(),
         );
       }
     }
@@ -65,7 +66,7 @@ class PointsGameActionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PointsProvider>();
-    final config = context.watch<AppConfigProvider>();
+    final config = context.watch<AppConfigCubit>();
 
     final memoramaLimit = config.getDouble('memorama_daily_limit', 1).round();
     final catcherLimit = config.getDouble('catcher_daily_limit', 1).round();

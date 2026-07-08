@@ -5,7 +5,7 @@ import 'package:inventory_store_app/features/users/presentation/providers/user_d
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -107,7 +107,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isLoyaltyEnabled =
-        context.watch<AppConfigProvider>().loyaltyGlobalEnabled;
+        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
     return Consumer<UserDetailProvider>(
       builder: (context, provider, child) {
