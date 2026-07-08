@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/auth/domain/repositories/auth_repos
 
 @injectable
 class LogoutUseCase implements UseCase<void, NoParams> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   LogoutUseCase(this.repository);
 
   @override

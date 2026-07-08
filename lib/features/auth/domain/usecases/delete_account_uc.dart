@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/auth/domain/repositories/auth_repos
 
 @injectable
 class DeleteAccountUseCase implements UseCase<void, String> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   DeleteAccountUseCase(this.repository);
 
   @override

@@ -51,33 +51,11 @@ extension GetItInjectableX on _i174.GetIt {
     final registerModule = _$RegisterModule();
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
+    gh.lazySingleton<_i787.AuthRepository>(
+      () => _i710.AuthRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i257.AppConfigRepository>(
-      () => _i785.AppConfigRepositoryImpl(client: gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i787.IAuthRepository>(() => _i710.AuthRepositoryImpl());
-    gh.factory<_i832.ChangePasswordUseCase>(
-      () => _i832.ChangePasswordUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i853.DeleteAccountUseCase>(
-      () => _i853.DeleteAccountUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i813.GetCurrentUserUseCase>(
-      () => _i813.GetCurrentUserUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i175.LoginWithEmailUseCase>(
-      () => _i175.LoginWithEmailUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i72.LogoutUseCase>(
-      () => _i72.LogoutUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i182.RegisterUseCase>(
-      () => _i182.RegisterUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i878.ResetPasswordUseCase>(
-      () => _i878.ResetPasswordUseCase(gh<_i787.IAuthRepository>()),
-    );
-    gh.factory<_i282.UpdateProfileUseCase>(
-      () => _i282.UpdateProfileUseCase(gh<_i787.IAuthRepository>()),
+      () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i506.GetAppSettingsUseCase>(
       () => _i506.GetAppSettingsUseCase(gh<_i257.AppConfigRepository>()),
@@ -90,6 +68,30 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i217.UploadLogoUseCase>(
       () => _i217.UploadLogoUseCase(gh<_i257.AppConfigRepository>()),
+    );
+    gh.factory<_i832.ChangePasswordUseCase>(
+      () => _i832.ChangePasswordUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i853.DeleteAccountUseCase>(
+      () => _i853.DeleteAccountUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i813.GetCurrentUserUseCase>(
+      () => _i813.GetCurrentUserUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i175.LoginWithEmailUseCase>(
+      () => _i175.LoginWithEmailUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i72.LogoutUseCase>(
+      () => _i72.LogoutUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i182.RegisterUseCase>(
+      () => _i182.RegisterUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i878.ResetPasswordUseCase>(
+      () => _i878.ResetPasswordUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factory<_i282.UpdateProfileUseCase>(
+      () => _i282.UpdateProfileUseCase(gh<_i787.AuthRepository>()),
     );
     gh.factory<_i556.AppConfigCubit>(
       () => _i556.AppConfigCubit(

@@ -9,9 +9,11 @@ import 'package:inventory_store_app/features/auth/domain/repositories/auth_repos
 import 'package:inventory_store_app/features/auth/data/models/auth_user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-@LazySingleton(as: IAuthRepository)
-class AuthRepositoryImpl implements IAuthRepository {
-  final sb.SupabaseClient _supabase = sb.Supabase.instance.client;
+@LazySingleton(as: AuthRepository)
+class AuthRepositoryImpl implements AuthRepository {
+  final sb.SupabaseClient _supabase;
+
+  AuthRepositoryImpl(this._supabase);
 
   @override
   Future<Either<Failure, UserEntity>> getCurrentUser() async {

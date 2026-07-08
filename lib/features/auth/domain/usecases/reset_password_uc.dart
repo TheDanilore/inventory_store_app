@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/auth/domain/repositories/auth_repos
 
 @injectable
 class ResetPasswordUseCase implements UseCase<void, String> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   ResetPasswordUseCase(this.repository);
 
   @override

@@ -14,7 +14,7 @@ class UpdateProfileParams {
 
 @injectable
 class UpdateProfileUseCase implements UseCase<UserEntity, UpdateProfileParams> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   UpdateProfileUseCase(this.repository);
 
   @override

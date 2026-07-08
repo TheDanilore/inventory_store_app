@@ -16,8 +16,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   static const String _settingsCacheKey = 'cached_app_settings';
   static const String _businessInfoCacheKey = 'cached_business_info';
 
-  AppConfigRepositoryImpl({SupabaseClient? client})
-      : _supabase = client ?? Supabase.instance.client;
+  AppConfigRepositoryImpl(this._supabase);
 
   // --- App Settings ---
 

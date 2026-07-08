@@ -13,7 +13,7 @@ class LoginParams {
 
 @injectable
 class LoginWithEmailUseCase implements UseCase<UserEntity, LoginParams> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   LoginWithEmailUseCase(this.repository);
 
   @override

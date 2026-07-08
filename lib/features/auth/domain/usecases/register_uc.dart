@@ -14,7 +14,7 @@ class RegisterParams {
 
 @injectable
 class RegisterUseCase implements UseCase<UserEntity, RegisterParams> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   RegisterUseCase(this.repository);
 
   @override

@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/auth/domain/repositories/auth_repos
 
 @injectable
 class GetCurrentUserUseCase implements UseCase<UserEntity, NoParams> {
-  final IAuthRepository repository;
+  final AuthRepository repository;
   GetCurrentUserUseCase(this.repository);
 
   @override

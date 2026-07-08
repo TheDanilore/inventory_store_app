@@ -3,7 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
 
-abstract class IAuthRepository {
+abstract class AuthRepository {
   /// Devuelve el usuario actual si hay sesión y el perfil está activo.
   Future<Either<Failure, UserEntity>> getCurrentUser();
 
