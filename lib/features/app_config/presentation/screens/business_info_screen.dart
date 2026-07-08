@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
@@ -32,7 +32,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   final _logoUrlFocus = FocusNode();
 
   bool _hasChanges = false;
-  bool _formInitialized = false;
 
   bool _loyaltyGlobalEnabled = true;
   bool _loyaltyCustomerVisible = true;
@@ -49,37 +48,23 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         setState(() => _previewLogoUrl = _logoUrlCtrl.text);
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initControllers());
-  }
 
-  void _initControllers() {
-    final config = context.read<AppConfigCubit>();
-    if (config.businessInfoState == ViewState.success || config.businessInfoState == ViewState.empty) {
-      _loadValues(config);
-    } else {
-      // Si no ha cargado, lo cargamos
-      config.loadBusinessInfo();
+    final cubit = context.read<AppConfigCubit>();
+    if (cubit.state.businessInfo != null) {
+      final info = cubit.state.businessInfo!;
+      _businessNameCtrl.text =
+          info.businessName == 'Sin configurar' ? '' : info.businessName;
+      _taxIdCtrl.text = info.taxId;
+      _addressCtrl.text = info.address;
+      _phoneCtrl.text = info.phone;
+      _logoUrlCtrl.text = info.logoUrl;
+      _loyaltyGlobalEnabled = info.loyaltyGlobalEnabled;
+      _loyaltyCustomerVisible = info.loyaltyCustomerVisible;
+
+      _previewName = _businessNameCtrl.text;
+      _previewAddress = _addressCtrl.text;
+      _previewLogoUrl = _logoUrlCtrl.text;
     }
-  }
-
-  void _loadValues(AppConfigCubit config) {
-    if (_formInitialized) return;
-
-    _businessNameCtrl.text = config.businessName == 'Sin configurar' ? '' : config.businessName;
-    _taxIdCtrl.text = config.businessTaxId;
-    _addressCtrl.text = config.businessAddress;
-    _phoneCtrl.text = config.businessPhone;
-    _logoUrlCtrl.text = config.businessLogoUrl;
-
-    _loyaltyGlobalEnabled = config.loyaltyGlobalEnabled;
-    _loyaltyCustomerVisible = config.loyaltyCustomerVisible;
-
-    _previewName = _businessNameCtrl.text;
-    _previewAddress = _addressCtrl.text;
-    _previewLogoUrl = _logoUrlCtrl.text;
-
-    _formInitialized = true;
-    _hasChanges = false;
   }
 
   @override
@@ -144,84 +129,87 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final provider = context.read<AppConfigCubit>();
-    final success = await provider.saveBusinessInfo(
+    final cubit = context.read<AppConfigCubit>();
+    await cubit.saveBusinessInfo(
       businessName: _businessNameCtrl.text,
       taxId: _taxIdCtrl.text,
       address: _addressCtrl.text,
       phone: _phoneCtrl.text,
-      // logoUrl: _logoUrlCtrl.text,
       loyaltyGlobalEnabled: _loyaltyGlobalEnabled,
       loyaltyCustomerVisible: _loyaltyCustomerVisible,
     );
-
-    if (mounted) {
-      if (success) {
-        setState(() => _hasChanges = false);
-        AppSnackbar.show(
-          context,
-          message: 'Información del negocio guardada.',
-          type: SnackbarType.success,
-        );
-      } else {
-        AppSnackbar.show(
-          context,
-          message: 'No se pudo guardar la información. Intente nuevamente.',
-          type: SnackbarType.error,
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigCubit>();
-    final isTablet = MediaQuery.of(context).size.width >= 600;
+    return BlocConsumer<AppConfigCubit, AppConfigState>(
+      listenWhen:
+          (previous, current) => previous.saveStatus != current.saveStatus,
+      listener: (context, state) {
+        if (state.saveStatus == ViewState.success) {
+          setState(() => _hasChanges = false);
+          AppSnackbar.show(
+            context,
+            message: 'Información del negocio guardada.',
+            type: SnackbarType.success,
+          );
+        } else if (state.saveStatus == ViewState.error) {
+          AppSnackbar.show(
+            context,
+            message:
+                state.errorMessage ??
+                'No se pudo guardar la información. Intente nuevamente.',
+            type: SnackbarType.error,
+          );
+        }
+      },
+      builder: (context, state) {
+        final isTablet = MediaQuery.of(context).size.width >= 600;
+        final isSaving = state.saveStatus == ViewState.loading;
+        final isLoading =
+            state.status == ViewState.initial ||
+            state.status == ViewState.loading;
+        final hasError = state.status == ViewState.error;
 
-    // Listener para cargar valores cuando pase de loading a success/empty
-    if (!_formInitialized && (config.businessInfoState == ViewState.success || config.businessInfoState == ViewState.empty)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _loadValues(config);
-        });
-      });
-    }
-
-    final isSaving = config.saveState == ViewState.loading;
-    final isLoading = config.businessInfoState == ViewState.initial || config.businessInfoState == ViewState.loading;
-    final hasError = config.businessInfoState == ViewState.error;
-
-    return AdminLayout(
-      title: 'Información del Negocio',
-      showBackButton: true,
-      bottomNavigationBar: (!isLoading && !hasError)
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: AppPrimaryButton(
-                    key: ValueKey(_hasChanges),
-                    label: _hasChanges ? 'Guardar cambios' : 'Todo guardado',
-                    loading: isSaving,
-                    icon: Icon(
-                      _hasChanges ? Icons.save_rounded : Icons.check_circle_outline_rounded,
-                      size: 18,
+        return AdminLayout(
+          title: 'Información del Negocio',
+          showBackButton: true,
+          bottomNavigationBar:
+              (!isLoading && !hasError)
+                  ? SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: AppPrimaryButton(
+                          key: ValueKey(_hasChanges),
+                          label:
+                              _hasChanges ? 'Guardar cambios' : 'Todo guardado',
+                          loading: isSaving,
+                          icon: Icon(
+                            _hasChanges
+                                ? Icons.save_rounded
+                                : Icons.check_circle_outline_rounded,
+                            size: 18,
+                          ),
+                          backgroundColor:
+                              _hasChanges ? null : Colors.grey.shade400,
+                          onPressed: (_hasChanges && !isSaving) ? _save : null,
+                        ),
+                      ),
                     ),
-                    backgroundColor: _hasChanges ? null : Colors.grey.shade400,
-                    onPressed: (_hasChanges && !isSaving) ? _save : null,
-                  ),
-                ),
-              ),
-            )
-          : null,
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : hasError
-              ? _buildErrorState(config)
-              : isTablet
+                  )
+                  : null,
+          body:
+              isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : hasError
+                  ? _buildErrorState(context.read<AppConfigCubit>())
+                  : isTablet
                   ? _buildTabletLayout(isSaving)
                   : _buildMobileLayout(isSaving),
+        );
+      },
     );
   }
 
@@ -289,7 +277,8 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     return _BusinessPreviewCard(
       businessName: _previewName.isEmpty ? 'Nombre del negocio' : _previewName,
       businessLogoUrl: _previewLogoUrl,
-      businessAddress: _previewAddress.isEmpty ? 'Dirección principal' : _previewAddress,
+      businessAddress:
+          _previewAddress.isEmpty ? 'Dirección principal' : _previewAddress,
     );
   }
 
@@ -310,9 +299,9 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               Text(
                 'Datos del negocio',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
               const SizedBox(height: 20),
               AppTextField(
@@ -322,7 +311,11 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                 hintText: 'Mi Tienda',
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                validator: (val) => val == null || val.trim().isEmpty ? 'El nombre del negocio es requerido' : null,
+                validator:
+                    (val) =>
+                        val == null || val.trim().isEmpty
+                            ? 'El nombre del negocio es requerido'
+                            : null,
                 onChanged: (val) {
                   setState(() => _previewName = val);
                   _markChanged();
@@ -384,7 +377,9 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       validator: (val) {
                         if (val != null && val.trim().isNotEmpty) {
                           final uri = Uri.tryParse(val.trim());
-                          if (uri == null || !uri.hasAbsolutePath || !uri.scheme.startsWith('http')) {
+                          if (uri == null ||
+                              !uri.hasAbsolutePath ||
+                              !uri.scheme.startsWith('http')) {
                             return 'Ingresa una URL válida (ej. https://...)';
                           }
                         }
@@ -398,17 +393,25 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                     padding: const EdgeInsets.only(top: 6),
                     child: ElevatedButton.icon(
                       onPressed: isSaving ? null : _pickLogoImage,
-                      icon: isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file_rounded, size: 20),
+                      icon:
+                          isSaving
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.upload_file_rounded, size: 20),
                       label: const Text('Subir'),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
@@ -429,14 +432,15 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                     _markChanged();
                   });
                 },
-                onCustomerVisibleChanged: _loyaltyGlobalEnabled
-                    ? (val) {
-                        setState(() {
-                          _loyaltyCustomerVisible = val;
-                          _markChanged();
-                        });
-                      }
-                    : null,
+                onCustomerVisibleChanged:
+                    _loyaltyGlobalEnabled
+                        ? (val) {
+                          setState(() {
+                            _loyaltyCustomerVisible = val;
+                            _markChanged();
+                          });
+                        }
+                        : null,
               ),
             ],
           ),
@@ -467,9 +471,9 @@ class _LoyaltySection extends StatelessWidget {
         Text(
           'Módulo de Monedas y Lealtad',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         const SizedBox(height: 12),
         SwitchListTile(
@@ -478,7 +482,9 @@ class _LoyaltySection extends StatelessWidget {
             'Habilitar Sistema Globalmente',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          subtitle: const Text('Si se apaga, el sistema desaparece para todos (clientes y admins).'),
+          subtitle: const Text(
+            'Si se apaga, el sistema desaparece para todos (clientes y admins).',
+          ),
           value: globalEnabled,
           activeThumbColor: Theme.of(context).colorScheme.primary,
           onChanged: onGlobalChanged,
@@ -489,7 +495,9 @@ class _LoyaltySection extends StatelessWidget {
             'Visible para Clientes',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          subtitle: const Text('Si se apaga, los clientes no lo ven, pero los administradores sí.'),
+          subtitle: const Text(
+            'Si se apaga, los clientes no lo ven, pero los administradores sí.',
+          ),
           value: customerVisible,
           activeThumbColor: Theme.of(context).colorScheme.primary,
           onChanged: onCustomerVisibleChanged,
@@ -558,13 +566,16 @@ class _BusinessPreviewCard extends StatelessWidget {
                 Text(
                   'Vista previa',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade100,
                     borderRadius: BorderRadius.circular(6),
@@ -583,7 +594,8 @@ class _BusinessPreviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Semantics(
-              label: 'Vista previa del negocio: $businessName, $businessAddress',
+              label:
+                  'Vista previa del negocio: $businessName, $businessAddress',
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -602,7 +614,9 @@ class _BusinessPreviewCard extends StatelessWidget {
                     const SizedBox(height: 14),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
-                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+                      transitionBuilder:
+                          (child, animation) =>
+                              FadeTransition(opacity: animation, child: child),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -619,7 +633,9 @@ class _BusinessPreviewCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
-                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+                      transitionBuilder:
+                          (child, animation) =>
+                              FadeTransition(opacity: animation, child: child),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -670,18 +686,23 @@ class _LogoBadge extends StatelessWidget {
       child: CachedNetworkImage(
         imageUrl: logoUrl,
         fit: BoxFit.cover,
-        placeholder: (context, url) => const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-          ),
-        ),
-        errorWidget: (context, url, error) => const Icon(
-          Icons.storefront_rounded,
-          color: Colors.white,
-          size: 34,
-        ),
+        placeholder:
+            (context, url) => const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+        errorWidget:
+            (context, url, error) => const Icon(
+              Icons.storefront_rounded,
+              color: Colors.white,
+              size: 34,
+            ),
       ),
     );
   }
