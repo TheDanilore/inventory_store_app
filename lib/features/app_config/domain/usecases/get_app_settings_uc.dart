@@ -1,6 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/core/utils/result.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 
@@ -11,22 +11,22 @@ class GetAppSettingsUseCase extends UseCase<Map<String, double>, NoParams> {
   GetAppSettingsUseCase(this.repository);
 
   @override
-  Future<Result<Map<String, double>>> execute(NoParams params) async {
+  Future<Either<Failure, Map<String, double>>> call(NoParams params) async {
     try {
       // Intentar obtener de remoto
       try {
         final settings = await repository.fetchAppSettings();
-        return Success(settings);
+        return right(settings);
       } catch (remoteError) {
         // Fallback a caché
         final cached = await repository.fetchCachedSettings();
         if (cached != null) {
-          return Success(cached);
+          return right(cached);
         }
-        return Error(Failure.from(remoteError));
+        return left(Failure.from(remoteError));
       }
     } catch (e) {
-      return Error(Failure.from(e));
+      return left(Failure.from(e));
     }
   }
 }

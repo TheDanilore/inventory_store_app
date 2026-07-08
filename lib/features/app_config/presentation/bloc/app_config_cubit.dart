@@ -69,7 +69,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   Future<void> fetchSettings() async {
     emit(state.copyWith(isLoadingSettings: true, clearErrorMessage: true));
 
-    final result = await getAppSettingsUseCase.execute(const NoParams());
+    final result = await getAppSettingsUseCase(const NoParams());
 
     result.fold(
       (failure) => emit(state.copyWith(
@@ -89,7 +89,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
 
     emit(state.copyWith(isLoadingBusinessInfo: true, clearErrorMessage: true));
 
-    final result = await getBusinessInfoUseCase.execute(const NoParams());
+    final result = await getBusinessInfoUseCase(const NoParams());
 
     result.fold(
       (failure) {
@@ -155,7 +155,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       loyaltyCustomerVisible: loyaltyCustomerVisible,
     );
 
-    final result = await saveBusinessInfoUseCase.execute(updatedInfo);
+    final result = await saveBusinessInfoUseCase(updatedInfo);
 
     return result.fold(
       (failure) {
@@ -184,7 +184,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   }) async {
     emit(state.copyWith(isSaving: true, clearErrorMessage: true, saveSuccess: false));
 
-    final logoResult = await uploadLogoUseCase.execute(logoBytes);
+    final logoResult = await uploadLogoUseCase(logoBytes);
 
     return logoResult.fold(
       (failure) {
@@ -213,7 +213,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
           loyaltyCustomerVisible: loyaltyCustomerVisible,
         );
 
-        final result = await saveBusinessInfoUseCase.execute(updatedInfo);
+        final result = await saveBusinessInfoUseCase(updatedInfo);
 
         return result.fold(
           (failure) {

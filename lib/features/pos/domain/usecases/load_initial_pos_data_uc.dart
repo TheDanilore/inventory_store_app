@@ -1,5 +1,5 @@
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/core/utils/result.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 
@@ -15,12 +15,12 @@ class LoadInitialPosDataUseCase extends UseCase<PosInitData, LoadInitialPosDataP
   LoadInitialPosDataUseCase(this.repository);
 
   @override
-  Future<Result<PosInitData>> execute(LoadInitialPosDataParams params) async {
+  Future<Either<Failure, PosInitData>> call(LoadInitialPosDataParams params) async {
     try {
       final data = await repository.loadInitialData(forceRefresh: params.forceRefresh);
-      return Success(data);
+      return right(data);
     } catch (e) {
-      return Error(Failure.from(e));
+      return left(Failure.from(e));
     }
   }
 }
