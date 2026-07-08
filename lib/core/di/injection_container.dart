@@ -16,7 +16,7 @@ Future<void> initDI() async {
   sl.registerLazySingleton<SupabaseClient>(() => Supabase.instance.client);
 
   // --- Network ---
-  sl.registerFactory(() => NetworkCubit());
+  sl.registerLazySingleton(() => NetworkCubit());
 
   // --- App Config ---
   // Repositories
