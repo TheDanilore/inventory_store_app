@@ -1,8 +1,10 @@
+import 'package:injectable/injectable.dart';
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/network/network_state.dart';
 
+@lazySingleton
 class NetworkCubit extends Cubit<NetworkState> {
   StreamSubscription? _connectivitySubscription;
 

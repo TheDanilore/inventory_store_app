@@ -32,7 +32,7 @@ Future<void> main() async {
   usePathUrlStrategy();
 
   // Inicializar Inyección de Dependencias
-  await initDI();
+  initDI();
 
   // Supabase.initialize lanza si ya fue inicializado (en hot restart).
   // Lo envolvemos para que sea idempotente.

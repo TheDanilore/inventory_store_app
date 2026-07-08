@@ -66,6 +66,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   equatable: ^2.1.0
   get_it: ^9.2.1
+  injectable: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +79,8 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  build_runner: ^2.15.1
+  injectable_generator: ^3.1.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

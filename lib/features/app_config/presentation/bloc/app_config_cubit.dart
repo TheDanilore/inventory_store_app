@@ -1,3 +1,4 @@
+import 'package:injectable/injectable.dart';
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -9,6 +10,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
 
+@injectable
 class AppConfigCubit extends Cubit<AppConfigState> {
   final GetAppSettingsUseCase getAppSettingsUseCase;
   final GetBusinessInfoUseCase getBusinessInfoUseCase;

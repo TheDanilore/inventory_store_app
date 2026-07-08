@@ -1,3 +1,4 @@
+import 'package:injectable/injectable.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +8,7 @@ import 'package:inventory_store_app/features/app_config/data/models/app_setting_
 
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 
+@LazySingleton(as: AppConfigRepository)
 class AppConfigRepositoryImpl implements AppConfigRepository {
   final SupabaseClient _supabase;
   static const String _settingsCacheKey = 'cached_app_settings';
