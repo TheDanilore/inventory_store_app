@@ -42,6 +42,18 @@ import '../../features/catalog/data/repositories_impl/catalog_repository_impl.da
     as _i524;
 import '../../features/catalog/domain/repositories/catalog_repository.dart'
     as _i1018;
+import '../../features/catalog/domain/usecases/catalog_image_ucs.dart'
+    as _i1014;
+import '../../features/catalog/domain/usecases/catalog_ingredient_ucs.dart'
+    as _i597;
+import '../../features/catalog/domain/usecases/catalog_variant_ucs.dart'
+    as _i929;
+import '../../features/catalog/domain/usecases/get_categories_uc.dart' as _i700;
+import '../../features/catalog/domain/usecases/get_product_by_id_uc.dart'
+    as _i567;
+import '../../features/catalog/domain/usecases/get_product_stock_uc.dart'
+    as _i958;
+import '../../features/catalog/domain/usecases/get_products_uc.dart' as _i222;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -63,6 +75,69 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i257.AppConfigRepository>(
       () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i1014.GetProductImagesUC>(
+      () => _i1014.GetProductImagesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1014.UploadImageToStorageUC>(
+      () => _i1014.UploadImageToStorageUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1014.DeleteProductImageUC>(
+      () => _i1014.DeleteProductImageUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1014.SyncProductImagesUC>(
+      () => _i1014.SyncProductImagesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1014.ClearVariantImagesUC>(
+      () => _i1014.ClearVariantImagesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i597.GetAttributesUC>(
+      () => _i597.GetAttributesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i597.GetProductIngredientsUC>(
+      () => _i597.GetProductIngredientsUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i597.SearchIngredientsUC>(
+      () => _i597.SearchIngredientsUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i597.CreateIngredientUC>(
+      () => _i597.CreateIngredientUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i597.ClearProductIngredientsUC>(
+      () => _i597.ClearProductIngredientsUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i597.InsertProductIngredientUC>(
+      () => _i597.InsertProductIngredientUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i929.GetVariantByIdUC>(
+      () => _i929.GetVariantByIdUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i929.GetStockByVariantUC>(
+      () => _i929.GetStockByVariantUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i929.GetVariantsDraftsUC>(
+      () => _i929.GetVariantsDraftsUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i929.DeleteVariantUC>(
+      () => _i929.DeleteVariantUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i929.DeactivateVariantUC>(
+      () => _i929.DeactivateVariantUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i929.HasVariantSalesUC>(
+      () => _i929.HasVariantSalesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i700.GetCategoriesUC>(
+      () => _i700.GetCategoriesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i567.GetProductByIdUC>(
+      () => _i567.GetProductByIdUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i958.GetProductStockUC>(
+      () => _i958.GetProductStockUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i222.GetProductsUC>(
+      () => _i222.GetProductsUC(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i506.GetAppSettingsUseCase>(
       () => _i506.GetAppSettingsUseCase(gh<_i257.AppConfigRepository>()),
