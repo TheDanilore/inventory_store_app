@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/core/network/presentation/bloc/network_state.dart';
+import 'package:inventory_store_app/core/network/network_state.dart';
 
 class NetworkCubit extends Cubit<NetworkState> {
   StreamSubscription? _connectivitySubscription;

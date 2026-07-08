@@ -1,6 +1,6 @@
 import 'dart:typed_data';
-import 'package:inventory_store_app/core/models/business_info_model.dart';
-import 'package:inventory_store_app/core/models/app_setting_model.dart';
+import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
+import 'package:inventory_store_app/features/app_config/data/models/app_setting_model.dart';
 
 /// Contrato del repositorio de configuración de la app.
 abstract class AppConfigRepository {

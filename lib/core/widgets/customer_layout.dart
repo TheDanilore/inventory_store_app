@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/core/network/presentation/bloc/network_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'dart:ui';

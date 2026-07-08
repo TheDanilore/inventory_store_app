@@ -1,13 +1,13 @@
 import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/core/config/domain/usecases/get_app_settings_uc.dart';
-import 'package:inventory_store_app/core/config/domain/usecases/get_business_info_uc.dart';
-import 'package:inventory_store_app/core/config/domain/usecases/save_business_info_uc.dart';
-import 'package:inventory_store_app/core/config/domain/usecases/upload_logo_uc.dart';
-import 'package:inventory_store_app/core/config/presentation/bloc/app_config_state.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/get_app_settings_uc.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/get_business_info_uc.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/save_business_info_uc.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/upload_logo_uc.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
-import 'package:inventory_store_app/core/models/business_info_model.dart';
+import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
 
 class AppConfigCubit extends Cubit<AppConfigState> {
   final GetAppSettingsUseCase getAppSettingsUseCase;

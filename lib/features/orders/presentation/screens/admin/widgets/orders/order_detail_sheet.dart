@@ -8,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
-import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/order_detail_provider.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';

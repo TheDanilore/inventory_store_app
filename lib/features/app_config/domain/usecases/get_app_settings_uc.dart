@@ -1,7 +1,7 @@
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/utils/result.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
-import 'package:inventory_store_app/core/config/domain/repositories/app_config_repository.dart';
+import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 
 class GetAppSettingsUseCase extends UseCase<Map<String, double>, NoParams> {
   final AppConfigRepository repository;

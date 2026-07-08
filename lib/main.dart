@@ -3,7 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/core/app_providers.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
+import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
@@ -12,8 +15,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/core/network/presentation/bloc/network_cubit.dart';
-import 'package:inventory_store_app/core/config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/core/network/network_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 
 // ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
 // En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
@@ -77,7 +80,10 @@ class MyApp extends StatelessWidget {
         providers: [
           // Inyectamos la instancia global con .value (no crea una nueva).
           ChangeNotifierProvider<AuthProvider>.value(value: _authProvider!),
-          ...AppProviders.providersExcludingAuth,
+          ChangeNotifierProvider(create: (_) => UsersProvider(role: '')),
+          ChangeNotifierProvider(create: (_) => PointsProvider()),
+          ChangeNotifierProvider(create: (_) => PosProvider()),
+          ChangeNotifierProvider(create: (_) => CartCheckoutProvider()),
         ],
         child: MaterialApp.router(
           restorationScopeId: 'app',

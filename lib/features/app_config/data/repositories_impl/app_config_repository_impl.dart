@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/core/models/business_info_model.dart';
-import 'package:inventory_store_app/core/models/app_setting_model.dart';
+import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
+import 'package:inventory_store_app/features/app_config/data/models/app_setting_model.dart';
 
-import 'package:inventory_store_app/core/config/domain/repositories/app_config_repository.dart';
+import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 
 class AppConfigRepositoryImpl implements AppConfigRepository {
   final SupabaseClient _supabase;

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:inventory_store_app/core/models/business_info_model.dart';
+import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
 
 class AppConfigState extends Equatable {
   final Map<String, double> values;
