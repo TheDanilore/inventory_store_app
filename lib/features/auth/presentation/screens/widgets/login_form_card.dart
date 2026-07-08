@@ -3,7 +3,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 class LoginFormCard extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -59,7 +60,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
 
   Future<void> _showForgotPasswordDialog() async {
     final emailCtrl = TextEditingController(text: widget.emailController.text);
-    final provider = context.read<AuthProvider>();
+    final cubit = context.read<AuthCubit>();
 
     await showDialog(
       context: context,
@@ -106,7 +107,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
 
                 Navigator.pop(ctx); // Cerrar diálogo antes de procesar
 
-                final error = await provider.sendPasswordResetEmail(email);
+                final error = await cubit.resetPassword(email);
                 if (error != null) {
                   if (mounted) {
                     AppSnackbar.show(

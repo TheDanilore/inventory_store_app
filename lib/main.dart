@@ -9,13 +9,13 @@ import 'package:inventory_store_app/features/pos/presentation/providers/pos_prov
 import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 
 // ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
@@ -23,7 +23,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 // el entrypoint varias veces. Usar `late final` sin guard causaría
 // "DartError: Assertion failed" al intentar reasignar una variable `late final`
 // ya inicializada. La solución es usar nullable + inicialización condicional.
-AuthProvider? _authProvider;
+AuthCubit? _authCubit;
 GoRouter? _router;
 
 Future<void> main() async {
@@ -56,8 +56,8 @@ Future<void> main() async {
   // Inicialización idempotente: solo creamos las instancias la primera vez.
   // En hot restart estas variables ya tienen valor → no las recreamos,
   // evitando así duplicar el NavigatorKey y el GoRouter.
-  _authProvider ??= AuthProvider();
-  _router ??= AppRouter.createRouter(_authProvider!);
+  _authCubit ??= sl<AuthCubit>()..checkSession();
+  _router ??= AppRouter.createRouter(_authCubit!);
 
   runApp(const MyApp());
 }
@@ -69,6 +69,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider.value(value: _authCubit!),
         BlocProvider(create: (_) => sl<NetworkCubit>()),
         BlocProvider(
           create: (_) => sl<AppConfigCubit>()
@@ -79,7 +80,7 @@ class MyApp extends StatelessWidget {
       child: MultiProvider(
         providers: [
           // Inyectamos la instancia global con .value (no crea una nueva).
-          ChangeNotifierProvider<AuthProvider>.value(value: _authProvider!),
+          
           ChangeNotifierProvider(create: (_) => UsersProvider(role: '')),
           ChangeNotifierProvider(create: (_) => PointsProvider()),
           ChangeNotifierProvider(create: (_) => PosProvider()),

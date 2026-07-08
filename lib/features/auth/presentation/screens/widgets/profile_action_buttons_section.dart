@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:go_router/go_router.dart';
 
 class ProfileActionButtonsSection extends StatelessWidget {
@@ -19,7 +21,7 @@ class ProfileActionButtonsSection extends StatelessWidget {
   });
 
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
-    final provider = context.read<ProfileProvider>();
+    final cubit = context.read<AuthCubit>();
     final passwordCtrl = TextEditingController();
 
     await showDialog(
@@ -29,7 +31,8 @@ class ProfileActionButtonsSection extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             final isDeleting =
-                context.watch<ProfileProvider>().isDeletingAccount;
+                (context.watch<AuthCubit>().state.viewState ==
+                    ViewState.loading);
 
             return AlertDialog(
               title: const Text(
@@ -73,14 +76,14 @@ class ProfileActionButtonsSection extends StatelessWidget {
                           ? null
                           : () async {
                             if (passwordCtrl.text.isEmpty) return;
-                            final error = await provider.deleteAccount(
+                            final success = await cubit.deleteAccount(
                               passwordCtrl.text,
                             );
-                            if (error != null) {
+                            if (!success) {
                               if (ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(
-                                    content: Text(error),
+                                  const SnackBar(
+                                    content: Text('Error al eliminar la cuenta'),
                                     backgroundColor: Colors.red,
                                   ),
                                 );

@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -6,7 +7,8 @@ import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/features/catalog/presentation/providers/admin_catalog_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+
+
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -184,8 +186,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               const SizedBox(width: 12),
                               AdminProfileAvatar(
                                 onTap: () {
-                                  final auth = context.read<AuthProvider>();
-                                  if (auth.currentUser == null) {
+                                  final auth = context.read<AuthCubit>();
+                                  if (auth.state.currentUser == null) {
                                     context.go('/login');
                                   } else {
                                     context.push('/admin/profile');

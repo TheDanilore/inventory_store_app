@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -70,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Removido _checkSession ya que GoRouter lo maneja globalmente
 
-  Future<void> _authenticate() async {
+  void _authenticate(bool isLoginMode) {
     if (!_formKey.currentState!.validate()) {
       AppSnackbar.show(
         context,
@@ -80,42 +82,22 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    final provider = context.read<AuthProvider>();
+    final cubit = context.read<AuthCubit>();
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    final error = await provider.authenticate(
-      email: email,
-      password: password,
-      name: name,
-    );
-
-    if (!mounted) return;
-
-    if (error != null) {
-      AppSnackbar.show(context, message: error, type: SnackbarType.error);
+    if (isLoginMode) {
+      cubit.login(email, password);
     } else {
-      if (!provider.isLoginMode) {
-        AppSnackbar.show(
-          context,
-          message: 'Registro exitoso. Iniciando sesión...',
-          type: SnackbarType.success,
-        );
-      }
-
-      if (provider.currentUserRole == AppRoles.admin) {
-        context.go('/admin');
-      } else {
-        context.go('/customer');
-      }
+      cubit.register(email, password, name);
     }
   }
 
-  void _onToggleMode() {
-    final provider = context.read<AuthProvider>();
-    provider.toggleMode();
-    if (provider.isLoginMode) {
+  void _onToggleMode(bool currentIsLoginMode) {
+    final cubit = context.read<AuthCubit>();
+    cubit.toggleMode();
+    if (!currentIsLoginMode) {
       _nameController.clear();
     }
     _fadeCtrl.forward(from: 0);
@@ -123,11 +105,30 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AuthProvider>();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state.viewState == ViewState.error && state.errorMessage != null) {
+          AppSnackbar.show(context, message: state.errorMessage!, type: SnackbarType.error);
+        } else if (state.viewState == ViewState.success) {
+           if (!state.isLoginMode) {
+             AppSnackbar.show(
+               context,
+               message: 'Registro exitoso.',
+               type: SnackbarType.success,
+             );
+           }
+           if (state.currentUser?.role == AppRoles.admin) {
+             context.go('/admin');
+           } else {
+             context.go('/customer');
+           }
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: Stack(
         children: [
           // ── Decorative blobs ─────────────────────────────────────────────
           AnimatedBuilder(
@@ -239,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen>
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               LoginHeaderSection(
-                                isLoginMode: provider.isLoginMode,
+                                isLoginMode: state.isLoginMode,
                               ),
                               const SizedBox(height: 32),
                               LoginFormCard(
@@ -247,15 +248,15 @@ class _LoginScreenState extends State<LoginScreen>
                                 nameController: _nameController,
                                 emailController: _emailController,
                                 passwordController: _passwordController,
-                                isLoginMode: provider.isLoginMode,
-                                isLoading: provider.isLoading,
-                                onAuthenticate: _authenticate,
+                                isLoginMode: state.isLoginMode,
+                                isLoading: state.viewState == ViewState.loading,
+                                onAuthenticate: () => _authenticate(state.isLoginMode),
                               ),
                               const SizedBox(height: 20),
                               LoginToggleMode(
-                                isLoginMode: provider.isLoginMode,
-                                isLoading: provider.isLoading,
-                                onToggle: _onToggleMode,
+                                isLoginMode: state.isLoginMode,
+                                isLoading: state.viewState == ViewState.loading,
+                                onToggle: () => _onToggleMode(state.isLoginMode),
                               ),
                               const SizedBox(height: 32),
                             ],
@@ -270,6 +271,8 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

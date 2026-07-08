@@ -1,69 +1,61 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/customer_layout.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/widgets/profile_header_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/widgets/profile_quick_action_grid.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/widgets/profile_read_only_info_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/widgets/profile_edit_form_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/widgets/profile_action_buttons_section.dart';
-import 'package:inventory_store_app/features/auth/presentation/screens/widgets/profile_shimmer.dart';
-import 'dart:ui';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
+
+import 'widgets/profile_header_section.dart';
+import 'widgets/profile_edit_form_section.dart';
+import 'widgets/profile_read_only_info_section.dart';
+
+import 'widgets/profile_action_buttons_section.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool openedFromAdmin;
-  const ProfileScreen({super.key, this.openedFromAdmin = false});
+  const ProfileScreen({super.key, required this.openedFromAdmin});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _nameCtrl = TextEditingController();
+  bool _isEditing = false;
+  File? _selectedImage;
+  
+  final _fullNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _docNumCtrl = TextEditingController();
+  String _docType = 'DNI';
+
   final _newPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
-
-  bool _isEditing = false;
-  String _docType = 'DNI';
-  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadData();
-    });
+    _populateFields();
   }
 
-  void _loadData() {
-    final provider = context.read<ProfileProvider>();
-    provider.fetchUserProfile().then((_) {
-      if (mounted) {
-        setState(() {
-          _nameCtrl.text = provider.fullName;
-          _phoneCtrl.text = provider.phone;
-          _docNumCtrl.text = provider.documentNumber;
-          _docType = provider.documentType;
-          _hasInitialized = true;
-        });
-      }
-    });
+  void _populateFields() {
+    final user = context.read<AuthCubit>().state.currentUser;
+    if (user != null) {
+      _fullNameCtrl.text = user.fullName;
+      _phoneCtrl.text = user.phone;
+      _docNumCtrl.text = user.documentNumber;
+      _docType = user.documentType.isEmpty ? 'DNI' : user.documentType;
+    }
   }
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
+    _fullNameCtrl.dispose();
     _phoneCtrl.dispose();
     _docNumCtrl.dispose();
     _newPasswordCtrl.dispose();
@@ -73,402 +65,229 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (!mounted) return;
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+    );
     if (pickedFile != null) {
-      final provider = context.read<ProfileProvider>();
-      final bytesOriginales = await pickedFile.readAsBytes();
-      final bytesOptimizados = await provider.optimizeImage(bytesOriginales);
-      provider.setImageBytes(bytesOptimizados);
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
     }
   }
 
-  Future<void> _saveProfile() async {
-    final provider = context.read<ProfileProvider>();
-    final success = await provider.saveProfile(
-      fullName: _nameCtrl.text,
-      phone: _phoneCtrl.text,
-      docType: _docType,
-      docNum: _docNumCtrl.text,
+  void _saveProfile() async {
+    final cubit = context.read<AuthCubit>();
+    final currentUser = cubit.state.currentUser;
+    if (currentUser == null) return;
+
+    final updatedUser = UserEntity(
+      id: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
+      fullName: _fullNameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      documentType: _docType,
+      documentNumber: _docNumCtrl.text.trim(),
+      avatarUrl: currentUser.avatarUrl,
+      isActive: currentUser.isActive,
     );
 
-    if (!mounted) return;
+    final imageBytes = _selectedImage != null ? await _selectedImage!.readAsBytes() : null;
 
-    if (success) {
-      setState(() => _isEditing = false);
+    final success = await cubit.updateProfile(updatedUser, imageBytes: imageBytes);
+    if (success && mounted) {
       AppSnackbar.show(
         context,
-        message: 'Perfil actualizado con éxito',
+        message: 'Perfil actualizado exitosamente',
         type: SnackbarType.success,
       );
-    } else {
-      AppSnackbar.show(
-        context,
-        message: 'Error al actualizar el perfil.',
-        type: SnackbarType.error,
-      );
+      setState(() {
+        _isEditing = false;
+        _selectedImage = null;
+      });
     }
   }
 
-  Future<void> _changePassword() async {
-    final newPassword = _newPasswordCtrl.text.trim();
-    final confirmPassword = _confirmPasswordCtrl.text.trim();
-
-    if (newPassword.isEmpty || confirmPassword.isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'Ingresa y confirma la nueva contraseña.',
-        type: SnackbarType.error,
-      );
+  void _changePassword() async {
+    if (_newPasswordCtrl.text.isEmpty || _confirmPasswordCtrl.text.isEmpty) {
+      AppSnackbar.show(context, message: 'Llena las contraseñas', type: SnackbarType.warning);
       return;
     }
-    if (newPassword != confirmPassword) {
-      AppSnackbar.show(
-        context,
-        message: 'Las contraseñas no coinciden.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    if (newPassword.length < 8) {
-      AppSnackbar.show(
-        context,
-        message: 'La contraseña debe tener al menos 8 caracteres.',
-        type: SnackbarType.error,
-      );
+    if (_newPasswordCtrl.text != _confirmPasswordCtrl.text) {
+      AppSnackbar.show(context, message: 'Las contraseñas no coinciden', type: SnackbarType.warning);
       return;
     }
 
-    final provider = context.read<ProfileProvider>();
-    final success = await provider.changePassword(newPassword);
-
-    if (!mounted) return;
-
-    if (success) {
-      _newPasswordCtrl.clear();
-      _confirmPasswordCtrl.clear();
+    final cubit = context.read<AuthCubit>();
+    final success = await cubit.changePassword(_newPasswordCtrl.text);
+    if (success && mounted) {
       AppSnackbar.show(
         context,
-        message: 'Contraseña actualizada con éxito.',
+        message: 'Contraseña actualizada exitosamente',
         type: SnackbarType.success,
       );
-    } else {
-      AppSnackbar.show(
-        context,
-        message: 'Error al cambiar contraseña.',
-        type: SnackbarType.error,
-      );
+      _newPasswordCtrl.clear();
+      _confirmPasswordCtrl.clear();
+      setState(() => _isEditing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProfileProvider>();
-    final config = context.watch<AppConfigCubit>();
-    final walletBalance = context.watch<WalletProvider>().balance ?? 0;
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state.viewState == ViewState.error && state.errorMessage != null) {
+           AppSnackbar.show(context, message: state.errorMessage!, type: SnackbarType.error);
+        }
+      },
+      builder: (context, state) {
+        final user = state.currentUser;
+        final isLoading = state.viewState == ViewState.loading;
+        final avatarUrl = user?.avatarUrl;
 
-    final isLoyaltyEnabled =
-        widget.openedFromAdmin
-            ? config.loyaltyGlobalEnabled
-            : (config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible);
-
-    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
-
-    return CustomerLayout(
-      title: 'Mi Perfil',
-      currentIndex: 2,
-      showBackButton: widget.openedFromAdmin,
-      showProfileIcon: false,
-      showBottomNav: !widget.openedFromAdmin,
-      showCartIcon: false,
-      body:
-          provider.isLoading || !_hasInitialized
-              ? const ProfileShimmer()
-              : LayoutBuilder(
-                builder: (context, constraints) {
-                  final isTablet = constraints.maxWidth >= 700;
-                  final horizontalPadding =
-                      isTablet ? (constraints.maxWidth - 700) / 2 : 0.0;
-                  return RefreshIndicator(
-                    color: AppColors.teal,
-                    onRefresh: () async {
-                      await provider.fetchUserProfile();
-                    },
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverPadding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: AppColors.textPrimary),
+              ),
+              onPressed: () => context.canPop() ? context.pop() : context.go(widget.openedFromAdmin ? '/admin' : '/customer'),
+            ),
+            actions: [
+              if (user == null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _isEditing
+                        ? IconButton(
+                            key: const ValueKey('cancelBtn'),
+                            icon: const Icon(Icons.close_rounded, color: AppColors.error),
+                            onPressed: () {
+                              setState(() {
+                                _isEditing = false;
+                                _selectedImage = null;
+                                _populateFields();
+                              });
+                            },
+                          )
+                        : IconButton(
+                            key: const ValueKey('editBtn'),
+                            icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                            onPressed: () {
+                              setState(() => _isEditing = true);
+                            },
                           ),
-                          sliver: SliverList(
-                            delegate: SliverChildListDelegate([
-                              ProfileHeaderSection(
-                                displayName:
-                                    provider.fullName.isEmpty
-                                        ? 'Usuario'
-                                        : provider.fullName,
-                                userRole: provider.userRole,
-                                email: email,
-                                walletBalance: walletBalance,
-                                avatarUrl: provider.avatarUrl,
-                                imageBytes: provider.imageBytes,
-                                isEditing: _isEditing,
-                                isLoyaltyEnabled: isLoyaltyEnabled,
-                                onPickImage: _pickImage,
-                                onEditToggle:
-                                    () => setState(() {
-                                      if (_isEditing) {
-                                        // Cancelar edición revierte los valores
-                                        _nameCtrl.text = provider.fullName;
-                                        _phoneCtrl.text = provider.phone;
-                                        _docNumCtrl.text =
-                                            provider.documentNumber;
-                                        _docType = provider.documentType;
-                                        provider.setImageBytes(null);
-                                      }
-                                      _isEditing = !_isEditing;
-                                    }),
-                                isTablet: isTablet,
-                              ),
-                              const SizedBox(height: 8),
-
-                              if (!widget.openedFromAdmin)
-                                Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                  ),
+                ),
+            ],
+          ),
+          body: user == null
+              ? const Center(child: Text('Inicia sesión para ver tu perfil'))
+              : SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      ProfileHeaderSection(
+                        displayName: user.fullName,
+                        userRole: user.role,
+                        email: user.email,
+                        walletBalance: 0, // Ignored logic for now
+                        avatarUrl: avatarUrl,
+                        imageBytes: null, // we handle file directly, so just pass null
+                        isEditing: _isEditing,
+                        isLoyaltyEnabled: false,
+                        onPickImage: _pickImage,
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          child: _isEditing
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    _sectionLabel('Accesos rápidos'),
-                                    ProfileQuickActionGrid(
-                                      items: [
-                                        if (isLoyaltyEnabled)
-                                          ProfileQuickActionItem(
-                                            title: 'Monedas',
-                                            value: 'Canjear ',
-                                            icon: Icons.stars_rounded,
-                                            color: AppColors.gold,
-                                            onTap:
-                                                () => context.push(
-                                                  '/customer/points',
-                                                ),
+                                    _sectionLabelInline(context, 'Editar Datos Personales'),
+                                    Stack(
+                                      children: [
+                                        ProfileEditFormSection(
+                                          nameCtrl: _fullNameCtrl,
+                                          phoneCtrl: _phoneCtrl,
+                                          docNumCtrl: _docNumCtrl,
+                                          docType: _docType,
+                                          onDocTypeChanged: (val) => setState(() => _docType = val),
+                                          onSave: _saveProfile,
+                                        ),
+                                        if (isLoading)
+                                          Positioned.fill(
+                                            child: Container(
+                                              color: Colors.white.withValues(alpha: 0.5),
+                                              child: const Center(child: CircularProgressIndicator()),
+                                            ),
                                           ),
-                                        ProfileQuickActionItem(
-                                          title: 'Pedidos',
-                                          value: 'Ver historial',
-                                          icon: Icons.receipt_long_rounded,
-                                          color: AppColors.info,
-                                          onTap:
-                                              () => context.push(
-                                                '/customer/orders',
-                                              ),
-                                        ),
-                                        ProfileQuickActionItem(
-                                          title: 'Ubicaciones',
-                                          value: 'Mis ubicaciones',
-                                          icon: Icons.map_rounded,
-                                          color: AppColors.teal,
-                                          onTap:
-                                              () => context.push(
-                                                '/customer/locations',
-                                              ),
-                                        ),
-                                        ProfileQuickActionItem(
-                                          title: 'Deseos',
-                                          value: 'Ver wishlist',
-                                          icon: Icons.favorite_rounded,
-                                          color: AppColors.accent,
-                                          onTap:
-                                              () => context.push(
-                                                '/customer/wishlist',
-                                              ),
-                                        ),
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 14),
+                                    _sectionLabelInline(context, 'Seguridad'),
+                                    PasswordChangeCard(
+                                      newPasswordCtrl: _newPasswordCtrl,
+                                      confirmPasswordCtrl: _confirmPasswordCtrl,
+                                      isUpdating: isLoading,
+                                      onSave: _changePassword,
+                                    ),
                                   ],
-                                ),
-
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    AnimatedSize(
-                                      duration: const Duration(
-                                        milliseconds: 350,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      alignment: Alignment.topCenter,
-                                      child: AnimatedSwitcher(
-                                        duration: const Duration(
-                                          milliseconds: 250,
-                                        ),
-                                        switchInCurve: Curves.easeOut,
-                                        switchOutCurve: Curves.easeIn,
-                                        child:
-                                            _isEditing
-                                                ? Column(
-                                                  key: const ValueKey(
-                                                    'editMode',
-                                                  ),
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    _sectionLabelInline(
-                                                      context,
-                                                      'Editar datos personales',
-                                                    ),
-                                                    Stack(
-                                                      children: [
-                                                        ProfileEditFormSection(
-                                                          nameCtrl: _nameCtrl,
-                                                          phoneCtrl: _phoneCtrl,
-                                                          docNumCtrl:
-                                                              _docNumCtrl,
-                                                          docType: _docType,
-                                                          onDocTypeChanged:
-                                                              (v) => setState(
-                                                                () =>
-                                                                    _docType =
-                                                                        v,
-                                                              ),
-                                                          onSave:
-                                                              provider.isSaving
-                                                                  ? () {}
-                                                                  : _saveProfile,
-                                                        ),
-                                                        if (provider.isSaving)
-                                                          Positioned.fill(
-                                                            child: ClipRRect(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    24,
-                                                                  ),
-                                                              child: BackdropFilter(
-                                                                filter:
-                                                                    ImageFilter.blur(
-                                                                      sigmaX: 8,
-                                                                      sigmaY: 8,
-                                                                    ),
-                                                                child: Container(
-                                                                  color: Colors
-                                                                      .white
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.3,
-                                                                      ),
-                                                                  child: const Center(
-                                                                    child:
-                                                                        CircularProgressIndicator(),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 14),
-                                                    _sectionLabelInline(
-                                                      context,
-                                                      'Seguridad',
-                                                    ),
-                                                    PasswordChangeCard(
-                                                      newPasswordCtrl:
-                                                          _newPasswordCtrl,
-                                                      confirmPasswordCtrl:
-                                                          _confirmPasswordCtrl,
-                                                      isUpdating:
-                                                          provider
-                                                              .isUpdatingPassword,
-                                                      onSave: _changePassword,
-                                                    ),
-                                                  ],
-                                                )
-                                                : Column(
-                                                  key: const ValueKey(
-                                                    'readMode',
-                                                  ),
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    _sectionLabelInline(
-                                                      context,
-                                                      'Información de cuenta',
-                                                    ),
-                                                    ProfileReadOnlyInfoSection(
-                                                      email:
-                                                          email.isEmpty
-                                                              ? 'Sin correo'
-                                                              : email,
-                                                      userRole:
-                                                          provider.userRole,
-                                                      fullName:
-                                                          provider.fullName,
-                                                      phone: provider.phone,
-                                                      docType:
-                                                          provider.documentType,
-                                                      docNum:
-                                                          provider
-                                                              .documentNumber,
-                                                    ),
-                                                  ],
-                                                ),
-                                      ),
+                                    _sectionLabelInline(context, 'Información de cuenta'),
+                                    ProfileReadOnlyInfoSection(
+                                      email: user.email.isEmpty ? 'Sin correo' : user.email,
+                                      userRole: user.role,
+                                      fullName: user.fullName,
+                                      phone: user.phone,
+                                      docType: user.documentType,
+                                      docNum: user.documentNumber,
                                     ),
-                                    const SizedBox(height: 20),
-                                    ProfileActionButtonsSection(
-                                      isAdmin:
-                                          provider.userRole == 'Administrador',
-                                      openedFromAdmin: widget.openedFromAdmin,
-                                      onToggleView: () {
-                                        if (widget.openedFromAdmin) {
-                                          context.go('/customer');
-                                        } else {
-                                          context.go('/admin');
-                                        }
-                                      },
-                                      onSignOut: () async {
-                                        final authProvider =
-                                            context.read<AuthProvider>();
-                                        authProvider.clearSession();
-                                        try {
-                                          await provider.signOut();
-                                        } catch (e) {
-                                          debugPrint('Logout error: $e');
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(height: 32),
                                   ],
                                 ),
-                              ),
-                            ]),
-                          ),
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-    );
-  }
-
-  Widget _sectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: AppColors.textPrimary,
-          letterSpacing: -0.2,
-        ),
-      ),
+                      ),
+                      const SizedBox(height: 20),
+                      ProfileActionButtonsSection(
+                        isAdmin: user.role == AppRoles.admin,
+                        openedFromAdmin: widget.openedFromAdmin,
+                        onToggleView: () {
+                          if (widget.openedFromAdmin) {
+                            context.go('/customer');
+                          } else {
+                            context.go('/admin');
+                          }
+                        },
+                        onSignOut: () async {
+                          await context.read<AuthCubit>().logout();
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 

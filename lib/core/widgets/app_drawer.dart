@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart' as auth_state;
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 // ---------------------------------------------------------------------------
 // Modelo de datos para los ítems del drawer
@@ -837,8 +839,9 @@ class _DrawerFooter extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Consumer<ProfileProvider>(
-            builder: (context, profile, _) {
+          child: BlocBuilder<AuthCubit, auth_state.AuthState>(
+            builder: (context, state) {
+              final currentUser = state.currentUser;
               return Column(
                 children: [
                   Material(
@@ -866,11 +869,11 @@ class _DrawerFooter extends StatelessWidget {
                                 alpha: 0.1,
                               ),
                               backgroundImage:
-                                  profile.avatarUrl != null
-                                      ? NetworkImage(profile.avatarUrl!)
+                                  currentUser?.avatarUrl != null
+                                      ? NetworkImage(currentUser!.avatarUrl!)
                                       : null,
                               child:
-                                  profile.avatarUrl == null
+                                  currentUser?.avatarUrl == null
                                       ? const Icon(
                                         Icons.person_rounded,
                                         color: AppColors.primary,
@@ -884,9 +887,9 @@ class _DrawerFooter extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    profile.fullName.isEmpty
+                                    (currentUser?.fullName ?? '').isEmpty
                                         ? 'Mi Perfil'
-                                        : profile.fullName,
+                                        : currentUser!.fullName,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -914,13 +917,10 @@ class _DrawerFooter extends StatelessWidget {
                               tooltip: 'Cerrar Sesión',
                               onPressed: () async {
                                 Navigator.pop(context);
-                                final authProvider =
-                                    context.read<AuthProvider>();
-                                authProvider.clearSession();
+                                final authCubit =
+                                    context.read<AuthCubit>();
                                 try {
-                                  await context
-                                      .read<ProfileProvider>()
-                                      .signOut();
+                                  await authCubit.logout();
                                 } catch (e) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(

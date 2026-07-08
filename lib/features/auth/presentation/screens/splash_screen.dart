@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,15 +15,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Usamos addPostFrameCallback para garantizar que el árbol de providers
-    // ya está montado antes de llamar a context.read()
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkSession());
   }
 
   Future<void> _checkSession() async {
     if (!mounted) return;
 
-    // 1. OBLIGAMOS a que espere la configuración ANTES de entrar a la app
     final configProvider = context.read<AppConfigCubit>();
     try {
       await Future.wait([
@@ -34,63 +28,14 @@ class _SplashScreenState extends State<SplashScreen> {
         configProvider.loadBusinessInfo(),
       ]).timeout(const Duration(seconds: 5));
     } catch (e) {
-      debugPrint('Error o timeout cargando configuración inicial: $e');
+      debugPrint('Error o timeout cargando configuracin inicial: ');
     }
 
     if (!mounted) return;
 
-    if (!mounted) return;
-
-    // 2. AHORA SÍ, notificamos al AuthProvider para que maneje la sesión y GoRouter redirija
-    final authProvider = context.read<AuthProvider>();
-    
-    final session = Supabase.instance.client.auth.currentSession;
-    final prefs = await SharedPreferences.getInstance();
-
-    if (session == null || session.isExpired) {
-      authProvider.initializeSession(null);
-      return;
-    }
-
-    final cachedRole = prefs.getString('cached_user_role');
-    if (cachedRole != null) {
-      authProvider.initializeSession(cachedRole);
-      _updateRoleInBackground(session.user.id, prefs);
-      return;
-    }
-
-    try {
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select('role')
-          .eq('auth_user_id', session.user.id)
-          .single()
-          .timeout(const Duration(seconds: 5));
-
-      if (!mounted) return;
-      final role = data['role'] as String;
-      await prefs.setString('cached_user_role', role);
-      authProvider.initializeSession(role);
-    } catch (e) {
-      await Supabase.instance.client.auth.signOut();
-      if (!mounted) return;
-      authProvider.initializeSession(null);
-    }
-  }
-
-  Future<void> _updateRoleInBackground(
-    String userId,
-    SharedPreferences prefs,
-  ) async {
-    try {
-      final data =
-          await Supabase.instance.client
-              .from('profiles')
-              .select('role')
-              .eq('auth_user_id', userId)
-              .single();
-      await prefs.setString('cached_user_role', data['role'] as String);
-    } catch (_) {}
+    // Llamamos al Cubit para que verifique la sesin. 
+    // GoRouter reaccionarǭ automǭticamente al cambio de estado gracias a GoRouterRefreshStream
+    await context.read<AuthCubit>().checkSession();
   }
 
   @override
@@ -142,6 +87,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
-// Helper para fire-and-forget sin warning de unawaited future
-void unawaited(Future<void> future) {}

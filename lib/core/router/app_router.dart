@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -5,7 +7,8 @@ import 'package:inventory_store_app/features/catalog/data/models/product_model.d
 import 'package:inventory_store_app/features/catalog/data/repositories/catalog_service.dart';
 
 // Proveedores
-import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 
 // Pantallas Comunes
 import 'package:inventory_store_app/features/auth/presentation/screens/splash_screen.dart';
@@ -149,12 +152,12 @@ class AppRouter {
   /// FUERA del árbol de widgets (en main(), antes de runApp()), eliminando
   /// así el crash "DartError: Assertion failed" causado por la recreación
   /// del GoRouter en rebuilds de MyApp.
-  static GoRouter createRouter(AuthProvider authProvider) {
+  static GoRouter createRouter(AuthCubit authCubit) {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
       restorationScopeId: 'router',
       initialLocation: '/',
-      refreshListenable: authProvider,
+      refreshListenable: GoRouterRefreshStream(authCubit.stream),
       errorBuilder:
           (context, state) => Scaffold(
             appBar: AppBar(title: const Text('Página no encontrada')),
@@ -188,8 +191,8 @@ class AppRouter {
             ),
           ),
       redirect: (context, state) {
-        final isSessionReady = authProvider.isSessionReady;
-        final role = authProvider.currentUserRole;
+        final isSessionReady = authCubit.state.authStatus != AuthStatus.initial;
+        final role = authCubit.state.currentUser?.role;
 
         final currentPath = state.matchedLocation;
         final isSplash = currentPath == '/';
@@ -625,7 +628,7 @@ class AppRouter {
             final product = state.extra as ProductModel?;
             // Usamos el authProvider capturado en el closure (no context.read)
             // para evitar dependencia del contexto en rutas compartidas.
-            final role = authProvider.currentUserRole;
+            final role = authCubit.state.currentUser?.role;
             final isAdmin = role == AppRoles.admin;
 
             if (product != null) {
@@ -665,5 +668,23 @@ class AppRouter {
         ),
       ],
     );
+  }
+}
+
+
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+      (dynamic _) => notifyListeners(),
+    );
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }

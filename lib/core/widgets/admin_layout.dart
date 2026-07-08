@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+
 
 class AdminLayout extends StatelessWidget {
   final String title;
@@ -262,7 +267,7 @@ class AdminSettingsMenuButton extends StatelessWidget {
   }
 }
 
-/// Avatar / botón de perfil — carga la foto real del usuario desde ProfileProvider
+/// Avatar / botón de perfil — carga la foto real del usuario desde AuthCubit
 class AdminProfileAvatar extends StatelessWidget {
   final VoidCallback onTap;
   const AdminProfileAvatar({super.key, required this.onTap});
@@ -296,11 +301,12 @@ class AdminProfileAvatar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Consumer<ProfileProvider>(
-                builder: (context, profile, _) {
-                  if (profile.isLoading &&
-                      profile.avatarUrl == null &&
-                      profile.fullName.isEmpty) {
+              child: BlocBuilder<AuthCubit, AuthState>(
+                builder: (context, state) {
+                  final currentUser = state.currentUser;
+                  if (state.viewState == ViewState.loading &&
+                      currentUser?.avatarUrl == null &&
+                      (currentUser?.fullName ?? '').isEmpty) {
                     // Skeleton/Loading state
                     return const Center(
                       child: SizedBox(
@@ -314,10 +320,10 @@ class AdminProfileAvatar extends StatelessWidget {
                     );
                   }
 
-                  if (profile.avatarUrl != null &&
-                      profile.avatarUrl!.isNotEmpty) {
+                  if (currentUser?.avatarUrl != null &&
+                      currentUser!.avatarUrl!.isNotEmpty) {
                     return CachedNetworkImage(
-                      imageUrl: profile.avatarUrl!,
+                      imageUrl: currentUser.avatarUrl!,
                       fit: BoxFit.cover,
                       width: 38,
                       height: 38,
@@ -334,10 +340,10 @@ class AdminProfileAvatar extends StatelessWidget {
                             ),
                           ),
                       errorWidget:
-                          (context, url, error) => _initialsWidget(profile),
+                          (context, url, error) => _initialsWidget(currentUser),
                     );
                   }
-                  return _initialsWidget(profile);
+                  return _initialsWidget(currentUser);
                 },
               ),
             ),
@@ -347,9 +353,9 @@ class AdminProfileAvatar extends StatelessWidget {
     );
   }
 
-  Widget _initialsWidget(ProfileProvider profile) {
+  Widget _initialsWidget(UserEntity? user) {
     String initials = '?';
-    final name = profile.fullName.trim();
+    final name = (user?.fullName ?? '').trim();
     if (name.isNotEmpty) {
       final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
       initials =

@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
 import 'package:inventory_store_app/features/financial/presentation/providers/account_movements_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
-import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FINANCIAL ACCOUNTS SCREEN — Cuentas · Movimientos · Turnos de Caja
@@ -40,7 +40,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
         context.read<FinancialAccountsProvider>().fetchAccounts();
         context.read<AccountMovementsProvider>().fetchMovements();
         
-        final profileId = context.read<ProfileProvider>().profileId;
+        final profileId = context.read<AuthCubit>().state.currentUser?.id;
         context.read<CashShiftsProvider>().setProfileFilter(profileId);
       }
     });
