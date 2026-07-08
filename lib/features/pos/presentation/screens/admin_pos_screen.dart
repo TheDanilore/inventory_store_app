@@ -10,11 +10,11 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/catalog_header.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/catalog_category_chips.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/catalog_grid_view.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/admin_add_to_cart_sheet.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/catalog_status_states.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_category_chips.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/admin_add_to_cart_sheet.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/desktop_pos_panel.dart';
 
 class AdminPosScreen extends StatefulWidget {

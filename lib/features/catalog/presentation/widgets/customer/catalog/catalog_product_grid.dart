@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/catalog/presentation/providers/catalog_provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_product_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_shimmers.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_product_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_shimmers.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 
 class CatalogProductGrid extends StatelessWidget {

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_state.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/attributes/attribute_form_sheet.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/attributes/attribute_value_dialog.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/attributes/attributes_skeleton.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attribute_form_sheet.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attribute_value_dialog.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attributes_skeleton.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 

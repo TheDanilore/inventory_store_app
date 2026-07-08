@@ -7,8 +7,8 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 
 
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/categories/categories_skeleton.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/categories/category_form_sheet.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_skeleton.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_form_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';

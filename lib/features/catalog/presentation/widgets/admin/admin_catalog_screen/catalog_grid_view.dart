@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/catalog_product_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_card.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Grid paginado del catálogo admin con soporte responsive.

@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_state.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/active_ingredients/active_ingredients_skeleton.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/active_ingredients/active_ingredient_form_sheet.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 

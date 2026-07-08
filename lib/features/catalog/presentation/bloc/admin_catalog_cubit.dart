@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/catalog
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/data/repositories/catalog_pdf_generator.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/admin_catalog_screen/catalog_dialogs.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'admin_catalog_state.dart';
 

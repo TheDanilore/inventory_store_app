@@ -7,12 +7,12 @@ import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_search_bar.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_category_list.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_banners.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_search_bar.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_category_list.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_banners.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_product_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/customer/widgets/catalog/catalog_shimmers.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_product_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_shimmers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 

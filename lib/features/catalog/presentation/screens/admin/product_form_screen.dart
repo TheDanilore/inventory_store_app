@@ -9,14 +9,14 @@ import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 // Secciones modulares
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/variant_draft_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_images_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_basic_info_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_config_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_details_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_pricing_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_ingredients_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/product_form/product_batch_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_images_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_basic_info_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_config_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_details_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_pricing_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_ingredients_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_batch_section.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductModel? productToEdit;
