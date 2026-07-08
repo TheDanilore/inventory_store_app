@@ -1,11 +1,14 @@
 import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
 
-class AppSettingModel extends AppSettingEntity {
+class AppSettingModel {
+  final String key;
+  final double value;
+  final String? description;
 
   const AppSettingModel({
-    required super.key,
-    required super.value,
-    super.description,
+    required this.key,
+    required this.value,
+    this.description,
   });
 
   factory AppSettingModel.fromMap(Map<String, dynamic> map) {
@@ -21,6 +24,14 @@ class AppSettingModel extends AppSettingEntity {
       key: entity.key,
       value: entity.value,
       description: entity.description,
+    );
+  }
+
+  AppSettingEntity toEntity() {
+    return AppSettingEntity(
+      key: key,
+      value: value,
+      description: description,
     );
   }
 

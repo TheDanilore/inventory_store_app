@@ -1,16 +1,24 @@
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 
-class BusinessInfoModel extends BusinessInfoEntity {
+class BusinessInfoModel {
+  final String? id;
+  final String businessName;
+  final String taxId;
+  final String address;
+  final String phone;
+  final String logoUrl;
+  final bool loyaltyGlobalEnabled;
+  final bool loyaltyCustomerVisible;
 
   const BusinessInfoModel({
-    super.id,
-    required super.businessName,
-    required super.taxId,
-    required super.address,
-    required super.phone,
-    required super.logoUrl,
-    required super.loyaltyGlobalEnabled,
-    required super.loyaltyCustomerVisible,
+    this.id,
+    required this.businessName,
+    required this.taxId,
+    required this.address,
+    required this.phone,
+    required this.logoUrl,
+    required this.loyaltyGlobalEnabled,
+    required this.loyaltyCustomerVisible,
   });
 
   factory BusinessInfoModel.fromMap(Map<String, dynamic> map) {
@@ -36,6 +44,19 @@ class BusinessInfoModel extends BusinessInfoEntity {
       logoUrl: entity.logoUrl,
       loyaltyGlobalEnabled: entity.loyaltyGlobalEnabled,
       loyaltyCustomerVisible: entity.loyaltyCustomerVisible,
+    );
+  }
+
+  BusinessInfoEntity toEntity() {
+    return BusinessInfoEntity(
+      id: id,
+      businessName: businessName,
+      taxId: taxId,
+      address: address,
+      phone: phone,
+      logoUrl: logoUrl,
+      loyaltyGlobalEnabled: loyaltyGlobalEnabled,
+      loyaltyCustomerVisible: loyaltyCustomerVisible,
     );
   }
 

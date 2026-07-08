@@ -86,7 +86,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
         .limit(1);
 
     if (rawResponse.isNotEmpty) {
-      return BusinessInfoModel.fromMap(rawResponse.first);
+      return BusinessInfoModel.fromMap(rawResponse.first).toEntity();
     }
     return null;
   }
@@ -106,7 +106,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
         cached = Map<String, dynamic>.from(decoded.first as Map);
       }
       if (cached != null) {
-        return BusinessInfoModel.fromMap(cached);
+        return BusinessInfoModel.fromMap(cached).toEntity();
       }
     } catch (_) {}
     return null;
@@ -158,7 +158,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       finalId = inserted?['id']?.toString();
     }
     
-    return BusinessInfoModel.fromEntity(info).copyWith(id: finalId);
+    return BusinessInfoModel.fromEntity(info).copyWith(id: finalId).toEntity();
   }
 
   @override
