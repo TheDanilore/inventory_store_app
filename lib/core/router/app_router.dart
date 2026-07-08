@@ -28,7 +28,7 @@ import 'package:inventory_store_app/features/pos/presentation/screens/admin_pos_
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/active_ingredients_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/attributes_management_screen.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/screens/business_info_screen.dart';
+import 'package:inventory_store_app/features/app_config/presentation/screens/business_info_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/categories_management_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_credit_movements_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_credits_screen.dart';
