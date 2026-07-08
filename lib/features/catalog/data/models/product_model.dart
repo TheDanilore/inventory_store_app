@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
 class ProductModel {
   final String id;
@@ -185,6 +186,9 @@ class ProductModel {
     String? productType,
     List<ProductImageModel>? images,
     int? totalStock,
+    String? categoryName,
+    List<ProductVariantModel>? productVariants,
+    List<WarehouseStockBatchModel>? warehouseStockBatches,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -206,6 +210,63 @@ class ProductModel {
       productType: productType ?? this.productType,
       images: images ?? this.images,
       totalStock: totalStock ?? this.totalStock,
+      categoryName: categoryName ?? this.categoryName,
+      productVariants: productVariants ?? this.productVariants,
+      warehouseStockBatches: warehouseStockBatches ?? this.warehouseStockBatches,
+    );
+  }
+
+  ProductEntity toEntity() {
+    return ProductEntity(
+      id: id,
+      name: name,
+      unitCost: unitCost,
+      salePrice: salePrice,
+      isActive: isActive,
+      createdAt: createdAt,
+      categoryId: categoryId,
+      description: description,
+      wholesalePrice: wholesalePrice,
+      wholesaleMinQuantity: wholesaleMinQuantity,
+      updatedAt: updatedAt,
+      details: details,
+      createdBy: createdBy,
+      updatedBy: updatedBy,
+      stockControl: stockControl,
+      usesBatches: usesBatches,
+      productType: productType,
+      images: images.map((img) => img.toEntity()).toList(),
+      totalStock: totalStock,
+      categoryName: categoryName,
+      productVariants: productVariants.map((v) => v.toEntity()).toList(),
+      warehouseStockBatches: warehouseStockBatches,
+    );
+  }
+
+  factory ProductModel.fromEntity(ProductEntity entity) {
+    return ProductModel(
+      id: entity.id,
+      name: entity.name,
+      unitCost: entity.unitCost,
+      salePrice: entity.salePrice,
+      isActive: entity.isActive,
+      createdAt: entity.createdAt,
+      categoryId: entity.categoryId,
+      description: entity.description,
+      wholesalePrice: entity.wholesalePrice,
+      wholesaleMinQuantity: entity.wholesaleMinQuantity,
+      updatedAt: entity.updatedAt,
+      details: entity.details,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
+      stockControl: entity.stockControl,
+      usesBatches: entity.usesBatches,
+      productType: entity.productType,
+      images: entity.images.map((img) => ProductImageModel.fromEntity(img)).toList(),
+      totalStock: entity.totalStock,
+      categoryName: entity.categoryName,
+      productVariants: entity.productVariants.map((v) => ProductVariantModel.fromEntity(v)).toList(),
+      warehouseStockBatches: entity.warehouseStockBatches,
     );
   }
 }

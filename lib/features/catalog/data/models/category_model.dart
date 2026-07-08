@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
+
 class CategoryModel {
   final String? id;
   final String name;
@@ -46,5 +48,27 @@ class CategoryModel {
       'description': description,
       'is_active': isActive,
     };
+  }
+
+  CategoryEntity toEntity() {
+    return CategoryEntity(
+      id: id,
+      name: name,
+      description: description,
+      isActive: isActive,
+      createdAt: createdAt,
+      productsCount: productsCount,
+    );
+  }
+
+  factory CategoryModel.fromEntity(CategoryEntity entity) {
+    return CategoryModel(
+      id: entity.id,
+      name: entity.name,
+      description: entity.description,
+      isActive: entity.isActive,
+      createdAt: entity.createdAt,
+      productsCount: entity.productsCount,
+    );
   }
 }

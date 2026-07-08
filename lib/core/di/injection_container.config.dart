@@ -38,6 +38,10 @@ import '../../features/auth/domain/usecases/register_uc.dart' as _i182;
 import '../../features/auth/domain/usecases/reset_password_uc.dart' as _i878;
 import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
+import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
+    as _i524;
+import '../../features/catalog/domain/repositories/catalog_repository.dart'
+    as _i1018;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -53,6 +57,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
     gh.lazySingleton<_i787.AuthRepository>(
       () => _i710.AuthRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i1018.CatalogRepository>(
+      () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i257.AppConfigRepository>(
       () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),

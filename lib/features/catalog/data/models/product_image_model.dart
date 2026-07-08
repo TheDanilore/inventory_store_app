@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
+
 class ProductImageModel {
   final String id;
   final String productId;
@@ -64,6 +66,30 @@ class ProductImageModel {
       displayOrder: displayOrder ?? this.displayOrder,
       createdAt: createdAt ?? this.createdAt,
       isMain: isMain ?? this.isMain,
+    );
+  }
+
+  ProductImageEntity toEntity() {
+    return ProductImageEntity(
+      id: id,
+      productId: productId,
+      variantId: variantId,
+      imageUrl: imageUrl,
+      displayOrder: displayOrder,
+      createdAt: createdAt,
+      isMain: isMain,
+    );
+  }
+
+  factory ProductImageModel.fromEntity(ProductImageEntity entity) {
+    return ProductImageModel(
+      id: entity.id,
+      productId: entity.productId,
+      variantId: entity.variantId,
+      imageUrl: entity.imageUrl,
+      displayOrder: entity.displayOrder,
+      createdAt: entity.createdAt,
+      isMain: entity.isMain,
     );
   }
 }

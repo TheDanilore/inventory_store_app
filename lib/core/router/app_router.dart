@@ -14,7 +14,7 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.d
 import 'package:inventory_store_app/features/auth/presentation/screens/splash_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/product_detail_screen.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/widgets/product_detail/full_screen_gallery.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/full_screen_gallery.dart';
 
 // Pantallas Cliente
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';

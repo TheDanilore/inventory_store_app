@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/catalog/presentation/screens/widgets/product_detail/product_card_header.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_card_header.dart';
 
 // ─── DETAILS CARD ─────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/variant_attribute_value_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
 class ProductVariantModel {
   final String id;
@@ -150,23 +151,65 @@ class ProductVariantModel {
     String? createdBy,
     String? updatedBy,
     List<ProductImageModel>? images,
-  }) => ProductVariantModel(
-    id: id ?? this.id,
-    productId: productId ?? this.productId,
-    sku: sku ?? this.sku,
-    barcode: barcode ?? this.barcode,
-    attributeValues: attributeValues ?? this.attributeValues,
-    unitCost: unitCost ?? this.unitCost,
-    salePrice: salePrice ?? this.salePrice,
-    isActive: isActive ?? this.isActive,
-    createdAt: createdAt ?? this.createdAt,
-    reorderPoint: reorderPoint ?? this.reorderPoint,
-    wholesalePrice: wholesalePrice ?? this.wholesalePrice,
-    wholesaleMinQuantity: wholesaleMinQuantity ?? this.wholesaleMinQuantity,
-    createdBy: createdBy ?? this.createdBy,
-    updatedBy: updatedBy ?? this.updatedBy,
-    images: images ?? this.images,
-  );
+  }) {
+    return ProductVariantModel(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      sku: sku ?? this.sku,
+      barcode: barcode ?? this.barcode,
+      attributeValues: attributeValues ?? this.attributeValues,
+      unitCost: unitCost ?? this.unitCost,
+      salePrice: salePrice ?? this.salePrice,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      reorderPoint: reorderPoint ?? this.reorderPoint,
+      wholesalePrice: wholesalePrice ?? this.wholesalePrice,
+      wholesaleMinQuantity: wholesaleMinQuantity ?? this.wholesaleMinQuantity,
+      createdBy: createdBy ?? this.createdBy,
+      updatedBy: updatedBy ?? this.updatedBy,
+      images: images ?? this.images,
+    );
+  }
+
+  ProductVariantEntity toEntity() {
+    return ProductVariantEntity(
+      id: id,
+      productId: productId,
+      sku: sku,
+      barcode: barcode,
+      attributeValues: attributeValues.map((v) => v.toEntity()).toList(),
+      unitCost: unitCost,
+      salePrice: salePrice,
+      isActive: isActive,
+      createdAt: createdAt,
+      reorderPoint: reorderPoint,
+      wholesalePrice: wholesalePrice,
+      wholesaleMinQuantity: wholesaleMinQuantity,
+      createdBy: createdBy,
+      updatedBy: updatedBy,
+      images: images.map((img) => img.toEntity()).toList(),
+    );
+  }
+
+  factory ProductVariantModel.fromEntity(ProductVariantEntity entity) {
+    return ProductVariantModel(
+      id: entity.id,
+      productId: entity.productId,
+      sku: entity.sku,
+      barcode: entity.barcode,
+      attributeValues: entity.attributeValues.map((v) => VariantAttributeValueModel.fromEntity(v)).toList(),
+      unitCost: entity.unitCost,
+      salePrice: entity.salePrice,
+      isActive: entity.isActive,
+      createdAt: entity.createdAt,
+      reorderPoint: entity.reorderPoint,
+      wholesalePrice: entity.wholesalePrice,
+      wholesaleMinQuantity: entity.wholesaleMinQuantity,
+      createdBy: entity.createdBy,
+      updatedBy: entity.updatedBy,
+      images: entity.images.map((img) => ProductImageModel.fromEntity(img)).toList(),
+    );
+  }
 
   String? get primaryImageUrl =>
       images.isNotEmpty ? images.first.imageUrl : null;

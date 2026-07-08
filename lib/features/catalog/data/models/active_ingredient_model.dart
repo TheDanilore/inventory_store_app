@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
+
 class ActiveIngredientModel {
   final String id;
   final String name;
@@ -28,7 +30,6 @@ class ActiveIngredientModel {
     };
   }
 
-  /// Método copyWith ideal para el manejo de estados (Bloc, Riverpod, etc.)
   ActiveIngredientModel copyWith({
     String? id,
     String? name,
@@ -38,6 +39,22 @@ class ActiveIngredientModel {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
+    );
+  }
+
+  ActiveIngredientEntity toEntity() {
+    return ActiveIngredientEntity(
+      id: id,
+      name: name,
+      description: description,
+    );
+  }
+
+  factory ActiveIngredientModel.fromEntity(ActiveIngredientEntity entity) {
+    return ActiveIngredientModel(
+      id: entity.id,
+      name: entity.name,
+      description: entity.description,
     );
   }
 }
