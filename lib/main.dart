@@ -3,10 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/providers/app_providers.dart';
-import 'package:inventory_store_app/shared/theme/app_theme.dart';
-import 'package:inventory_store_app/router/app_router.dart';
-import 'package:inventory_store_app/providers/auth_provider.dart';
+import 'package:inventory_store_app/core/providers/app_providers.dart';
+import 'package:inventory_store_app/core/theme/app_theme.dart';
+import 'package:inventory_store_app/core/router/app_router.dart';
+import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
