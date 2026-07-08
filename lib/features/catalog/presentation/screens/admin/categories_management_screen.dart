@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/categories_provider.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_state.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
+
+
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/categories/categories_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/categories/category_form_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
@@ -49,7 +53,7 @@ class _CategoriesManagementScreenState
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final query = context.read<CategoriesProvider>().searchQuery;
+      final query = context.read<CategoriesCubit>().state.searchQuery;
       if (query.isNotEmpty) {
         _searchCtrl.text = query;
       }
@@ -64,7 +68,7 @@ class _CategoriesManagementScreenState
     super.dispose();
   }
 
-  void _showCategoryForm([CategoryModel? category]) {
+  void _showCategoryForm([CategoryEntity? category]) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     if (isTablet) {
       showDialog(
@@ -92,9 +96,9 @@ class _CategoriesManagementScreenState
   }
 
   Future<void> _handleToggleStatus(
-    CategoryModel cat,
+    CategoryEntity cat,
     bool val,
-    CategoriesProvider provider,
+    CategoriesCubit cubit,
   ) async {
     if (!val) {
       // Si se va a desactivar, pedir confirmación
@@ -109,7 +113,7 @@ class _CategoriesManagementScreenState
       if (confirm != true) return;
     }
     if (!mounted) return;
-    provider.toggleStatus(context, cat, val);
+    cubit.toggleStatus(cat, val);
   }
 
   @override
@@ -137,8 +141,9 @@ class _CategoriesManagementScreenState
                           },
                         ),
       ),
-      body: Consumer<CategoriesProvider>(
-        builder: (context, provider, child) {
+      body: BlocBuilder<CategoriesCubit, CategoriesState>(
+        builder: (context, state) {
+          final cubit = context.read<CategoriesCubit>();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -149,7 +154,7 @@ class _CategoriesManagementScreenState
                   label: 'Buscador de categorías',
                   child: TextField(
                     controller: _searchCtrl,
-                    onChanged: provider.onSearchChanged,
+                    onChanged: cubit.onSearchChanged,
                     decoration: InputDecoration(
                       hintText: 'Buscar categoría por nombre...',
                       hintStyle: TextStyle(
@@ -161,7 +166,7 @@ class _CategoriesManagementScreenState
                         color: Colors.grey.shade400,
                       ),
                       suffixIcon:
-                          provider.searchQuery.isNotEmpty
+                          cubit.state.searchQuery.isNotEmpty
                               ? IconButton(
                                 icon: const Icon(
                                   Icons.clear_rounded,
@@ -169,7 +174,7 @@ class _CategoriesManagementScreenState
                                 ),
                                 onPressed: () {
                                   _searchCtrl.clear();
-                                  provider.clearSearch();
+                                  cubit.clearSearch();
                                 },
                               )
                               : null,
@@ -205,7 +210,7 @@ class _CategoriesManagementScreenState
                   vertical: 4,
                 ),
                 child: Text(
-                  'Total: ${provider.totalCategories} categorías',
+                  'Total: ${cubit.state.categories.length} categorías',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 13,
@@ -217,31 +222,17 @@ class _CategoriesManagementScreenState
               // ─── LISTA DE CATEGORÍAS ────────────────────────────────────────────
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () => provider.fetchCategories(),
+                  onRefresh: () => cubit.loadCategories(forceRefresh: true),
                   color: AppColors.primary,
                   child:
-                      provider.isLoading
+                      state.viewState == ViewState.loading
                           ? const CategoriesSkeleton(itemCount: 6)
-                          : provider.categories.isEmpty
-                          ? _buildEmptyState(provider)
-                          : _buildCategoriesGrid(provider),
+                          : cubit.state.categories.isEmpty
+                          ? _buildEmptyState(cubit, state)
+                          : _buildCategoriesGrid(cubit, state),
                 ),
               ),
 
-              if (provider.categories.isNotEmpty && provider.totalPages > 1)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    16,
-                    8,
-                    16,
-                    80,
-                  ), // Padding inferior para el FAB
-                  child: AdminPageBlocks(
-                    currentPage: provider.currentPage,
-                    totalPages: provider.totalPages,
-                    onPageChanged: (page) => provider.setPage(page),
-                  ),
-                ),
             ],
           );
         },
@@ -249,7 +240,7 @@ class _CategoriesManagementScreenState
     );
   }
 
-  Widget _buildEmptyState(CategoriesProvider provider) {
+  Widget _buildEmptyState(CategoriesCubit cubit, CategoriesState state) {
     return ListView(
       controller: _scrollController,
       children: [
@@ -272,7 +263,7 @@ class _CategoriesManagementScreenState
               ),
               const SizedBox(height: 24),
               Text(
-                provider.searchQuery.isNotEmpty
+                cubit.state.searchQuery.isNotEmpty
                     ? 'No se encontraron resultados'
                     : 'Aún no tienes categorías',
                 style: const TextStyle(
@@ -283,14 +274,14 @@ class _CategoriesManagementScreenState
               ),
               const SizedBox(height: 8),
               Text(
-                provider.searchQuery.isNotEmpty
+                cubit.state.searchQuery.isNotEmpty
                     ? 'Intenta con otro término de búsqueda'
                     : 'Organiza tus productos creando la primera categoría.',
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              if (provider.searchQuery.isEmpty)
+              if (cubit.state.searchQuery.isEmpty)
                 ElevatedButton.icon(
                   onPressed: () => _showCategoryForm(),
                   icon: const Icon(Icons.add_rounded),
@@ -314,7 +305,7 @@ class _CategoriesManagementScreenState
     );
   }
 
-  Widget _buildCategoriesGrid(CategoriesProvider provider) {
+  Widget _buildCategoriesGrid(CategoriesCubit cubit, CategoriesState state) {
     final crossAxisCount = MediaQuery.of(context).size.width >= 600 ? 2 : 1;
 
     return GridView.builder(
@@ -326,7 +317,7 @@ class _CategoriesManagementScreenState
         16,
         80,
       ), // Padding inferior para el FAB
-      itemCount: provider.categories.length,
+      itemCount: cubit.state.categories.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         mainAxisExtent: 88, // Altura fija
@@ -334,7 +325,7 @@ class _CategoriesManagementScreenState
         mainAxisSpacing: 12,
       ),
       itemBuilder: (context, index) {
-        final cat = provider.categories[index];
+        final cat = cubit.state.categories[index];
         final catColor = _getCategoryColor(cat.name);
 
         return TweenAnimationBuilder<double>(
@@ -448,7 +439,7 @@ class _CategoriesManagementScreenState
                         child: Switch(
                           value: cat.isActive,
                           onChanged:
-                              (val) => _handleToggleStatus(cat, val, provider),
+                              (val) => _handleToggleStatus(cat, val, cubit),
                           activeThumbColor: AppColors.primary,
                           activeTrackColor: AppColors.primary.withValues(
                             alpha: 0.4,

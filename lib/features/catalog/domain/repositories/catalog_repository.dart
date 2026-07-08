@@ -10,6 +10,9 @@ import 'package:inventory_store_app/features/catalog/data/models/variant_draft_m
 
 abstract class CatalogRepository {
   // Categorías
+  Future<Either<Failure, CategoryEntity>> createCategory({required String name, String? description, required bool isActive});
+  Future<Either<Failure, void>> updateCategory({required String id, required String name, String? description, required bool isActive});
+  Future<Either<Failure, void>> deleteCategory(String id);
   Future<Either<Failure, List<CategoryEntity>>> getCategories({bool activeOnly = false});
 
   // Productos (Lectura)
@@ -30,10 +33,19 @@ abstract class CatalogRepository {
   Future<Either<Failure, List<VariantDraftModel>>> getVariantsDrafts(String productId);
   
   // Atributos y Componentes Activos
+  Future<Either<Failure, Map<String, dynamic>>> createAttribute(String name);
+  Future<Either<Failure, void>> updateAttribute(String id, String name);
+  Future<Either<Failure, void>> deleteAttribute(String id);
+  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(String attributeId, String value);
+  Future<Either<Failure, void>> updateAttributeValue(String valueId, String value);
+  Future<Either<Failure, void>> deleteAttributeValue(String valueId);
   Future<Either<Failure, List<Map<String, dynamic>>>> getAttributes();
   Future<Either<Failure, List<Map<String, dynamic>>>> getProductIngredients(String productId);
   Future<Either<Failure, List<ActiveIngredientEntity>>> searchIngredients(String term);
   Future<Either<Failure, ActiveIngredientEntity>> createIngredient(String name);
+  Future<Either<Failure, void>> updateIngredient(String id, String name);
+  Future<Either<Failure, void>> deleteIngredient(String id);
+  Future<Either<Failure, List<ActiveIngredientEntity>>> getIngredients({String? searchQuery, int limit = 20, int offset = 0});
 
   // Imágenes
   Future<Either<Failure, List<ProductImageEntity>>> getProductImages(String productId);

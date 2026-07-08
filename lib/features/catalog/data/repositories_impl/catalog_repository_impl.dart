@@ -336,9 +336,157 @@ class CatalogRepositoryImpl implements CatalogRepository {
     }
   }
 
+
+  @override
+  Future<Either<Failure, CategoryEntity>> createCategory({required String name, String? description, required bool isActive}) async {
+    try {
+      final authUserId = _supabase.auth.currentUser?.id;
+      String? profileId;
+      if (authUserId != null) {
+        final p = await _supabase.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
+        profileId = p?['id'] as String?;
+      }
+      final response = await _supabase.from('categories').insert({
+        'name': name.trim(),
+        'description': description?.trim(),
+        'is_active': isActive,
+        if (profileId != null) 'created_by': profileId,
+      }).select().single();
+      final model = CategoryModel.fromJson(response);
+      return right(model.toEntity());
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateCategory({required String id, required String name, String? description, required bool isActive}) async {
+    try {
+      final authUserId = _supabase.auth.currentUser?.id;
+      String? profileId;
+      if (authUserId != null) {
+        final p = await _supabase.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
+        profileId = p?['id'] as String?;
+      }
+      await _supabase.from('categories').update({
+        'name': name.trim(),
+        'description': description?.trim(),
+        'is_active': isActive,
+        if (profileId != null) 'updated_by': profileId,
+      }).eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteCategory(String id) async {
+    try {
+      await _supabase.from('categories').delete().eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> createAttribute(String name) async {
+    try {
+      final res = await _supabase.from('attributes').insert({'name': name.trim()}).select().single();
+      return right(res);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateAttribute(String id, String name) async {
+    try {
+      await _supabase.from('attributes').update({'name': name.trim()}).eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteAttribute(String id) async {
+    try {
+      await _supabase.from('attributes').delete().eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(String attributeId, String value) async {
+    try {
+      final res = await _supabase.from('attribute_values').insert({'attribute_id': attributeId, 'value': value.trim()}).select().single();
+      return right(res);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateAttributeValue(String valueId, String value) async {
+    try {
+      await _supabase.from('attribute_values').update({'value': value.trim()}).eq('id', valueId);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteAttributeValue(String valueId) async {
+    try {
+      await _supabase.from('attribute_values').delete().eq('id', valueId);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateIngredient(String id, String name) async {
+    try {
+      await _supabase.from('active_ingredients').update({'name': name.trim()}).eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteIngredient(String id) async {
+    try {
+      await _supabase.from('active_ingredients').delete().eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ActiveIngredientEntity>>> getIngredients({String? searchQuery, int limit = 20, int offset = 0}) async {
+    try {
+      var query = _supabase.from('active_ingredients').select();
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        query = query.ilike('name', '%%');
+      }
+      final response = await query.order('name').range(offset, offset + limit - 1);
+      final models = List<Map<String, dynamic>>.from(response).map(ActiveIngredientModel.fromJson).toList();
+      return right(models.map((m) => m.toEntity()).toList());
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
   @override
   Future<Either<Failure, void>> clearCache() async {
-    // Implement cache clearing if needed
     return right(null);
   }
 }
