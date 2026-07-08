@@ -8,9 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
-import 'widgets/login_header_section.dart';
-import 'widgets/login_form_card.dart';
-import 'widgets/login_toggle_mode.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login_header_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login_form_card.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login_toggle_mode.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -105,173 +105,181 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-
     return BlocConsumer<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state.viewState == ViewState.error && state.errorMessage != null) {
-          AppSnackbar.show(context, message: state.errorMessage!, type: SnackbarType.error);
+          AppSnackbar.show(
+            context,
+            message: state.errorMessage!,
+            type: SnackbarType.error,
+          );
         } else if (state.viewState == ViewState.success) {
-           if (!state.isLoginMode) {
-             AppSnackbar.show(
-               context,
-               message: 'Registro exitoso.',
-               type: SnackbarType.success,
-             );
-           }
-           if (state.currentUser?.role == AppRoles.admin) {
-             context.go('/admin');
-           } else {
-             context.go('/customer');
-           }
+          if (!state.isLoginMode) {
+            AppSnackbar.show(
+              context,
+              message: 'Registro exitoso.',
+              type: SnackbarType.success,
+            );
+          }
+          if (state.currentUser?.role == AppRoles.admin) {
+            context.go('/admin');
+          } else {
+            context.go('/customer');
+          }
         }
       },
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.background,
           body: Stack(
-        children: [
-          // ── Decorative blobs ─────────────────────────────────────────────
-          AnimatedBuilder(
-            animation: _blobAnim,
-            builder: (context, child) {
-              return Positioned(
-                top: -80,
-                right: -80,
-                child: Transform.scale(
-                  scale: _blobAnim.value,
-                  child: Container(
-                    width: 260,
-                    height: 260,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primary.withValues(alpha: 0.06),
+            children: [
+              // ── Decorative blobs ─────────────────────────────────────────────
+              AnimatedBuilder(
+                animation: _blobAnim,
+                builder: (context, child) {
+                  return Positioned(
+                    top: -80,
+                    right: -80,
+                    child: Transform.scale(
+                      scale: _blobAnim.value,
+                      child: Container(
+                        width: 260,
+                        height: 260,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary.withValues(alpha: 0.06),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-          AnimatedBuilder(
-            animation: _blobAnim,
-            builder: (context, child) {
-              return Positioned(
-                top: 40,
-                left: -60,
-                child: Transform.scale(
-                  // Escalado inverso para que respiren en desfasaje
-                  scale: 2.0 - _blobAnim.value,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.accent.withValues(alpha: 0.05),
+                  );
+                },
+              ),
+              AnimatedBuilder(
+                animation: _blobAnim,
+                builder: (context, child) {
+                  return Positioned(
+                    top: 40,
+                    left: -60,
+                    child: Transform.scale(
+                      // Escalado inverso para que respiren en desfasaje
+                      scale: 2.0 - _blobAnim.value,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.accent.withValues(alpha: 0.05),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
 
-          // ── Content ──────────────────────────────────────────────────────
-          SafeArea(
-            child: Column(
-              children: [
-                // Back button (guest mode)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8, top: 4),
-                    child: GestureDetector(
-                      onTapDown:
-                          (_) => setState(() => _isBackBtnPressed = true),
-                      onTapUp: (_) => setState(() => _isBackBtnPressed = false),
-                      onTapCancel:
-                          () => setState(() => _isBackBtnPressed = false),
-                      child: AnimatedScale(
-                        scale: _isBackBtnPressed ? 0.90 : 1.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: IconButton(
-                          icon: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(11),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.08,
-                                  ),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+              // ── Content ──────────────────────────────────────────────────────
+              SafeArea(
+                child: Column(
+                  children: [
+                    // Back button (guest mode)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8, top: 4),
+                        child: GestureDetector(
+                          onTapDown:
+                              (_) => setState(() => _isBackBtnPressed = true),
+                          onTapUp:
+                              (_) => setState(() => _isBackBtnPressed = false),
+                          onTapCancel:
+                              () => setState(() => _isBackBtnPressed = false),
+                          child: AnimatedScale(
+                            scale: _isBackBtnPressed ? 0.90 : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            child: IconButton(
+                              icon: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(11),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              size: 15,
-                              color: AppColors.textPrimary,
+                                child: const Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  size: 15,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              onPressed: () {
+                                // Si hay historial, retrocede. Si no, va a /customer (modo invitado).
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/customer');
+                                }
+                              },
                             ),
                           ),
-                          onPressed: () {
-                            // Si hay historial, retrocede. Si no, va a /customer (modo invitado).
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go('/customer');
-                            }
-                          },
                         ),
                       ),
                     ),
-                  ),
-                ),
 
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 450),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: FadeTransition(
-                          opacity: _fadeAnim,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              LoginHeaderSection(
-                                isLoginMode: state.isLoginMode,
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 450),
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: FadeTransition(
+                              opacity: _fadeAnim,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  LoginHeaderSection(
+                                    isLoginMode: state.isLoginMode,
+                                  ),
+                                  const SizedBox(height: 32),
+                                  LoginFormCard(
+                                    formKey: _formKey,
+                                    nameController: _nameController,
+                                    emailController: _emailController,
+                                    passwordController: _passwordController,
+                                    isLoginMode: state.isLoginMode,
+                                    isLoading:
+                                        state.viewState == ViewState.loading,
+                                    onAuthenticate:
+                                        () => _authenticate(state.isLoginMode),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  LoginToggleMode(
+                                    isLoginMode: state.isLoginMode,
+                                    isLoading:
+                                        state.viewState == ViewState.loading,
+                                    onToggle:
+                                        () => _onToggleMode(state.isLoginMode),
+                                  ),
+                                  const SizedBox(height: 32),
+                                ],
                               ),
-                              const SizedBox(height: 32),
-                              LoginFormCard(
-                                formKey: _formKey,
-                                nameController: _nameController,
-                                emailController: _emailController,
-                                passwordController: _passwordController,
-                                isLoginMode: state.isLoginMode,
-                                isLoading: state.viewState == ViewState.loading,
-                                onAuthenticate: () => _authenticate(state.isLoginMode),
-                              ),
-                              const SizedBox(height: 20),
-                              LoginToggleMode(
-                                isLoginMode: state.isLoginMode,
-                                isLoading: state.viewState == ViewState.loading,
-                                onToggle: () => _onToggleMode(state.isLoginMode),
-                              ),
-                              const SizedBox(height: 32),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
       },
     );
   }
