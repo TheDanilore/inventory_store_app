@@ -1,7 +1,7 @@
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
-import 'package:inventory_store_app/core/providers/network_provider.dart';
+import 'package:inventory_store_app/core/network/presentation/providers/network_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/purchases/presentation/providers/purchase_order_form_provider.dart';
@@ -22,7 +22,7 @@ import 'package:inventory_store_app/features/pos/presentation/providers/cash_shi
 import 'package:inventory_store_app/features/catalog/presentation/providers/categories_provider.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/warehouses_provider.dart';
 import 'package:inventory_store_app/features/catalog/presentation/providers/admin_catalog_provider.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';

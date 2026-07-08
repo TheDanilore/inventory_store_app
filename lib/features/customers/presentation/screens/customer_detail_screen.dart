@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/customers/presentation/providers/customer_detail_provider.dart';

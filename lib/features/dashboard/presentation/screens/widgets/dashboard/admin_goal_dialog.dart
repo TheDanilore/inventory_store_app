@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';

@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';

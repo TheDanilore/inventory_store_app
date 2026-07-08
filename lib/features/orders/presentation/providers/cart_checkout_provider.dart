@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/cart_checkout_service.dart';

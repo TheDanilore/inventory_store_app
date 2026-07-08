@@ -4,7 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';

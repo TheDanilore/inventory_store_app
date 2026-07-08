@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';

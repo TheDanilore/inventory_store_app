@@ -5,16 +5,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/models/business_info_model.dart';
 import 'package:inventory_store_app/core/models/app_setting_model.dart';
 
-class AppConfigRepository {
+import 'package:inventory_store_app/core/config/domain/repositories/app_config_repository.dart';
+
+class AppConfigRepositoryImpl implements AppConfigRepository {
   final SupabaseClient _supabase;
   static const String _settingsCacheKey = 'cached_app_settings';
   static const String _businessInfoCacheKey = 'cached_business_info';
 
-  AppConfigRepository({SupabaseClient? client})
+  AppConfigRepositoryImpl({SupabaseClient? client})
       : _supabase = client ?? Supabase.instance.client;
 
   // --- App Settings ---
 
+  @override
   Future<Map<String, double>> fetchAppSettings() async {
     final response = await _supabase.from('app_settings').select('key, value');
     
@@ -29,6 +32,7 @@ class AppConfigRepository {
     return values;
   }
 
+  @override
   Future<Map<String, double>?> fetchCachedSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -50,6 +54,7 @@ class AppConfigRepository {
     }
   }
 
+  @override
   Future<void> cacheAppSettings(List<Map<String, dynamic>> rawData) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -57,6 +62,7 @@ class AppConfigRepository {
     } catch (_) {}
   }
   
+  @override
   Future<void> upsertAppSettings(List<AppSettingModel> settings) async {
     if (settings.isEmpty) return;
     final payloadList = settings.map((e) => e.toMap()).toList();
@@ -65,6 +71,7 @@ class AppConfigRepository {
 
   // --- Business Info ---
 
+  @override
   Future<BusinessInfoModel?> fetchBusinessInfo() async {
     final rawResponse = await _supabase
         .from('business_info')
@@ -80,6 +87,7 @@ class AppConfigRepository {
     return null;
   }
 
+  @override
   Future<BusinessInfoModel?> fetchCachedBusinessInfo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -100,6 +108,7 @@ class AppConfigRepository {
     return null;
   }
 
+  @override
   Future<void> cacheBusinessInfo(BusinessInfoModel info) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -111,6 +120,7 @@ class AppConfigRepository {
     } catch (_) {}
   }
 
+  @override
   Future<BusinessInfoModel> saveBusinessInfo(BusinessInfoModel info) async {
     final payload = info.toMap();
     String? finalId = info.id;
@@ -147,6 +157,7 @@ class AppConfigRepository {
     return info.copyWith(id: finalId);
   }
 
+  @override
   Future<String> uploadBusinessLogo(Uint8List bytes) async {
     final fileName = 'logo_${DateTime.now().millisecondsSinceEpoch}_${bytes.hashCode}.jpg';
     final path = 'logos/$fileName';

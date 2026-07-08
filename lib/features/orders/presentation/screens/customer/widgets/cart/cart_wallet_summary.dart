@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/providers/app_config_provider.dart';
+import 'package:inventory_store_app/core/config/presentation/providers/app_config_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';

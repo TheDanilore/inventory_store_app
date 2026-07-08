@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/core/providers/network_provider.dart';
+import 'package:inventory_store_app/core/network/presentation/providers/network_provider.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/profile_provider.dart';
 import 'package:go_router/go_router.dart';
 

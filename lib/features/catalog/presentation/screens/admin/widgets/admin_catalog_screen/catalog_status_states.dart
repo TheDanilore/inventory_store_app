@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/providers/network_provider.dart';
+import 'package:inventory_store_app/core/network/presentation/providers/network_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 

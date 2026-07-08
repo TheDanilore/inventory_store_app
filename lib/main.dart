@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/core/providers/app_providers.dart';
+import 'package:inventory_store_app/core/app_providers.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
 import 'package:inventory_store_app/features/auth/presentation/providers/auth_provider.dart';

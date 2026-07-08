@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/core/models/business_info_model.dart';
 import 'package:inventory_store_app/core/models/app_setting_model.dart';
-import 'package:inventory_store_app/features/auth/data/repositories/app_config_repository.dart';
+import 'package:inventory_store_app/core/config/domain/repositories/app_config_repository.dart';
+import 'package:inventory_store_app/core/config/data/repositories/app_config_repository_impl.dart';
 
 import 'package:inventory_store_app/core/enums/view_state.dart';
 
@@ -17,7 +18,7 @@ class AppConfigProvider extends ChangeNotifier {
   ViewState _saveState = ViewState.initial;
 
   AppConfigProvider({AppConfigRepository? repository})
-      : _repository = repository ?? AppConfigRepository();
+      : _repository = repository ?? AppConfigRepositoryImpl();
 
   Map<String, double> get values => Map.unmodifiable(_values);
   BusinessInfoModel? get businessInfo => _businessInfo;
