@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/attributes_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class AttributeFormSheet extends StatefulWidget {
@@ -21,7 +21,9 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.attribute?['name'] ?? '');
-    _descCtrl = TextEditingController(text: widget.attribute?['description'] ?? '');
+    _descCtrl = TextEditingController(
+      text: widget.attribute?['description'] ?? '',
+    );
   }
 
   @override
@@ -33,13 +35,11 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    final provider = context.read<AttributesProvider>();
-    final success = await provider.saveAttribute(
-      context,
-      existingAttribute: widget.attribute,
-      name: _nameCtrl.text,
-      description: _descCtrl.text,
+
+    final cubit = context.read<AttributesCubit>();
+    final success = await cubit.saveAttribute(
+      _nameCtrl.text,
+      id: widget.attribute?['id'],
     );
 
     if (success && mounted) {
@@ -51,7 +51,7 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isEditing = widget.attribute != null;
-    final provider = context.watch<AttributesProvider>();
+    final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -95,7 +95,11 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              validator: (val) => val == null || val.trim().isEmpty ? 'El nombre es requerido' : null,
+              validator:
+                  (val) =>
+                      val == null || val.trim().isEmpty
+                          ? 'El nombre es requerido'
+                          : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -121,17 +125,24 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: provider.isSaving ? null : _save,
-                child: provider.isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : Text(
-                        isEditing ? 'Actualizar' : 'Crear Propiedad',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
+                onPressed: isSaving ? null : _save,
+                child:
+                    isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            isEditing ? 'Actualizar' : 'Crear Propiedad',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
               ),
             ),
             const SizedBox(height: 20),

@@ -63,10 +63,14 @@ import '../../features/catalog/domain/usecases/get_product_by_id_uc.dart'
 import '../../features/catalog/domain/usecases/get_product_stock_uc.dart'
     as _i958;
 import '../../features/catalog/domain/usecases/get_products_uc.dart' as _i222;
+import '../../features/catalog/presentation/bloc/admin_catalog_cubit.dart'
+    as _i332;
 import '../../features/catalog/presentation/bloc/attributes_cubit.dart'
     as _i919;
 import '../../features/catalog/presentation/bloc/categories_cubit.dart'
     as _i777;
+import '../../features/catalog/presentation/bloc/customer_catalog_cubit.dart'
+    as _i160;
 import '../../features/catalog/presentation/bloc/ingredients_cubit.dart'
     as _i841;
 import '../network/network_cubit.dart' as _i11;
@@ -196,6 +200,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i222.GetProductsUC>(
       () => _i222.GetProductsUC(gh<_i1018.CatalogRepository>()),
     );
+    gh.factory<_i160.CustomerCatalogCubit>(
+      () => _i160.CustomerCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
+      ),
+    );
     gh.factory<_i841.IngredientsCubit>(
       () => _i841.IngredientsCubit(
         getIngredientsUC: gh<_i538.GetIngredientsUC>(),
@@ -265,6 +276,13 @@ extension GetItInjectableX on _i174.GetIt {
         createCategoryUC: gh<_i110.CreateCategoryUC>(),
         updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
         deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
+      ),
+    );
+    gh.factory<_i332.AdminCatalogCubit>(
+      () => _i332.AdminCatalogCubit(
+        repository: gh<_i1018.CatalogRepository>(),
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
       ),
     );
     gh.factory<_i52.AuthCubit>(

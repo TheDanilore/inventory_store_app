@@ -1,45 +1,50 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/active_ingredients_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class ActiveIngredientFormSheet extends StatefulWidget {
-  final Map<String, dynamic>? ingredient;
+  /// ID del ingrediente existente (null = creación)
+  final String? ingredientId;
 
-  const ActiveIngredientFormSheet({super.key, this.ingredient});
+  /// Nombre actual del ingrediente (pre-rellena el campo en edición)
+  final String? ingredientName;
+
+  const ActiveIngredientFormSheet({
+    super.key,
+    this.ingredientId,
+    this.ingredientName,
+  });
 
   @override
-  State<ActiveIngredientFormSheet> createState() => _ActiveIngredientFormSheetState();
+  State<ActiveIngredientFormSheet> createState() =>
+      _ActiveIngredientFormSheetState();
 }
 
-class _ActiveIngredientFormSheetState extends State<ActiveIngredientFormSheet> {
+class _ActiveIngredientFormSheetState
+    extends State<ActiveIngredientFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
-  late TextEditingController _descCtrl;
 
   @override
   void initState() {
     super.initState();
-    _nameCtrl = TextEditingController(text: widget.ingredient?['name'] ?? '');
-    _descCtrl = TextEditingController(text: widget.ingredient?['description'] ?? '');
+    _nameCtrl = TextEditingController(text: widget.ingredientName ?? '');
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _descCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    final provider = context.read<ActiveIngredientsProvider>();
-    final success = await provider.saveIngredient(
-      context,
-      existingIngredient: widget.ingredient,
-      name: _nameCtrl.text,
-      description: _descCtrl.text,
+
+    final cubit = context.read<IngredientsCubit>();
+    final success = await cubit.saveIngredient(
+      _nameCtrl.text,
+      id: widget.ingredientId,
     );
 
     if (success && mounted) {
@@ -50,8 +55,8 @@ class _ActiveIngredientFormSheetState extends State<ActiveIngredientFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final isEditing = widget.ingredient != null;
-    final provider = context.watch<ActiveIngredientsProvider>();
+    final isEditing = widget.ingredientId != null;
+    final isSaving = context.watch<IngredientsCubit>().state.isSaving;
 
     return Material(
       color: Colors.white,
@@ -108,39 +113,18 @@ class _ActiveIngredientFormSheetState extends State<ActiveIngredientFormSheet> {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'El nombre es requerido' : null,
-              ),
-
-              const SizedBox(height: 16),
-              const Text(
-                'Descripción (Opcional)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Detalles adicionales o mecanismo de acción...',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                validator:
+                    (val) =>
+                        val == null || val.trim().isEmpty
+                            ? 'El nombre es requerido'
+                            : null,
               ),
 
               const SizedBox(height: 24),
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: provider.isSaving ? null : _save,
+                  onPressed: isSaving ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -149,22 +133,23 @@ class _ActiveIngredientFormSheetState extends State<ActiveIngredientFormSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: provider.isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          isEditing ? 'Guardar Cambios' : 'Crear Componente',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  child:
+                      isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              isEditing ? 'Guardar Cambios' : 'Crear Componente',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                 ),
               ),
             ],

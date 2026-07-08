@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/attributes_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_state.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/attributes/attribute_form_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/attributes/attribute_value_dialog.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/widgets/attributes/attributes_skeleton.dart';
@@ -30,6 +32,10 @@ class _AttributesManagementScreenState
         _isFabExtended.value = true;
       }
     });
+    // Load attributes on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AttributesCubit>().loadAttributes();
+    });
   }
 
   void _showAttributeForm([Map<String, dynamic>? attribute]) {
@@ -53,6 +59,7 @@ class _AttributesManagementScreenState
           ),
     );
   }
+
   @override
   void dispose() {
     _isFabExtended.dispose();
@@ -60,20 +67,20 @@ class _AttributesManagementScreenState
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return AdminLayout(
       title: 'Atributos de Variantes',
       showBackButton: true,
-      body: Consumer<AttributesProvider>(
-        builder: (context, provider, child) {
+      body: BlocBuilder<AttributesCubit, AttributesState>(
+        builder: (context, state) {
+          final cubit = context.read<AttributesCubit>();
           return RefreshIndicator(
-            onRefresh: () => provider.fetchAttributes(),
+            onRefresh: () => cubit.loadAttributes(),
             color: AppColors.primary,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _buildContent(provider),
+              child: _buildContent(state, cubit),
             ),
           );
         },
@@ -83,28 +90,32 @@ class _AttributesManagementScreenState
         onPressed: () => _showAttributeForm(),
         icon: const Icon(Icons.add, color: Colors.white),
         label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                          duration: const Duration(milliseconds: 200),
-                          child: isExtended
-                              ? const Text(
-          'Nueva Propiedad',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        )
-                              : const SizedBox.shrink(),
-                        );
-                          },
-                        ),
+          valueListenable: _isFabExtended,
+          builder: (context, isExtended, _) {
+            return AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child: isExtended
+                  ? const Text(
+                      'Nueva Propiedad',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildContent(AttributesProvider provider) {
-    if (provider.isLoading) {
+  Widget _buildContent(AttributesState state, AttributesCubit cubit) {
+    if (state.viewState == ViewState.loading ||
+        state.viewState == ViewState.initial) {
       return const AttributesSkeleton(key: ValueKey('skeleton'), itemCount: 4);
     }
-    if (provider.attributes.isEmpty) {
+    if (state.attributes.isEmpty) {
       return ListView(
         controller: _scrollController,
         key: const ValueKey('empty'),
@@ -115,11 +126,7 @@ class _AttributesManagementScreenState
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.category_outlined,
-                  size: 60,
-                  color: Colors.grey.shade300,
-                ),
+                Icon(Icons.category_outlined, size: 60, color: Colors.grey.shade300),
                 const SizedBox(height: 16),
                 Text(
                   'No hay propiedades registradas',
@@ -137,20 +144,18 @@ class _AttributesManagementScreenState
     }
 
     return ListView.separated(
-                                controller: _scrollController,
+      controller: _scrollController,
       key: const ValueKey('list'),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
-      itemCount: provider.attributes.length,
+      itemCount: state.attributes.length,
       separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
-        final attr = provider.attributes[index];
+        final attr = state.attributes[index];
         return _AttributeCard(
           attribute: attr,
-          provider: provider,
           onEdit: () => _showAttributeForm(attr),
-          onDelete:
-              () => provider.deleteAttribute(context, attr['id'], attr['name']),
+          onDelete: () => cubit.deleteAttribute(attr['id']),
           onAddValue: () => _showAddValueForm(attr['id'], attr['name']),
         );
       },
@@ -162,14 +167,12 @@ class _AttributesManagementScreenState
 
 class _AttributeCard extends StatefulWidget {
   final Map<String, dynamic> attribute;
-  final AttributesProvider provider;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onAddValue;
 
   const _AttributeCard({
     required this.attribute,
-    required this.provider,
     required this.onEdit,
     required this.onDelete,
     required this.onAddValue,
@@ -180,25 +183,13 @@ class _AttributeCard extends StatefulWidget {
 }
 
 class _AttributeCardState extends State<_AttributeCard> {
-  final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 10 && _isFabExtended.value) {
-        _isFabExtended.value = false;
-      } else if (_scrollController.offset <= 10 && !_isFabExtended.value) {
-        _isFabExtended.value = true;
-      }
-    });
-  }
   bool _isCardPressed = false;
 
   @override
   Widget build(BuildContext context) {
     final values = (widget.attribute['attribute_values'] as List?) ?? [];
+    // Read isSaving from cubit state for the chip animation
+    final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
     return AnimatedScale(
       scale: _isCardPressed ? 0.98 : 1.0,
@@ -225,9 +216,8 @@ class _AttributeCardState extends State<_AttributeCard> {
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.1),
                           child: const Icon(
                             Icons.category_outlined,
                             color: AppColors.primary,
@@ -268,11 +258,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                 if (widget.attribute['description'] != null &&
                     widget.attribute['description'].toString().isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(
-                      bottom: 12,
-                      top: 4,
-                      left: 52,
-                    ),
+                    padding: const EdgeInsets.only(bottom: 12, top: 4, left: 52),
                     child: Text(
                       widget.attribute['description'],
                       style: TextStyle(
@@ -290,11 +276,9 @@ class _AttributeCardState extends State<_AttributeCard> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      ...values.map(
-                        (v) => _ValueChip(value: v, provider: widget.provider),
-                      ),
+                      ...values.map((v) => _ValueChip(value: v)),
                       AnimatedScale(
-                        scale: widget.provider.isSaving ? 0.95 : 1.0,
+                        scale: isSaving ? 0.95 : 1.0,
                         duration: const Duration(milliseconds: 150),
                         child: ActionChip(
                           label: const Text('Añadir valor'),
@@ -303,9 +287,8 @@ class _AttributeCardState extends State<_AttributeCard> {
                             size: 16,
                             color: AppColors.primary,
                           ),
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.1),
                           labelStyle: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -331,9 +314,8 @@ class _AttributeCardState extends State<_AttributeCard> {
 
 class _ValueChip extends StatefulWidget {
   final Map<String, dynamic> value;
-  final AttributesProvider provider;
 
-  const _ValueChip({required this.value, required this.provider});
+  const _ValueChip({required this.value});
 
   @override
   State<_ValueChip> createState() => _ValueChipState();
@@ -344,11 +326,9 @@ class _ValueChipState extends State<_ValueChip> {
 
   void _handleDelete() async {
     setState(() => _isDeleting = true);
-    await widget.provider.deleteAttributeValue(
-      context,
-      widget.value['id'],
-      widget.value['value'],
-    );
+    await context
+        .read<AttributesCubit>()
+        .deleteAttributeValue(widget.value['id']);
     if (mounted) {
       setState(() => _isDeleting = false);
     }
@@ -361,10 +341,10 @@ class _ValueChipState extends State<_ValueChip> {
       deleteIcon:
           _isDeleting
               ? const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Icon(Icons.close, size: 14),
       onDeleted: _isDeleting ? null : _handleDelete,
       backgroundColor: Colors.grey.shade100,

@@ -119,6 +119,22 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
+  Future<Either<Failure, void>> setProductActive({
+    required String productId,
+    required bool isActive,
+  }) async {
+    try {
+      await _supabase
+          .from('products')
+          .update({'is_active': isActive})
+          .eq('id', productId);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
   Future<Either<Failure, ProductVariantEntity?>> getVariantById(String variantId) async {
     try {
       final response = await _supabase.from('product_variants').select(

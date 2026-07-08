@@ -26,6 +26,8 @@ abstract class CatalogRepository {
   });
   Future<Either<Failure, ProductEntity?>> getProductById(String id);
   Future<Either<Failure, Map<String, int>>> getProductStock({List<String>? productIds});
+  Future<Either<Failure, void>> setProductActive({required String productId, required bool isActive});
+
   
   // Variantes (Lectura)
   Future<Either<Failure, ProductVariantEntity?>> getVariantById(String variantId);

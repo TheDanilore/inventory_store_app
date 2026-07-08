@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/attributes_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class AttributeValueDialog extends StatefulWidget {
@@ -28,12 +28,11 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
 
   Future<void> _save() async {
     if (_valueCtrl.text.trim().isEmpty) return;
-    
-    final provider = context.read<AttributesProvider>();
-    final success = await provider.saveAttributeValue(
-      context,
-      attributeId: widget.attributeId,
-      value: _valueCtrl.text,
+
+    final cubit = context.read<AttributesCubit>();
+    final success = await cubit.saveAttributeValue(
+      widget.attributeId,
+      _valueCtrl.text,
     );
 
     if (success && mounted) {
@@ -43,21 +42,19 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AttributesProvider>();
+    final isSaving = context.watch<AttributesCubit>().state.isSaving;
 
     return AlertDialog(
       title: Text('Añadir valor a ${widget.attributeName}'),
       content: TextField(
         controller: _valueCtrl,
         autofocus: true,
-        decoration: const InputDecoration(
-          hintText: 'Ej: Rojo, XL, Madera...',
-        ),
+        decoration: const InputDecoration(hintText: 'Ej: Rojo, XL, Madera...'),
         onSubmitted: (_) => _save(),
       ),
       actions: [
         TextButton(
-          onPressed: provider.isSaving ? null : () => Navigator.pop(context),
+          onPressed: isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
@@ -65,14 +62,18 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
           ),
-          onPressed: provider.isSaving ? null : _save,
-          child: provider.isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                )
-              : const Text('Añadir'),
+          onPressed: isSaving ? null : _save,
+          child:
+              isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text('Añadir'),
         ),
       ],
     );

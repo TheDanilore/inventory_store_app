@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CatalogDialogs {
   static Future<({int mode, Set<String> selectedIds})?> showExportOptionsDialog(
     BuildContext context,
-    List<ProductModel> max50Products,
+    List<ProductEntity> max50Products,
     int visibleCount,
   ) {
     return showDialog<({int mode, Set<String> selectedIds})>(
@@ -123,7 +123,7 @@ class CatalogDialogs {
                                 ),
                               ),
                               subtitle: Text(
-                                'Stock: ${product.stockControl ? product.totalStock : "Libre"} · ${product.isActive ? "Activo" : "Inactivo"}',
+                                'Stock: ${product.totalStock > 0 ? product.totalStock : "Sin stock"} · ${product.isActive ? "Activo" : "Inactivo"}',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textMuted,
@@ -212,7 +212,7 @@ class CatalogDialogs {
 
   static Future<bool?> showToggleProductActiveDialog(
     BuildContext context,
-    ProductModel product,
+    ProductEntity product,
   ) {
     final willActivate = !product.isActive;
     return showDialog<bool>(
