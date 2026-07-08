@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
 import 'package:inventory_store_app/features/app_config/data/models/app_setting_model.dart';
 
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
@@ -65,16 +67,16 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   }
   
   @override
-  Future<void> upsertAppSettings(List<AppSettingModel> settings) async {
+  Future<void> upsertAppSettings(List<AppSettingEntity> settings) async {
     if (settings.isEmpty) return;
-    final payloadList = settings.map((e) => e.toMap()).toList();
+    final payloadList = settings.map((e) => AppSettingModel.fromEntity(e).toMap()).toList();
     await _supabase.from('app_settings').upsert(payloadList, onConflict: 'key');
   }
 
   // --- Business Info ---
 
   @override
-  Future<BusinessInfoModel?> fetchBusinessInfo() async {
+  Future<BusinessInfoEntity?> fetchBusinessInfo() async {
     final rawResponse = await _supabase
         .from('business_info')
         .select(
@@ -90,7 +92,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   }
 
   @override
-  Future<BusinessInfoModel?> fetchCachedBusinessInfo() async {
+  Future<BusinessInfoEntity?> fetchCachedBusinessInfo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedString = prefs.getString(_businessInfoCacheKey);
@@ -111,10 +113,10 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   }
 
   @override
-  Future<void> cacheBusinessInfo(BusinessInfoModel info) async {
+  Future<void> cacheBusinessInfo(BusinessInfoEntity info) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final payload = info.toMap();
+      final payload = BusinessInfoModel.fromEntity(info).toMap();
       if (info.id != null) {
         payload['id'] = info.id; // Asegurar que el ID se guarde en caché
       }
@@ -123,8 +125,8 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   }
 
   @override
-  Future<BusinessInfoModel> saveBusinessInfo(BusinessInfoModel info) async {
-    final payload = info.toMap();
+  Future<BusinessInfoEntity> saveBusinessInfo(BusinessInfoEntity info) async {
+    final payload = BusinessInfoModel.fromEntity(info).toMap();
     String? finalId = info.id;
     
     // Si no tenemos ID, verificamos primero si existe alguno en DB para no duplicar
@@ -156,7 +158,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       finalId = inserted?['id']?.toString();
     }
     
-    return info.copyWith(id: finalId);
+    return BusinessInfoModel.fromEntity(info).copyWith(id: finalId);
   }
 
   @override

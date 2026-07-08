@@ -1,6 +1,6 @@
 import 'dart:typed_data';
-import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
-import 'package:inventory_store_app/features/app_config/data/models/app_setting_model.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
 
 /// Contrato del repositorio de configuración de la app.
 abstract class AppConfigRepository {
@@ -11,22 +11,22 @@ abstract class AppConfigRepository {
   Future<Map<String, double>?> fetchCachedSettings();
 
   /// Obtiene la información del negocio.
-  Future<BusinessInfoModel?> fetchBusinessInfo();
+  Future<BusinessInfoEntity?> fetchBusinessInfo();
 
   /// Obtiene la información del negocio desde caché.
-  Future<BusinessInfoModel?> fetchCachedBusinessInfo();
+  Future<BusinessInfoEntity?> fetchCachedBusinessInfo();
 
   /// Guarda en caché la configuración de la app (raw).
   Future<void> cacheAppSettings(List<Map<String, dynamic>> rawData);
 
   /// Actualiza/Inserta configuraciones de la app.
-  Future<void> upsertAppSettings(List<AppSettingModel> settings);
+  Future<void> upsertAppSettings(List<AppSettingEntity> settings);
 
   /// Guarda en caché la información del negocio.
-  Future<void> cacheBusinessInfo(BusinessInfoModel info);
+  Future<void> cacheBusinessInfo(BusinessInfoEntity info);
 
   /// Guarda la información del negocio en remoto.
-  Future<BusinessInfoModel> saveBusinessInfo(BusinessInfoModel info);
+  Future<BusinessInfoEntity> saveBusinessInfo(BusinessInfoEntity info);
 
   /// Sube el logo del negocio a storage y devuelve la URL.
   Future<String> uploadBusinessLogo(Uint8List bytes);

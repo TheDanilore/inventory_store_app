@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/app_config/domain/usecases/save_bus
 import 'package:inventory_store_app/features/app_config/domain/usecases/upload_logo_uc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
-import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 
 @injectable
 class AppConfigCubit extends Cubit<AppConfigState> {
@@ -24,8 +24,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required this.uploadLogoUseCase,
   }) : super(const AppConfigState());
 
-  // --- Helpers para compatibilidad con código existente ---
-  BusinessInfoModel? get businessInfo => state.businessInfo;
+  // --- Helpers para compatibilidad ---
+  BusinessInfoEntity? get businessInfo => state.businessInfo;
   
   double getDouble(String key, [double defaultValue = 0.0]) {
     return state.values[key] ?? defaultValue;
@@ -40,64 +40,56 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   String get businessPhone => state.businessInfo?.phone ?? '';
   String get businessLogoUrl => state.businessInfo?.logoUrl ?? '';
 
-  ViewState get settingsState => state.isLoadingSettings ? ViewState.loading : ViewState.success; // 1 = loading, 2 = success for ViewState
-  ViewState get businessInfoState => state.isLoadingBusinessInfo ? ViewState.loading : ViewState.success;
-  ViewState get saveState => state.isSaving ? ViewState.loading : ViewState.success;
+
+  ViewState get settingsState => state.status;
+  ViewState get businessInfoState => state.status;
+  ViewState get saveState => state.saveStatus;
 
   void addListener(Function() listener) {}
   void removeListener(Function() listener) {}
 
-  Future<bool> saveValue(String key, dynamic value, {String? description}) async { return true;
-    // Stub for now, to fix compilation. 
-  }
+  Future<bool> saveValue(String key, dynamic value, {String? description}) async { return true; }
   
-  Future<bool> saveMultipleValues(Map<String, dynamic> newValues, {Map<String, String>? descriptions}) async {
-    // Stub for now
-    return true;
-  }
+  Future<bool> saveMultipleValues(Map<String, dynamic> newValues, {Map<String, String>? descriptions}) async { return true; }
 
   Future<String?> uploadBusinessLogo(Uint8List bytes) async { return null; }
 
-  // --------------------------------------------------------
-
-  
   Future<void> loadConfig() async {
     await fetchSettings();
     await loadBusinessInfo();
   }
 
   Future<void> fetchSettings() async {
-    emit(state.copyWith(isLoadingSettings: true, clearErrorMessage: true));
+    emit(state.copyWith(status: ViewState.loading, clearErrorMessage: true));
 
     final result = await getAppSettingsUseCase(const NoParams());
 
     result.fold(
       (failure) => emit(state.copyWith(
-        isLoadingSettings: false,
+        status: ViewState.error,
         errorMessage: failure.message,
       )),
       (settings) => emit(state.copyWith(
-        isLoadingSettings: false,
+        status: ViewState.success,
         values: settings,
       )),
     );
   }
 
   Future<void> loadBusinessInfo({bool force = false}) async {
-    if (state.isLoadingBusinessInfo) return;
+    if (state.status == ViewState.loading) return;
     if (state.businessInfo != null && !force) return;
 
-    emit(state.copyWith(isLoadingBusinessInfo: true, clearErrorMessage: true));
+    emit(state.copyWith(status: ViewState.loading, clearErrorMessage: true));
 
     final result = await getBusinessInfoUseCase(const NoParams());
 
     result.fold(
       (failure) {
         emit(state.copyWith(
-          isLoadingBusinessInfo: false,
+          status: ViewState.error,
           errorMessage: failure.message,
-          // Si no hay nada, generamos uno por defecto
-          businessInfo: state.businessInfo ?? const BusinessInfoModel(
+          businessInfo: state.businessInfo ?? const BusinessInfoEntity(
             businessName: 'Sin configurar',
             taxId: '',
             address: '',
@@ -110,8 +102,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       },
       (info) {
         emit(state.copyWith(
-          isLoadingBusinessInfo: false,
-          businessInfo: info ?? const BusinessInfoModel(
+          status: ViewState.success,
+          businessInfo: info ?? const BusinessInfoEntity(
             businessName: 'Sin configurar',
             taxId: '',
             address: '',
@@ -133,10 +125,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required bool loyaltyGlobalEnabled,
     required bool loyaltyCustomerVisible,
   }) async {
-    emit(state.copyWith(isSaving: true, clearErrorMessage: true, saveSuccess: false));
+    emit(state.copyWith(saveStatus: ViewState.loading, clearErrorMessage: true));
 
     final currentInfo = state.businessInfo ??
-        const BusinessInfoModel(
+        const BusinessInfoEntity(
           businessName: '',
           taxId: '',
           address: '',
@@ -146,11 +138,13 @@ class AppConfigCubit extends Cubit<AppConfigState> {
           loyaltyCustomerVisible: true,
         );
 
-    final updatedInfo = currentInfo.copyWith(
+    final updatedInfo = BusinessInfoEntity(
+      id: currentInfo.id,
       businessName: businessName,
       taxId: taxId,
       address: address,
       phone: phone,
+      logoUrl: currentInfo.logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled,
       loyaltyCustomerVisible: loyaltyCustomerVisible,
     );
@@ -159,13 +153,12 @@ class AppConfigCubit extends Cubit<AppConfigState> {
 
     return result.fold(
       (failure) {
-        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+        emit(state.copyWith(saveStatus: ViewState.error, errorMessage: failure.message));
         return false;
       },
       (savedInfo) {
         emit(state.copyWith(
-          isSaving: false,
-          saveSuccess: true,
+          saveStatus: ViewState.success,
           businessInfo: savedInfo,
         ));
         return true;
@@ -182,18 +175,18 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required bool loyaltyGlobalEnabled,
     required bool loyaltyCustomerVisible,
   }) async {
-    emit(state.copyWith(isSaving: true, clearErrorMessage: true, saveSuccess: false));
+    emit(state.copyWith(saveStatus: ViewState.loading, clearErrorMessage: true));
 
     final logoResult = await uploadLogoUseCase(logoBytes);
 
     return logoResult.fold(
       (failure) {
-        emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+        emit(state.copyWith(saveStatus: ViewState.error, errorMessage: failure.message));
         return false;
       },
       (logoUrl) async {
         final currentInfo = state.businessInfo ??
-            const BusinessInfoModel(
+            const BusinessInfoEntity(
               businessName: '',
               taxId: '',
               address: '',
@@ -203,7 +196,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
               loyaltyCustomerVisible: true,
             );
 
-        final updatedInfo = currentInfo.copyWith(
+        final updatedInfo = BusinessInfoEntity(
+          id: currentInfo.id,
           businessName: businessName,
           taxId: taxId,
           address: address,
@@ -217,13 +211,12 @@ class AppConfigCubit extends Cubit<AppConfigState> {
 
         return result.fold(
           (failure) {
-            emit(state.copyWith(isSaving: false, errorMessage: failure.message));
+            emit(state.copyWith(saveStatus: ViewState.error, errorMessage: failure.message));
             return false;
           },
           (savedInfo) {
             emit(state.copyWith(
-              isSaving: false,
-              saveSuccess: true,
+              saveStatus: ViewState.success,
               businessInfo: savedInfo,
             ));
             return true;
