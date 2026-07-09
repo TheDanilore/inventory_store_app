@@ -57,15 +57,25 @@ import '../../features/catalog/domain/usecases/catalog_ingredient_ucs.dart'
     as _i597;
 import '../../features/catalog/domain/usecases/catalog_variant_ucs.dart'
     as _i929;
+import '../../features/catalog/domain/usecases/check_wishlist_state_usecase.dart'
+    as _i44;
 import '../../features/catalog/domain/usecases/create_ingredient_uc.dart'
     as _i498;
+import '../../features/catalog/domain/usecases/get_admin_financial_data_usecase.dart'
+    as _i712;
 import '../../features/catalog/domain/usecases/get_attributes_uc.dart' as _i487;
 import '../../features/catalog/domain/usecases/get_categories_uc.dart' as _i700;
+import '../../features/catalog/domain/usecases/get_current_profile_id_usecase.dart'
+    as _i927;
 import '../../features/catalog/domain/usecases/get_product_by_id_uc.dart'
     as _i567;
+import '../../features/catalog/domain/usecases/get_product_extra_data_usecase.dart'
+    as _i338;
 import '../../features/catalog/domain/usecases/get_product_stock_uc.dart'
     as _i958;
 import '../../features/catalog/domain/usecases/get_products_uc.dart' as _i222;
+import '../../features/catalog/domain/usecases/toggle_wishlist_usecase.dart'
+    as _i839;
 import '../../features/catalog/presentation/bloc/admin_catalog_cubit.dart'
     as _i332;
 import '../../features/catalog/presentation/bloc/attributes_cubit.dart'
@@ -199,8 +209,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i929.HasVariantSalesUC>(
       () => _i929.HasVariantSalesUC(gh<_i1018.CatalogRepository>()),
     );
+    gh.lazySingleton<_i44.CheckWishlistStateUseCase>(
+      () => _i44.CheckWishlistStateUseCase(gh<_i1018.CatalogRepository>()),
+    );
     gh.lazySingleton<_i498.CreateIngredientUC>(
       () => _i498.CreateIngredientUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i712.GetAdminFinancialDataUseCase>(
+      () => _i712.GetAdminFinancialDataUseCase(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i487.GetAttributesUC>(
       () => _i487.GetAttributesUC(gh<_i1018.CatalogRepository>()),
@@ -208,14 +224,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i700.GetCategoriesUC>(
       () => _i700.GetCategoriesUC(gh<_i1018.CatalogRepository>()),
     );
+    gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
+      () => _i927.GetCurrentProfileIdUseCase(gh<_i1018.CatalogRepository>()),
+    );
     gh.lazySingleton<_i567.GetProductByIdUC>(
       () => _i567.GetProductByIdUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i338.GetProductExtraDataUseCase>(
+      () => _i338.GetProductExtraDataUseCase(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i958.GetProductStockUC>(
       () => _i958.GetProductStockUC(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i222.GetProductsUC>(
       () => _i222.GetProductsUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i839.ToggleWishlistUseCase>(
+      () => _i839.ToggleWishlistUseCase(gh<_i1018.CatalogRepository>()),
     );
     gh.factory<_i160.CustomerCatalogCubit>(
       () => _i160.CustomerCatalogCubit(

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 
 class VariantDraftModel {
   final String? id;
@@ -51,33 +51,19 @@ class VariantDraftModel {
        urlsExistentes = urlsExistentes ?? [],
        nuevasImagenes = nuevasImagenes ?? [];
 
-  // ── Desde modelo existente ──────────────────────────────────────────────────
-  factory VariantDraftModel.fromVariant(ProductVariantModel variant) {
-    // Convertir los VariantAttributeValueModel a nuestra lista de mapas con IDs
-    final List<Map<String, dynamic>> currentAttributes = [];
-
-    for (final av in variant.attributeValues) {
-      currentAttributes.add({
-        'attribute_id': av.attributeId, // Ahora sí existe
-        'attribute_name': av.attributeName,
-        'value_id':
-            av.attributeValueId, // Usamos el nombre que tienes en el modelo
-        'value_name': av.value,
-      });
-    }
-
+  // ── Desde entidad existente ──────────────────────────────────────────────────
+  factory VariantDraftModel.fromEntity(VariantDraftEntity variant) {
     return VariantDraftModel(
       id: variant.id,
       sku: variant.sku,
       barcode: variant.barcode,
-      selectedAttributes: currentAttributes,
-      price: variant.salePrice?.toString() ?? '',
-      wholesalePrice: variant.wholesalePrice?.toString() ?? '',
-      wholesaleMinQuantity: variant.wholesaleMinQuantity?.toString() ?? '',
-      reorderPoint: variant.reorderPoint.toString(),
-      unitCost: variant.unitCost?.toString() ?? '',
-      urlsExistentes:
-          variant.images.isNotEmpty ? [variant.images.first.imageUrl] : [],
+      selectedAttributes: variant.selectedAttributes,
+      price: variant.price,
+      wholesalePrice: variant.wholesalePrice,
+      wholesaleMinQuantity: variant.wholesaleMinQuantity,
+      reorderPoint: variant.reorderPoint,
+      unitCost: variant.unitCost,
+      urlsExistentes: variant.urlsExistentes,
       isActive: variant.isActive,
     );
   }

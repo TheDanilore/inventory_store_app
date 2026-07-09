@@ -243,7 +243,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<void> _fetchVariants(String productId) async {
     try {
       final drafts = await _unwrap(_repository.getVariantsDrafts(productId));
-      variantDrafts.addAll(drafts);
+      variantDrafts.addAll(drafts.map(VariantDraftModel.fromEntity));
     } catch (e) {
       // El error se silencia o se maneja en el cubit. Aquí lo notificaremos por Snackbar desde UI idealmente.
     }

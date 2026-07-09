@@ -2,7 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 
 @lazySingleton
@@ -27,7 +27,7 @@ class GetStockByVariantUC {
 class GetVariantsDraftsUC {
   final CatalogRepository repository;
   GetVariantsDraftsUC(this.repository);
-  Future<Either<Failure, List<VariantDraftModel>>> call(String productId) async {
+  Future<Either<Failure, List<VariantDraftEntity>>> call(String productId) async {
     return await repository.getVariantsDrafts(productId);
   }
 }

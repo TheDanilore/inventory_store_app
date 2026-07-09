@@ -1,5 +1,3 @@
-import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -8,7 +6,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart'; // Mantener Draft model por ahora si es necesario para el formulario
+import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 
 abstract class CatalogRepository {
   // Categorías
@@ -34,7 +32,7 @@ abstract class CatalogRepository {
   // Variantes (Lectura)
   Future<Either<Failure, ProductVariantEntity?>> getVariantById(String variantId);
   Future<Either<Failure, Map<String, int>>> getStockByVariant(String productId);
-  Future<Either<Failure, List<VariantDraftModel>>> getVariantsDrafts(String productId);
+  Future<Either<Failure, List<VariantDraftEntity>>> getVariantsDrafts(String productId);
   
   // Atributos y Componentes Activos
   Future<Either<Failure, Map<String, dynamic>>> createAttribute(String name);
@@ -75,12 +73,12 @@ abstract class CatalogRepository {
   Future<Either<Failure, String?>> fetchCurrentProfileId();
   Future<Either<Failure, bool>> toggleWishlist(String productId, String profileId, bool currentState);
   Future<Either<Failure, List<Map<String, dynamic>>>> fetchAdminFinancialData(String productId);
-  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageModel> images, List<ProductVariantModel> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId);
+  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageEntity> images, List<ProductVariantEntity> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId);
 
   
   Future<Either<Failure, Map<String, int>>> loadStockByVariant(String productId);
   Future<Either<Failure, List<Map<String, dynamic>>>> loadActiveVariants(String productId);
-  Future<Either<Failure, Map<String, List<ProductVariantModel>>>> fetchVariantsByProductIds(List<String> productIds);
+  Future<Either<Failure, Map<String, List<ProductVariantEntity>>>> fetchVariantsByProductIds(List<String> productIds);
   Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(List<String> variantIds);
 
   // Misc

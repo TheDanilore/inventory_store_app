@@ -3,7 +3,7 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:inventory_store_app/features/dashboard/data/models/product_financial_summary.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';
 
 class ProductDetailState extends Equatable {
   final ProductEntity? product;
@@ -29,7 +29,7 @@ class ProductDetailState extends Equatable {
   final double reinvestmentNeeded;
   final double inventoryValue;
   final double totalRevenue;
-  final List<VariantFinancialSummary> variantSummaries;
+  final List<VariantFinancialSummaryEntity> variantSummaries;
   final double averageRating;
 
   const ProductDetailState({
@@ -76,7 +76,7 @@ class ProductDetailState extends Equatable {
     double? reinvestmentNeeded,
     double? inventoryValue,
     double? totalRevenue,
-    List<VariantFinancialSummary>? variantSummaries,
+    List<VariantFinancialSummaryEntity>? variantSummaries,
     double? averageRating,
   }) {
     return ProductDetailState(

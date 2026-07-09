@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
@@ -171,7 +171,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
-  Future<Either<Failure, List<VariantDraftModel>>> getVariantsDrafts(String productId) async {
+  Future<Either<Failure, List<VariantDraftEntity>>> getVariantsDrafts(String productId) async {
     try {
       final response = await _supabase.from('product_variants').select(
         'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))'
@@ -179,7 +179,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
       
       final drafts = List<Map<String, dynamic>>.from(response).map((json) {
         final variant = ProductVariantModel.fromJson(json);
-        return VariantDraftModel.fromVariant(variant);
+        return VariantDraftEntity.fromVariant(variant.toEntity());
       }).toList();
       return right(drafts);
     } catch (e) {
@@ -625,7 +625,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
-  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageModel> images, List<ProductVariantModel> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId) async {
+  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageEntity> images, List<ProductVariantEntity> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId) async {
     try {
       final queries = <Future<dynamic>>[
         _supabase.from('warehouse_stock_batches').select('id, available_quantity, variant_id, warehouse_id, batch_number, expiry_date, warehouses(name)').eq('product_id', productId).gt('available_quantity', 0).order('expiry_date', ascending: true, nullsFirst: false),
@@ -664,8 +664,8 @@ class CatalogRepositoryImpl implements CatalogRepository {
       return right((
         stocks: aggregatedStocks.values.toList(),
         batches: validBatches,
-        images: (results[1] as List).map((e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e))).toList(),
-        variants: (results[2] as List).map((e) => ProductVariantModel.fromJson(Map<String, dynamic>.from(e))).toList(),
+        images: (results[1] as List).map((e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e)).toEntity()).toList(),
+        variants: (results[2] as List).map((e) => ProductVariantModel.fromJson(Map<String, dynamic>.from(e)).toEntity()).toList(),
         reviews: List<Map<String, dynamic>>.from(results[3] as List),
         ingredients: List<Map<String, dynamic>>.from(results[4] as List),
       ));
@@ -703,16 +703,15 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, List<ProductVariantModel>>>> fetchVariantsByProductIds(List<String> productIds) async {
+  Future<Either<Failure, Map<String, List<ProductVariantEntity>>>> fetchVariantsByProductIds(List<String> productIds) async {
     try {
       if (productIds.isEmpty) return right({});
       final response = await _supabase.from('product_variants').select('*, product_images(id, image_url, is_main, display_order), variant_attribute_values(attribute_values(id, value, attributes(id, name)))').inFilter('product_id', productIds).eq('is_active', true).order('sku');
       final raw = List<Map<String, dynamic>>.from(response);
-      final map = <String, List<ProductVariantModel>>{};
+      final map = <String, List<ProductVariantEntity>>{};
       for (final row in raw) {
         final pid = row['product_id'] as String;
-        final v = ProductVariantModel.fromJson(row);
-        map.putIfAbsent(pid, () => []).add(v);
+        map.putIfAbsent(pid, () => []).add(ProductVariantModel.fromJson(row).toEntity());
       }
       return right(map);
     } catch (e) {

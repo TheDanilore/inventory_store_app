@@ -1,4 +1,6 @@
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+// 
+import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ingredient_mutations_uc.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/create_ingredient_uc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -279,7 +281,8 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
   bool _isLoading = false;
   bool _hasSearched = false;
   Timer? _debounce;
-  final CatalogRepository _repository = sl<CatalogRepository>();
+  final GetIngredientsUC _getIngredientsUC = sl<GetIngredientsUC>();
+  final CreateIngredientUC _createIngredientUC = sl<CreateIngredientUC>();
 
   void _search(String term) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -294,7 +297,7 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
     _debounce = Timer(const Duration(milliseconds: 400), () async {
       setState(() => _isLoading = true);
       try {
-        final resEither = await _repository.searchIngredients(term.trim());
+        final resEither = await _getIngredientsUC.call(searchQuery: term.trim());
         final res = resEither.fold((l) => <Map<String, dynamic>>[], (r) => r.map((e) => {'id': e.id, 'name': e.name}).toList());
         if (mounted) {
           setState(() {
@@ -315,7 +318,7 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final resEither = await _repository.createIngredient(name);
+      final resEither = await _createIngredientUC.call(name);
       final res = resEither.fold((l) => null, (r) => {'id': r.id, 'name': r.name});
       if (mounted) Navigator.pop(context, res);
     } catch (e) {

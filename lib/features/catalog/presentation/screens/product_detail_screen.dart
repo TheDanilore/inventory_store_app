@@ -1,14 +1,16 @@
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_extra_data_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_admin_financial_data_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/check_wishlist_state_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/toggle_wishlist_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
@@ -33,7 +35,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_top_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_price_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
+//
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_bottom_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_input_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_description_card.dart';
@@ -45,6 +47,15 @@ class ProductDetailScreen extends StatelessWidget {
   final bool isAdmin;
   final String? initialVariantId;
   final bool isEmbedded;
+  final Widget? cartActionWidget;
+  final void Function(
+    BuildContext context,
+    ProductEntity product,
+    int qty,
+    ProductVariantEntity? selectedVariant,
+    String? effectiveImageUrl,
+    double effectivePrice,
+  )? onAddToCart;
 
   const ProductDetailScreen({
     super.key,
@@ -52,6 +63,8 @@ class ProductDetailScreen extends StatelessWidget {
     this.isAdmin = false,
     this.initialVariantId,
     this.isEmbedded = false,
+    this.cartActionWidget,
+    this.onAddToCart,
   });
 
   @override
@@ -59,19 +72,44 @@ class ProductDetailScreen extends StatelessWidget {
     return BlocProvider(
       create:
           (_) => ProductDetailCubit(
-            sl<CatalogRepository>(),
+            getExtraData: sl(),
+            getAdminData: sl(),
+            checkWishlist: sl(),
+            toggleWishlist: sl(),
+            getProfileId: sl(),
             product: product,
             isAdmin: isAdmin,
             initialVariantId: initialVariantId,
           ),
-      child: _ProductDetailScreenContent(isEmbedded: isEmbedded),
+      child: _ProductDetailScreenContent(
+        isEmbedded: isEmbedded,
+        cartActionWidget: cartActionWidget,
+        onAddToCart: onAddToCart,
+        product: product,
+      ),
     );
   }
 }
 
 class _ProductDetailScreenContent extends StatefulWidget {
   final bool isEmbedded;
-  const _ProductDetailScreenContent({this.isEmbedded = false});
+  final Widget? cartActionWidget;
+  final ProductEntity product;
+  final void Function(
+    BuildContext context,
+    ProductEntity product,
+    int qty,
+    ProductVariantEntity? selectedVariant,
+    String? effectiveImageUrl,
+    double effectivePrice,
+  )? onAddToCart;
+
+  const _ProductDetailScreenContent({
+    this.isEmbedded = false,
+    this.cartActionWidget,
+    this.onAddToCart,
+    required this.product,
+  });
 
   @override
   State<_ProductDetailScreenContent> createState() =>
@@ -183,21 +221,10 @@ class _ProductDetailScreenContentState
         state.selectedVariantImageUrl ??
         (state.images.isNotEmpty
             ? state.images[0].imageUrl
-            : product.primaryImageUrl);
+            : widget.product.primaryImageUrl);
 
     if (variants.isNotEmpty && selectedVariant == null) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (sheetContext) => CartVariantPickerSheet(
-              cart: Provider.of<CartProvider>(sheetContext, listen: false),
-              product: ProductModel.fromEntity(product),
-              initialQuantity: qty,
-              selectedVariantId: state.selectedVariantId,
-            ),
-      );
+      widget.onAddToCart?.call(context, widget.product, qty, selectedVariant, effectiveImageUrl, effectivePrice);
       return;
     }
 
@@ -210,16 +237,7 @@ class _ProductDetailScreenContentState
       return;
     }
 
-    Provider.of<CartProvider>(context, listen: false).addItem(
-      ProductModel.fromEntity(product),
-      quantity: qty,
-      variantId: selectedVariant?.id,
-      variantLabel: selectedVariant?.label,
-      unitPrice: effectivePrice,
-      imageUrl: effectiveImageUrl,
-      sku: selectedVariant?.sku,
-      availableStock: stock,
-    );
+    widget.onAddToCart?.call(context, widget.product, qty, selectedVariant, effectiveImageUrl, effectivePrice);
     // Solo vibrar si no es web para evitar MissingPluginException
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
@@ -768,49 +786,11 @@ stockByVariant: stockMap,
                   padding: const EdgeInsets.only(right: 8.0, top: 8, bottom: 8),
                   child: _buildWishlistButton(),
                 ),
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
-                child: CircleAvatar(
-                  backgroundColor: Colors.white.withValues(alpha: 0.8),
-                  child: Consumer<CartProvider>(
-                    builder: (context, cart, _) {
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.shopping_bag_outlined,
-                              size: 20,
-                              color: Colors.black87,
-                            ),
-                            onPressed: () => context.push('/customer/cart'),
-                          ),
-                          if (cart.itemCount > 0)
-                            Positioned(
-                              right: 2,
-                              top: 2,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.accent,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  '${cart.itemCount}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
+              if (widget.cartActionWidget != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+                  child: widget.cartActionWidget,
                 ),
-              ),
             ],
           ],
           flexibleSpace: FlexibleSpaceBar(
@@ -864,23 +844,18 @@ stockByVariant: stockMap,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
-                      final currentVariantId = state.selectedVariantId;
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder:
-                            (sheetContext) => CartVariantPickerSheet(
-                              cart: Provider.of<CartProvider>(
-                                sheetContext,
-                                listen: false,
-                              ),
-                              product: ProductModel.fromEntity(product),
-                              selectedVariantId: currentVariantId,
-                              onVariantSelected: (variant) {
-                                _selectVariant(variant.toEntity());
-                              },
-                            ),
+                      final effectiveImageUrl =
+                          state.selectedVariantImageUrl ??
+                          (state.images.isNotEmpty
+                              ? state.images[0].imageUrl
+                              : widget.product.primaryImageUrl);
+                      widget.onAddToCart?.call(
+                        context,
+                        widget.product,
+                        state.selectedQty,
+                        null, // null = mostrar selector de variante en el caller
+                        effectiveImageUrl,
+                        state.effectivePrice,
                       );
                     },
                     child: Padding(
