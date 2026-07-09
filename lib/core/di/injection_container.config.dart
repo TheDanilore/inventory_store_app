@@ -40,12 +40,15 @@ import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
 import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
     as _i524;
+import '../../features/catalog/domain/entities/product_entity.dart' as _i449;
 import '../../features/catalog/domain/repositories/catalog_repository.dart'
     as _i1018;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_category_mutations_uc.dart'
     as _i110;
+import '../../features/catalog/domain/usecases/catalog_form_mutations_uc.dart'
+    as _i1067;
 import '../../features/catalog/domain/usecases/catalog_image_ucs.dart'
     as _i1014;
 import '../../features/catalog/domain/usecases/catalog_ingredient_mutations_uc.dart'
@@ -73,6 +76,8 @@ import '../../features/catalog/presentation/bloc/customer_catalog_cubit.dart'
     as _i160;
 import '../../features/catalog/presentation/bloc/ingredients_cubit.dart'
     as _i841;
+import '../../features/catalog/presentation/bloc/product_form_cubit.dart'
+    as _i150;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -121,6 +126,18 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i110.DeleteCategoryUC>(
       () => _i110.DeleteCategoryUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1067.SaveProductMasterUC>(
+      () => _i1067.SaveProductMasterUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1067.SaveVariantUC>(
+      () => _i1067.SaveVariantUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1067.SaveVariantAttributesUC>(
+      () => _i1067.SaveVariantAttributesUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1067.GetFirstVariantIdUC>(
+      () => _i1067.GetFirstVariantIdUC(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i1014.GetProductImagesUC>(
       () => _i1014.GetProductImagesUC(gh<_i1018.CatalogRepository>()),
@@ -284,6 +301,10 @@ extension GetItInjectableX on _i174.GetIt {
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         getProductsUC: gh<_i222.GetProductsUC>(),
       ),
+    );
+    gh.factoryParam<_i150.ProductFormCubit, _i449.ProductEntity?, dynamic>(
+      (productToEdit, _) =>
+          _i150.ProductFormCubit(gh<_i1018.CatalogRepository>(), productToEdit),
     );
     gh.factory<_i52.AuthCubit>(
       () => _i52.AuthCubit(

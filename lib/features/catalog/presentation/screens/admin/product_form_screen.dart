@@ -1,5 +1,5 @@
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -28,7 +28,7 @@ class ProductFormScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ProductFormCubit(sl<CatalogRepository>())..initData(productToEdit),
+      create: (_) => sl<ProductFormCubit>(param1: productToEdit),
       child: _ProductFormScreenContent(),
     );
   }

@@ -1,17 +1,13 @@
+import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_cart_fab.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
-
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
-
-
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -25,6 +21,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/admin_add_to_cart_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_fab_buttons.dart';
+
 class AdminCatalogScreen extends StatefulWidget {
   const AdminCatalogScreen({super.key});
 
@@ -54,9 +51,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     AdminCatalogCubit cubit,
   ) async {
     final willActivate = !product.isActive;
-    
+
     final success = await cubit.toggleProductActive(product);
-    
+
     if (success && mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +146,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         final isDesktop = constraints.maxWidth >= 900;
         return BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
           builder: (context, state) {
-                    final cubit = context.read<AdminCatalogCubit>();
+            final cubit = context.read<AdminCatalogCubit>();
             Widget buildBody() {
               return Builder(
                 builder: (context) {
@@ -292,9 +289,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                     children: [
                                       CatalogHeader(
                                         searchController: _searchCtrl,
-                                        isExporting: state.actionState == ViewState.loading,
+                                        isExporting:
+                                            state.actionState ==
+                                            ViewState.loading,
                                         onExport:
-                                            () => cubit.exportCatalogPdf(context),
+                                            () =>
+                                                cubit.exportCatalogPdf(context),
                                         onSearchChanged: cubit.setSearchTerm,
                                         searchByIngredient:
                                             state.searchByIngredient,
@@ -305,7 +305,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                               '/admin/product-form',
                                             ),
                                       ),
-                                      if (state.actionState == ViewState.loading)
+                                      if (state.actionState ==
+                                          ViewState.loading)
                                         const LinearProgressIndicator(
                                           color: AppColors.teal,
                                           minHeight: 2,
@@ -325,8 +326,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               ? SliverToBoxAdapter(
                                 child: CategoryChips(
                                   categories: state.categories,
-                                  selectedCategoryId:
-                                      state.selectedCategoryId,
+                                  selectedCategoryId: state.selectedCategoryId,
                                   onSelected: cubit.setCategory,
                                   filterIsActive: state.filterIsActive,
                                   onStatusSelected: cubit.setFilterIsActive,
@@ -334,7 +334,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               )
                               : null;
 
-                      if (state.catalogState == ViewState.loading || state.catalogState == ViewState.initial) {
+                      if (state.catalogState == ViewState.loading ||
+                          state.catalogState == ViewState.initial) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
                           onRefresh: () async => cubit.refreshProducts(),
@@ -365,7 +366,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         );
                       }
 
-                      if (state.errorMessage != null && state.products.isEmpty) {
+                      if (state.errorMessage != null &&
+                          state.products.isEmpty) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
                           onRefresh: () async => cubit.refreshProducts(),
@@ -385,7 +387,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         );
                       }
 
-                      if (state.products.isEmpty && (state.catalogState == ViewState.success || state.catalogState == ViewState.empty)) {
+                      if (state.products.isEmpty &&
+                          (state.catalogState == ViewState.success ||
+                              state.catalogState == ViewState.empty)) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
                           onRefresh: () async => cubit.refreshProducts(),
@@ -396,8 +400,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               if (chipsSliver != null) chipsSliver,
                               SliverFillRemaining(
                                 child: CatalogEmptyState(
-                                  searchByIngredient:
-                                      state.searchByIngredient,
+                                  searchByIngredient: state.searchByIngredient,
                                   searchTerm: state.searchTerm,
                                   onRetry: () {
                                     if (state.searchTerm.isNotEmpty) {
@@ -449,8 +452,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   Widget catalogBody = Column(
                     children: [
                       Expanded(child: mainContent),
-                      if (state.products.isNotEmpty &&
-                          state.totalPages > 1)
+                      if (state.products.isNotEmpty && state.totalPages > 1)
                         Container(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                           decoration: BoxDecoration(
@@ -495,20 +497,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Consumer<PosProvider>(
-                          builder: (posContext, pos, child) {
-                            if (pos.itemCount == 0) {
-                              return const SizedBox.shrink();
-                            }
-                            return CatalogPosCartButton(
-                              itemCount: pos.itemCount,
-                              total: pos.totalAmount,
-                              onTap: () async {
-                                await context.push('/admin/pos-checkout');
-                              },
-                            );
-                          },
-                        ),
+                        const PosCartFab(),
                         const SizedBox(height: 12),
                         CatalogAddProductFab(
                           onTap: () async {

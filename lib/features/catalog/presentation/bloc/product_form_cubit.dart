@@ -1,3 +1,4 @@
+import 'package:injectable/injectable.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +14,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'product_form_state.dart';
 
+@injectable
 class ProductFormCubit extends Cubit<ProductFormState> {
   
   final CatalogRepository _repository;
@@ -55,7 +57,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   bool _isSaving = false;
   bool _isDirty = false;
 
-  ProductFormCubit(this._repository) : super(ProductFormState.initial());
+  ProductFormCubit(this._repository, @factoryParam ProductEntity? productToEdit) : super(ProductFormState.initial()) {
+    initData(productToEdit);
+  }
 
   bool _hasErrorLoading = false;
   String _errorMessage = '';
