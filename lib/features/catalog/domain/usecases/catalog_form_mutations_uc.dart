@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -8,8 +9,8 @@ class SaveProductMasterUC {
   final CatalogRepository repository;
   SaveProductMasterUC(this.repository);
 
-  Future<Either<Failure, String>> call({required String? productId, required Map<String, dynamic> productData}) {
-    return repository.saveProductMaster(productId: productId, productData: productData);
+  Future<Either<Failure, String>> call(ProductEntity product, String? profileId) {
+    return repository.saveProductMaster(product, profileId);
   }
 }
 

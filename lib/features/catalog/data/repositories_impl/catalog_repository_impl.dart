@@ -502,23 +502,29 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
-  Future<Either<Failure, String>> saveProductMaster({required String? productId, required Map<String, dynamic> productData}) async {
+  Future<Either<Failure, String>> saveProductMaster(ProductEntity product, String? profileId) async {
     try {
-      final authUserId = _supabase.auth.currentUser?.id;
-      String? profileId;
-      if (authUserId != null) {
-        final profileResp = await _supabase.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
-        if (profileResp != null) profileId = profileResp['id'] as String;
-      }
-      final isUpdating = productId != null;
+      final isUpdating = product.id.isNotEmpty;
       final dataToSave = {
-        ...productData,
+        'name': product.name,
+        'unit_cost': product.unitCost,
+        'sale_price': product.salePrice,
+        'wholesale_price': product.wholesalePrice,
+        'wholesale_min_quantity': product.wholesaleMinQuantity,
+        'is_active': product.isActive,
+        'description': product.description,
+        'category_id': product.categoryId,
+        'details': product.details,
+        'product_type': product.productType,
+        'stock_control': product.stockControl,
+        'uses_batches': product.usesBatches,
         if (isUpdating && profileId != null) 'updated_by': profileId,
         if (!isUpdating && profileId != null) 'created_by': profileId,
       };
+
       if (isUpdating) {
-        await _supabase.from('products').update(dataToSave).eq('id', productId);
-        return right(productId);
+        await _supabase.from('products').update(dataToSave).eq('id', product.id);
+        return right(product.id);
       } else {
         final res = await _supabase.from('products').insert(dataToSave).select('id').single();
         return right(res['id'] as String);

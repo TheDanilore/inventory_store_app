@@ -67,7 +67,7 @@ abstract class CatalogRepository {
   
   
   // Mutaciones complejas
-  Future<Either<Failure, String>> saveProductMaster({required String? productId, required Map<String, dynamic> productData});
+  Future<Either<Failure, String>> saveProductMaster(ProductEntity product, String? profileId);
   Future<Either<Failure, String>> saveVariant({required String productId, required Map<String, dynamic> variantData, String? variantId});
   Future<Either<Failure, void>> saveVariantAttributes(String variantId, List<String> attributeValueIds);
   Future<Either<Failure, String?>> getFirstVariantId(String productId);

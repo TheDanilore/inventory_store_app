@@ -567,27 +567,39 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               ? null
               : _parseDecimal(precioMayorCtrl.text);
 
-      final mapData = {
-        'name': nombreCtrl.text.trim(),
-        'unit_cost': unitCost,
-        'sale_price': salePrice,
-        'wholesale_price': wholesalePrice,
-        'wholesale_min_quantity':
-            cantidadMayorCtrl.text.trim().isEmpty
+      final profileIdRes = await _repository.fetchCurrentProfileId();
+      final profileId = profileIdRes.fold((l) => null, (r) => r);
+
+      final productEntity = ProductEntity(
+        id: isUpdating ? _productToEdit!.id : '',
+        name: nombreCtrl.text.trim(),
+        unitCost: unitCost,
+        salePrice: salePrice,
+        wholesalePrice: wholesalePrice,
+        wholesaleMinQuantity: cantidadMayorCtrl.text.trim().isEmpty
                 ? 3
                 : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
-        'description':
-            descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-        'category_id': _selectedCategoryId,
-        'details': detailsMap,
-        'product_type': _productType,
-        'stock_control': _stockControl,
-        'uses_batches': _batchManagementEnabled,
-      };
+        isActive: isUpdating ? _productToEdit!.isActive : true,
+        description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+        categoryId: _selectedCategoryId,
+        details: detailsMap,
+        productType: _productType,
+        stockControl: _stockControl,
+        usesBatches: _batchManagementEnabled,
+        createdAt: null,
+        updatedAt: null,
+        createdBy: null,
+        updatedBy: null,
+        images: const [],
+        totalStock: 0,
+        categoryName: null,
+        productVariants: const [],
+        warehouseStockBatches: const [],
+      );
 
       final String productId = await _unwrap(_repository.saveProductMaster(
-        productId: isUpdating ? _productToEdit!.id : null,
-        productData: mapData,
+        productEntity,
+        profileId,
       ));
 
       // Imágenes del Producto
