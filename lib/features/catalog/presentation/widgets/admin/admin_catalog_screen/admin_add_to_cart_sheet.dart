@@ -2,9 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -23,7 +23,7 @@ class AdminAddToCartSheet extends StatefulWidget {
 }
 
 class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
-  final _repo = ProductsRepository();
+  final _repo = sl<CatalogRepository>();
   bool _isLoading = true;
   List<ProductVariantModel> _variants = [];
   final Map<String, int> _stockByVariant = {};
@@ -40,14 +40,16 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
     try {
       // Usa fetchVariantsByProductIds del repositorio que ya tiene el join
       // correcto: variant_attribute_values → attribute_values → attributes
-      final variantMap = await _repo.fetchVariantsByProductIds([
+      final variantMapRes = await _repo.fetchVariantsByProductIds([
         widget.product.id,
       ]);
+      final variantMap = variantMapRes.fold((l) => <String, List<ProductVariantModel>>{}, (r) => r);
       _variants = variantMap[widget.product.id] ?? [];
 
       if (_variants.isNotEmpty) {
         final variantIds = _variants.map((v) => v.id).toList();
-        final stockMap = await _repo.fetchVariantStockByVariantIds(variantIds);
+        final stockMapRes = await _repo.fetchVariantStockByVariantIds(variantIds);
+        final stockMap = stockMapRes.fold((l) => <String, int>{}, (r) => r);
         _stockByVariant.addAll(stockMap);
       }
 

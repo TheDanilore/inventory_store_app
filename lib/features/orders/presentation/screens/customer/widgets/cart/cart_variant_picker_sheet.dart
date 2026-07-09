@@ -9,7 +9,8 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:inventory_store_app/features/catalog/data/repositories/catalog_customer_service.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CartVariantPickerSheet extends StatefulWidget {
   final CartProvider cart;
@@ -34,7 +35,7 @@ class CartVariantPickerSheet extends StatefulWidget {
 }
 
 class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
-  final _service = CatalogService();
+  final _service = sl<CatalogRepository>();
   bool _isLoading = true;
   List<ProductVariantModel> _variants = [];
   Map<String, int> _stockByVariant = {};
@@ -47,10 +48,12 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
 
   Future<void> _loadData() async {
     try {
-      final variantsData = await _service.loadActiveVariants(widget.product.id);
+      final variantsRes = await _service.loadActiveVariants(widget.product.id);
+      final variantsData = variantsRes.fold((l) => <Map<String, dynamic>>[], (r) => r);
       _variants =
           variantsData.map((v) => ProductVariantModel.fromJson(v)).toList();
-      _stockByVariant = await _service.loadStockByVariant(widget.product.id);
+      final stockRes = await _service.loadStockByVariant(widget.product.id);
+      _stockByVariant = stockRes.fold((l) => <String, int>{}, (r) => r);
     } catch (e) {
       debugPrint('Error loading variants: $e');
     } finally {

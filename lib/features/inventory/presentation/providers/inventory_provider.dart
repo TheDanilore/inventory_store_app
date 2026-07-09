@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_stock_models.dart';
 import 'package:inventory_store_app/features/inventory/data/repositories/inventory_service.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/catalog_service.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 
 class InventoryProvider extends ChangeNotifier {
@@ -62,8 +63,9 @@ class InventoryProvider extends ChangeNotifier {
 
   Future<ProductModel?> fetchProductById(String productId) async {
     try {
-      final catalogService = CatalogService();
-      return await catalogService.getProductById(productId);
+      final catalogService = sl<CatalogRepository>();
+      final res = await catalogService.getProductById(productId);
+      return res.fold((l) => null, (r) => r as ProductModel?);
     } catch (e) {
       debugPrint('Error fetching product by id: $e');
       return null;

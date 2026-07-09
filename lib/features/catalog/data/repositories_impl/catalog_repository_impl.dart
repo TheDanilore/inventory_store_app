@@ -502,6 +502,236 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
+  Future<Either<Failure, String>> saveProductMaster({required String? productId, required Map<String, dynamic> productData}) async {
+    try {
+      final authUserId = _supabase.auth.currentUser?.id;
+      String? profileId;
+      if (authUserId != null) {
+        final profileResp = await _supabase.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
+        if (profileResp != null) profileId = profileResp['id'] as String;
+      }
+      final isUpdating = productId != null;
+      final dataToSave = {
+        ...productData,
+        if (isUpdating && profileId != null) 'updated_by': profileId,
+        if (!isUpdating && profileId != null) 'created_by': profileId,
+      };
+      if (isUpdating) {
+        await _supabase.from('products').update(dataToSave).eq('id', productId);
+        return right(productId);
+      } else {
+        final res = await _supabase.from('products').insert(dataToSave).select('id').single();
+        return right(res['id'] as String);
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> saveVariant({required String productId, required Map<String, dynamic> variantData, String? variantId}) async {
+    try {
+      final authUserId = _supabase.auth.currentUser?.id;
+      String? profileId;
+      if (authUserId != null) {
+        final profileResp = await _supabase.from('profiles').select('id').eq('auth_user_id', authUserId).maybeSingle();
+        if (profileResp != null) profileId = profileResp['id'] as String;
+      }
+      final payload = {
+        ...variantData,
+        'product_id': productId,
+        if (variantId != null && profileId != null) 'updated_by': profileId,
+        if (variantId == null && profileId != null) 'created_by': profileId,
+      };
+      if (variantId != null) {
+        await _supabase.from('product_variants').update(payload).eq('id', variantId);
+        return right(variantId);
+      } else {
+        final res = await _supabase.from('product_variants').insert(payload).select('id').single();
+        return right(res['id'] as String);
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> saveVariantAttributes(String variantId, List<String> attributeValueIds) async {
+    try {
+      await _supabase.from('variant_attribute_values').delete().eq('variant_id', variantId);
+      if (attributeValueIds.isEmpty) return right(null);
+      await _supabase.from('variant_attribute_values').insert(
+        attributeValueIds.map((valId) => { 'variant_id': variantId, 'attribute_value_id': valId }).toList(),
+      );
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  
+
+  @override
+  Future<Either<Failure, String?>> getFirstVariantId(String productId) async {
+    try {
+      final vResp = await _supabase.from('product_variants').select('id').eq('product_id', productId).limit(1).maybeSingle();
+      return right(vResp?['id'] as String?);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, String?>> fetchCurrentProfileId() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return right(null);
+      final profile = await _supabase.from('profiles').select('id').eq('auth_user_id', user.id).maybeSingle();
+      return right(profile?['id'] as String?);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> toggleWishlist(String productId, String profileId, bool currentState) async {
+    try {
+      if (currentState) {
+        await _supabase.from('wishlist').delete().eq('profile_id', profileId).eq('product_id', productId);
+        return right(false);
+      } else {
+        await _supabase.from('wishlist').insert({'profile_id': profileId, 'product_id': productId});
+        return right(true);
+      }
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> fetchAdminFinancialData(String productId) async {
+    try {
+      final response = await _supabase.from('order_items').select('quantity, unit_cost, applied_price, variant_id, orders!inner(status)').eq('product_id', productId).eq('orders.status', 'COMPLETED').limit(500);
+      return right(List<Map<String, dynamic>>.from(response as List));
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageModel> images, List<ProductVariantModel> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId) async {
+    try {
+      final queries = <Future<dynamic>>[
+        _supabase.from('warehouse_stock_batches').select('id, available_quantity, variant_id, warehouse_id, batch_number, expiry_date, warehouses(name)').eq('product_id', productId).gt('available_quantity', 0).order('expiry_date', ascending: true, nullsFirst: false),
+        _supabase.from('product_images').select('id, product_id, variant_id, image_url, display_order, is_main').eq('product_id', productId).order('display_order', ascending: true),
+        _supabase.from('product_variants').select('id, product_id, sku, variant_attribute_values(attribute_values(id, value, attributes(name))), product_images(id, image_url, variant_id), sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, unit_cost').eq('product_id', productId).eq('is_active', true).order('created_at', ascending: true),
+        _supabase.from('product_reviews').select('rating, comment, user_name, created_at').eq('product_id', productId).order('created_at', ascending: false).limit(50),
+        _supabase.from('product_active_ingredients').select('concentration, unit, active_ingredients(id, name, description)').eq('product_id', productId),
+      ];
+
+      final results = await Future.wait(queries);
+
+      final rawStocks = results[0] as List<dynamic>;
+      final aggregatedStocks = <String, Map<String, dynamic>>{};
+      final validBatches = <Map<String, dynamic>>[];
+
+      for (final row in rawStocks) {
+        final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+        if (stock > 0) {
+          validBatches.add(Map<String, dynamic>.from(row as Map));
+          final wId = row['warehouse_id']?.toString() ?? 'unknown';
+          final vId = row['variant_id']?.toString() ?? 'none';
+          final key = '${wId}_$vId';
+          if (aggregatedStocks.containsKey(key)) {
+            aggregatedStocks[key]!['available_quantity'] = (aggregatedStocks[key]!['available_quantity'] as int) + stock;
+          } else {
+            aggregatedStocks[key] = {
+              'warehouse_id': row['warehouse_id'],
+              'variant_id': row['variant_id'],
+              'warehouses': row['warehouses'],
+              'available_quantity': stock,
+            };
+          }
+        }
+      }
+
+      return right((
+        stocks: aggregatedStocks.values.toList(),
+        batches: validBatches,
+        images: (results[1] as List).map((e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e))).toList(),
+        variants: (results[2] as List).map((e) => ProductVariantModel.fromJson(Map<String, dynamic>.from(e))).toList(),
+        reviews: List<Map<String, dynamic>>.from(results[3] as List),
+        ingredients: List<Map<String, dynamic>>.from(results[4] as List),
+      ));
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  
+  @override
+  Future<Either<Failure, Map<String, int>>> loadStockByVariant(String productId) async {
+    try {
+      final response = await _supabase.from('product_stock_summary').select('variant_id, total_stock').eq('product_id', productId);
+      final map = <String, int>{};
+      for (final row in List<Map<String, dynamic>>.from(response)) {
+        final vid = row['variant_id'] as String?;
+        final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
+        if (vid != null) map[vid] = stock;
+      }
+      return right(map);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> loadActiveVariants(String productId) async {
+    try {
+      final response = await _supabase.from('product_variants').select('*, product_images(*), variant_attribute_values(attribute_values(id, value, attributes(id, name)))').eq('product_id', productId).eq('is_active', true).order('sku');
+      return right(List<Map<String, dynamic>>.from(response));
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, List<ProductVariantModel>>>> fetchVariantsByProductIds(List<String> productIds) async {
+    try {
+      if (productIds.isEmpty) return right({});
+      final response = await _supabase.from('product_variants').select('*, product_images(id, image_url, is_main, display_order), variant_attribute_values(attribute_values(id, value, attributes(id, name)))').inFilter('product_id', productIds).eq('is_active', true).order('sku');
+      final raw = List<Map<String, dynamic>>.from(response);
+      final map = <String, List<ProductVariantModel>>{};
+      for (final row in raw) {
+        final pid = row['product_id'] as String;
+        final v = ProductVariantModel.fromJson(row);
+        map.putIfAbsent(pid, () => []).add(v);
+      }
+      return right(map);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(List<String> variantIds) async {
+    try {
+      if (variantIds.isEmpty) return right({});
+      final response = await _supabase.from('product_stock_summary').select('variant_id, total_stock').inFilter('variant_id', variantIds);
+      final map = <String, int>{};
+      for (final row in List<Map<String, dynamic>>.from(response)) {
+        final vid = row['variant_id'] as String?;
+        final stock = (row['total_stock'] as num?)?.toInt() ?? 0;
+        if (vid != null) map[vid] = stock;
+      }
+      return right(map);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> clearCache() async {
     return right(null);
   }

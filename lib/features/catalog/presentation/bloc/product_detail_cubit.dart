@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/product_detail_service.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/dashboard/data/models/product_financial_summary.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
 
@@ -9,11 +11,18 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   final ProductEntity product;
   final bool isAdmin;
   final String? initialVariantId;
-  final ProductDetailService _service = ProductDetailService();
+  
+  final CatalogRepository _repository;
+
+  Future<T> _unwrap<T>(Future<Either<Failure, T>> future) async {
+    final res = await future;
+    return res.fold((f) => throw Exception(f.message), (r) => r);
+  }
+
 
   String? _profileId;
 
-  ProductDetailCubit({
+  ProductDetailCubit(this._repository, {
     required this.product,
     required this.isAdmin,
     this.initialVariantId,
@@ -38,13 +47,13 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     }
 
     try {
-      _profileId ??= await _service.fetchCurrentProfileId();
+      _profileId ??= await _unwrap(_repository.fetchCurrentProfileId());
       final pid = _profileId;
       if (pid == null) {
         emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
         return;
       }
-      final isWishlisted = await _service.checkWishlistState(product.id, pid);
+      final isWishlisted = await _unwrap(_repository.checkWishlistState(product.id, pid));
       emit(state.copyWith(isWishlisted: isWishlisted, isWishlistLoading: false));
     } catch (_) {
       emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
@@ -53,7 +62,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
   Future<void> _fetchExtraData() async {
     try {
-      final extraData = await _service.fetchProductExtraData(product.id);
+      final extraData = await _unwrap(_repository.fetchProductExtraData(product.id));
       
       final images = extraData.images.map((m) => m.toEntity()).toList();
       final variants = extraData.variants.map((m) => m.toEntity()).toList();
@@ -71,7 +80,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       List<VariantFinancialSummary> variantSummaries = [];
 
       if (isAdmin) {
-        final adminData = await _service.fetchAdminFinancialData(product.id);
+        final adminData = await _unwrap(_repository.fetchAdminFinancialData(product.id));
 
         final Map<String, Map<String, double>> variantSales = {};
         for (final row in adminData) {
@@ -152,7 +161,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     final currentStatus = state.isWishlisted;
     emit(state.copyWith(isWishlistLoading: true));
     try {
-      final success = await _service.toggleWishlist(product.id, pid, currentStatus);
+      final success = await _unwrap(_repository.toggleWishlist(product.id, pid, currentStatus));
       if (success) {
         emit(state.copyWith(isWishlisted: !currentStatus));
       }

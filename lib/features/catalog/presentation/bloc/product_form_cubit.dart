@@ -3,19 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/product_form_service.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'product_form_state.dart';
 
 class ProductFormCubit extends Cubit<ProductFormState> {
-  final ProductFormService _service;
+  
+  final CatalogRepository _repository;
+
+  Future<T> _unwrap<T>(Future<Either<Failure, T>> future) async {
+    final res = await future;
+    return res.fold((f) => throw Exception(f.message), (r) => r);
+  }
+
   ProductEntity? _productToEdit;
 
   // Controladores Generales
@@ -41,7 +47,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   // Categorías
   String? _selectedCategoryId;
-  List<CategoryModel> _categories = [];
+  List<CategoryEntity> _categories = [];
   bool _isLoadingCategories = true;
 
   // Flags de progreso
@@ -49,7 +55,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   bool _isSaving = false;
   bool _isDirty = false;
 
-  ProductFormCubit({ProductFormService? service}) : _service = service ?? ProductFormService(), super(ProductFormState.initial());
+  ProductFormCubit(this._repository) : super(ProductFormState.initial());
 
   bool _hasErrorLoading = false;
   String _errorMessage = '';
@@ -62,7 +68,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   bool get isSaving => _isSaving;
   bool get hasUnsavedChanges => _isDirty;
   bool get isLoadingCategories => _isLoadingCategories;
-  List<CategoryModel> get categories => _categories;
+  List<CategoryEntity> get categories => _categories;
   String? get selectedCategoryId => _selectedCategoryId;
 
   String get productType => _productType;
@@ -202,19 +208,19 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   Future<void> _fetchCategories() async {
-    _categories = await _service.fetchCategories();
+    _categories = await _unwrap(_repository.getCategories());
     _isLoadingCategories = false;
     _syncState();
   }
 
   Future<void> _fetchProductImages(String productId) async {
-    final images = await _service.fetchProductImages(productId);
+    final images = await _unwrap(_repository.getProductImages(productId));
     formImages.addAll(images.map((img) => FormImageItem(existing: img)));
     _syncState();
   }
 
   Future<void> _fetchIngredients(String productId) async {
-    final list = await _service.fetchIngredients(productId);
+    final list = await _unwrap(_repository.getProductIngredients(productId));
     for (final row in list) {
       final activeIng = row['active_ingredients'] as Map<String, dynamic>?;
       ingredientRows.add(
@@ -232,7 +238,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<void> _fetchVariants(String productId) async {
     try {
-      final drafts = await _service.fetchVariants(productId);
+      final drafts = await _unwrap(_repository.getVariantsDrafts(productId));
       variantDrafts.addAll(drafts);
     } catch (e) {
       // El error se silencia o se maneja en el cubit. Aquí lo notificaremos por Snackbar desde UI idealmente.
@@ -341,10 +347,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     if (item.isExisting) {
       try {
-        await _service.deleteProductImage(
+        await _unwrap(_repository.deleteProductImage(
           item.existing!.id,
           item.existing!.imageUrl,
-        );
+        ));
         if (context.mounted) {
           AppSnackbar.show(
             context,
@@ -425,7 +431,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
 
     try {
-      final hasSales = await _service.hasVariantSales(draft.id!);
+      final hasSales = await _unwrap(_repository.hasVariantSales(draft.id!));
       if (hasSales) {
         if (context.mounted) {
           AppSnackbar.show(
@@ -438,7 +444,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         return;
       }
 
-      await _service.deleteVariant(draft.id!);
+      await _unwrap(_repository.deleteVariant(draft.id!));
       draft.dispose();
       variantDrafts.removeAt(index);
       markAsDirty();
@@ -579,10 +585,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         'uses_batches': _batchManagementEnabled,
       };
 
-      final String productId = await _service.saveProductMaster(
+      final String productId = await _unwrap(_repository.saveProductMaster(
         productId: isUpdating ? _productToEdit!.id : null,
         productData: mapData,
-      );
+      ));
 
       // Imágenes del Producto
       final imagesPayload = <Map<String, dynamic>>[];
@@ -599,10 +605,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             'is_main': isMain,
           });
         } else {
-          final url = await _service.uploadImageToStorage(
+          final url = await _unwrap(_repository.uploadImageToStorage(
             item.newBytes!,
             'productos',
-          );
+          ));
           if (url != null) {
             imagesPayload.add({
               'product_id': productId,
@@ -615,12 +621,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
 
       if (imagesPayload.isNotEmpty) {
-        await _service.syncProductImages(imagesPayload);
+        await _unwrap(_repository.syncProductImages(imagesPayload));
       }
 
       // Variantes Eliminadas
       for (final variantId in _removedVariantIds) {
-        await _service.deactivateVariant(variantId);
+        await _unwrap(_repository.deactivateVariant(variantId));
       }
       _removedVariantIds.clear();
 
@@ -629,10 +635,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       if (variantDrafts.isEmpty) {
         if (isUpdating) {
-          final vid = await _service.getFirstVariantId(productId);
+          final vid = await _unwrap(_repository.getFirstVariantId(productId));
           if (vid != null) {
             primaryVariantId = vid;
-            await _service.saveVariantAttributes(primaryVariantId, []);
+            await _unwrap(_repository.saveVariantAttributes(primaryVariantId, []));
           }
         } else {
           final payload = {
@@ -644,11 +650,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
                     : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
             'is_active': true,
           };
-          primaryVariantId = await _service.saveVariant(
+          primaryVariantId = await _unwrap(_repository.saveVariant(
             productId: productId,
             variantData: payload,
-          );
-          await _service.saveVariantAttributes(primaryVariantId, []);
+          ));
+          await _unwrap(_repository.saveVariantAttributes(primaryVariantId, []));
         }
       } else {
         for (var i = 0; i < variantDrafts.length; i++) {
@@ -671,27 +677,27 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             'is_active': draft.isActive,
           };
 
-          final vId = await _service.saveVariant(
+          final vId = await _unwrap(_repository.saveVariant(
             productId: productId,
             variantData: payload,
             variantId: draft.id,
-          );
+          ));
 
           if (i == 0) primaryVariantId = vId;
-          await _service.saveVariantAttributes(vId, valueIds);
+          await _unwrap(_repository.saveVariantAttributes(vId, valueIds));
 
           if (draft.id != null) {
             if (draft.urlsExistentes.isEmpty ||
                 draft.nuevasImagenes.isNotEmpty) {
-              await _service.clearVariantImages(vId);
+              await _unwrap(_repository.clearVariantImages(vId));
             }
           }
 
           if (draft.nuevasImagenes.isNotEmpty) {
             final bytes = draft.nuevasImagenes.first;
-            final url = await _service.uploadImageToStorage(bytes, 'variantes');
+            final url = await _unwrap(_repository.uploadImageToStorage(bytes, 'variantes'));
             if (url != null) {
-              await _service.syncProductImages([
+              await _unwrap(_repository.syncProductImages([
                 {
                   'product_id': productId,
                   'variant_id': vId,
@@ -699,7 +705,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
                   'display_order': 0,
                   'is_main': false,
                 },
-              ]);
+              ]));
             }
           }
         }
@@ -707,7 +713,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       // Ingredientes
       if (_ingredientsEnabled) {
-        await _service.clearProductIngredients(productId);
+        await _unwrap(_repository.clearProductIngredients(productId));
 
         for (final row in ingredientRows) {
           if (row.ingredientId == null || row.nameCtrl.text.trim().isEmpty) {
@@ -729,10 +735,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
                     : row.unitCtrl.text.trim(),
           };
 
-          await _service.insertProductIngredient(payload);
+          await _unwrap(_repository.insertProductIngredient(payload));
         }
       } else {
-        await _service.clearProductIngredients(productId);
+        await _unwrap(_repository.clearProductIngredients(productId));
       }
 
       _isDirty = false;

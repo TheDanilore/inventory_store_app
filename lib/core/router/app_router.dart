@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/catalog_service.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 
 // Proveedores
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -92,17 +93,17 @@ class _ProductLoader extends StatefulWidget {
 }
 
 class _ProductLoaderState extends State<_ProductLoader> {
-  late final Future<ProductModel?> _future;
+  late final Future<ProductEntity?> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = CatalogService().getProductById(widget.productId);
+    _future = sl<CatalogRepository>().getProductById(widget.productId).then((res) => res.fold((l) => null, (r) => r));
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ProductModel?>(
+    return FutureBuilder<ProductEntity?>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -119,7 +120,7 @@ class _ProductLoaderState extends State<_ProductLoader> {
           );
         }
         return ProductDetailScreen(
-          product: snapshot.data!.toEntity(),
+          product: snapshot.data!,
           isAdmin: widget.isAdmin,
           initialVariantId: widget.initialVariantId,
         );

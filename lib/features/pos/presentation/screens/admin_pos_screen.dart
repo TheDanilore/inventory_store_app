@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,7 +9,8 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
@@ -55,8 +57,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
-      final repo = ProductsRepository();
-      final variantsMap = await repo.fetchVariantsByProductIds([product.id]);
+      final repo = sl<CatalogRepository>();
+      final variantsMapRes = await repo.fetchVariantsByProductIds([product.id]);
+        final variantsMap = variantsMapRes.fold((l) => <String, List<ProductVariantModel>>{}, (r) => r);
       final variants = variantsMap[product.id] ?? [];
 
       if (!mounted) return;
@@ -68,9 +71,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
         if (product.stockControl) {
           if (variant != null) {
-            final stockMap = await repo.fetchVariantStockByVariantIds([
+            final stockMapRes = await repo.fetchVariantStockByVariantIds([
               variant.id,
             ]);
+            final stockMap = stockMapRes.fold((l) => <String, int>{}, (r) => r);
             stock = stockMap[variant.id] ?? 0;
           } else {
             stock = product.totalStock; // stock total si no hay variante

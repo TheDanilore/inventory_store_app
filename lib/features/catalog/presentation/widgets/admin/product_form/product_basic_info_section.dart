@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class ProductBasicInfoSection extends StatelessWidget {
@@ -68,7 +67,7 @@ class ProductBasicInfoSection extends StatelessWidget {
                   ),
                   ...state.categories.map(
                     (cat) =>
-                        DropdownMenuItem(value: cat.id, child: Text(cat.name)),
+                        DropdownMenuItem(value: cat.id!, child: Text(cat.name)),
                   ),
                 ],
                 onChanged: cubit.setSelectedCategory,

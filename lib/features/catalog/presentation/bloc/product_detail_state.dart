@@ -104,7 +104,6 @@ class ProductDetailState extends Equatable {
     );
   }
 
-  @override
   ProductVariantEntity? get selectedVariant {
     if (selectedVariantId != null && variants.isNotEmpty) {
       try {

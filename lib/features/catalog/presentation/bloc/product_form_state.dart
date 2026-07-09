@@ -1,8 +1,8 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
@@ -21,7 +21,7 @@ class DetailControllers {
 
 class FormImageItem {
   final String id;
-  final ProductImageModel? existing;
+  final ProductImageEntity? existing;
   final Uint8List? newBytes;
   final String? newName;
 
@@ -62,7 +62,7 @@ class ProductFormState extends Equatable {
   final bool isDirty;
   
   final bool isLoadingCategories;
-  final List<CategoryModel> categories;
+  final List<CategoryEntity> categories;
   final String? selectedCategoryId;
   
   final String productType;
@@ -108,7 +108,7 @@ class ProductFormState extends Equatable {
     bool? isSaving,
     bool? isDirty,
     bool? isLoadingCategories,
-    List<CategoryModel>? categories,
+    List<CategoryEntity>? categories,
     String? selectedCategoryId,
     String? productType,
     bool? stockControl,

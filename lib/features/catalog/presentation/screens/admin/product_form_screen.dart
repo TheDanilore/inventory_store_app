@@ -1,11 +1,10 @@
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
@@ -29,7 +28,7 @@ class ProductFormScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ProductFormCubit()..initData(productToEdit),
+      create: (_) => ProductFormCubit(sl<CatalogRepository>())..initData(productToEdit),
       child: _ProductFormScreenContent(),
     );
   }

@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -15,7 +14,6 @@ import 'package:inventory_store_app/features/pos/presentation/providers/pos_prov
 
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';

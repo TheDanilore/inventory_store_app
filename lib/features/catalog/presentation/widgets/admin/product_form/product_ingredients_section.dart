@@ -1,10 +1,11 @@
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/product_form_service.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
@@ -278,7 +279,7 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
   bool _isLoading = false;
   bool _hasSearched = false;
   Timer? _debounce;
-  final ProductFormService _service = ProductFormService();
+  final CatalogRepository _repository = sl<CatalogRepository>();
 
   void _search(String term) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -293,7 +294,8 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
     _debounce = Timer(const Duration(milliseconds: 400), () async {
       setState(() => _isLoading = true);
       try {
-        final res = await _service.searchIngredients(term.trim());
+        final resEither = await _repository.searchIngredients(term.trim());
+        final res = resEither.fold((l) => <Map<String, dynamic>>[], (r) => r.map((e) => {'id': e.id, 'name': e.name}).toList());
         if (mounted) {
           setState(() {
             _results = res;
@@ -313,7 +315,8 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final res = await _service.createIngredient(name);
+      final resEither = await _repository.createIngredient(name);
+      final res = resEither.fold((l) => null, (r) => {'id': r.id, 'name': r.name});
       if (mounted) Navigator.pop(context, res);
     } catch (e) {
       if (mounted) {

@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
@@ -63,6 +65,24 @@ abstract class CatalogRepository {
   Future<Either<Failure, void>> clearProductIngredients(String productId);
   Future<Either<Failure, void>> insertProductIngredient(Map<String, dynamic> payload);
   
+  
+  // Mutaciones complejas
+  Future<Either<Failure, String>> saveProductMaster({required String? productId, required Map<String, dynamic> productData});
+  Future<Either<Failure, String>> saveVariant({required String productId, required Map<String, dynamic> variantData, String? variantId});
+  Future<Either<Failure, void>> saveVariantAttributes(String variantId, List<String> attributeValueIds);
+  Future<Either<Failure, String?>> getFirstVariantId(String productId);
+  
+  Future<Either<Failure, String?>> fetchCurrentProfileId();
+  Future<Either<Failure, bool>> toggleWishlist(String productId, String profileId, bool currentState);
+  Future<Either<Failure, List<Map<String, dynamic>>>> fetchAdminFinancialData(String productId);
+  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageModel> images, List<ProductVariantModel> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId);
+
+  
+  Future<Either<Failure, Map<String, int>>> loadStockByVariant(String productId);
+  Future<Either<Failure, List<Map<String, dynamic>>>> loadActiveVariants(String productId);
+  Future<Either<Failure, Map<String, List<ProductVariantModel>>>> fetchVariantsByProductIds(List<String> productIds);
+  Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(List<String> variantIds);
+
   // Misc
   Future<Either<Failure, bool>> checkWishlistState(String productId, String profileId);
   Future<Either<Failure, void>> clearCache();

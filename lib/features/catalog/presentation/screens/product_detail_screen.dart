@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
@@ -16,15 +18,13 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
-import 'package:inventory_store_app/features/catalog/data/repositories/product_pdf_generator.dart';
+import 'package:inventory_store_app/core/utils/pdf/product_pdf_generator.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
@@ -59,6 +59,7 @@ class ProductDetailScreen extends StatelessWidget {
     return BlocProvider(
       create:
           (_) => ProductDetailCubit(
+            sl<CatalogRepository>(),
             product: product,
             isAdmin: isAdmin,
             initialVariantId: initialVariantId,
