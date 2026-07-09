@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -14,15 +15,17 @@ import 'package:provider/provider.dart';
 
 /// Bottom sheet para agregar un producto al carrito del POS.
 /// Carga variantes con el join relacional correcto (sin JSONB obsoleto).
-class AdminAddToCartSheet extends StatefulWidget {
-  final ProductModel product;
-  const AdminAddToCartSheet({super.key, required this.product});
+class PosAddToCartSheet extends StatefulWidget {
+  final ProductEntity productEntity;
+  const PosAddToCartSheet({super.key, required this.productEntity});
 
   @override
-  State<AdminAddToCartSheet> createState() => _AdminAddToCartSheetState();
+  State<PosAddToCartSheet> createState() => _PosAddToCartSheetState();
 }
 
-class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
+class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
+  ProductModel get _productModel => ProductModel.fromEntity(widget.productEntity);
+
   final _repo = sl<CatalogRepository>();
   bool _isLoading = true;
   List<ProductVariantModel> _variants = [];
@@ -41,10 +44,10 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
       // Usa fetchVariantsByProductIds del repositorio que ya tiene el join
       // correcto: variant_attribute_values → attribute_values → attributes
       final variantMapRes = await _repo.fetchVariantsByProductIds([
-        widget.product.id,
+        _productModel.id,
       ]);
       final variantMap = variantMapRes.fold((l) => <String, List<ProductVariantModel>>{}, (r) => r);
-      _variants = variantMap[widget.product.id] ?? [];
+      _variants = variantMap[_productModel.id] ?? [];
 
       if (_variants.isNotEmpty) {
         final variantIds = _variants.map((v) => v.id).toList();
@@ -60,23 +63,23 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
         );
       }
     } catch (e) {
-      debugPrint('AdminAddToCartSheet: Error cargando variantes: $e');
+      debugPrint('PosAddToCartSheet: Error cargando variantes: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  bool get _hasStockControl => widget.product.stockControl;
+  bool get _hasStockControl => _productModel.stockControl;
 
   int get _currentStock {
-    if (_variants.isEmpty) return widget.product.totalStock;
+    if (_variants.isEmpty) return _productModel.totalStock;
     if (_selectedVariant == null) return 0;
     return _stockByVariant[_selectedVariant!.id] ?? 0;
   }
 
   double get _currentPrice {
-    if (_variants.isEmpty) return widget.product.salePrice;
-    return _selectedVariant?.salePrice ?? widget.product.salePrice;
+    if (_variants.isEmpty) return _productModel.salePrice;
+    return _selectedVariant?.salePrice ?? _productModel.salePrice;
   }
 
   bool get _canSell =>
@@ -162,7 +165,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
     final String? imageUrl =
         _selectedVariant?.images.isNotEmpty == true
             ? _selectedVariant!.images.first.imageUrl
-            : widget.product.primaryImageUrl;
+            : _productModel.primaryImageUrl;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -218,7 +221,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.product.name,
+                      _productModel.name,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -284,7 +287,7 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
                         return DropdownMenuItem(
                           value: v,
                           child: Text(
-                            '${v.label} · S/ ${(v.salePrice ?? widget.product.salePrice).toStringAsFixed(2)} $stockLabel',
+                            '${v.label} · S/ ${(v.salePrice ?? _productModel.salePrice).toStringAsFixed(2)} $stockLabel',
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textPrimary,
@@ -371,19 +374,19 @@ class _AdminAddToCartSheetState extends State<AdminAddToCartSheet> {
                       }
 
                       context.read<PosProvider>().addProductToPos(
-                        product: widget.product,
+                        product: _productModel,
                         quantity: _quantity,
                         variantId: _selectedVariant!.id,
                         variantLabel: _selectedVariant!.label,
                         unitPrice:
                             _selectedVariant!.salePrice ??
-                            widget.product.salePrice,
+                            _productModel.salePrice,
                         wholesalePrice:
                             _selectedVariant!.wholesalePrice ??
-                            widget.product.wholesalePrice,
+                            _productModel.wholesalePrice,
                         unitCost:
                             _selectedVariant!.unitCost ??
-                            widget.product.unitCost,
+                            _productModel.unitCost,
                         imageUrl: imageUrl,
                         sku: _selectedVariant!.sku,
                         availableStock: _hasStockControl ? stock : 999999,
