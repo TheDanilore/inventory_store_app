@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/catalog_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CatalogSearchBar extends StatefulWidget {
@@ -18,9 +20,10 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
   void initState() {
     super.initState();
     _focusNode.addListener(() {
-      final provider = context.read<CustomerCatalogProvider>();
-      if (_focusNode.hasFocus && !provider.isSearchMode) {
-        provider.setSearchMode(true);
+      if (!mounted) return;
+      final cubit = context.read<CustomerCatalogCubit>();
+      if (_focusNode.hasFocus && !cubit.state.isSearchMode) {
+        cubit.setSearchMode(true);
       }
     });
   }
@@ -32,34 +35,35 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
     super.dispose();
   }
 
-  void _onBack(CustomerCatalogProvider provider) {
+  void _onBack(CustomerCatalogCubit cubit) {
     _focusNode.unfocus();
-    provider.setSearchMode(false);
-    if (_ctrl.text.isNotEmpty || provider.searchTerm.isNotEmpty) {
+    cubit.setSearchMode(false);
+    if (_ctrl.text.isNotEmpty || cubit.state.searchTerm.isNotEmpty) {
       _ctrl.clear();
-      provider.setSearchTerm('');
+      cubit.setSearchTerm('');
     }
   }
 
-  void _onClear(CustomerCatalogProvider provider) {
+  void _onClear(CustomerCatalogCubit cubit) {
     _ctrl.clear();
-    provider.setSearchTerm('');
+    cubit.setSearchTerm('');
     // Optionally keep focus or unfocus
   }
 
-  void _onSubmitted(CustomerCatalogProvider provider, String val) {
+  void _onSubmitted(CustomerCatalogCubit cubit, String val) {
     _focusNode.unfocus();
-    provider.saveSearchTerm(val);
-    provider.setSearchMode(false);
-    provider.setSearchTerm(val);
+    cubit.saveSearchTerm(val);
+    cubit.setSearchMode(false);
+    cubit.setSearchTerm(val);
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerCatalogProvider>();
+    final cubit = context.read<CustomerCatalogCubit>();
+    final state = context.watch<CustomerCatalogCubit>().state;
 
     // Update controller if term is cleared from elsewhere
-    if (provider.searchTerm.isEmpty && _ctrl.text.isNotEmpty) {
+    if (state.searchTerm.isEmpty && _ctrl.text.isNotEmpty) {
       _ctrl.text = '';
     }
 
@@ -78,14 +82,14 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
       ),
       child: Row(
         children: [
-          if (provider.isSearchMode || provider.searchTerm.isNotEmpty)
+          if (state.isSearchMode || state.searchTerm.isNotEmpty)
             IconButton(
               icon: const Icon(
                 Icons.arrow_back_rounded,
                 color: AppColors.primary,
                 size: 22,
               ),
-              onPressed: () => _onBack(provider),
+              onPressed: () => _onBack(cubit),
             )
           else
             const Padding(
@@ -104,7 +108,7 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
               style: const TextStyle(fontSize: 14),
-              onSubmitted: (val) => _onSubmitted(provider, val),
+              onSubmitted: (val) => _onSubmitted(cubit, val),
             ),
           ),
           if (_ctrl.text.isNotEmpty)
@@ -114,7 +118,7 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
                 color: Colors.grey.shade400,
                 size: 20,
               ),
-              onPressed: () => _onClear(provider),
+              onPressed: () => _onClear(cubit),
             ),
         ],
       ),

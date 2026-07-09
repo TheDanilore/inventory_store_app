@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/features/catalog/data/repositories/product_form_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -11,7 +13,8 @@ class ProductIngredientsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
 
     return Container(
       width: double.infinity,
@@ -43,13 +46,13 @@ class ProductIngredientsSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color:
-                  provider.ingredientsEnabled
+                  state.ingredientsEnabled
                       ? AppColors.primary.withValues(alpha: 0.06)
                       : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color:
-                    provider.ingredientsEnabled
+                    state.ingredientsEnabled
                         ? AppColors.primary.withValues(alpha: 0.25)
                         : Colors.grey.shade200,
               ),
@@ -59,7 +62,7 @@ class ProductIngredientsSection extends StatelessWidget {
                 Icon(
                   Icons.science_rounded,
                   color:
-                      provider.ingredientsEnabled
+                      state.ingredientsEnabled
                           ? AppColors.primary
                           : Colors.grey,
                   size: 20,
@@ -75,7 +78,7 @@ class ProductIngredientsSection extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color:
-                              provider.ingredientsEnabled
+                              state.ingredientsEnabled
                                   ? AppColors.primary
                                   : Colors.grey.shade600,
                         ),
@@ -91,8 +94,8 @@ class ProductIngredientsSection extends StatelessWidget {
                   ),
                 ),
                 Switch.adaptive(
-                  value: provider.ingredientsEnabled,
-                  onChanged: provider.setIngredientsEnabled,
+                  value: state.ingredientsEnabled,
+                  onChanged: cubit.setIngredientsEnabled,
                   activeThumbColor: AppColors.primary,
                 ),
               ],
@@ -102,11 +105,11 @@ class ProductIngredientsSection extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
-            child: provider.ingredientsEnabled ? Column(
+            child: state.ingredientsEnabled ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 14),
-                if (provider.ingredientRows.isEmpty)
+                if (state.ingredientRows.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -127,10 +130,10 @@ class ProductIngredientsSection extends StatelessWidget {
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: provider.ingredientRows.length,
+                itemCount: state.ingredientRows.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (context, idx) {
-                  final row = provider.ingredientRows[idx];
+                  final row = state.ingredientRows[idx];
                   return Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -185,7 +188,7 @@ class ProductIngredientsSection extends StatelessWidget {
                             ),
                             IconButton(
                               onPressed:
-                                  () => provider.removeIngredientRow(idx),
+                                  () => cubit.removeIngredientRow(idx),
                               icon: Icon(
                                 Icons.delete_outline_rounded,
                                 color: Colors.red.shade400,
@@ -238,7 +241,7 @@ class ProductIngredientsSection extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: provider.addIngredientRow,
+                onPressed: cubit.addIngredientRow,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Agregar componente'),
                 style: OutlinedButton.styleFrom(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class ProductBasicInfoSection extends StatelessWidget {
@@ -8,7 +10,8 @@ class ProductBasicInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
 
     return Container(
       width: double.infinity,
@@ -37,16 +40,16 @@ class ProductBasicInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           AppTextField(
-            controller: provider.nombreCtrl,
+            controller: cubit.nombreCtrl,
             label: 'Nombre del producto',
             icon: Icons.inventory_2_outlined,
             validator: (v) => v!.isEmpty ? 'Requerido' : null,
           ),
           const SizedBox(height: 16),
-          provider.isLoadingCategories
+          state.isLoadingCategories
               ? const Center(child: CircularProgressIndicator())
               : DropdownButtonFormField<String>(
-                initialValue: provider.selectedCategoryId,
+                initialValue: state.selectedCategoryId,
                 decoration: InputDecoration(
                   labelText: 'Categoría',
                   prefixIcon: const Icon(Icons.category_outlined),
@@ -63,16 +66,16 @@ class ProductBasicInfoSection extends StatelessWidget {
                     value: null,
                     child: Text('Sin categoría'),
                   ),
-                  ...provider.categories.map(
+                  ...state.categories.map(
                     (cat) =>
                         DropdownMenuItem(value: cat.id, child: Text(cat.name)),
                   ),
                 ],
-                onChanged: provider.setSelectedCategory,
+                onChanged: cubit.setSelectedCategory,
               ),
           const SizedBox(height: 16),
           AppTextField(
-            controller: provider.descCtrl,
+            controller: cubit.descCtrl,
             label: 'Descripción general',
             icon: Icons.description_outlined,
             maxLines: 3,

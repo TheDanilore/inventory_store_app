@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Fila horizontal de chips de categorías y estado para filtrar el catálogo.
 class CategoryChips extends StatelessWidget {
-  final List<CategoryModel> categories;
+  final List<CategoryEntity> categories;
   final String? selectedCategoryId;
   final ValueChanged<String?> onSelected;
   final bool? filterIsActive;

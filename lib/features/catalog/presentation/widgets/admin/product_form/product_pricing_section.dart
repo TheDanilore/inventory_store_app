@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class ProductPricingSection extends StatelessWidget {
@@ -59,7 +61,8 @@ class ProductPricingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
 
     return Container(
       width: double.infinity,
@@ -92,7 +95,7 @@ class ProductPricingSection extends StatelessWidget {
             children: [
               Expanded(
                 child: AppTextField(
-                  controller: provider.costoCtrl,
+                  controller: cubit.costoCtrl,
                   label: 'Costo (S/.)',
                   icon: Icons.attach_money,
                   keyboardType: TextInputType.number,
@@ -103,12 +106,12 @@ class ProductPricingSection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: AppTextField(
-                  controller: provider.precioCtrl,
+                  controller: cubit.precioCtrl,
                   label: 'Precio Venta (S/.)',
                   icon: Icons.sell_outlined,
                   keyboardType: TextInputType.number,
                   validator:
-                      (val) => _validateSalePrice(val, provider.costoCtrl.text),
+                      (val) => _validateSalePrice(val, cubit.costoCtrl.text),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),
@@ -122,15 +125,15 @@ class ProductPricingSection extends StatelessWidget {
             children: [
               Expanded(
                 child: AppTextField(
-                  controller: provider.precioMayorCtrl,
+                  controller: cubit.precioMayorCtrl,
                   label: 'Precio Mayorista',
                   icon: Icons.local_offer_outlined,
                   keyboardType: TextInputType.number,
                   validator:
                       (val) => _validateWholesalePrice(
                         val,
-                        provider.costoCtrl.text,
-                        provider.precioCtrl.text,
+                        cubit.costoCtrl.text,
+                        cubit.precioCtrl.text,
                       ),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
@@ -138,7 +141,7 @@ class ProductPricingSection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: AppTextField(
-                  controller: provider.cantidadMayorCtrl,
+                  controller: cubit.cantidadMayorCtrl,
                   label: 'Cant. Mínima',
                   icon: Icons.numbers,
                   keyboardType: TextInputType.number,

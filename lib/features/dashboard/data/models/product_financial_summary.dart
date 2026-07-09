@@ -1,7 +1,7 @@
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
 class VariantFinancialSummary {
-  final ProductVariantModel variant;
+  final ProductVariantEntity variant;
   final double unitCost;
   final int stockQuantity;
   final double inventoryValue;

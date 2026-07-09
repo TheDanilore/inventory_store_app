@@ -122,7 +122,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                             )
                             : ProductDetailScreen(
                               key: ValueKey('product_${_selectedProduct!.id}'),
-                              product: _selectedProduct!,
+                              product: _selectedProduct!.toEntity(),
                               isAdmin: true,
                               isEmbedded: true,
                             ),

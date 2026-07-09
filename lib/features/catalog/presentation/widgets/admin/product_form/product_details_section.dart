@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 
 class ProductDetailsSection extends StatelessWidget {
   const ProductDetailsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
 
     return Container(
       width: double.infinity,
@@ -45,14 +48,14 @@ class ProductDetailsSection extends StatelessWidget {
                 ),
               ),
               TextButton.icon(
-                onPressed: provider.addDetailRow,
+                onPressed: cubit.addDetailRow,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Añadir detalle'),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          if (provider.detailRows.isEmpty)
+          if (state.detailRows.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -70,10 +73,10 @@ class ProductDetailsSection extends StatelessWidget {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: provider.detailRows.length,
+              itemCount: state.detailRows.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, idx) {
-                final row = provider.detailRows[idx];
+                final row = state.detailRows[idx];
                 return Row(
                   children: [
                     Expanded(
@@ -120,7 +123,7 @@ class ProductDetailsSection extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => provider.removeDetailRow(idx),
+                      onPressed: () => cubit.removeDetailRow(idx),
                       icon: Icon(
                         Icons.remove_circle_outline,
                         color: Colors.red.shade400,

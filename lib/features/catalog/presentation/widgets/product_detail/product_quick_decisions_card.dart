@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_detail_provider.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/data/models/product_financial_summary.dart';
 
 class ProductQuickDecisionsCard extends StatelessWidget {
@@ -11,14 +12,15 @@ class ProductQuickDecisionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductDetailProvider>();
-    if (!provider.isAdmin) return const SizedBox.shrink();
+    final state = context.watch<ProductDetailCubit>().state;
+    final cubit = context.read<ProductDetailCubit>();
+    if (!cubit.isAdmin) return const SizedBox.shrink();
 
-    final totalSold = provider.totalSold;
-    final inventoryValue = provider.inventoryValue;
-    final totalRevenue = provider.totalRevenue;
-    final reinvestmentNeeded = provider.reinvestmentNeeded;
-    final variantSummaries = provider.variantSummaries;
+    final totalSold = state.totalSold;
+    final inventoryValue = state.inventoryValue;
+    final totalRevenue = state.totalRevenue;
+    final reinvestmentNeeded = state.reinvestmentNeeded;
+    final variantSummaries = state.variantSummaries;
 
     final hasData = totalSold > 0 || inventoryValue > 0;
     if (!hasData) return const SizedBox.shrink();

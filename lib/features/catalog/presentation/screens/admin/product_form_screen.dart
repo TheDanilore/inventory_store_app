@@ -1,8 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
@@ -19,14 +22,14 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_batch_section.dart';
 
 class ProductFormScreen extends StatelessWidget {
-  final ProductModel? productToEdit;
+  final ProductEntity? productToEdit;
 
   const ProductFormScreen({super.key, this.productToEdit});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ProductFormProvider()..initData(productToEdit),
+    return BlocProvider(
+      create: (_) => ProductFormCubit()..initData(productToEdit),
       child: _ProductFormScreenContent(),
     );
   }
@@ -42,10 +45,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   final _formKey = GlobalKey<FormState>();
 
   Future<bool> _onWillPop(BuildContext context) async {
-    final provider = context.read<ProductFormProvider>();
-    if (provider.isSaving || provider.isInitializingData) return false;
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
+    if (state.isSaving || state.isInitializingData) return false;
 
-    if (!provider.hasUnsavedChanges) return true;
+    if (!cubit.hasUnsavedChanges) return true;
 
     final shouldPop = await showDialog<bool>(
       context: context,
@@ -78,10 +82,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   }
 
   void _guardar(BuildContext context) async {
-    final provider = context.read<ProductFormProvider>();
-    if (provider.isSaving) return;
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
+    if (state.isSaving) return;
 
-    final success = await provider.saveProduct(context, _formKey);
+    final success = await cubit.saveProduct(context, _formKey);
     if (success && context.mounted) {
       Navigator.pop(context, true);
     }
@@ -89,8 +94,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
-    final isEdit = provider.productToEdit != null;
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
+    final isEdit = cubit.productToEdit != null;
 
     return PopScope(
       canPop: false,
@@ -107,9 +113,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         showProfileButton: false,
         showDrawerButton: false,
         body:
-            provider.isInitializingData
+            state.isInitializingData
                 ? const _ProductFormSkeleton()
-                : provider.hasErrorLoading
+                : state.hasErrorLoading
                 ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -123,7 +129,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          provider.errorMessage,
+                          state.errorMessage,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 16,
@@ -134,7 +140,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         AppPrimaryButton(
                           label: 'Reintentar cargar datos',
                           onPressed:
-                              () => provider.initData(provider.productToEdit),
+                              () => cubit.initData(cubit.productToEdit),
                         ),
                       ],
                     ),
@@ -145,7 +151,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     Form(
                       key: _formKey,
                       onChanged: () {
-                        context.read<ProductFormProvider>().markAsDirty();
+                        context.read<ProductFormCubit>().markAsDirty();
                       },
                       child: CustomScrollView(
                         slivers: [
@@ -180,7 +186,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                       ),
                                     ),
                                     TextButton.icon(
-                                      onPressed: provider.addVariantDraft,
+                                      onPressed: cubit.addVariantDraft,
                                       icon: const Icon(
                                         Icons.add_circle_outline,
                                       ),
@@ -189,7 +195,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                if (provider.variantDrafts.isEmpty)
+                                if (state.variantDrafts.isEmpty)
                                   Container(
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
@@ -204,7 +210,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                             ),
                           ),
 
-                          if (provider.variantDrafts.isNotEmpty)
+                          if (state.variantDrafts.isNotEmpty)
                             SliverPadding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0,
@@ -216,32 +222,32 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                 ) {
                                   return VariantDraftCard(
                                     index: index,
-                                    draft: provider.variantDrafts[index],
+                                    draft: state.variantDrafts[index],
                                     onRemove:
-                                        () => provider.removeVariantDraft(
+                                        () => cubit.removeVariantDraft(
                                           context,
                                           index,
                                         ),
                                     onDuplicate:
-                                        () => provider.duplicateVariantDraft(
+                                        () => cubit.duplicateVariantDraft(
                                           index,
                                         ),
                                     onActiveChanged: (val) {
-                                      provider.variantDrafts[index].isActive =
+                                      state.variantDrafts[index].isActive =
                                           val;
                                       // Esto idealmente debería notificar al provider, pero VariantDraftCard usa su estado local también.
                                     },
                                     onPickImage:
-                                        () => provider.pickVariantImage(
+                                        () => cubit.pickVariantImage(
                                           context,
                                           index,
                                         ),
                                   );
-                                }, childCount: provider.variantDrafts.length),
+                                }, childCount: state.variantDrafts.length),
                               ),
                             ),
 
-                          if (provider.variantDrafts.isNotEmpty)
+                          if (state.variantDrafts.isNotEmpty)
                             SliverPadding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0,
@@ -253,7 +259,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                     SizedBox(
                                       width: double.infinity,
                                       child: OutlinedButton.icon(
-                                        onPressed: provider.addVariantDraft,
+                                        onPressed: cubit.addVariantDraft,
                                         icon: const Icon(
                                           Icons.add_circle_outline,
                                         ),
@@ -317,7 +323,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                       ? 'Actualizar Producto'
                                       : 'Guardar Producto',
                               onPressed:
-                                  provider.isSaving
+                                  state.isSaving
                                       ? null
                                       : () => _guardar(context),
                               backgroundColor: AppColors.success,
@@ -327,7 +333,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         ),
                       ),
                     ),
-                    if (provider.isSaving)
+                    if (state.isSaving)
                       Positioned.fill(
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),

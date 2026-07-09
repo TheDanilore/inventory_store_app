@@ -2,6 +2,24 @@ import 'package:inventory_store_app/features/catalog/domain/entities/variant_att
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 
 class ProductVariantEntity {
+  String get label {
+    if (sku != null && sku!.isNotEmpty) {
+      return sku!;
+    }
+    if (attributeValues.isNotEmpty) {
+      return attributeValues.map((av) => av.value).join(' / ');
+    }
+    return 'Variante ';
+  }
+
+  Map<String, String> get attributeMap {
+    final map = <String, String>{};
+    for (final av in attributeValues) {
+      map[av.attributeName] = av.value;
+    }
+    return map;
+  }
+
   final String id;
   final String productId;
   final String? sku;

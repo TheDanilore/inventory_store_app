@@ -129,7 +129,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             )
                             : ProductDetailScreen(
                               key: ValueKey('product_${_selectedProduct!.id}'),
-                              product: _selectedProduct!,
+                              product: _selectedProduct!.toEntity(),
                               isAdmin: true,
                               isEmbedded: true,
                             ),

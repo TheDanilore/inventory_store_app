@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/catalog_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CatalogCategoryList extends StatelessWidget {
@@ -20,9 +22,10 @@ class CatalogCategoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerCatalogProvider>();
-    final categories = provider.categories;
-    final selectedId = provider.selectedCategoryId;
+    final cubit = context.read<CustomerCatalogCubit>();
+    final state = context.watch<CustomerCatalogCubit>().state;
+    final categories = state.categories;
+    final selectedId = state.selectedCategoryId;
 
     if (categories.isEmpty) return const SizedBox.shrink();
 
@@ -42,13 +45,13 @@ class CatalogCategoryList extends StatelessWidget {
               isSelected: isSelected,
               onTap: () {
                 if (!kIsWeb) Vibration.vibrate(duration: 30, amplitude: 64);
-                provider.selectCategory(null);
+                cubit.selectCategory(null);
               },
             );
           }
           final category = categories[index - 1];
-          final String catId = category['id'] as String;
-          final String catName = category['name'] as String;
+          final String? catId = category.id;
+          final String catName = category.name;
           final isSelected = catId == selectedId;
           final icon = _categoryIcons[catName] ?? Icons.category_outlined;
 
@@ -58,7 +61,7 @@ class CatalogCategoryList extends StatelessWidget {
             isSelected: isSelected,
             onTap: () {
               if (!kIsWeb) Vibration.vibrate(duration: 30, amplitude: 64);
-              provider.selectCategory(catId);
+              cubit.selectCategory(catId);
             },
           );
         },

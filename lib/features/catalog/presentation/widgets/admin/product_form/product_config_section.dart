@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class ProductConfigSection extends StatelessWidget {
@@ -8,8 +10,9 @@ class ProductConfigSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
-    final bool isService = provider.productType == 'service';
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
+    final bool isService = state.productType == 'service';
 
     return Container(
       width: double.infinity,
@@ -38,7 +41,7 @@ class ProductConfigSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.productType,
+            initialValue: state.productType,
             decoration: InputDecoration(
               labelText: 'Tipo de Producto',
               prefixIcon: const Icon(Icons.category_outlined),
@@ -63,7 +66,7 @@ class ProductConfigSection extends StatelessWidget {
             ],
             onChanged: (val) {
               if (val != null) {
-                provider.setProductType(val);
+                cubit.setProductType(val);
               }
             },
           ),
@@ -88,9 +91,9 @@ class ProductConfigSection extends StatelessWidget {
                   color: isService ? Colors.grey : AppColors.textSecondary,
                 ),
               ),
-              value: isService ? false : provider.stockControl,
+              value: isService ? false : state.stockControl,
               onChanged:
-                  isService ? null : (val) => provider.setStockControl(val),
+                  isService ? null : (val) => cubit.setStockControl(val),
               activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
             ),

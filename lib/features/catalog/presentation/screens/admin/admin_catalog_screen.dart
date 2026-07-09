@@ -3,14 +3,19 @@ import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
-import 'package:inventory_store_app/features/catalog/presentation/providers/admin_catalog_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 
 
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -36,8 +41,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<AdminCatalogProvider>();
-      _searchCtrl.text = provider.searchTerm;
+      _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
     });
   }
 
@@ -48,12 +52,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   }
 
   Future<void> _toggleProductoActivo(
-    ProductModel product,
-    AdminCatalogProvider provider,
+    ProductEntity product,
+    AdminCatalogCubit cubit,
   ) async {
     final willActivate = !product.isActive;
     
-    final success = await provider.toggleProductActive(product);
+    final success = await cubit.toggleProductActive(product);
     
     if (success && mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -68,7 +72,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           action: SnackBarAction(
             label: 'Deshacer',
             onPressed: () async {
-              await provider.toggleProductActive(
+              await cubit.toggleProductActive(
                 product.copyWith(isActive: willActivate),
               );
             },
@@ -78,7 +82,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     }
   }
 
-  Future<void> _irAVenta(ProductModel product) async {
+  Future<void> _irAVenta(ProductEntity productEntity) async {
+    final product = ProductModel.fromEntity(productEntity);
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     if (!mounted) return;
@@ -109,7 +114,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     }
   }
 
-  List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogProvider provider) {
+  List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogState state) {
     return [
       const PopupMenuItem(value: 'export', child: Text('Exportar')),
       const PopupMenuItem(value: 'sync', child: Text('Forzar Sincronización')),
@@ -118,15 +123,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
   Future<void> _handleMenuSelection(
     String value,
-    AdminCatalogProvider provider,
+    AdminCatalogCubit cubit,
+    AdminCatalogState state,
     BuildContext ctx,
   ) async {
     switch (value) {
       case 'export':
-        await provider.exportCatalogPdf(context);
+        await cubit.exportCatalogPdf(ctx);
         break;
       case 'sync':
-        await provider.forceSync();
+        await cubit.refreshProducts();
         if (ctx.mounted) {
           AppSnackbar.show(
             ctx,
@@ -143,8 +149,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 900;
-        return Consumer<AdminCatalogProvider>(
-          builder: (context, provider, child) {
+        return BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+          builder: (context, state) {
+                    final cubit = context.read<AdminCatalogCubit>();
             Widget buildBody() {
               return Builder(
                 builder: (context) {
@@ -227,11 +234,12 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             ),
                           const SizedBox(width: 8),
                           AdminSettingsMenuButton(
-                            items: _buildMenuItems(provider),
+                            items: _buildMenuItems(state),
                             onSelected:
                                 (value) => _handleMenuSelection(
                                   value,
-                                  provider,
+                                  cubit,
+                                  state,
                                   context,
                                 ),
                           ),
@@ -256,10 +264,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       double headerMaxHeight;
                       if (isDesktop) {
                         headerMaxHeight =
-                            provider.searchByIngredient ? 120.0 : 70.0;
+                            state.searchByIngredient ? 120.0 : 70.0;
                       } else {
                         headerMaxHeight =
-                            provider.searchByIngredient ? 175.0 : 115.0;
+                            state.searchByIngredient ? 175.0 : 115.0;
                       }
                       const double headerMinHeight = 60.0;
 
@@ -286,20 +294,20 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                     children: [
                                       CatalogHeader(
                                         searchController: _searchCtrl,
-                                        isExporting: provider.actionState == ViewState.loading,
+                                        isExporting: state.actionState == ViewState.loading,
                                         onExport:
-                                            () => provider.exportCatalogPdf(context),
-                                        onSearchChanged: provider.setSearchTerm,
+                                            () => cubit.exportCatalogPdf(context),
+                                        onSearchChanged: cubit.setSearchTerm,
                                         searchByIngredient:
-                                            provider.searchByIngredient,
+                                            state.searchByIngredient,
                                         onToggleIngredientSearch:
-                                            provider.toggleSearchByIngredient,
+                                            cubit.toggleSearchByIngredient,
                                         onAddProduct:
                                             () => context.push(
                                               '/admin/product-form',
                                             ),
                                       ),
-                                      if (provider.actionState == ViewState.loading)
+                                      if (state.actionState == ViewState.loading)
                                         const LinearProgressIndicator(
                                           color: AppColors.teal,
                                           minHeight: 2,
@@ -314,24 +322,24 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       );
 
                       final chipsSliver =
-                          (provider.categories.isNotEmpty &&
-                                  !provider.searchByIngredient)
+                          (state.categories.isNotEmpty &&
+                                  !state.searchByIngredient)
                               ? SliverToBoxAdapter(
                                 child: CategoryChips(
-                                  categories: provider.categories,
+                                  categories: state.categories,
                                   selectedCategoryId:
-                                      provider.selectedCategoryId,
-                                  onSelected: provider.setCategory,
-                                  filterIsActive: provider.filterIsActive,
-                                  onStatusSelected: provider.setFilterIsActive,
+                                      state.selectedCategoryId,
+                                  onSelected: cubit.setCategory,
+                                  filterIsActive: state.filterIsActive,
+                                  onStatusSelected: cubit.setFilterIsActive,
                                 ),
                               )
                               : null;
 
-                      if (provider.catalogState == ViewState.loading || provider.catalogState == ViewState.initial) {
+                      if (state.catalogState == ViewState.loading || state.catalogState == ViewState.initial) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
-                          onRefresh: () async => provider.refreshProducts(),
+                          onRefresh: () async => cubit.refreshProducts(),
                           child: CustomScrollView(
                             slivers: [
                               topBarSliver,
@@ -350,7 +358,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                   delegate: SliverChildBuilderDelegate(
                                     (context, index) =>
                                         const AdminProductSkeleton(),
-                                    childCount: AdminCatalogProvider.pageSize,
+                                    childCount: 20,
                                   ),
                                 ),
                               ),
@@ -359,10 +367,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         );
                       }
 
-                      if (provider.error != null && provider.products.isEmpty) {
+                      if (state.errorMessage != null && state.products.isEmpty) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
-                          onRefresh: () async => provider.refreshProducts(),
+                          onRefresh: () async => cubit.refreshProducts(),
                           child: CustomScrollView(
                             slivers: [
                               topBarSliver,
@@ -370,8 +378,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               if (chipsSliver != null) chipsSliver,
                               SliverFillRemaining(
                                 child: CatalogErrorState(
-                                  message: provider.error!,
-                                  onRetry: () => provider.refreshProducts(),
+                                  message: (state.errorMessage ?? ''),
+                                  onRetry: () => cubit.refreshProducts(),
                                 ),
                               ),
                             ],
@@ -379,10 +387,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         );
                       }
 
-                      if (provider.products.isEmpty && (provider.catalogState == ViewState.success || provider.catalogState == ViewState.empty)) {
+                      if (state.products.isEmpty && (state.catalogState == ViewState.success || state.catalogState == ViewState.empty)) {
                         return RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
-                          onRefresh: () async => provider.refreshProducts(),
+                          onRefresh: () async => cubit.refreshProducts(),
                           child: CustomScrollView(
                             slivers: [
                               topBarSliver,
@@ -391,14 +399,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               SliverFillRemaining(
                                 child: CatalogEmptyState(
                                   searchByIngredient:
-                                      provider.searchByIngredient,
-                                  searchTerm: provider.searchTerm,
+                                      state.searchByIngredient,
+                                  searchTerm: state.searchTerm,
                                   onRetry: () {
-                                    if (provider.searchTerm.isNotEmpty) {
+                                    if (state.searchTerm.isNotEmpty) {
                                       _searchCtrl.clear();
-                                      provider.setSearchTerm('');
+                                      cubit.setSearchTerm('');
                                     } else {
-                                      provider.refreshProducts();
+                                      cubit.refreshProducts();
                                     }
                                   },
                                 ),
@@ -410,17 +418,17 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
                       return RefreshIndicator(
                         color: Theme.of(context).colorScheme.primary,
-                        onRefresh: () async => provider.refreshProducts(),
+                        onRefresh: () async => cubit.refreshProducts(),
                         child: CatalogGridScrollView(
-                          products: provider.products,
-                          pageSize: AdminCatalogProvider.pageSize,
-                          currentPage: provider.currentPage,
-                          onPageChanged: provider.setPage,
+                          products: state.products,
+                          pageSize: 20,
+                          currentPage: state.currentPage,
+                          onPageChanged: cubit.setPage,
                           onSale: _irAVenta,
                           onToggleActive:
-                              (p) => _toggleProductoActivo(p, provider),
-                          searchByIngredient: provider.searchByIngredient,
-                          matchedIngredients: provider.matchedIngredients,
+                              (p) => _toggleProductoActivo(p, cubit),
+                          searchByIngredient: state.searchByIngredient,
+                          matchedIngredients: state.matchedIngredients,
                           bottomPadding: fabsBottomPadding,
                           topBarSliver: topBarSliver,
                           headerSliver: headerSliver,
@@ -431,7 +439,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               extra: {'productToEdit': product},
                             );
                             if (result == true) {
-                              await provider.forceSync();
+                              await cubit.refreshProducts();
                             }
                           },
                           isPosMode: false,
@@ -443,8 +451,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   Widget catalogBody = Column(
                     children: [
                       Expanded(child: mainContent),
-                      if (provider.products.isNotEmpty &&
-                          provider.totalPages > 1)
+                      if (state.products.isNotEmpty &&
+                          state.totalPages > 1)
                         Container(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                           decoration: BoxDecoration(
@@ -460,9 +468,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           child: SafeArea(
                             top: false,
                             child: AdminPageBlocks(
-                              currentPage: provider.currentPage,
-                              totalPages: provider.totalPages,
-                              onPageChanged: provider.setPage,
+                              currentPage: state.currentPage,
+                              totalPages: state.totalPages,
+                              onPageChanged: cubit.setPage,
                             ),
                           ),
                         ),
@@ -510,7 +518,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               '/admin/product-form',
                             );
                             if (result == true) {
-                              await provider.forceSync();
+                              await cubit.refreshProducts();
                             }
                           },
                         ),
@@ -522,9 +530,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             return AdminLayout(
               title: 'Catálogo',
               showSettingsButton: true,
-              settingsActions: _buildMenuItems(provider),
+              settingsActions: _buildMenuItems(state),
               onSettingsSelected:
-                  (value) => _handleMenuSelection(value, provider, context),
+                  (value) => _handleMenuSelection(value, cubit, state, context),
               showAppBar: false,
               body: bodyContent,
               floatingActionButton: floatingBtn,

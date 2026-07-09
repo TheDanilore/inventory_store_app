@@ -1,15 +1,16 @@
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'package:flutter/foundation.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
 class _PdfIsolateArgs {
-  final List<ProductModel> products;
+  final List<ProductEntity> products;
   final Map<String, List<ProductVariantModel>> variantsByProduct;
   final Map<String, int> stockByVariant;
 
@@ -40,7 +41,7 @@ class CatalogPdfGenerator {
   // ── Build ────────────────────────────────────────────────────────────────
 
   static Future<Uint8List> _buildPdf({
-    required List<ProductModel> products,
+    required List<ProductEntity> products,
     required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
@@ -55,7 +56,7 @@ class CatalogPdfGenerator {
   }
 
   static Future<Uint8List> _buildPdfInternal({
-    required List<ProductModel> products,
+    required List<ProductEntity> products,
     required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
@@ -128,7 +129,7 @@ class CatalogPdfGenerator {
   }
 
   static pw.Widget _buildProductCard({
-    required ProductModel product,
+    required ProductEntity product,
     required List<ProductVariantModel> variants,
     required Uint8List? imageBytes,
     required Map<String, int> stockByVariant,
@@ -286,7 +287,7 @@ class CatalogPdfGenerator {
 
   /// Abre el diálogo de impresión / vista previa del sistema.
   static Future<void> printCatalog({
-    required List<ProductModel> products,
+    required List<ProductEntity> products,
     required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
@@ -304,7 +305,7 @@ class CatalogPdfGenerator {
   /// Comparte el PDF usando el sistema de compartir del dispositivo.
   /// Equivalente a `OrderPdfGenerator.shareTicket`.
   static Future<void> shareCatalog({
-    required List<ProductModel> products,
+    required List<ProductEntity> products,
     required Map<String, List<ProductVariantModel>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {

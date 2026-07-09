@@ -1,8 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/catalog_provider.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
@@ -31,14 +36,14 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CustomerCatalogProvider>().init();
+      context.read<CustomerCatalogCubit>().init();
       _checkLoginPrompt();
     });
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 200) {
-        context.read<CustomerCatalogProvider>().loadMoreProducts();
+        context.read<CustomerCatalogCubit>().loadMoreProducts();
       }
     });
   }
@@ -92,7 +97,8 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     super.dispose();
   }
 
-  Future<void> _handleAddToCart(ProductModel product) async {
+  Future<void> _handleAddToCart(ProductEntity productEntity) async {
+    final product = ProductModel.fromEntity(productEntity);
     final cart = context.read<CartProvider>();
 
     await showModalBottomSheet(
@@ -106,14 +112,15 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerCatalogProvider>();
+    final cubit = context.read<CustomerCatalogCubit>();
+    final state = context.watch<CustomerCatalogCubit>().state;
 
     return CustomerLayout(
       title: 'Catálogo',
       currentIndex: 0,
       showAppBar: false,
       body: RefreshIndicator(
-        onRefresh: provider.refreshProducts,
+        onRefresh: cubit.refreshProducts,
         color: AppColors.primary,
         child: SizedBox(
           height: double.infinity,
@@ -124,7 +131,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
               // --- Banners ---
-              if (!provider.isSearchMode && provider.searchTerm.isEmpty) ...[
+              if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
                 const SliverToBoxAdapter(child: CatalogWelcomeBanner()),
                 const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 const SliverToBoxAdapter(child: CatalogPromoBanner()),
@@ -140,7 +147,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               ),
 
               // --- Categories ---
-              if (!provider.isSearchMode && provider.searchTerm.isEmpty) ...[
+              if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
                 const SliverToBoxAdapter(
                   child: Padding(
@@ -173,7 +180,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 ),
               ],
 
-              if (provider.searchTerm.isNotEmpty || provider.isSearchMode) ...[
+              if (state.searchTerm.isNotEmpty || state.isSearchMode) ...[
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -181,7 +188,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                       vertical: 16,
                     ),
                     child: Text(
-                      provider.searchTerm.isEmpty
+                      state.searchTerm.isEmpty
                           ? 'Busquedas recientes'
                           : 'Resultados',
                       style: const TextStyle(
@@ -194,10 +201,10 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               ],
 
               // --- Historial de Búsqueda ---
-              if (provider.isSearchMode && provider.searchTerm.isEmpty) ...[
+              if (state.isSearchMode && state.searchTerm.isEmpty) ...[
                 SliverToBoxAdapter(
                   child:
-                      provider.searchHistory.isEmpty
+                      state.searchHistory.isEmpty
                           ? Padding(
                             padding: const EdgeInsets.all(32),
                             child: Center(
@@ -210,9 +217,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                           : ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            itemCount: provider.searchHistory.length,
+                            itemCount: state.searchHistory.length,
                             itemBuilder: (context, index) {
-                              final term = provider.searchHistory[index];
+                              final term = state.searchHistory[index];
                               return ListTile(
                                 leading: const Icon(
                                   Icons.history,
@@ -220,8 +227,8 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                                 ),
                                 title: Text(term),
                                 onTap: () {
-                                  provider.setSearchMode(false);
-                                  provider.setSearchTerm(term);
+                                  cubit.setSearchMode(false);
+                                  cubit.setSearchTerm(term);
                                 },
                               );
                             },
@@ -229,16 +236,16 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 ),
                 SliverToBoxAdapter(
                   child:
-                      provider.searchHistory.isNotEmpty
+                      state.searchHistory.isNotEmpty
                           ? TextButton(
-                            onPressed: provider.clearSearchHistory,
+                            onPressed: cubit.clearSearchHistory,
                             child: const Text('Limpiar historial'),
                           )
                           : const SizedBox.shrink(),
                 ),
               ]
               // --- Product Grid ---
-              else if (provider.isInitialLoad && provider.isLoadingProducts) ...[
+              else if ((state.viewState == ViewState.loading && state.products.isEmpty) && (state.viewState == ViewState.loading || state.isLoadingMore)) ...[
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   sliver: SliverGrid(
@@ -254,21 +261,21 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                     ),
                   ),
                 ),
-              ] else if (provider.productsError != null && provider.products.isEmpty) ...[
+              ] else if (state.errorMessage != null && state.products.isEmpty) ...[
                 SliverToBoxAdapter(
                   child: AppEmptyState(
                     icon: Icons.error_outline_rounded,
                     color: Colors.red,
                     title: 'Ocurrió un error',
-                    message: provider.productsError!,
+                    message: state.errorMessage!,
                     action: ElevatedButton.icon(
-                      onPressed: provider.refreshProducts,
+                      onPressed: cubit.refreshProducts,
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Reintentar'),
                     ),
                   ),
                 ),
-              ] else if (provider.products.isEmpty) ...[
+              ] else if (state.products.isEmpty) ...[
                 SliverToBoxAdapter(
                   child: Center(
                     child: Padding(
@@ -313,17 +320,17 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final product = provider.products[index];
+                        final product = state.products[index];
                         return CatalogProductCard(
                           product: product,
                           onAddToCart: _handleAddToCart,
                         );
                       },
-                      childCount: provider.products.length,
+                      childCount: state.products.length,
                     ),
                   ),
                 ),
-                if (provider.isLoadingProducts && !provider.isInitialLoad)
+                if ((state.viewState == ViewState.loading || state.isLoadingMore) && !(state.viewState == ViewState.loading && state.products.isEmpty))
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 24.0),

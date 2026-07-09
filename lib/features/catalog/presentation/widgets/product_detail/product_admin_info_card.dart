@@ -3,28 +3,30 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_detail_provider.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 
 class ProductAdminInfoCard extends StatelessWidget {
   const ProductAdminInfoCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductDetailProvider>();
-    if (!provider.isAdmin) return const SizedBox.shrink();
+    final state = context.watch<ProductDetailCubit>().state;
+    final cubit = context.read<ProductDetailCubit>();
+    if (!cubit.isAdmin) return const SizedBox.shrink();
 
     final cost =
-        ((provider.selectedVariant?.unitCost ?? 0) > 0)
-            ? provider.selectedVariant!.unitCost!
-            : provider.product.unitCost;
-    final wPrice = provider.baseWholesalePrice;
-    final rPoint = provider.selectedVariant?.reorderPoint ?? 0;
+        ((state.selectedVariant?.unitCost ?? 0) > 0)
+            ? state.selectedVariant!.unitCost!
+            : cubit.product.unitCost;
+    final wPrice = state.baseWholesalePrice;
+    final rPoint = state.selectedVariant?.reorderPoint ?? 0;
 
-    final retailProfitUnit = provider.effectivePrice - cost;
+    final retailProfitUnit = state.effectivePrice - cost;
     final retailMargin =
-        (provider.effectivePrice > 0)
-            ? (retailProfitUnit / provider.effectivePrice) * 100
+        (state.effectivePrice > 0)
+            ? (retailProfitUnit / state.effectivePrice) * 100
             : 0.0;
 
     final wholesaleProfitUnit = wPrice != null ? wPrice - cost : 0.0;
@@ -33,7 +35,7 @@ class ProductAdminInfoCard extends StatelessWidget {
             ? (wholesaleProfitUnit / wPrice) * 100
             : 0.0;
 
-    final effectiveStock = provider.effectiveStock;
+    final effectiveStock = state.effectiveStock;
     final projectedRetail = retailProfitUnit * effectiveStock;
     final projectedWholesale = wholesaleProfitUnit * effectiveStock;
     return Material(

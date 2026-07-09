@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_card.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Grid paginado del catálogo admin con soporte responsive.
 class CatalogGridScrollView extends StatelessWidget {
-  final List<ProductModel> products;
+  final List<ProductEntity> products;
   final int pageSize;
   final int currentPage;
   final ValueChanged<int> onPageChanged;
-  final void Function(ProductModel) onSale;
-  final Future<void> Function(ProductModel) onToggleActive;
-  final void Function(ProductModel) onEdit;
+  final void Function(ProductEntity) onSale;
+  final Future<void> Function(ProductEntity) onToggleActive;
+  final void Function(ProductEntity) onEdit;
   final bool searchByIngredient;
   final Map<String, String> matchedIngredients;
   final double bottomPadding;

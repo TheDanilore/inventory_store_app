@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/repositories/catalog_service.dart';
 
 // Proveedores
@@ -118,7 +119,7 @@ class _ProductLoaderState extends State<_ProductLoader> {
           );
         }
         return ProductDetailScreen(
-          product: snapshot.data!,
+          product: snapshot.data!.toEntity(),
           isAdmin: widget.isAdmin,
           initialVariantId: widget.initialVariantId,
         );
@@ -408,7 +409,9 @@ class AppRouter {
               builder: (context, state) {
                 final args = state.extra as Map<String, dynamic>? ?? {};
                 return ProductFormScreen(
-                  productToEdit: args['productToEdit'] as ProductModel?,
+                  productToEdit: args['productToEdit'] is ProductEntity
+                      ? args['productToEdit'] as ProductEntity?
+                      : (args['productToEdit'] as ProductModel?)?.toEntity(),
                 );
               },
             ),
@@ -483,7 +486,7 @@ class AppRouter {
                 final product = state.extra as ProductModel?;
                 if (product != null) {
                   return ProductDetailScreen(
-                    product: product,
+                    product: product.toEntity(),
                     isAdmin: true,
                     initialVariantId: variantId,
                   );
@@ -520,7 +523,7 @@ class AppRouter {
                         final product = state.extra as ProductModel?;
                         if (product != null) {
                           return ProductDetailScreen(
-                            product: product,
+                            product: product.toEntity(),
                             isAdmin: false,
                             initialVariantId: variantId,
                           );
@@ -633,7 +636,7 @@ class AppRouter {
 
             if (product != null) {
               return ProductDetailScreen(
-                product: product,
+                product: product.toEntity(),
                 isAdmin: isAdmin,
                 initialVariantId: variantId,
               );

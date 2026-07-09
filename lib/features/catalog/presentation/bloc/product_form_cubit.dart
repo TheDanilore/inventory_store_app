@@ -1,65 +1,22 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/repositories/product_form_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'product_form_state.dart';
 
-// Clases de utilidad locales para el Provider
-class DetailControllers {
-  final TextEditingController keyCtrl;
-  final TextEditingController valueCtrl;
-
-  DetailControllers({required this.keyCtrl, required this.valueCtrl});
-
-  void dispose() {
-    keyCtrl.dispose();
-    valueCtrl.dispose();
-  }
-}
-
-class FormImageItem {
-  final String id;
-  final ProductImageModel? existing;
-  final Uint8List? newBytes;
-  final String? newName;
-
-  FormImageItem({this.existing, this.newBytes, this.newName})
-    : id = UniqueKey().toString();
-
-  bool get isExisting => existing != null;
-}
-
-class IngredientRow {
-  String? ingredientId;
-  final TextEditingController nameCtrl;
-  final TextEditingController concentrationCtrl;
-  final TextEditingController unitCtrl;
-
-  IngredientRow({
-    this.ingredientId,
-    String name = '',
-    String concentration = '',
-    String unit = '',
-  }) : nameCtrl = TextEditingController(text: name),
-       concentrationCtrl = TextEditingController(text: concentration),
-       unitCtrl = TextEditingController(text: unit);
-
-  void dispose() {
-    nameCtrl.dispose();
-    concentrationCtrl.dispose();
-    unitCtrl.dispose();
-  }
-}
-
-class ProductFormProvider extends ChangeNotifier {
+class ProductFormCubit extends Cubit<ProductFormState> {
   final ProductFormService _service;
-  ProductModel? _productToEdit;
+  ProductEntity? _productToEdit;
 
   // Controladores Generales
   final nombreCtrl = TextEditingController();
@@ -92,8 +49,7 @@ class ProductFormProvider extends ChangeNotifier {
   bool _isSaving = false;
   bool _isDirty = false;
 
-  ProductFormProvider({ProductFormService? service})
-    : _service = service ?? ProductFormService();
+  ProductFormCubit({ProductFormService? service}) : _service = service ?? ProductFormService(), super(ProductFormState.initial());
 
   bool _hasErrorLoading = false;
   String _errorMessage = '';
@@ -114,7 +70,7 @@ class ProductFormProvider extends ChangeNotifier {
   bool get batchManagementEnabled => _batchManagementEnabled;
   bool get ingredientsEnabled => _ingredientsEnabled;
 
-  ProductModel? get productToEdit => _productToEdit;
+  ProductEntity? get productToEdit => _productToEdit;
 
   // Setters
   void setProductType(String type) {
@@ -124,31 +80,55 @@ class ProductFormProvider extends ChangeNotifier {
       _batchManagementEnabled = false;
     }
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void setStockControl(bool val) {
     _stockControl = val;
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void setBatchManagement(bool val) {
     _batchManagementEnabled = val;
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void setIngredientsEnabled(bool val) {
     _ingredientsEnabled = val;
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void setSelectedCategory(String? id) {
     _selectedCategoryId = id;
     markAsDirty();
-    notifyListeners();
+    _syncState();
+  }
+
+  
+  void _syncState() {
+    emit(state.copyWith(
+      productToEdit: _productToEdit,
+      isInitializingData: _isInitializingData,
+      hasErrorLoading: _hasErrorLoading,
+      errorMessage: _errorMessage,
+      isSaving: _isSaving,
+      isDirty: _isDirty,
+      isLoadingCategories: _isLoadingCategories,
+      categories: _categories,
+      selectedCategoryId: _selectedCategoryId,
+      productType: _productType,
+      stockControl: _stockControl,
+      batchManagementEnabled: _batchManagementEnabled,
+      ingredientsEnabled: _ingredientsEnabled,
+      detailRows: List.of(detailRows),
+      ingredientRows: List.of(ingredientRows),
+      formImages: List.of(formImages),
+      variantDrafts: List.of(variantDrafts),
+      removedVariantIds: List.of(_removedVariantIds),
+    ));
   }
 
   void markAsDirty() {
@@ -159,12 +139,12 @@ class ProductFormProvider extends ChangeNotifier {
 
   // --- Inicialización ---
 
-  Future<void> initData(ProductModel? product) async {
+  Future<void> initData(ProductEntity? product) async {
     _productToEdit = product;
     _isInitializingData = true;
     _hasErrorLoading = false;
     _errorMessage = '';
-    notifyListeners();
+    _syncState();
 
     try {
       if (product != null) {
@@ -217,20 +197,20 @@ class ProductFormProvider extends ChangeNotifier {
       }
     } finally {
       _isInitializingData = false;
-      notifyListeners();
+      _syncState();
     }
   }
 
   Future<void> _fetchCategories() async {
     _categories = await _service.fetchCategories();
     _isLoadingCategories = false;
-    notifyListeners();
+    _syncState();
   }
 
   Future<void> _fetchProductImages(String productId) async {
     final images = await _service.fetchProductImages(productId);
     formImages.addAll(images.map((img) => FormImageItem(existing: img)));
-    notifyListeners();
+    _syncState();
   }
 
   Future<void> _fetchIngredients(String productId) async {
@@ -247,7 +227,7 @@ class ProductFormProvider extends ChangeNotifier {
       );
     }
     if (ingredientRows.isNotEmpty) _ingredientsEnabled = true;
-    notifyListeners();
+    _syncState();
   }
 
   Future<void> _fetchVariants(String productId) async {
@@ -255,9 +235,9 @@ class ProductFormProvider extends ChangeNotifier {
       final drafts = await _service.fetchVariants(productId);
       variantDrafts.addAll(drafts);
     } catch (e) {
-      // El error se silencia o se maneja en el provider. Aquí lo notificaremos por Snackbar desde UI idealmente.
+      // El error se silencia o se maneja en el cubit. Aquí lo notificaremos por Snackbar desde UI idealmente.
     }
-    notifyListeners();
+    _syncState();
   }
 
   // --- Manejo de Detalles y Formato ---
@@ -270,27 +250,27 @@ class ProductFormProvider extends ChangeNotifier {
       ),
     );
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void removeDetailRow(int index) {
     detailRows[index].dispose();
     detailRows.removeAt(index);
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void addIngredientRow() {
     ingredientRows.add(IngredientRow());
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void removeIngredientRow(int index) {
     ingredientRows[index].dispose();
     ingredientRows.removeAt(index);
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   // --- Imágenes ---
@@ -340,7 +320,7 @@ class ProductFormProvider extends ChangeNotifier {
 
       formImages.addAll(nuevosItems);
       markAsDirty();
-      notifyListeners();
+      _syncState();
 
       if ((duplicadas > 0 || excedidas > 0) && context.mounted) {
         String msg = '';
@@ -390,14 +370,14 @@ class ProductFormProvider extends ChangeNotifier {
 
     formImages.removeAt(index);
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void reorderImages(int oldIndex, int newIndex) {
     final item = formImages.removeAt(oldIndex);
     formImages.insert(newIndex, item);
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   // --- Variantes ---
@@ -405,7 +385,7 @@ class ProductFormProvider extends ChangeNotifier {
   void addVariantDraft() {
     variantDrafts.add(VariantDraftModel());
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   void duplicateVariantDraft(int index) {
@@ -430,7 +410,7 @@ class ProductFormProvider extends ChangeNotifier {
 
     variantDrafts.insert(index + 1, copy);
     markAsDirty();
-    notifyListeners();
+    _syncState();
   }
 
   Future<void> removeVariantDraft(BuildContext context, int index) async {
@@ -440,7 +420,7 @@ class ProductFormProvider extends ChangeNotifier {
       draft.dispose();
       variantDrafts.removeAt(index);
       markAsDirty();
-      notifyListeners();
+      _syncState();
       return;
     }
 
@@ -462,7 +442,7 @@ class ProductFormProvider extends ChangeNotifier {
       draft.dispose();
       variantDrafts.removeAt(index);
       markAsDirty();
-      notifyListeners();
+      _syncState();
 
       if (context.mounted) {
         AppSnackbar.show(
@@ -498,7 +478,7 @@ class ProductFormProvider extends ChangeNotifier {
       draft.nuevasImagenes.clear();
       draft.nuevasImagenes.add(bytesOptimizados);
       markAsDirty();
-      notifyListeners();
+      _syncState();
     }
   }
 
@@ -563,7 +543,7 @@ class ProductFormProvider extends ChangeNotifier {
     }
 
     _isSaving = true;
-    notifyListeners();
+    _syncState();
 
     try {
       final Map<String, String> detailsMap = {};
@@ -756,7 +736,7 @@ class ProductFormProvider extends ChangeNotifier {
       }
 
       _isDirty = false;
-      notifyListeners();
+      _syncState();
 
       if (context.mounted) {
         AppSnackbar.show(
@@ -783,12 +763,12 @@ class ProductFormProvider extends ChangeNotifier {
       return false;
     } finally {
       _isSaving = false;
-      notifyListeners();
+      _syncState();
     }
   }
 
   @override
-  void dispose() {
+  Future<void> close() async {
     nombreCtrl.dispose();
     costoCtrl.dispose();
     precioCtrl.dispose();
@@ -804,6 +784,7 @@ class ProductFormProvider extends ChangeNotifier {
     for (final row in ingredientRows) {
       row.dispose();
     }
-    super.dispose();
+    super.close();
   }
+
 }

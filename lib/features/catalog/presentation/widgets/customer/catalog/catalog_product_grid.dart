@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/catalog_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_product_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_shimmers.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
 class CatalogProductGrid extends StatelessWidget {
-  final Future<void> Function(ProductModel) onAddToCart;
+  final Future<void> Function(ProductEntity) onAddToCart;
 
   const CatalogProductGrid({super.key, required this.onAddToCart});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerCatalogProvider>();
+    final state = context.watch<CustomerCatalogCubit>().state;
 
-    if (provider.isInitialLoad && provider.isLoadingProducts) {
+    if (state.viewState == ViewState.initial && state.viewState == ViewState.loading) {
       return GridView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shrinkWrap: true,
@@ -31,21 +32,21 @@ class CatalogProductGrid extends StatelessWidget {
       );
     }
 
-    if (provider.productsError != null && provider.products.isEmpty) {
+    if (state.errorMessage != null && state.products.isEmpty) {
       return AppEmptyState(
         icon: Icons.error_outline_rounded,
         color: Colors.red,
         title: 'Ocurrió un error',
-        message: provider.productsError!,
+        message: state.errorMessage!,
         action: ElevatedButton.icon(
-          onPressed: provider.refreshProducts,
+          onPressed: context.read<CustomerCatalogCubit>().init,
           icon: const Icon(Icons.refresh_rounded),
           label: const Text('Reintentar'),
         ),
       );
     }
 
-    if (provider.products.isEmpty) {
+    if (state.products.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -90,16 +91,16 @@ class CatalogProductGrid extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
-          itemCount: provider.products.length,
+          itemCount: state.products.length,
           itemBuilder: (context, index) {
-            final product = provider.products[index];
+            final product = state.products[index];
             return CatalogProductCard(
               product: product,
               onAddToCart: onAddToCart,
             );
           },
         ),
-        if (provider.isLoadingProducts && !provider.isInitialLoad)
+        if (state.viewState == ViewState.loading && state.viewState != ViewState.initial)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24.0),
             child: CircularProgressIndicator(),

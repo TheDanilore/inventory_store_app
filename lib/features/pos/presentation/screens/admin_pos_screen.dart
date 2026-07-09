@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:inventory_store_app/features/catalog/presentation/providers/admin_catalog_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/features/catalog/data/repositories/products_repository.dart';
@@ -31,9 +34,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<AdminCatalogProvider>();
-      _searchCtrl.text = provider.searchTerm;
-      // Removido provider.refreshProducts() para evitar lag.
+      final cubit = context.read<AdminCatalogCubit>();
+      _searchCtrl.text = cubit.state.searchTerm;
+      // Removido cubit.refreshProducts() para evitar lag.
       // El POS usa la data ya cacheada por AdminCatalogScreen.
     });
   }
@@ -44,7 +47,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     super.dispose();
   }
 
-  Future<void> _irAVenta(ProductModel product) async {
+  Future<void> _irAVenta(ProductEntity productEntity) async {
+    final product = ProductModel.fromEntity(productEntity);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -142,8 +146,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
-      body: Consumer<AdminCatalogProvider>(
-        builder: (context, provider, child) {
+      body: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+        builder: (context, state) {
+          final cubit = context.read<AdminCatalogCubit>();
+          
           Widget catalogContent = Column(
             children: [
               Container(
@@ -156,12 +162,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   children: [
                     CatalogHeader(
                       searchController: _searchCtrl,
-                      isExporting: provider.isLoadingAction,
+                      isExporting: state.actionState == ViewState.loading,
                       onExport: () {},
-                      onSearchChanged: provider.setSearchTerm,
-                      searchByIngredient: provider.searchByIngredient,
+                      onSearchChanged: cubit.setSearchTerm,
+                      searchByIngredient: state.searchByIngredient,
                       onToggleIngredientSearch:
-                          provider.toggleSearchByIngredient,
+                          cubit.toggleSearchByIngredient,
                       isPosMode: true,
                       onBack: () => context.go('/admin'),
                       onAddProduct: () async {
@@ -169,24 +175,24 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                           '/admin/product-form',
                         );
                         if (result == true) {
-                          provider.refreshProducts();
+                          cubit.refreshProducts();
                         }
                       },
                     ),
                     const SizedBox(height: 12),
-                    if (provider.categories.isNotEmpty)
+                    if (state.categories.isNotEmpty)
                       CategoryChips(
-                        categories: provider.categories,
-                        selectedCategoryId: provider.selectedCategoryId,
-                        onSelected: provider.setCategory,
-                        filterIsActive: provider.filterIsActive,
-                        onStatusSelected: provider.setFilterIsActive,
+                        categories: state.categories,
+                        selectedCategoryId: state.selectedCategoryId,
+                        onSelected: cubit.setCategory,
+                        filterIsActive: state.filterIsActive,
+                        onStatusSelected: cubit.setFilterIsActive,
                       ),
                   ],
                 ),
               ),
-              Expanded(child: _buildMainContent(provider)),
-              if (provider.products.isNotEmpty && provider.totalPages > 1)
+              Expanded(child: _buildMainContent(cubit, state)),
+              if (state.products.isNotEmpty && state.totalPages > 1)
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   decoration: BoxDecoration(
@@ -202,9 +208,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   child: SafeArea(
                     top: false,
                     child: AdminPageBlocks(
-                      currentPage: provider.currentPage,
-                      totalPages: provider.totalPages,
-                      onPageChanged: provider.setPage,
+                      currentPage: state.currentPage,
+                      totalPages: state.totalPages,
+                      onPageChanged: cubit.setPage,
                     ),
                   ),
                 ),
@@ -229,7 +235,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                 ),
                 child: DesktopPosPanel(
                   onSaleCompleted: () {
-                    provider.refreshProducts();
+                    cubit.refreshProducts();
                   },
                 ),
               ),
@@ -240,36 +246,36 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     );
   }
 
-  Widget _buildMainContent(AdminCatalogProvider provider) {
-    if (provider.isLoading && provider.products.isEmpty) {
+  Widget _buildMainContent(AdminCatalogCubit cubit, AdminCatalogState state) {
+    if ((state.catalogState == ViewState.loading) && state.products.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    if (provider.error != null && provider.products.isEmpty) {
-      return Center(child: CatalogErrorState(message: provider.error!));
+    if (state.errorMessage != null && state.products.isEmpty) {
+      return Center(child: CatalogErrorState(message: state.errorMessage!));
     }
 
-    if (provider.products.isEmpty && !provider.isLoading) {
+    if (state.products.isEmpty && !(state.catalogState == ViewState.loading)) {
       return Center(
         child: CatalogEmptyState(
-          searchByIngredient: provider.searchByIngredient,
-          searchTerm: provider.searchTerm,
+          searchByIngredient: state.searchByIngredient,
+          searchTerm: state.searchTerm,
         ),
       );
     }
 
     return CatalogGridScrollView(
-      products: provider.products,
-      pageSize: AdminCatalogProvider.pageSize,
-      currentPage: provider.currentPage,
-      onPageChanged: provider.setPage,
+      products: state.products,
+      pageSize: 20,
+      currentPage: state.currentPage,
+      onPageChanged: cubit.setPage,
       onSale: _irAVenta,
       onToggleActive:
           (p) => Future.value(), // No permitimos editar en modo caja
-      searchByIngredient: provider.searchByIngredient,
-      matchedIngredients: provider.matchedIngredients,
+      searchByIngredient: state.searchByIngredient,
+      matchedIngredients: state.matchedIngredients,
       bottomPadding: 24,
       isPosMode: true,
       onEdit: (product) {}, // No permitimos editar en modo caja

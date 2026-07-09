@@ -2,13 +2,13 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 
 /// Tarjeta de producto del catálogo admin con imagen, badges de estado y acciones.
 class AdminProductCard extends StatefulWidget {
-  final ProductModel product;
+  final ProductEntity product;
   final VoidCallback onSale;
   final Future<void> Function() onToggleActive;
   final VoidCallback onEdit;

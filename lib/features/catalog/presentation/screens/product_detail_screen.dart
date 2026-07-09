@@ -1,5 +1,13 @@
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:go_router/go_router.dart';
@@ -11,13 +19,16 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/data/repositories/product_pdf_generator.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
-import 'package:provider/provider.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_detail_provider.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_top_section.dart';
@@ -30,7 +41,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_ingredients_card.dart';
 
 class ProductDetailScreen extends StatelessWidget {
-  final ProductModel product;
+  final ProductEntity product;
   final bool isAdmin;
   final String? initialVariantId;
   final bool isEmbedded;
@@ -45,9 +56,9 @@ class ProductDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+    return BlocProvider(
       create:
-          (_) => ProductDetailProvider(
+          (_) => ProductDetailCubit(
             product: product,
             isAdmin: isAdmin,
             initialVariantId: initialVariantId,
@@ -70,12 +81,11 @@ class _ProductDetailScreenContentState
     extends State<_ProductDetailScreenContent> {
   final PageController _pageController = PageController();
 
-  ProductDetailProvider get provider => context.read<ProductDetailProvider>();
-  ProductDetailProvider get providerWatch =>
-      context.watch<ProductDetailProvider>();
+  ProductDetailCubit get cubit => context.read<ProductDetailCubit>();
+  ProductDetailState get state => context.watch<ProductDetailCubit>().state;
 
-  ProductModel get product => providerWatch.product;
-  bool get isAdmin => providerWatch.isAdmin;
+  ProductEntity get product => cubit.product;
+  bool get isAdmin => cubit.isAdmin;
 
   @override
   void initState() {
@@ -90,32 +100,32 @@ class _ProductDetailScreenContentState
 
   // ─── DERIVED GETTERS ─────────────────────────────────────────────────────
 
-  bool get _isWishlistLoading => providerWatch.isWishlistLoading;
-  bool get _isWishlisted => providerWatch.isWishlisted;
-  bool get _showVariantImage => providerWatch.showVariantImage;
-  List<ProductVariantModel> get _variants => providerWatch.variants;
-  List<Map<String, dynamic>> get _reviewsList => providerWatch.reviewsList;
+  bool get _isWishlistLoading => state.isWishlistLoading;
+  bool get _isWishlisted => state.isWishlisted;
+  bool get _showVariantImage => state.showVariantImage;
+  List<ProductVariantEntity> get _variants => state.variants;
+  List<Map<String, dynamic>> get _reviewsList => state.reviewsList;
   List<Map<String, dynamic>> get _activeIngredients =>
-      providerWatch.activeIngredients;
-  double get _averageRating => providerWatch.averageRating;
+      state.activeIngredients;
+  double get _averageRating => state.averageRating;
 
-  int get _selectedQty => providerWatch.selectedQty;
-  int get _selectedImageIndex => providerWatch.selectedImageIndex;
-  String? get _selectedVariantId => providerWatch.selectedVariantId;
+  int get _selectedQty => state.selectedQty;
+  int get _selectedImageIndex => state.selectedImageIndex;
+  String? get _selectedVariantId => state.selectedVariantId;
 
-  ProductVariantModel? get _selectedVariant => providerWatch.selectedVariant;
-  double get _baseSalePrice => providerWatch.baseSalePrice;
-  double? get _baseWholesalePrice => providerWatch.baseWholesalePrice;
-  int get _baseWholesaleMinQty => providerWatch.baseWholesaleMinQty;
-  double get _effectivePrice => providerWatch.effectivePrice;
-  int get _effectiveStock => providerWatch.effectiveStock;
-  bool get _isActive => providerWatch.isActive;
-  bool get _canBuy => providerWatch.canBuy;
-  List<String> get _attributeKeys => providerWatch.attributeKeys;
-  String? get _selectedVariantImageUrl => providerWatch.selectedVariantImageUrl;
-  List<ProductImageModel> get _galleryImages => providerWatch.images;
-  String? _variantImageUrl(ProductVariantModel variant) =>
-      providerWatch.variantImageUrl(variant);
+  ProductVariantEntity? get _selectedVariant => state.selectedVariant;
+  double get _baseSalePrice => state.baseSalePrice;
+  double? get _baseWholesalePrice => state.baseWholesalePrice;
+  int get _baseWholesaleMinQty => state.baseWholesaleMinQty;
+  double get _effectivePrice => state.effectivePrice;
+  int get _effectiveStock => state.effectiveStock;
+  bool get _isActive => state.isActive;
+  bool get _canBuy => state.canBuy;
+  List<String> get _attributeKeys => state.attributeKeys;
+  String? get _selectedVariantImageUrl => state.selectedVariantImageUrl;
+  List<ProductImageEntity> get _galleryImages => state.images;
+  String? _variantImageUrl(ProductVariantEntity variant) =>
+      state.variantImageUrl(variant);
   String _fmt(String value) {
     final n = value.replaceAll('_', ' ').trim();
     if (n.isEmpty) return value;
@@ -130,12 +140,12 @@ class _ProductDetailScreenContentState
 
   Future<void> _toggleWishlist() async {
     try {
-      await provider.toggleWishlist();
+      await cubit.toggleWishlist();
       _showSnack(
-        providerWatch.isWishlisted
+        state.isWishlisted
             ? '❤️ Guardado en favoritos'
             : 'Eliminado de favoritos',
-        isSuccess: providerWatch.isWishlisted,
+        isSuccess: state.isWishlisted,
       );
     } catch (e) {
       _showSnack('Error: $e');
@@ -143,12 +153,12 @@ class _ProductDetailScreenContentState
   }
 
   void _selectVariant(
-    ProductVariantModel variant, {
+    ProductVariantEntity variant, {
     bool animateGallery = true,
   }) {
-    provider.selectVariant(variant);
+    cubit.setVariant(variant.id);
     if (animateGallery) {
-      provider.setPage(0);
+      cubit.setImageIndex(0);
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -156,22 +166,22 @@ class _ProductDetailScreenContentState
   }
 
   void _onGalleryChanged(int index) {
-    provider.setPage(index);
+    cubit.setImageIndex(index);
   }
 
   // ─── CART & REVIEWS ───────────────────────────────────────────────────────
 
   void _addToCart() {
-    final qty = provider.selectedQty;
-    final stock = provider.effectiveStock;
-    final variants = provider.variants;
-    final selectedVariant = provider.selectedVariant;
-    final effectivePrice = provider.effectivePrice;
+    final qty = state.selectedQty;
+    final stock = state.effectiveStock;
+    final variants = state.variants;
+    final selectedVariant = state.selectedVariant;
+    final effectivePrice = state.effectivePrice;
 
     final String? effectiveImageUrl =
-        provider.selectedVariantImageUrl ??
-        (provider.images.isNotEmpty
-            ? provider.images[0].imageUrl
+        state.selectedVariantImageUrl ??
+        (state.images.isNotEmpty
+            ? state.images[0].imageUrl
             : product.primaryImageUrl);
 
     if (variants.isNotEmpty && selectedVariant == null) {
@@ -182,9 +192,9 @@ class _ProductDetailScreenContentState
         builder:
             (sheetContext) => CartVariantPickerSheet(
               cart: Provider.of<CartProvider>(sheetContext, listen: false),
-              product: product,
+              product: ProductModel.fromEntity(product),
               initialQuantity: qty,
-              selectedVariantId: provider.selectedVariantId,
+              selectedVariantId: state.selectedVariantId,
             ),
       );
       return;
@@ -200,7 +210,7 @@ class _ProductDetailScreenContentState
     }
 
     Provider.of<CartProvider>(context, listen: false).addItem(
-      product,
+      ProductModel.fromEntity(product),
       quantity: qty,
       variantId: selectedVariant?.id,
       variantLabel: selectedVariant?.label,
@@ -324,7 +334,7 @@ class _ProductDetailScreenContentState
                         onPressed: () {
                           final n = int.tryParse(ctrl.text.trim());
                           if (n != null && n > 0) {
-                            provider.setSelectedQty(
+                            cubit.setQty(
                               n.clamp(1, _effectiveStock),
                             );
                           }
@@ -570,7 +580,7 @@ class _ProductDetailScreenContentState
                                               '¡Reseña publicada!',
                                               isSuccess: true,
                                             );
-                                            provider.loadData();
+                                            cubit.loadData();
                                           } catch (e) {
                                             setS(() => isSubmitting = false);
                                             _showSnack('Error: $e');
@@ -622,9 +632,9 @@ class _ProductDetailScreenContentState
     });
   }
 
-  List<ProductVariantModel> get _thumbnailVariants {
+  List<ProductVariantEntity> get _thumbnailVariants {
     if (_attributeKeys.length <= 1) return _variants;
-    final list = <ProductVariantModel>[];
+    final list = <ProductVariantEntity>[];
     final seen = <String>{};
     for (final v in _variants) {
       final url = _variantImageUrl(v);
@@ -694,9 +704,9 @@ class _ProductDetailScreenContentState
                     ),
                     onSelected: (value) async {
                       if (value == 'export') {
-                        final currentProvider = provider;
+                        final currentState = state;
                         final Map<String, int> stockMap = {};
-                        for (final row in currentProvider.warehouseStocks) {
+                        for (final row in currentState.warehouseStocks) {
                           final variantId = row['variant_id'] as String?;
                           final stock =
                               (row['available_quantity'] as num?)?.toInt() ?? 0;
@@ -724,11 +734,12 @@ class _ProductDetailScreenContentState
                           ),
                         );
                         try {
-                          await ProductPdfGenerator.shareProduct(
-                            currentProvider.product,
-                            variants: currentProvider.variants,
-                            stockByVariant: stockMap,
-                          );
+                          if (currentState.product == null) return;
+await ProductPdfGenerator.shareProduct(
+ProductModel.fromEntity(currentState.product!),
+variants: currentState.variants.map((v) => ProductVariantModel.fromEntity(v)).toList(),
+stockByVariant: stockMap,
+);
                         } catch (e) {
                           if (context.mounted) {
                             _showSnack('Error al generar PDF: $e');
@@ -804,7 +815,7 @@ class _ProductDetailScreenContentState
           flexibleSpace: FlexibleSpaceBar(
             stretchModes: const [StretchMode.zoomBackground],
             background: ProductGallerySection(
-              images: gallery,
+              images: gallery.map((e) => ProductImageModel.fromEntity(e)).toList(),
               pageController: _pageController,
               selectedIndex: _selectedImageIndex,
               onPageChanged: _onGalleryChanged,
@@ -852,7 +863,7 @@ class _ProductDetailScreenContentState
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
-                      final currentVariantId = provider.selectedVariantId;
+                      final currentVariantId = state.selectedVariantId;
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
@@ -863,10 +874,10 @@ class _ProductDetailScreenContentState
                                 sheetContext,
                                 listen: false,
                               ),
-                              product: product,
+                              product: ProductModel.fromEntity(product),
                               selectedVariantId: currentVariantId,
                               onVariantSelected: (variant) {
-                                _selectVariant(variant);
+                                _selectVariant(variant.toEntity());
                               },
                             ),
                       );
@@ -1072,8 +1083,8 @@ class _ProductDetailScreenContentState
         effectiveStock: _effectiveStock,
         effectivePrice: _effectivePrice,
         selectedQty: _selectedQty,
-        onDecrement: () => provider.setSelectedQty(_selectedQty - 1),
-        onIncrement: () => provider.setSelectedQty(_selectedQty + 1),
+        onDecrement: () => cubit.setQty(_selectedQty - 1),
+        onIncrement: () => cubit.setQty(_selectedQty + 1),
         onQtyTap: _showQuantityDialog,
         onAddToCart: _addToCart,
       ),

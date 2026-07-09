@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CatalogProductCard extends StatefulWidget {
-  final ProductModel product;
-  final Future<void> Function(ProductModel) onAddToCart;
+  final ProductEntity product;
+  final Future<void> Function(ProductEntity) onAddToCart;
 
   const CatalogProductCard({
     super.key,

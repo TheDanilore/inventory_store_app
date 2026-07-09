@@ -1,7 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class ProductImagesSection extends StatelessWidget {
@@ -46,10 +48,10 @@ class ProductImagesSection extends StatelessWidget {
               children: [
                 InkWell(
                   onTap:
-                      context.watch<ProductFormProvider>().isSaving
+                      context.watch<ProductFormCubit>().isSaving
                           ? null
                           : () => context
-                              .read<ProductFormProvider>()
+                              .read<ProductFormCubit>()
                               .pickImages(context),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -84,8 +86,9 @@ class ProductImagesSection extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Consumer<ProductFormProvider>(
-                    builder: (context, provider, child) {
+                  child: BlocBuilder<ProductFormCubit, ProductFormState>(
+                    builder: (context, state) {
+        final cubit = context.read<ProductFormCubit>();
                       return ReorderableListView.builder(
                         scrollDirection: Axis.horizontal,
                         buildDefaultDragHandles: false,
@@ -98,13 +101,13 @@ class ProductImagesSection extends StatelessWidget {
                             child: child,
                           );
                         },
-                        itemCount: provider.formImages.length,
+                        itemCount: state.formImages.length,
                         onReorderItem: (oldIndex, newIndex) {
-                          if (provider.isSaving) return;
-                          provider.reorderImages(oldIndex, newIndex);
+                          if (state.isSaving) return;
+                          cubit.reorderImages(oldIndex, newIndex);
                         },
                         itemBuilder: (context, index) {
-                          final item = provider.formImages[index];
+                          final item = state.formImages[index];
                           final isMain = index == 0;
 
                           return Container(
@@ -227,9 +230,9 @@ class ProductImagesSection extends StatelessWidget {
                                     right: 4,
                                     child: GestureDetector(
                                       onTap:
-                                          provider.isSaving
+                                          state.isSaving
                                               ? null
-                                              : () => provider.removeImage(
+                                              : () => cubit.removeImage(
                                                 context,
                                                 index,
                                               ),

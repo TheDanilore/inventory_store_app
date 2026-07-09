@@ -136,7 +136,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
       },
       (data) async {
         // Enrich with stock
-        final ids = data.products.map((p) => p.id!).toList();
+        final ids = data.products.map((p) => p.id).toList();
         Map<String, int> stock = {};
         if (ids.isNotEmpty) {
           final stockResult = await getProductStockUC(productIds: ids);

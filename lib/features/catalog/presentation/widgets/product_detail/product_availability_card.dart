@@ -1,22 +1,25 @@
+import 'package:inventory_store_app/core/enums/view_state.dart';
 // ─── AVAILABILITY CARD ───────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_detail_provider.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 
 class ProductAvailabilityCard extends StatelessWidget {
   const ProductAvailabilityCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductDetailProvider>();
-    if (!provider.isAdmin) return const SizedBox.shrink();
+    final state = context.watch<ProductDetailCubit>().state;
+    final cubit = context.read<ProductDetailCubit>();
+    if (!cubit.isAdmin) return const SizedBox.shrink();
 
     final filteredStocks =
-        provider.warehouseStocks
-            .where((row) => row['variant_id'] == provider.selectedVariantId)
+        state.warehouseStocks
+            .where((row) => row['variant_id'] == state.selectedVariantId)
             .toList();
 
     return Container(
@@ -32,7 +35,7 @@ class ProductAvailabilityCard extends StatelessWidget {
             title: 'Stock por almacén',
           ),
           const SizedBox(height: 14),
-          if (provider.isLoadingExtra)
+          if (state.viewState == ViewState.loading)
             const Center(
               child: CircularProgressIndicator(
                 color: AppColors.primary,

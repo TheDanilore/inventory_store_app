@@ -1,8 +1,10 @@
+import 'package:inventory_store_app/core/enums/view_state.dart';
 // ─── PRODUCT BATCHES CARD ──────────────────────────────────
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_detail_provider.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class ProductBatchesCard extends StatelessWidget {
@@ -10,12 +12,12 @@ class ProductBatchesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductDetailProvider>();
-    final isLoading = provider.isLoadingExtra;
+    final state = context.watch<ProductDetailCubit>().state;
+    final isLoading = state.viewState == ViewState.loading;
 
     final filteredBatches =
-        provider.batchesList
-            .where((row) => row['variant_id'] == provider.selectedVariantId)
+        state.batchesList
+            .where((row) => row['variant_id'] == state.selectedVariantId)
             .toList();
 
     return Container(

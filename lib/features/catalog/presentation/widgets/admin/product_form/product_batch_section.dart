@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/presentation/providers/product_form_provider.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 
 class ProductBatchSection extends StatelessWidget {
   const ProductBatchSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProductFormProvider>();
+    final cubit = context.read<ProductFormCubit>();
+    final state = context.watch<ProductFormCubit>().state;
 
-    if (provider.productType == 'service') {
+    if (state.productType == 'service') {
       return const SizedBox.shrink();
     }
 
@@ -43,7 +46,7 @@ class ProductBatchSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color:
-                  provider.batchManagementEnabled
+                  state.batchManagementEnabled
                       ? Colors.teal.withValues(alpha: 0.07)
                       : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
@@ -53,7 +56,7 @@ class ProductBatchSection extends StatelessWidget {
                 Icon(
                   Icons.qr_code_2_rounded,
                   color:
-                      provider.batchManagementEnabled
+                      state.batchManagementEnabled
                           ? Colors.teal
                           : Colors.grey,
                   size: 20,
@@ -64,14 +67,14 @@ class ProductBatchSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        provider.batchManagementEnabled
+                        state.batchManagementEnabled
                             ? 'Gestión por lotes habilitada'
                             : 'Sin gestión por lotes',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color:
-                              provider.batchManagementEnabled
+                              state.batchManagementEnabled
                                   ? Colors.teal.shade700
                                   : Colors.grey.shade600,
                         ),
@@ -87,8 +90,8 @@ class ProductBatchSection extends StatelessWidget {
                   ),
                 ),
                 Switch.adaptive(
-                  value: provider.batchManagementEnabled,
-                  onChanged: provider.setBatchManagement,
+                  value: state.batchManagementEnabled,
+                  onChanged: cubit.setBatchManagement,
                   activeThumbColor: Colors.teal,
                 ),
               ],
