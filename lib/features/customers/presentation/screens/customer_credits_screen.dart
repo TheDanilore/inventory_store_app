@@ -7,7 +7,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_credits/credit_account_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
 
 class CustomerCreditsScreen extends StatefulWidget {
   const CustomerCreditsScreen({super.key});

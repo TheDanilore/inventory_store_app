@@ -11,13 +11,13 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customers/customer_form_sheet.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_header_card.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_kpi_row.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_credit_section.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_locations_section.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_top_products_section.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_recent_orders_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_form_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_header_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_kpi_row.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_credit_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_locations_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_top_products_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_recent_orders_section.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class CustomerDetailScreen extends StatelessWidget {

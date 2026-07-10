@@ -7,10 +7,10 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers_stats_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customers/customer_form_sheet.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customers/customers_stats_header.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customers/top_customers_section.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customers/customer_list_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_form_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customers_stats_header.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/top_customers_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';

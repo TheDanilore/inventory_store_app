@@ -8,7 +8,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_state.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/widgets/wishlist/wishlist_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/wishlist/wishlist_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
