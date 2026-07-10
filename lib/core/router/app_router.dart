@@ -271,7 +271,16 @@ class AppRouter {
         // ADMIN ROUTES
         GoRoute(
           path: '/admin',
-          builder: (context, state) => const AdminCatalogScreen(),
+          builder: (context, state) => AdminCatalogScreen(
+            onProfileAvatarTap: () {
+              final auth = context.read<AuthCubit>();
+              if (auth.state.currentUser == null) {
+                context.go('/login');
+              } else {
+                context.push('/admin/profile');
+              }
+            },
+          ),
           routes: [
             GoRoute(
               path: 'profile',

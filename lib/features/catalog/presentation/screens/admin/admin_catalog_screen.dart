@@ -1,4 +1,4 @@
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -23,12 +23,14 @@ class AdminCatalogScreen extends StatefulWidget {
   final Widget? floatingActionButton;
   final void Function(ProductEntity product)? onAddToCart;
   final void Function(ProductEntity product)? onProductTap;
+  final VoidCallback? onProfileAvatarTap;
 
   const AdminCatalogScreen({
     super.key,
     this.floatingActionButton,
     this.onAddToCart,
     this.onProductTap,
+    this.onProfileAvatarTap,
   });
 
   @override
@@ -161,14 +163,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             children: [
                               const SizedBox(width: 12),
                               AdminProfileAvatar(
-                                onTap: () {
-                                  final auth = context.read<AuthCubit>();
-                                  if (auth.state.currentUser == null) {
-                                    context.go('/login');
-                                  } else {
-                                    context.push('/admin/profile');
-                                  }
-                                },
+                                onTap: widget.onProfileAvatarTap ?? () {},
                               ),
                             ],
                           ),
