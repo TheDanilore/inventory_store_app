@@ -2,12 +2,10 @@ import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
-import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:inventory_store_app/features/auth/data/models/auth_user_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 @LazySingleton(as: AuthRepository)
 class AuthRepositoryImpl implements AuthRepository {
@@ -34,20 +32,10 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       if (data['is_active'] == false) {
-        await _supabase.auth.signOut();
         return left(Failure.from('Tu cuenta está inactiva o bloqueada.'));
       }
 
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
-      
-      // Cache basic profile info
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('profile_cache_full_name_', model.fullName);
-        if (model.avatarUrl != null) {
-          await prefs.setString('profile_cache_avatar_url_', model.avatarUrl!);
-        }
-      } catch (_) {}
 
       return right(model.toEntity());
     } catch (e) {
@@ -76,35 +64,57 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> register({
+  Future<Either<Failure, String>> register({
     required String email,
     required String password,
-    required String fullName,
   }) async {
     try {
       final res = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName},
       );
 
       if (res.user != null) {
-        try {
-          await _supabase.from('profiles').upsert({
-            'auth_user_id': res.user!.id,
-            'full_name': fullName,
-            'role': AppRoles.customer,
-            'is_active': true,
-          }, onConflict: 'auth_user_id');
-        } catch (e) {
-          // ignore
-        }
+        return right(res.user!.id);
       }
-      return getCurrentUser();
+      return left(Failure.from('Error al crear cuenta en el servidor de autenticación.'));
     } on sb.AuthException catch (e) {
       return left(Failure.from(_authErrorMessage(e)));
     } catch (e) {
       return left(Failure.from('Error inesperado al registrarse.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> createProfile({
+    required String authUserId,
+    required String email,
+    required String fullName,
+    required String role,
+    required bool isActive,
+  }) async {
+    try {
+      await _supabase.from('profiles').upsert({
+        'auth_user_id': authUserId,
+        'full_name': fullName,
+        'role': role,
+        'is_active': isActive,
+      }, onConflict: 'auth_user_id');
+      
+      final data = await _supabase
+          .from('profiles')
+          .select('auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url')
+          .eq('auth_user_id', authUserId)
+          .maybeSingle();
+
+      if (data == null) {
+        return left(Failure.from('Perfil creado pero no pudo ser recuperado.'));
+      }
+
+      final model = AuthUserModel.fromMap(data, email);
+      return right(model.toEntity());
+    } catch (e) {
+      return left(Failure.from('Error al crear perfil en base de datos.'));
     }
   }
 

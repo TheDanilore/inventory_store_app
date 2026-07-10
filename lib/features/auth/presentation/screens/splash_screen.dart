@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final Future<void> Function(BuildContext context)? onInitialize;
+
+  const SplashScreen({super.key, this.onInitialize});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -21,14 +23,12 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkSession() async {
     if (!mounted) return;
 
-    final configProvider = context.read<AppConfigCubit>();
-    try {
-      await Future.wait([
-        configProvider.loadConfig(),
-        configProvider.loadBusinessInfo(),
-      ]).timeout(const Duration(seconds: 5));
-    } catch (e) {
-      debugPrint('Error o timeout cargando configuracin inicial: ');
+    if (widget.onInitialize != null) {
+      try {
+        await widget.onInitialize!(context);
+      } catch (e) {
+        debugPrint('Error o timeout cargando inicialización: $e');
+      }
     }
 
     if (!mounted) return;

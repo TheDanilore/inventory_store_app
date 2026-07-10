@@ -12,10 +12,17 @@ abstract class AuthRepository {
     required String password,
   });
 
-  Future<Either<Failure, UserEntity>> register({
+  Future<Either<Failure, String>> register({
     required String email,
     required String password,
+  });
+
+  Future<Either<Failure, UserEntity>> createProfile({
+    required String authUserId,
+    required String email,
     required String fullName,
+    required String role,
+    required bool isActive,
   });
 
   Future<Either<Failure, void>> logout();

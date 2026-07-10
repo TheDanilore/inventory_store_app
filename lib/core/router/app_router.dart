@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
@@ -11,6 +11,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 // Proveedores
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 
 // Pantallas Comunes
 import 'package:inventory_store_app/features/auth/presentation/screens/splash_screen.dart';
@@ -250,7 +251,18 @@ class AppRouter {
         return null;
       },
       routes: [
-        GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+        GoRoute(
+          path: '/',
+          builder: (context, state) => SplashScreen(
+            onInitialize: (ctx) async {
+              final configProvider = ctx.read<AppConfigCubit>();
+              await Future.wait([
+                configProvider.loadConfig(),
+                configProvider.loadBusinessInfo(),
+              ]).timeout(const Duration(seconds: 5));
+            },
+          ),
+        ),
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
