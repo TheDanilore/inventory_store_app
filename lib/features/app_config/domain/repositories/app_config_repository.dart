@@ -30,4 +30,10 @@ abstract class AppConfigRepository {
 
   /// Sube el logo del negocio a storage y devuelve la URL.
   Future<String> uploadBusinessLogo(Uint8List bytes);
+
+  /// Valida y guarda la nueva conexión a Supabase.
+  Future<void> changeConnection(String url, String key);
+
+  /// Restaura la conexión por defecto.
+  Future<void> restoreDefaultConnection();
 }

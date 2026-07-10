@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
+import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
@@ -26,9 +28,6 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _urlCtrl;
   final _keyCtrl = TextEditingController();
-  
-  String? _errorMessage;
-
   @override
   void initState() {
     super.initState();
@@ -42,64 +41,41 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  void _save() {
     if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _errorMessage = null;
-    });
-
-    try {
-      final url = _urlCtrl.text.trim();
-      final key = _keyCtrl.text.trim();
-
-      // Validar conexión usando el endpoint de health de Supabase Auth
-      final authHealthUrl = Uri.parse('$url/auth/v1/health');
-      final response = await http.get(authHealthUrl).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw Exception('Tiempo de espera agotado'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('El servidor no respondió correctamente o la URL es inválida (Status: ${response.statusCode})');
-      }
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('SUPABASE_URL', url);
-      await prefs.setString('SUPABASE_KEY', key);
-
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error al validar conexión: $e';
-      });
-    }
+    
+    final url = _urlCtrl.text.trim();
+    final key = _keyCtrl.text.trim();
+    
+    context.read<AppConfigCubit>().changeConnection(url, key);
   }
 
-  Future<void> _restoreDefault() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('SUPABASE_URL');
-    await prefs.remove('SUPABASE_KEY');
-    if (mounted) {
-      Navigator.pop(context, true);
-    }
+  void _restoreDefault() {
+    context.read<AppConfigCubit>().restoreDefaultConnection();
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      child: BlocConsumer<AppConfigCubit, AppConfigState>(
+        listener: (context, state) {
+          if (state.connectionStatus == ViewState.success) {
+            Navigator.pop(context, true);
+          }
+        },
+        builder: (context, state) {
+          final isLoading = state.connectionStatus == ViewState.loading;
+          
+          return Container(
+            padding: const EdgeInsets.all(24),
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               Row(
                 children: [
                   const Icon(Icons.dns_rounded, color: AppColors.primary),
@@ -147,7 +123,7 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
                   return null;
                 },
               ),
-              if (_errorMessage != null) ...[
+              if (state.errorMessage != null) ...[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -156,7 +132,7 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _errorMessage!,
+                    state.errorMessage!,
                     style: const TextStyle(color: Colors.red, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
@@ -167,7 +143,7 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
                 children: [
                   Expanded(
                     child: TextButton(
-                      onPressed: () => Navigator.pop(context, false),
+                      onPressed: isLoading ? null : () => Navigator.pop(context, false),
                       child: const Text('Cancelar'),
                     ),
                   ),
@@ -175,15 +151,15 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
                   Expanded(
                     flex: 2,
                     child: AppPrimaryButton(
-                      label: 'Guardar',
-                      onPressed: _save,
+                      label: isLoading ? 'Guardando...' : 'Guardar',
+                      onPressed: isLoading ? null : _save,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               TextButton.icon(
-                onPressed: _restoreDefault,
+                onPressed: isLoading ? null : _restoreDefault,
                 icon: const Icon(Icons.restore, size: 18),
                 label: const Text('Restaurar servidor por defecto'),
                 style: TextButton.styleFrom(foregroundColor: Colors.grey.shade700),
@@ -191,7 +167,8 @@ class _ChangeConnectionDialogState extends State<ChangeConnectionDialog> {
             ],
           ),
         ),
-      ),
-    );
+      );
+    },
+    ));
   }
 }

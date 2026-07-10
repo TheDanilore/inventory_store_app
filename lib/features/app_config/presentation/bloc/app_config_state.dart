@@ -7,6 +7,7 @@ class AppConfigState extends Equatable {
   final BusinessInfoEntity? businessInfo;
   final ViewState status;
   final ViewState saveStatus;
+  final ViewState connectionStatus;
   final String? errorMessage;
 
   const AppConfigState({
@@ -14,6 +15,7 @@ class AppConfigState extends Equatable {
     this.businessInfo,
     this.status = ViewState.initial,
     this.saveStatus = ViewState.initial,
+    this.connectionStatus = ViewState.initial,
     this.errorMessage,
   });
 
@@ -22,6 +24,7 @@ class AppConfigState extends Equatable {
     BusinessInfoEntity? businessInfo,
     ViewState? status,
     ViewState? saveStatus,
+    ViewState? connectionStatus,
     String? errorMessage,
     bool clearErrorMessage = false,
   }) {
@@ -30,6 +33,7 @@ class AppConfigState extends Equatable {
       businessInfo: businessInfo ?? this.businessInfo,
       status: status ?? this.status,
       saveStatus: saveStatus ?? this.saveStatus,
+      connectionStatus: connectionStatus ?? this.connectionStatus,
       errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -40,6 +44,7 @@ class AppConfigState extends Equatable {
         businessInfo,
         status,
         saveStatus,
+        connectionStatus,
         errorMessage,
       ];
 }

@@ -17,10 +17,14 @@ import '../../features/app_config/data/repositories_impl/app_config_repository_i
     as _i785;
 import '../../features/app_config/domain/repositories/app_config_repository.dart'
     as _i257;
+import '../../features/app_config/domain/usecases/change_connection_uc.dart'
+    as _i286;
 import '../../features/app_config/domain/usecases/get_app_settings_uc.dart'
     as _i506;
 import '../../features/app_config/domain/usecases/get_business_info_uc.dart'
     as _i868;
+import '../../features/app_config/domain/usecases/restore_default_connection_uc.dart'
+    as _i36;
 import '../../features/app_config/domain/usecases/save_business_info_uc.dart'
     as _i702;
 import '../../features/app_config/domain/usecases/upload_logo_uc.dart' as _i217;
@@ -281,6 +285,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i217.UploadLogoUseCase>(
       () => _i217.UploadLogoUseCase(gh<_i257.AppConfigRepository>()),
     );
+    gh.factory<_i286.ChangeConnectionUseCase>(
+      () => _i286.ChangeConnectionUseCase(gh<_i257.AppConfigRepository>()),
+    );
+    gh.factory<_i36.RestoreDefaultConnectionUseCase>(
+      () =>
+          _i36.RestoreDefaultConnectionUseCase(gh<_i257.AppConfigRepository>()),
+    );
     gh.factory<_i711.ProductDetailCubit>(
       () => _i711.ProductDetailCubit(
         getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
@@ -333,14 +344,6 @@ extension GetItInjectableX on _i174.GetIt {
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
       ),
     );
-    gh.factory<_i556.AppConfigCubit>(
-      () => _i556.AppConfigCubit(
-        getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
-        getBusinessInfoUseCase: gh<_i868.GetBusinessInfoUseCase>(),
-        saveBusinessInfoUseCase: gh<_i702.SaveBusinessInfoUseCase>(),
-        uploadLogoUseCase: gh<_i217.UploadLogoUseCase>(),
-      ),
-    );
     gh.factory<_i777.CategoriesCubit>(
       () => _i777.CategoriesCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
@@ -372,6 +375,17 @@ extension GetItInjectableX on _i174.GetIt {
         changePasswordUseCase: gh<_i832.ChangePasswordUseCase>(),
         deleteAccountUseCase: gh<_i853.DeleteAccountUseCase>(),
         updateProfileUseCase: gh<_i282.UpdateProfileUseCase>(),
+      ),
+    );
+    gh.factory<_i556.AppConfigCubit>(
+      () => _i556.AppConfigCubit(
+        getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
+        getBusinessInfoUseCase: gh<_i868.GetBusinessInfoUseCase>(),
+        saveBusinessInfoUseCase: gh<_i702.SaveBusinessInfoUseCase>(),
+        uploadLogoUseCase: gh<_i217.UploadLogoUseCase>(),
+        changeConnectionUseCase: gh<_i286.ChangeConnectionUseCase>(),
+        restoreDefaultConnectionUseCase:
+            gh<_i36.RestoreDefaultConnectionUseCase>(),
       ),
     );
     return this;

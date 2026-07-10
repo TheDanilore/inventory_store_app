@@ -6,6 +6,8 @@ import 'package:inventory_store_app/features/app_config/domain/usecases/get_app_
 import 'package:inventory_store_app/features/app_config/domain/usecases/get_business_info_uc.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/save_business_info_uc.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/upload_logo_uc.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/change_connection_uc.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/restore_default_connection_uc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
@@ -16,12 +18,16 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   final GetBusinessInfoUseCase getBusinessInfoUseCase;
   final SaveBusinessInfoUseCase saveBusinessInfoUseCase;
   final UploadLogoUseCase uploadLogoUseCase;
+  final ChangeConnectionUseCase changeConnectionUseCase;
+  final RestoreDefaultConnectionUseCase restoreDefaultConnectionUseCase;
 
   AppConfigCubit({
     required this.getAppSettingsUseCase,
     required this.getBusinessInfoUseCase,
     required this.saveBusinessInfoUseCase,
     required this.uploadLogoUseCase,
+    required this.changeConnectionUseCase,
+    required this.restoreDefaultConnectionUseCase,
   }) : super(const AppConfigState());
 
   // --- Helpers para compatibilidad ---
@@ -223,6 +229,40 @@ class AppConfigCubit extends Cubit<AppConfigState> {
           },
         );
       },
+    );
+  }
+
+  Future<void> changeConnection(String url, String key) async {
+    emit(state.copyWith(
+      connectionStatus: ViewState.loading,
+      clearErrorMessage: true,
+    ));
+
+    final result = await changeConnectionUseCase(ChangeConnectionParams(url: url, key: key));
+
+    result.fold(
+      (failure) => emit(state.copyWith(
+        connectionStatus: ViewState.error,
+        errorMessage: failure.message,
+      )),
+      (_) => emit(state.copyWith(connectionStatus: ViewState.success)),
+    );
+  }
+
+  Future<void> restoreDefaultConnection() async {
+    emit(state.copyWith(
+      connectionStatus: ViewState.loading,
+      clearErrorMessage: true,
+    ));
+
+    final result = await restoreDefaultConnectionUseCase(const NoParams());
+
+    result.fold(
+      (failure) => emit(state.copyWith(
+        connectionStatus: ViewState.error,
+        errorMessage: failure.message,
+      )),
+      (_) => emit(state.copyWith(connectionStatus: ViewState.success)),
     );
   }
 }

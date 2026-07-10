@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
@@ -166,5 +167,29 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
     final path = 'logos/$fileName';
     await _supabase.storage.from('business').uploadBinary(path, bytes);
     return _supabase.storage.from('business').getPublicUrl(path);
+  }
+
+  @override
+  Future<void> changeConnection(String url, String key) async {
+    final authHealthUrl = Uri.parse('$url/auth/v1/health');
+    final response = await http.get(authHealthUrl).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Tiempo de espera agotado'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('El servidor no respondió correctamente o la URL es inválida (Status: ${response.statusCode})');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('SUPABASE_URL', url);
+    await prefs.setString('SUPABASE_KEY', key);
+  }
+
+  @override
+  Future<void> restoreDefaultConnection() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('SUPABASE_URL');
+    await prefs.remove('SUPABASE_KEY');
   }
 }
