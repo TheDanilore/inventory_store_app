@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
@@ -26,10 +25,6 @@ class MovementFormSheet extends StatefulWidget {
 }
 
 class _MovementFormSheetState extends State<MovementFormSheet> {
-  // TODO(tech-debt): Extraer lógica de transferencia a un UseCase en domain/usecases/.
-  // Por ahora este Supabase directo es una excepción pragmática justificada por la
-  // complejidad de la transacción multi-tabla (balance check + 2 inserts atómicos).
-  final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
   final _amountCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -46,9 +41,10 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final accState = context.read<FinancialAccountsCubit>().state;
-      final accounts = accState is FinancialAccountsLoaded
-          ? accState.accounts.where((a) => a.isActive).toList()
-          : <FinancialAccountEntity>[];
+      final accounts =
+          accState is FinancialAccountsLoaded
+              ? accState.accounts.where((a) => a.isActive).toList()
+              : <FinancialAccountEntity>[];
       setState(() {
         _accounts = accounts;
         if (_accounts.isNotEmpty) {
@@ -61,16 +57,6 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
         }
       });
     });
-  }
-
-  Future<String?> _getActiveShift(String accountId) async {
-    final res = await _supabase
-        .from('cash_shifts')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('status', 'OPEN')
-        .maybeSingle();
-    return res?['id'] as String?;
   }
 
   Future<void> _save() async {
@@ -88,78 +74,47 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     setState(() => _saving = true);
 
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) throw Exception('No hay sesión activa');
-
-      final profileRes = await _supabase.from('profiles').select('id').eq('auth_user_id', user.id).maybeSingle();
-      final profileId = profileRes?['id'] as String? ?? user.id;
-
-      final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
-
-      // Consultar saldo actual de origen
-      final sourceAccRes = await _supabase.from('financial_accounts').select('balance, name').eq('id', _sourceAccountId!).single();
-      final currentSourceBalance = (sourceAccRes['balance'] as num).toDouble();
-      final sourceName = sourceAccRes['name'] as String;
-
-      final sourceShiftId = await _getActiveShift(_sourceAccountId!);
+      final amount =
+          double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
+      final description = _descCtrl.text.trim();
 
       if (_type == 'TRANSFER') {
-        final destAccRes = await _supabase.from('financial_accounts').select('balance, name').eq('id', _destAccountId!).single();
-        final currentDestBalance = (destAccRes['balance'] as num).toDouble();
-        final destName = destAccRes['name'] as String;
-        final destShiftId = await _getActiveShift(_destAccountId!);
-
-        await _supabase.from('financial_accounts').update({'balance': currentSourceBalance - amount}).eq('id', _sourceAccountId!);
-        await _supabase.from('financial_accounts').update({'balance': currentDestBalance + amount}).eq('id', _destAccountId!);
-
-        await _supabase.from('account_movements').insert([
-          {
-            'account_id': _sourceAccountId,
-            'movement_type': 'EXPENSE',
-            'amount': amount,
-            'description': 'Transferencia enviada a $destName${_descCtrl.text.trim().isNotEmpty ? ' — ${_descCtrl.text.trim()}' : ''}',
-            'created_by': profileId,
-            'shift_id': sourceShiftId,
-            'reference_type': 'manual_transfer',
-          },
-          {
-            'account_id': _destAccountId,
-            'movement_type': 'INCOME',
-            'amount': amount,
-            'description': 'Transferencia recibida de $sourceName${_descCtrl.text.trim().isNotEmpty ? ' — ${_descCtrl.text.trim()}' : ''}',
-            'created_by': profileId,
-            'shift_id': destShiftId,
-            'reference_type': 'manual_transfer',
-          },
-        ]);
+        if (_destAccountId == null) {
+          throw Exception('Seleccione cuenta destino');
+        }
+        await context.read<AccountMovementsCubit>().transferFunds(
+          sourceAccountId: _sourceAccountId!,
+          destAccountId: _destAccountId!,
+          amount: amount,
+          description: description,
+        );
       } else {
-        final isIncome = _type == 'INCOME';
-        final newBalance = isIncome ? (currentSourceBalance + amount) : (currentSourceBalance - amount);
-
-        await _supabase.from('financial_accounts').update({'balance': newBalance}).eq('id', _sourceAccountId!);
-
-        await _supabase.from('account_movements').insert({
-          'account_id': _sourceAccountId,
-          'movement_type': _type,
-          'amount': amount,
-          'description': _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Movimiento manual',
-          'created_by': profileId,
-          'shift_id': sourceShiftId,
-          'reference_type': 'manual',
-        });
+        await context.read<AccountMovementsCubit>().saveMovement(
+          accountId: _sourceAccountId!,
+          movementType: _type,
+          amount: amount,
+          description: description,
+        );
       }
 
       if (!mounted) return;
 
-      // Refresh both Cubits after saving
-      context.read<AccountMovementsCubit>().fetchMovements();
+      // Actualizar cuentas también para reflejar los nuevos saldos
       context.read<FinancialAccountsCubit>().fetchAccounts();
 
-      AppSnackbar.show(context, message: 'Movimiento registrado correctamente', type: SnackbarType.success);
+      AppSnackbar.show(
+        context,
+        message: 'Movimiento registrado correctamente',
+        type: SnackbarType.success,
+      );
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, message: 'Error registrando movimiento: $e', type: SnackbarType.error);
+        AppSnackbar.show(
+          context,
+          message: 'Error registrando movimiento: $e',
+          type: SnackbarType.error,
+        );
         setState(() => _saving = false);
       }
     }
@@ -204,10 +159,16 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(color: AppColors.textSecondary.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-            const Text('Nuevo Movimiento', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            const Text(
+              'Nuevo Movimiento',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            ),
             const SizedBox(height: 20),
 
             _FieldLabel('Tipo de movimiento'),
@@ -246,25 +207,41 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
             ),
             const SizedBox(height: 14),
 
-            _FieldLabel(_type == 'TRANSFER' ? 'Cuenta Origen (De donde sale)' : 'Cuenta'),
-            _AccountSelector(value: _sourceAccountId, accounts: _accounts, onChanged: (v) => setState(() => _sourceAccountId = v)),
+            _FieldLabel(
+              _type == 'TRANSFER' ? 'Cuenta Origen (De donde sale)' : 'Cuenta',
+            ),
+            _AccountSelector(
+              value: _sourceAccountId,
+              accounts: _accounts,
+              onChanged: (v) => setState(() => _sourceAccountId = v),
+            ),
             const SizedBox(height: 14),
 
             if (_type == 'TRANSFER') ...[
               _FieldLabel('Cuenta Destino (A donde entra)'),
-              _AccountSelector(value: _destAccountId, accounts: _accounts, onChanged: (v) => setState(() => _destAccountId = v)),
+              _AccountSelector(
+                value: _destAccountId,
+                accounts: _accounts,
+                onChanged: (v) => setState(() => _destAccountId = v),
+              ),
               const SizedBox(height: 14),
             ],
 
             _FieldLabel('Monto (S/)'),
             TextFormField(
               controller: _amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
               decoration: _inputDeco('0.00').copyWith(prefixText: 'S/ '),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Ingresa un monto';
-                if ((double.tryParse(v.replaceAll(',', '.')) ?? 0) <= 0) return 'Monto inválido';
+                if ((double.tryParse(v.replaceAll(',', '.')) ?? 0) <= 0) {
+                  return 'Monto inválido';
+                }
                 return null;
               },
             ),
@@ -275,7 +252,11 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
               controller: _descCtrl,
               textCapitalization: TextCapitalization.sentences,
               decoration: _inputDeco('Ej. Aporte de capital, Pago de taxi...'),
-              validator: (v) => (v == null || v.trim().isEmpty) && _type != 'TRANSFER' ? 'Requerido' : null,
+              validator:
+                  (v) =>
+                      (v == null || v.trim().isEmpty) && _type != 'TRANSFER'
+                          ? 'Requerido'
+                          : null,
             ),
             const SizedBox(height: 20),
 
@@ -287,11 +268,27 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Guardar movimiento', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                child:
+                    _saving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          'Guardar movimiento',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
               ),
             ),
           ],
@@ -301,20 +298,26 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
   }
 
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      );
+    hintText: hint,
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    filled: true,
+    fillColor: AppColors.surface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+  );
 }
 
 // ignore: non_constant_identifier_names
 Widget _FieldLabel(String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-    );
+  padding: const EdgeInsets.only(bottom: 6),
+  child: Text(
+    text,
+    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+  ),
+);
 
 class _TypeToggle extends StatelessWidget {
   final String label;
@@ -341,11 +344,20 @@ class _TypeToggle extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? color : AppColors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: isSelected ? null : Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+          border:
+              isSelected
+                  ? null
+                  : Border.all(
+                    color: AppColors.textSecondary.withValues(alpha: 0.2),
+                  ),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 20, color: isSelected ? Colors.white : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+            ),
             const SizedBox(height: 4),
             Text(
               label,
@@ -385,23 +397,30 @@ class _AccountSelector extends StatelessWidget {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          items: accounts.map((a) {
-            IconData typeIcon = Icons.savings_rounded;
-            if (a.type == 'CAJA') typeIcon = Icons.point_of_sale_rounded;
-            if (a.type == 'BANCO') typeIcon = Icons.account_balance_rounded;
-            if (a.type == 'DIGITAL') typeIcon = Icons.phone_android_rounded;
+          items:
+              accounts.map((a) {
+                IconData typeIcon = Icons.savings_rounded;
+                if (a.type == 'CAJA') typeIcon = Icons.point_of_sale_rounded;
+                if (a.type == 'BANCO') typeIcon = Icons.account_balance_rounded;
+                if (a.type == 'DIGITAL') typeIcon = Icons.phone_android_rounded;
 
-            return DropdownMenuItem<String>(
-              value: a.id,
-              child: Row(
-                children: [
-                  Icon(typeIcon, size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 8),
-                  Text(a.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                ],
-              ),
-            );
-          }).toList(),
+                return DropdownMenuItem<String>(
+                  value: a.id,
+                  child: Row(
+                    children: [
+                      Icon(typeIcon, size: 16, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        a.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
           onChanged: onChanged,
         ),
       ),
