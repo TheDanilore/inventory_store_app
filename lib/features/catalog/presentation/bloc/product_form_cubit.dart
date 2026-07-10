@@ -27,6 +27,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final GetVariantsDraftsUC _getVariantsDraftsUC;
   final DeleteProductImageUC _deleteProductImageUC;
   final DeleteVariantUC _deleteVariantUC;
+  final HasVariantSalesUC _hasVariantSalesUC;
   final GetCurrentProfileIdUseCase _getCurrentProfileIdUC;
   final SaveProductUseCase _saveProductUC;
 
@@ -75,6 +76,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     this._getVariantsDraftsUC,
     this._deleteProductImageUC,
     this._deleteVariantUC,
+    this._hasVariantSalesUC,
     this._getCurrentProfileIdUC,
     this._saveProductUC,
     @factoryParam ProductEntity? productToEdit,
@@ -459,20 +461,18 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
 
     try {
-      // final hasSales = await _unwrap(_repository.hasVariantSales(draft.id!));
-      // TODO: Usar el usecase HasVariantSalesUC cuando exista, o simplemente omitir si no está.
-      // final hasSales = false;
-      // if (hasSales) {
-      //   if (context.mounted) {
-      //     AppSnackbar.show(
-      //       context,
-      //       message:
-      //           "No se puede eliminar: Esta variante tiene ventas asociadas.",
-      //       backgroundColor: Colors.red,
-      //     );
-      //   }
-      //   return;
-      // }
+      final hasSales = await _unwrap(_hasVariantSalesUC(draft.id!));
+      if (hasSales) {
+        if (context.mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                "No se puede eliminar: Esta variante tiene ventas asociadas.",
+            backgroundColor: Colors.red,
+          );
+        }
+        return;
+      }
 
       await _unwrap(_deleteVariantUC.call(draft.id!));
       draft.dispose();

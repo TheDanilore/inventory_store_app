@@ -260,6 +260,20 @@ extension GetItInjectableX on _i174.GetIt {
         getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
+    gh.factoryParam<_i150.ProductFormCubit, _i449.ProductEntity?, dynamic>(
+      (productToEdit, _) => _i150.ProductFormCubit(
+        gh<_i700.GetCategoriesUC>(),
+        gh<_i1014.GetProductImagesUC>(),
+        gh<_i597.GetProductIngredientsUC>(),
+        gh<_i929.GetVariantsDraftsUC>(),
+        gh<_i1014.DeleteProductImageUC>(),
+        gh<_i929.DeleteVariantUC>(),
+        gh<_i929.HasVariantSalesUC>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+        gh<_i1064.SaveProductUseCase>(),
+        productToEdit,
+      ),
+    );
     gh.factory<_i841.IngredientsCubit>(
       () => _i841.IngredientsCubit(
         getIngredientsUC: gh<_i538.GetIngredientsUC>(),
@@ -349,19 +363,6 @@ extension GetItInjectableX on _i174.GetIt {
         changePasswordUseCase: gh<_i832.ChangePasswordUseCase>(),
         deleteAccountUseCase: gh<_i853.DeleteAccountUseCase>(),
         updateProfileUseCase: gh<_i282.UpdateProfileUseCase>(),
-      ),
-    );
-    gh.factoryParam<_i150.ProductFormCubit, _i449.ProductEntity?, dynamic>(
-      (productToEdit, _) => _i150.ProductFormCubit(
-        gh<_i700.GetCategoriesUC>(),
-        gh<_i1014.GetProductImagesUC>(),
-        gh<_i597.GetProductIngredientsUC>(),
-        gh<_i929.GetVariantsDraftsUC>(),
-        gh<_i1014.DeleteProductImageUC>(),
-        gh<_i929.DeleteVariantUC>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-        gh<_i1064.SaveProductUseCase>(),
-        productToEdit,
       ),
     );
     return this;
