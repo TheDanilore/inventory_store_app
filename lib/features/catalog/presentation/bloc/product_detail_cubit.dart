@@ -12,23 +12,11 @@ import 'package:inventory_store_app/features/catalog/domain/entities/variant_fin
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
 import 'package:injectable/injectable.dart';
 
-class ProductDetailParams {
-  final ProductEntity product;
-  final bool isAdmin;
-  final String? initialVariantId;
-
-  ProductDetailParams({
-    required this.product,
-    this.isAdmin = false,
-    this.initialVariantId,
-  });
-}
-
 @injectable
 class ProductDetailCubit extends Cubit<ProductDetailState> {
-  final ProductEntity product;
-  final bool isAdmin;
-  final String? initialVariantId;
+  ProductEntity? product;
+  bool isAdmin = false;
+  String? initialVariantId;
 
   final GetProductExtraDataUseCase _getExtraData;
   final GetAdminFinancialDataUseCase _getAdminData;
@@ -44,8 +32,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   String? _profileId;
 
   @factoryMethod
-  ProductDetailCubit(
-    @factoryParam ProductDetailParams params, {
+  ProductDetailCubit({
     required GetProductExtraDataUseCase getExtraData,
     required GetAdminFinancialDataUseCase getAdminData,
     required CheckWishlistStateUseCase checkWishlist,
@@ -56,15 +43,24 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
        _checkWishlist = checkWishlist,
        _toggleWishlist = toggleWishlist,
        _getProfileId = getProfileId,
-       product = params.product,
-       isAdmin = params.isAdmin,
-       initialVariantId = params.initialVariantId,
-       super(
-         ProductDetailState(
-           product: params.product,
-           selectedVariantId: params.initialVariantId,
-         ),
-       ) {
+       super(const ProductDetailState());
+
+  void loadInitialData({
+    required ProductEntity product,
+    bool isAdmin = false,
+    String? initialVariantId,
+  }) {
+    this.product = product;
+    this.isAdmin = isAdmin;
+    this.initialVariantId = initialVariantId;
+
+    emit(
+      state.copyWith(
+        product: product,
+        selectedVariantId: initialVariantId,
+      ),
+    );
+
     _initData();
   }
 
@@ -92,7 +88,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         return;
       }
       final isWishlisted = await _unwrap(
-        _checkWishlist.call(productId: product.id, profileId: pid),
+        _checkWishlist.call(productId: product!.id, profileId: pid),
       );
       emit(
         state.copyWith(isWishlisted: isWishlisted, isWishlistLoading: false),
@@ -104,7 +100,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
   Future<void> _fetchExtraData() async {
     try {
-      final extraData = await _unwrap(_getExtraData.call(product.id));
+      final extraData = await _unwrap(_getExtraData.call(product!.id));
 
       final images = extraData.images;
       final variants = extraData.variants;
@@ -125,7 +121,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       List<VariantFinancialSummaryEntity> variantSummaries = [];
 
       if (isAdmin) {
-        final adminData = await _unwrap(_getAdminData.call(product.id));
+        final adminData = await _unwrap(_getAdminData.call(product!.id));
 
         final Map<String, Map<String, double>> variantSales = {};
         for (final row in adminData) {
@@ -152,7 +148,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
         for (final v in variants) {
           final cost =
-              ((v.unitCost ?? 0) > 0) ? v.unitCost! : (product.unitCost);
+              ((v.unitCost ?? 0) > 0) ? v.unitCost! : (product!.unitCost);
           int variantStock = 0;
           for (final row in extraData.stocks) {
             if (row['variant_id'] == v.id) {
@@ -213,7 +209,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     try {
       final success = await _unwrap(
         _toggleWishlist.call(
-          productId: product.id,
+          productId: product!.id,
           profileId: pid,
           currentStatus: currentStatus,
         ),

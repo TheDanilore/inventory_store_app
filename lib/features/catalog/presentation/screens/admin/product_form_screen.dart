@@ -28,7 +28,7 @@ class ProductFormScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ProductFormCubit>(param1: productToEdit),
+      create: (_) => sl<ProductFormCubit>()..loadInitialData(productToEdit),
       child: _ProductFormScreenContent(),
     );
   }
@@ -138,7 +138,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         const SizedBox(height: 24),
                         AppPrimaryButton(
                           label: 'Reintentar cargar datos',
-                          onPressed: () => cubit.initData(cubit.productToEdit),
+                          onPressed: () => context.read<ProductFormCubit>().loadInitialData(cubit.productToEdit),
                         ),
                       ],
                     ),

@@ -40,7 +40,6 @@ import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
 import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
     as _i524;
-import '../../features/catalog/domain/entities/product_entity.dart' as _i449;
 import '../../features/catalog/domain/repositories/catalog_repository.dart'
     as _i1018;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
@@ -262,20 +261,6 @@ extension GetItInjectableX on _i174.GetIt {
         getProductStockUC: gh<_i958.GetProductStockUC>(),
       ),
     );
-    gh.factoryParam<_i150.ProductFormCubit, _i449.ProductEntity?, dynamic>(
-      (productToEdit, _) => _i150.ProductFormCubit(
-        gh<_i700.GetCategoriesUC>(),
-        gh<_i1014.GetProductImagesUC>(),
-        gh<_i597.GetProductIngredientsUC>(),
-        gh<_i929.GetVariantsDraftsUC>(),
-        gh<_i1014.DeleteProductImageUC>(),
-        gh<_i929.DeleteVariantUC>(),
-        gh<_i929.HasVariantSalesUC>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-        gh<_i1064.SaveProductUseCase>(),
-        productToEdit,
-      ),
-    );
     gh.factory<_i841.IngredientsCubit>(
       () => _i841.IngredientsCubit(
         getIngredientsUC: gh<_i538.GetIngredientsUC>(),
@@ -295,6 +280,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i217.UploadLogoUseCase>(
       () => _i217.UploadLogoUseCase(gh<_i257.AppConfigRepository>()),
+    );
+    gh.factory<_i711.ProductDetailCubit>(
+      () => _i711.ProductDetailCubit(
+        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
+        getAdminData: gh<_i712.GetAdminFinancialDataUseCase>(),
+        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
+        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
+        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
     );
     gh.factory<_i832.ChangePasswordUseCase>(
       () => _i832.ChangePasswordUseCase(gh<_i787.AuthRepository>()),
@@ -319,20 +313,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i282.UpdateProfileUseCase>(
       () => _i282.UpdateProfileUseCase(gh<_i787.AuthRepository>()),
-    );
-    gh.factoryParam<
-      _i711.ProductDetailCubit,
-      _i711.ProductDetailParams,
-      dynamic
-    >(
-      (params, _) => _i711.ProductDetailCubit(
-        params,
-        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
-        getAdminData: gh<_i712.GetAdminFinancialDataUseCase>(),
-        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
-        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
-        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
     );
     gh.factory<_i332.AdminCatalogCubit>(
       () => _i332.AdminCatalogCubit(
@@ -367,6 +347,19 @@ extension GetItInjectableX on _i174.GetIt {
         createCategoryUC: gh<_i110.CreateCategoryUC>(),
         updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
         deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
+      ),
+    );
+    gh.factory<_i150.ProductFormCubit>(
+      () => _i150.ProductFormCubit(
+        gh<_i700.GetCategoriesUC>(),
+        gh<_i1014.GetProductImagesUC>(),
+        gh<_i597.GetProductIngredientsUC>(),
+        gh<_i929.GetVariantsDraftsUC>(),
+        gh<_i1014.DeleteProductImageUC>(),
+        gh<_i929.DeleteVariantUC>(),
+        gh<_i929.HasVariantSalesUC>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+        gh<_i1064.SaveProductUseCase>(),
       ),
     );
     gh.factory<_i52.AuthCubit>(

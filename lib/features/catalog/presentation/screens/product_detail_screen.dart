@@ -61,14 +61,11 @@ class ProductDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create:
-          (_) => sl<ProductDetailCubit>(
-            param1: ProductDetailParams(
-              product: product,
-              isAdmin: isAdmin,
-              initialVariantId: initialVariantId,
-            ),
-          ),
+      create: (_) => sl<ProductDetailCubit>()..loadInitialData(
+        product: product,
+        isAdmin: isAdmin,
+        initialVariantId: initialVariantId,
+      ),
       child: _ProductDetailScreenContent(
         isEmbedded: isEmbedded,
         cartActionWidget: cartActionWidget,
@@ -112,7 +109,7 @@ class _ProductDetailScreenContentState
   ProductDetailCubit get cubit => context.read<ProductDetailCubit>();
   ProductDetailState get state => context.watch<ProductDetailCubit>().state;
 
-  ProductEntity get product => cubit.product;
+  ProductEntity get product => widget.product;
   bool get isAdmin => cubit.isAdmin;
 
   @override

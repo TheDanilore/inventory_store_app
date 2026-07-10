@@ -18,7 +18,7 @@ class ProductAdminInfoCard extends StatelessWidget {
     final cost =
         ((state.selectedVariant?.unitCost ?? 0) > 0)
             ? state.selectedVariant!.unitCost!
-            : cubit.product.unitCost;
+            : cubit.product!.unitCost;
     final wPrice = state.baseWholesalePrice;
     final rPoint = state.selectedVariant?.reorderPoint ?? 0;
 

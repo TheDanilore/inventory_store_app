@@ -79,10 +79,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     this._hasVariantSalesUC,
     this._getCurrentProfileIdUC,
     this._saveProductUC,
-    @factoryParam ProductEntity? productToEdit,
-  ) : super(ProductFormState.initial()) {
-    initData(productToEdit);
-  }
+  ) : super(ProductFormState.initial());
 
   bool _hasErrorLoading = false;
   String _errorMessage = '';
@@ -173,7 +170,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   // --- Inicialización ---
 
-  Future<void> initData(ProductEntity? product) async {
+  Future<void> loadInitialData(ProductEntity? product) async {
     _productToEdit = product;
     _isInitializingData = true;
     _hasErrorLoading = false;
@@ -218,7 +215,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         await _fetchCategories();
       }
     } catch (e) {
-      debugPrint('Error en initData: $e');
+      debugPrint('Error en loadInitialData: $e');
       _hasErrorLoading = true;
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
