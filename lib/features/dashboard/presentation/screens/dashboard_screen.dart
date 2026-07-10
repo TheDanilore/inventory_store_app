@@ -1,116 +1,34 @@
 ﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:vibration/vibration.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/dashboard/data/repositories/dashboard_service.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/enums/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/widgets/dashboard/dashboard_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/widgets/dashboard/dashboard_skeleton.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<DashboardCubit>()..loadDashboardData(),
+      child: const _DashboardScreenContent(),
+    );
+  }
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  final DashboardService _dashboardService = DashboardService();
-  bool _isLoading = true;
-  bool _isSalesLoading = false;
-
-  InventoryMetrics? _inventory;
-  SalesMetrics? _sales;
-  List<Map<String, dynamic>> _batches = [];
-  int _criticalBatchesCount = 0;
-  SalesTimeFilter _salesFilter = SalesTimeFilter.today;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAllData();
-  }
-
-  Future<void> _loadAllData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final results = await Future.wait([
-        _dashboardService.getInventoryMetrics(),
-        _dashboardService.getSalesMetrics(_salesFilter),
-        _dashboardService.getExpiringBatches(),
-      ]);
-
-      if (mounted) {
-        setState(() {
-          _inventory = results[0] as InventoryMetrics;
-          _sales = results[1] as SalesMetrics;
-          _batches = results[2] as List<Map<String, dynamic>>;
-
-          final now = DateTime.now();
-          _criticalBatchesCount =
-              _batches.where((b) {
-                final expiryDateStr = b['expiry_date'] as String?;
-                if (expiryDateStr == null) return false;
-                final expiry = DateTime.tryParse(expiryDateStr);
-                if (expiry == null) return false;
-                return expiry.isBefore(now) ||
-                    expiry.difference(now).inDays <= 7;
-              }).length;
-
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _onFilterChanged(SalesTimeFilter filter) async {
-    if (_salesFilter == filter) return;
-
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 30, amplitude: 64);
-    }
-
-    setState(() {
-      _salesFilter = filter;
-      _isSalesLoading = true;
-    });
-
-    try {
-      final newSales = await _dashboardService.getSalesMetrics(filter);
-      if (mounted) {
-        setState(() {
-          _sales = newSales;
-          _isSalesLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSalesLoading = false);
-      }
-    }
-  }
-
-  String _filterName(SalesTimeFilter filter) {
-    switch (filter) {
-      case SalesTimeFilter.today:
-        return 'Hoy';
-      case SalesTimeFilter.thisWeek:
-        return 'Esta Sem';
-      case SalesTimeFilter.thisMonth:
-        return 'Este Mes';
-      case SalesTimeFilter.allTime:
-        return 'HistÃ³rico';
-    }
-  }
+class _DashboardScreenContent extends StatelessWidget {
+  const _DashboardScreenContent();
 
   void _openGoalDialog(
     BuildContext context,
@@ -196,35 +114,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (!kIsWeb) {
             Vibration.vibrate(duration: 50, amplitude: 128);
           }
-          await _loadAllData();
+          await context.read<DashboardCubit>().loadDashboardData();
         },
-        child:
-            _isLoading
-                ? const SingleChildScrollView(
-                  physics: AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  child: DashboardSkeleton(),
-                )
-                : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isTablet = constraints.maxWidth >= 720;
-                    if (isTablet) {
-                      return _buildTabletLayout(
-                        adminGoalCurrent,
-                        adminGoalTarget,
-                      );
-                    }
-                    return _buildMobileLayout(
-                      adminGoalCurrent,
-                      adminGoalTarget,
-                    );
-                  },
+        child: BlocBuilder<DashboardCubit, DashboardState>(
+          builder: (context, state) {
+            if (state is DashboardInitial || state is DashboardLoading) {
+              return const SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: DashboardSkeleton(),
+              );
+            }
+
+            if (state is DashboardError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                      const SizedBox(height: 16),
+                      Text(state.message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.error)),
+                      const SizedBox(height: 24),
+                      FilledButton.icon(
+                        onPressed: () => context.read<DashboardCubit>().loadDashboardData(),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reintentar'),
+                      )
+                    ],
+                  ),
                 ),
+              );
+            }
+
+            if (state is DashboardLoaded) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isTablet = constraints.maxWidth >= 720;
+                  if (isTablet) {
+                    return _buildTabletLayout(context, adminGoalCurrent, adminGoalTarget, state);
+                  }
+                  return _buildMobileLayout(context, adminGoalCurrent, adminGoalTarget, state);
+                },
+              );
+            }
+            
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildTabletLayout(double goalCurrent, double goalTarget) {
+  Widget _buildTabletLayout(BuildContext context, double goalCurrent, double goalTarget, DashboardLoaded state) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -234,45 +177,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Columna Izquierda: Alertas e Inventario
                 Expanded(
                   flex: 4,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (_inventory != null)
-                        _HealthSummaryBar(
-                          lowStockCount: _inventory!.lowStockProducts,
-                          criticalBatchesCount: _criticalBatchesCount,
-                        ),
+                      _HealthSummaryBar(
+                        lowStockCount: state.inventory.lowStockProducts,
+                        criticalBatchesCount: state.criticalBatches.length,
+                      ),
                       const SizedBox(height: 16),
                       AdminGoalCard(
                         currentAmount: goalCurrent,
                         targetAmount: goalTarget,
-                        onAddPressed:
-                            () => _openGoalDialog(
-                              context,
-                              goalCurrent,
-                              goalTarget,
-                            ),
+                        onAddPressed: () => _openGoalDialog(context, goalCurrent, goalTarget),
                       ),
                       const SizedBox(height: 24),
-                      if (_batches.isNotEmpty) ...[
-                        ExpiringBatchesCard(batches: _batches),
+                      if (state.criticalBatches.isNotEmpty) ...[
+                        ExpiringBatchesCard(batches: state.criticalBatches),
                         const SizedBox(height: 24),
                       ],
                       const SectionHeader(
                         icon: Icons.inventory_2_rounded,
                         title: 'Inventario',
-                        subtitle: 'ValorizaciÃ³n y proyecciones de stock',
+                        subtitle: 'Valorización y proyecciones de stock',
                       ),
                       const SizedBox(height: 12),
-                      _buildInventoryContent(),
+                      _buildInventoryContent(state.inventory),
                     ],
                   ),
                 ),
                 const SizedBox(width: 32),
-                // Columna Derecha: Ventas Registradas
                 Expanded(
                   flex: 6,
                   child: Column(
@@ -281,12 +216,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SectionHeader(
                         icon: Icons.point_of_sale_rounded,
                         title: 'Ventas Registradas',
-                        subtitle: 'Ã“rdenes con estado COMPLETADO',
+                        subtitle: 'Órdenes con estado COMPLETADO',
                       ),
                       const SizedBox(height: 8),
-                      _buildSalesFilters(),
+                      _buildSalesFilters(context, state),
                       const SizedBox(height: 16),
-                      _buildSalesContent(),
+                      _buildSalesContent(state.sales, state.isSalesLoading),
                     ],
                   ),
                 ),
@@ -298,7 +233,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildMobileLayout(double goalCurrent, double goalTarget) {
+  Widget _buildMobileLayout(BuildContext context, double goalCurrent, double goalTarget, DashboardLoaded state) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -306,269 +241,201 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              if (_inventory != null)
-                _HealthSummaryBar(
-                  lowStockCount: _inventory!.lowStockProducts,
-                  criticalBatchesCount: _criticalBatchesCount,
-                ),
+              _HealthSummaryBar(
+                lowStockCount: state.inventory.lowStockProducts,
+                criticalBatchesCount: state.criticalBatches.length,
+              ),
               const SizedBox(height: 16),
               AdminGoalCard(
                 currentAmount: goalCurrent,
                 targetAmount: goalTarget,
-                onAddPressed:
-                    () => _openGoalDialog(context, goalCurrent, goalTarget),
+                onAddPressed: () => _openGoalDialog(context, goalCurrent, goalTarget),
               ),
               const SizedBox(height: 24),
-              if (_batches.isNotEmpty) ...[
-                ExpiringBatchesCard(batches: _batches),
+              if (state.criticalBatches.isNotEmpty) ...[
+                ExpiringBatchesCard(batches: state.criticalBatches),
                 const SizedBox(height: 24),
               ],
+              const SectionHeader(
+                icon: Icons.inventory_2_rounded,
+                title: 'Inventario',
+                subtitle: 'Valorización y proyecciones de stock',
+              ),
+              const SizedBox(height: 12),
+              _buildInventoryContent(state.inventory),
             ]),
           ),
         ),
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyHeaderDelegate(
-            child: const SectionHeader(
-              icon: Icons.inventory_2_rounded,
-              title: 'Inventario',
-              subtitle: 'ValorizaciÃ³n y proyecciones de stock',
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Text(
+                        'Ventas',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Órdenes COMPLETADAS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildSalesFilters(context, state),
+              ],
             ),
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          sliver: SliverToBoxAdapter(child: _buildInventoryContent()),
-        ),
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StickyHeaderDelegate(
-            child: const SectionHeader(
-              icon: Icons.point_of_sale_rounded,
-              title: 'Ventas Registradas',
-              subtitle: 'Ã“rdenes con estado COMPLETADO',
-            ),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+          sliver: SliverToBoxAdapter(
+            child: _buildSalesContent(state.sales, state.isSalesLoading),
           ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: _buildSalesFilters(),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          sliver: SliverToBoxAdapter(child: _buildSalesContent()),
         ),
       ],
     );
   }
 
-  Widget _buildSalesFilters() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children:
-            SalesTimeFilter.values.map((filter) {
-              final isSelected = _salesFilter == filter;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  showCheckmark: false,
-                  label: Text(_filterName(filter)),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) _onFilterChanged(filter);
-                  },
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  selectedColor: AppColors.primary,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                  side:
-                      isSelected
-                          ? BorderSide.none
-                          : BorderSide(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                          ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              );
-            }).toList(),
-      ),
+  Widget _buildSalesFilters(BuildContext context, DashboardLoaded state) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        SegmentedButton<SalesTimeFilter>(
+          segments: const [
+            ButtonSegment(value: SalesTimeFilter.today, label: Text('Hoy')),
+            ButtonSegment(value: SalesTimeFilter.thisWeek, label: Text('Sem')),
+            ButtonSegment(value: SalesTimeFilter.thisMonth, label: Text('Mes')),
+            ButtonSegment(value: SalesTimeFilter.allTime, label: Text('Hist')),
+          ],
+          selected: {state.salesFilter},
+          onSelectionChanged: (set) {
+            if (!kIsWeb) {
+              Vibration.vibrate(duration: 30, amplitude: 64);
+            }
+            context.read<DashboardCubit>().updateSalesFilter(set.first);
+          },
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            textStyle: WidgetStateProperty.all(
+              const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSalesContent() {
-    if (_sales == null && _isSalesLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+  Widget _buildSalesContent(SalesMetricsEntity sales, bool isSalesLoading) {
+    if (isSalesLoading) {
+      return Container(
+        height: 300,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
       );
     }
-    if (_sales == null) return const SizedBox.shrink();
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.98, end: 1.0).animate(animation),
-            child: child,
-          ),
-        );
-      },
-      child: IgnorePointer(
-        key: ValueKey(_salesFilter),
-        ignoring: _isSalesLoading,
-        child: AnimatedOpacity(
-          opacity: _isSalesLoading ? 0.6 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: KpiCard(
-                      title: 'Ã“rdenes',
-                      value: '${_sales!.totalSales}',
-                      subtitle: 'Ventas completadas',
-                      icon: Icons.shopping_bag_rounded,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primary,
-                          AppColors.primary.withValues(alpha: 0.85),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: KpiCard(
-                      title: 'Ticket Prom.',
-                      value: 'S/ ${_sales!.averageTicket.toStringAsFixed(2)}',
-                      subtitle: 'Por orden vendida',
-                      icon: Icons.receipt_long_rounded,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.blue,
-                          Colors.blue.withValues(alpha: 0.85),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: KpiCard(
+                title: 'Ventas Totales',
+                value: sales.totalSales.toString(),
+                subtitle: 'Órdenes despachadas',
+                icon: Icons.receipt_long_rounded,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                ),
               ),
-              const SizedBox(height: 12),
-              KpiCardWide(
-                title: 'Ingreso Total Bruto',
-                value: 'S/ ${_sales!.totalRevenue.toStringAsFixed(2)}',
-                subtitle: 'Facturado en caja',
-                icon: Icons.monetization_on_rounded,
-                color: AppColors.tealDark,
-                rightLabel: 'Ganancia Neta',
-                rightValue: 'S/ ${_sales!.totalProfit.toStringAsFixed(2)}',
-                rightColor: AppColors.success,
-                sparklineData: const [
-                  1.2,
-                  1.0,
-                  1.8,
-                  1.5,
-                  2.5,
-                  2.1,
-                  3.2,
-                  2.8,
-                  3.8,
-                  4.2,
-                ],
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 3,
+              child: KpiCard(
+                title: 'Ticket Promedio',
+                value: 'S/ ',
+                subtitle: 'Gasto por cliente',
+                icon: Icons.calculate_rounded,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.teal, AppColors.teal.withValues(alpha: 0.8)],
+                ),
               ),
-              const SizedBox(height: 12),
-              KpiCardWide(
-                title: 'Fondo de ReposiciÃ³n',
-                value: 'S/ ${_sales!.replacementFund.toStringAsFixed(2)}',
-                subtitle: 'Costo unitario de lo vendido',
-                icon: Icons.currency_exchange_rounded,
-                color: AppColors.slate,
-                rightLabel: '% del Ingreso',
-                rightValue:
-                    _sales!.totalRevenue > 0
-                        ? '${((_sales!.replacementFund / _sales!.totalRevenue) * 100).toStringAsFixed(1)}%'
-                        : '0.0%',
-                rightColor: AppColors.slate,
-                sparklineData: const [
-                  4.2,
-                  3.8,
-                  2.8,
-                  3.2,
-                  2.1,
-                  2.5,
-                  1.5,
-                  1.8,
-                  1.0,
-                  1.2,
-                ],
-              ),
-              const SizedBox(height: 12),
-              MargenBar(
-                label: 'Margen Nivelado sobre ventas',
-                percent: _sales!.salesMargin,
-                color: AppColors.success,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: KpiCardWide(
+                title: 'Ingresos Netos',
+                value: 'S/ ',
+                subtitle: 'Total facturado en el periodo',
+                icon: Icons.attach_money_rounded,
+                color: AppColors.success,
+                rightLabel: 'Fondo Reposición',
+                rightValue: 'S/ ',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GananciaBrutaCard(
+          gananciaBruta: sales.totalProfit,
+          inversion: sales.replacementFund,
+          margenPct: sales.salesMargin,
+          sparklineData: const [], 
+        ),
+      ],
     );
   }
 
-  Widget _buildInventoryContent() {
-    if (_inventory == null) return const SizedBox.shrink();
+  Widget _buildInventoryContent(InventoryMetricsEntity inventory) {
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: KpiCard(
-                title: 'Stock Total',
-                value: '${_inventory!.totalStock}',
-                subtitle: '${_inventory!.totalProducts} productos activos',
-                icon: Icons.inventory_2_rounded,
+                title: 'Catálogo',
+                value: inventory.totalProducts.toString(),
+                subtitle: 'Productos activos',
+                icon: Icons.category_rounded,
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.blue,
-                    Colors.blue.withValues(alpha: 0.8),
-                  ],
+                  colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: KpiCard(
-                title: 'Bajo Stock',
-                value: '${_inventory!.lowStockProducts}',
-                subtitle: 'Productos en alerta',
-                icon: Icons.warning_amber_rounded,
+                title: 'Stock Total',
+                value: inventory.totalStock.toString(),
+                subtitle: 'Unidades en tiendas',
+                icon: Icons.widgets_rounded,
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.error,
-                    AppColors.error.withValues(alpha: 0.8),
-                  ],
+                  colors: [AppColors.teal, AppColors.teal.withValues(alpha: 0.8)],
                 ),
               ),
             ),
@@ -576,60 +443,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 12),
         KpiCardWide(
-          title: 'ValorizaciÃ³n a Costo',
-          value: 'S/ ${_inventory!.totalInvestment.toStringAsFixed(2)}',
-          subtitle: 'InversiÃ³n en almacÃ©n',
-          icon: Icons.account_balance_wallet_rounded,
-          color: AppColors.primary,
-          sparklineData: const [
-            2.0,
-            2.2,
-            2.5,
-            2.4,
-            2.8,
-            3.0,
-            3.2,
-            3.1,
-            3.5,
-            3.8,
-          ],
+          title: 'Valorización al Público',
+          value: 'S/ ',
+          subtitle: 'Precio total del stock actual',
+          icon: Icons.storefront_rounded,
+          color: AppColors.info,
           rightLabel: '',
           rightValue: '',
         ),
         const SizedBox(height: 8),
         GananciaBrutaCard(
-          gananciaBruta: _inventory!.expectedMaxProfit,
-          inversion: _inventory!.totalInvestment,
-          margenPct: _inventory!.grossMargin,
-          sparklineData: const [
-            1.0,
-            1.5,
-            1.2,
-            2.0,
-            2.8,
-            2.4,
-            3.5,
-            4.0,
-            3.8,
-            5.0,
-          ],
+          gananciaBruta: inventory.expectedMaxProfit,
+          inversion: inventory.totalInvestment,
+          margenPct: inventory.grossMargin,
+          sparklineData: const [1.0, 1.5, 1.2, 2.0, 2.8, 2.4, 3.5, 4.0, 3.8, 5.0],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: KpiCard(
-                title: 'G. PÃºblico',
-                value: 'S/ ${_inventory!.expectedMaxProfit.toStringAsFixed(2)}',
-                subtitle: 'Aplicando precio al pÃºblico',
+                title: 'G. Público',
+                value: 'S/ ',
+                subtitle: 'Aplicando precio al público',
                 icon: Icons.trending_up_rounded,
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.teal,
-                    AppColors.teal.withValues(alpha: 0.8),
-                  ],
+                  colors: [AppColors.teal, AppColors.teal.withValues(alpha: 0.8)],
                 ),
               ),
             ),
@@ -637,7 +478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: KpiCard(
                 title: 'G. Mayorista',
-                value: 'S/ ${_inventory!.expectedMinProfit.toStringAsFixed(2)}',
+                value: 'S/ ',
                 subtitle: 'Aplicando precio por mayor',
                 icon: Icons.people_alt_rounded,
                 gradient: LinearGradient(
@@ -794,7 +635,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'AtenciÃ³n requerida',
+                  'Atención requerida',
                   style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.bold,
@@ -807,8 +648,8 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
                     if (widget.lowStockCount > 0)
                       '${widget.lowStockCount} bajo stock',
                     if (widget.criticalBatchesCount > 0)
-                      '${widget.criticalBatchesCount} lotes crÃ­ticos',
-                  ].join(' Â· '),
+                      '${widget.criticalBatchesCount} lotes críticos',
+                  ].join(' · '),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -865,4 +706,3 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
       true;
 }
-

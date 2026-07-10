@@ -134,6 +134,18 @@ import '../../features/customers/presentation/bloc/customers_stats_cubit.dart'
     as _i798;
 import '../../features/customers/presentation/bloc/top_customers_cubit.dart'
     as _i205;
+import '../../features/dashboard/data/repositories_impl/dashboard_repository_impl.dart'
+    as _i583;
+import '../../features/dashboard/domain/repositories/dashboard_repository.dart'
+    as _i665;
+import '../../features/dashboard/domain/usecases/get_critical_batches_usecase.dart'
+    as _i622;
+import '../../features/dashboard/domain/usecases/get_inventory_metrics_usecase.dart'
+    as _i139;
+import '../../features/dashboard/domain/usecases/get_sales_metrics_usecase.dart'
+    as _i407;
+import '../../features/dashboard/presentation/bloc/dashboard_cubit.dart'
+    as _i58;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -151,6 +163,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i787.AuthRepository>(
       () => _i710.AuthRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.lazySingleton<_i665.DashboardRepository>(
+      () => _i583.DashboardRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i1018.CatalogRepository>(
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -165,6 +180,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i257.AppConfigRepository>(
       () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i622.GetCriticalBatchesUseCase>(
+      () => _i622.GetCriticalBatchesUseCase(gh<_i665.DashboardRepository>()),
+    );
+    gh.lazySingleton<_i139.GetInventoryMetricsUseCase>(
+      () => _i139.GetInventoryMetricsUseCase(gh<_i665.DashboardRepository>()),
+    );
+    gh.lazySingleton<_i407.GetSalesMetricsUseCase>(
+      () => _i407.GetSalesMetricsUseCase(gh<_i665.DashboardRepository>()),
     );
     gh.lazySingleton<_i382.CreateAttributeUC>(
       () => _i382.CreateAttributeUC(gh<_i1018.CatalogRepository>()),
@@ -348,6 +372,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i205.TopCustomersCubit>(
       () => _i205.TopCustomersCubit(gh<_i36.GetTopCustomersUseCase>()),
+    );
+    gh.factory<_i58.DashboardCubit>(
+      () => _i58.DashboardCubit(
+        getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
+        getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),
+        getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
+      ),
     );
     gh.lazySingleton<_i580.GetCreditAccountsUseCase>(
       () => _i580.GetCreditAccountsUseCase(gh<_i4.CustomerCreditsRepository>()),

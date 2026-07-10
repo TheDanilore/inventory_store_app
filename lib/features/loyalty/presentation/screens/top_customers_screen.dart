@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/providers/top_customers_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/providers/top_customers_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
@@ -831,4 +831,5 @@ class _WinnerDialog extends StatelessWidget {
     );
   }
 }
+
 

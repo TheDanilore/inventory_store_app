@@ -45,7 +45,7 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_credits_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_detail_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customers_screen.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/screens/top_customers_screen.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/screens/top_customers_screen.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:inventory_store_app/features/financial/presentation/screens/financial_accounts_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_entries_screen.dart';
@@ -770,3 +770,4 @@ class GoRouterRefreshStream extends ChangeNotifier {
     super.dispose();
   }
 }
+

@@ -1,80 +1,20 @@
+import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/enums/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/repositories/dashboard_repository.dart';
 
-enum SalesTimeFilter { today, thisWeek, thisMonth, allTime }
-
-class InventoryMetrics {
-  final int totalStock;
-  final int lowStockProducts;
-  final double totalInvestment;
-  final double retailValue;
-  final double grossProfit;
-  final double expectedMaxProfit;
-  final double expectedMinProfit;
-  final double grossMargin;
-  final int totalProducts;
-
-  InventoryMetrics({
-    required this.totalStock,
-    required this.lowStockProducts,
-    required this.totalInvestment,
-    required this.retailValue,
-    required this.grossProfit,
-    required this.expectedMaxProfit,
-    required this.expectedMinProfit,
-    required this.grossMargin,
-    required this.totalProducts,
-  });
-
-  factory InventoryMetrics.empty() {
-    return InventoryMetrics(
-      totalStock: 0,
-      lowStockProducts: 0,
-      totalInvestment: 0,
-      retailValue: 0,
-      grossProfit: 0,
-      expectedMaxProfit: 0,
-      expectedMinProfit: 0,
-      grossMargin: 0,
-      totalProducts: 0,
-    );
-  }
-}
-
-class SalesMetrics {
-  final int totalSales;
-  final double totalRevenue;
-  final double totalProfit;
-  final double replacementFund;
-  final double averageTicket;
-  final double salesMargin;
-
-  SalesMetrics({
-    required this.totalSales,
-    required this.totalRevenue,
-    required this.totalProfit,
-    required this.replacementFund,
-    required this.averageTicket,
-    required this.salesMargin,
-  });
-
-  factory SalesMetrics.empty() {
-    return SalesMetrics(
-      totalSales: 0,
-      totalRevenue: 0,
-      totalProfit: 0,
-      replacementFund: 0,
-      averageTicket: 0,
-      salesMargin: 0,
-    );
-  }
-}
-
-class DashboardService {
+@LazySingleton(as: DashboardRepository)
+class DashboardRepositoryImpl implements DashboardRepository {
   final SupabaseClient _supabase;
 
-  DashboardService() : _supabase = Supabase.instance.client;
+  DashboardRepositoryImpl(this._supabase);
 
-  Future<InventoryMetrics> getInventoryMetrics() async {
+  @override
+  Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics() async {
     try {
       final response = await _supabase
           .from('products')
@@ -158,10 +98,6 @@ class DashboardService {
 
           if (stockControl) {
             totalStock += variantStock;
-          } else {
-            // Si no tiene stock control, usualmente variantStock es 0 o no lo sumamos al total general
-            // pero si por algun motivo hay stock, para igualar a inventory_service, sumamos.
-            // En inventory_service totalStock += variantStock solo si stockControl == true.
           }
 
           totalInvestment += variantStock * varUnitCost;
@@ -185,7 +121,7 @@ class DashboardService {
       final grossMargin =
           totalInvestment > 0 ? (grossProfit / retailValue) * 100 : 0.0;
 
-      return InventoryMetrics(
+      return right(InventoryMetricsEntity(
         totalStock: totalStock,
         lowStockProducts: lowStockProducts,
         totalInvestment: totalInvestment,
@@ -195,43 +131,16 @@ class DashboardService {
         expectedMinProfit: expectedMinProfit,
         grossMargin: grossMargin,
         totalProducts: totalProducts,
-      );
+      ));
     } catch (e) {
-      throw Exception('Error al obtener métricas de inventario: \$e');
+      return left(ServerFailure(message: 'Error al obtener métricas de inventario: $e'));
     }
   }
 
-  Future<List<Map<String, dynamic>>> getExpiringBatches() async {
-    try {
-      final now = DateTime.now();
-      final in30Days = now.add(const Duration(days: 30));
-
-      final response = await _supabase
-          .from('warehouse_stock_batches')
-          .select('''
-            id, batch_number, expiry_date, available_quantity,
-            products(name),
-            product_variants(
-              sku, 
-              variant_attribute_values(
-                attribute_values(value, attributes(name))
-              )
-            ),
-            warehouses(name)
-          ''')
-          .not('expiry_date', 'is', null)
-          .lte('expiry_date', in30Days.toIso8601String().substring(0, 10))
-          .gte('expiry_date', now.toIso8601String().substring(0, 10))
-          .gt('available_quantity', 0)
-          .order('expiry_date');
-
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      throw Exception('Error al obtener lotes por vencer: \$e');
-    }
-  }
-
-  Future<SalesMetrics> getSalesMetrics(SalesTimeFilter filter) async {
+  @override
+  Future<Either<Failure, SalesMetricsEntity>> getSalesMetrics({
+    required SalesTimeFilter filter,
+  }) async {
     try {
       var query = _supabase
           .from('orders')
@@ -279,16 +188,51 @@ class DashboardService {
       final salesMargin =
           totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0.0;
 
-      return SalesMetrics(
+      return right(SalesMetricsEntity(
         totalSales: totalSales,
         totalRevenue: totalRevenue,
         totalProfit: totalProfit,
         replacementFund: replacementFund,
         averageTicket: averageTicket,
         salesMargin: salesMargin,
-      );
+      ));
     } catch (e) {
-      throw Exception('Error al obtener métricas de ventas: \$e');
+      return left(ServerFailure(message: 'Error al obtener métricas de ventas: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getCriticalBatches({
+    int daysThreshold = 30,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final thresholdDate = now.add(Duration(days: daysThreshold));
+
+      final response = await _supabase
+          .from('warehouse_stock_batches')
+          .select('''
+            id, batch_number, expiry_date, available_quantity,
+            products(name),
+            product_variants(
+              sku, 
+              variant_attribute_values(
+                attribute_values(value, attributes(name))
+              )
+            ),
+            warehouses(name)
+          ''')
+          .not('expiry_date', 'is', null)
+          .lte('expiry_date', thresholdDate.toIso8601String().substring(0, 10))
+          .gte('expiry_date', now.toIso8601String().substring(0, 10))
+          .gt('available_quantity', 0)
+          .order('expiry_date');
+
+      return right(List<Map<String, dynamic>>.from(response));
+    } catch (e) {
+      return left(ServerFailure(message: 'Error al obtener lotes por vencer: $e'));
     }
   }
 }
+
+
