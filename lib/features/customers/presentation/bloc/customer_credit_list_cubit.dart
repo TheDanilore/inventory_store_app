@@ -1,50 +1,8 @@
 ﻿import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_ucs.dart';
 
-abstract class CustomerCreditListState {}
-
-class CustomerCreditListInitial extends CustomerCreditListState {}
-
-class CustomerCreditListLoading extends CustomerCreditListState {}
-
-class CustomerCreditListLoaded extends CustomerCreditListState {
-  final List<CustomerCreditEntity> accounts;
-  final int currentPage;
-  final int totalPages;
-  final String? query;
-  final bool showOnlyWithDebt;
-
-  CustomerCreditListLoaded({
-    required this.accounts,
-    this.currentPage = 1,
-    this.totalPages = 1,
-    this.query,
-    this.showOnlyWithDebt = false,
-  });
-
-  CustomerCreditListLoaded copyWith({
-    List<CustomerCreditEntity>? accounts,
-    int? currentPage,
-    int? totalPages,
-    String? query,
-    bool? showOnlyWithDebt,
-  }) {
-    return CustomerCreditListLoaded(
-      accounts: accounts ?? this.accounts,
-      currentPage: currentPage ?? this.currentPage,
-      totalPages: totalPages ?? this.totalPages,
-      query: query ?? this.query,
-      showOnlyWithDebt: showOnlyWithDebt ?? this.showOnlyWithDebt,
-    );
-  }
-}
-
-class CustomerCreditListError extends CustomerCreditListState {
-  final String message;
-  CustomerCreditListError(this.message);
-}
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_state.dart';
 
 @injectable
 class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
@@ -104,3 +62,4 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
     }
   }
 }
+

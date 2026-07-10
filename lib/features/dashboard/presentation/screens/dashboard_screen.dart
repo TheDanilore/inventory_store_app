@@ -12,8 +12,8 @@ import 'package:inventory_store_app/features/dashboard/domain/entities/sales_met
 import 'package:inventory_store_app/features/dashboard/domain/enums/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/screens/widgets/dashboard/dashboard_cards.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/screens/widgets/dashboard/dashboard_skeleton.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_cards.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
