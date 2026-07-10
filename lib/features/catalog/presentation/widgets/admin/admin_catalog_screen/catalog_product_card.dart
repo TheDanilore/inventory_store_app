@@ -393,7 +393,11 @@ class _AdminProductCardState extends State<AdminProductCard> {
                       ),
                       // Divisor visual
                       if (!widget.isFullPosMode)
-                        Container(width: 1, height: 18, color: AppColors.border),
+                        Container(
+                          width: 1,
+                          height: 18,
+                          color: AppColors.border,
+                        ),
                       // Botón Editar
                       if (!widget.isFullPosMode)
                         _IconCardAction(

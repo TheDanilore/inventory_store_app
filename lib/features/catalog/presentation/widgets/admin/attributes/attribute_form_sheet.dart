@@ -129,20 +129,20 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                 child:
                     isSaving
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            isEditing ? 'Actualizar' : 'Crear Propiedad',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
                           ),
+                        )
+                        : Text(
+                          isEditing ? 'Actualizar' : 'Crear Propiedad',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
               ),
             ),
             const SizedBox(height: 20),

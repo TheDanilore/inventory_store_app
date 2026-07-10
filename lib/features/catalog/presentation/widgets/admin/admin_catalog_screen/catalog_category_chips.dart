@@ -22,7 +22,7 @@ class CategoryChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       color: theme.colorScheme.surface,
       child: Column(
@@ -122,7 +122,10 @@ class _StatusFilterChip extends StatelessWidget {
               color: bgColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: filterIsActive != null ? color.withValues(alpha: 0.5) : AppColors.border,
+                color:
+                    filterIsActive != null
+                        ? color.withValues(alpha: 0.5)
+                        : AppColors.border,
               ),
             ),
             child: Row(
@@ -161,7 +164,7 @@ class _CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
-    
+
     return Semantics(
       label: 'Categoría $label',
       selected: selected,

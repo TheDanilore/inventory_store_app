@@ -43,11 +43,7 @@ class AttributesSkeleton extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const AppShimmer(
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                    ),
+                    const AppShimmer(width: 24, height: 24, borderRadius: 12),
                   ],
                 ),
                 const SizedBox(height: 12),

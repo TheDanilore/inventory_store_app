@@ -36,18 +36,25 @@ class IngredientsCubit extends Cubit<IngredientsState> {
       emit(state.copyWith(viewState: ViewState.loading));
     }
 
-    final result = await getIngredientsUC(searchQuery: state.searchQuery, limit: 100);
-    
+    final result = await getIngredientsUC(
+      searchQuery: state.searchQuery,
+      limit: 100,
+    );
+
     result.fold(
-      (failure) => emit(state.copyWith(
-        viewState: ViewState.error,
-        errorMessage: failure.message,
-      )),
-      (ingredients) => emit(state.copyWith(
-        viewState: ingredients.isEmpty ? ViewState.empty : ViewState.success,
-        ingredients: ingredients,
-        clearErrorMessage: true,
-      ))
+      (failure) => emit(
+        state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: failure.message,
+        ),
+      ),
+      (ingredients) => emit(
+        state.copyWith(
+          viewState: ingredients.isEmpty ? ViewState.empty : ViewState.success,
+          ingredients: ingredients,
+          clearErrorMessage: true,
+        ),
+      ),
     );
   }
 
@@ -67,9 +74,10 @@ class IngredientsCubit extends Cubit<IngredientsState> {
   Future<bool> saveIngredient(String name, {String? id}) async {
     emit(state.copyWith(isSaving: true));
 
-    final result = id == null
-        ? await createIngredientUC(name)
-        : await updateIngredientUC(id, name);
+    final result =
+        id == null
+            ? await createIngredientUC(name)
+            : await updateIngredientUC(id, name);
 
     return result.fold(
       (failure) {
@@ -80,10 +88,10 @@ class IngredientsCubit extends Cubit<IngredientsState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadIngredients();
         return true;
-      }
+      },
     );
   }
-  
+
   Future<bool> deleteIngredient(String id) async {
     emit(state.copyWith(isSaving: true));
     final result = await deleteIngredientUC(id);
@@ -97,7 +105,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadIngredients();
         return true;
-      }
+      },
     );
   }
 }

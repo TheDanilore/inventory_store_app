@@ -145,9 +145,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
 
         final enriched =
             data.products
-                .map(
-                  (p) => p.copyWith(totalStock: stock[p.id] ?? 0),
-                )
+                .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
                 .toList();
 
         final updated = List<ProductEntity>.from(state.products)
@@ -157,8 +155,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
 
         emit(
           state.copyWith(
-            viewState:
-                updated.isEmpty ? ViewState.empty : ViewState.success,
+            viewState: updated.isEmpty ? ViewState.empty : ViewState.success,
             products: updated,
             hasMoreProducts: hasMore,
             isLoadingMore: false,

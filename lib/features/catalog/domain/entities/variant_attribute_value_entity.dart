@@ -1,6 +1,6 @@
 class VariantAttributeValueEntity {
-  final String attributeValueId; 
-  final String attributeId; 
+  final String attributeValueId;
+  final String attributeId;
   final String attributeName;
   final String value;
 

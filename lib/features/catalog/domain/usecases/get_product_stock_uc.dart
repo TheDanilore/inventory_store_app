@@ -9,7 +9,9 @@ class GetProductStockUC {
 
   GetProductStockUC(this.repository);
 
-  Future<Either<Failure, Map<String, int>>> call({List<String>? productIds}) async {
+  Future<Either<Failure, Map<String, int>>> call({
+    List<String>? productIds,
+  }) async {
     return await repository.getProductStock(productIds: productIds);
   }
 }

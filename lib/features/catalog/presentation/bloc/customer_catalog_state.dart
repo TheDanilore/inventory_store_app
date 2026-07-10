@@ -47,7 +47,9 @@ class CustomerCatalogState extends Equatable {
       categories: categories ?? this.categories,
       products: products ?? this.products,
       selectedCategoryId:
-          clearCategory ? null : (selectedCategoryId ?? this.selectedCategoryId),
+          clearCategory
+              ? null
+              : (selectedCategoryId ?? this.selectedCategoryId),
       searchTerm: searchTerm ?? this.searchTerm,
       isSearchMode: isSearchMode ?? this.isSearchMode,
       searchHistory: searchHistory ?? this.searchHistory,
@@ -59,15 +61,15 @@ class CustomerCatalogState extends Equatable {
 
   @override
   List<Object?> get props => [
-        viewState,
-        categories,
-        products,
-        selectedCategoryId,
-        searchTerm,
-        isSearchMode,
-        searchHistory,
-        hasMoreProducts,
-        isLoadingMore,
-        errorMessage,
-      ];
+    viewState,
+    categories,
+    products,
+    selectedCategoryId,
+    searchTerm,
+    isSearchMode,
+    searchHistory,
+    hasMoreProducts,
+    isLoadingMore,
+    errorMessage,
+  ];
 }

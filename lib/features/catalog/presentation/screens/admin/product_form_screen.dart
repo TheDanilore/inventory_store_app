@@ -138,8 +138,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         const SizedBox(height: 24),
                         AppPrimaryButton(
                           label: 'Reintentar cargar datos',
-                          onPressed:
-                              () => cubit.initData(cubit.productToEdit),
+                          onPressed: () => cubit.initData(cubit.productToEdit),
                         ),
                       ],
                     ),
@@ -228,12 +227,10 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                           index,
                                         ),
                                     onDuplicate:
-                                        () => cubit.duplicateVariantDraft(
-                                          index,
-                                        ),
+                                        () =>
+                                            cubit.duplicateVariantDraft(index),
                                     onActiveChanged: (val) {
-                                      state.variantDrafts[index].isActive =
-                                          val;
+                                      state.variantDrafts[index].isActive = val;
                                       // Esto idealmente debería notificar al provider, pero VariantDraftCard usa su estado local también.
                                     },
                                     onPickImage:

@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_form_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/core/utils/pdf/catalog_pdf_generator.dart';
@@ -14,18 +14,19 @@ import 'admin_catalog_state.dart';
 
 @injectable
 class AdminCatalogCubit extends Cubit<AdminCatalogState> {
-  final CatalogRepository _repository;
   final GetCategoriesUC getCategoriesUC;
   final GetProductsUC getProductsUC;
+  final SetProductActiveUC setProductActiveUC;
+  final ClearCatalogCacheUC clearCatalogCacheUC;
 
   Timer? _debounce;
 
   AdminCatalogCubit({
-    required CatalogRepository repository,
     required this.getCategoriesUC,
     required this.getProductsUC,
-  })  : _repository = repository,
-        super(const AdminCatalogState()) {
+    required this.setProductActiveUC,
+    required this.clearCatalogCacheUC,
+  }) : super(const AdminCatalogState()) {
     _init();
   }
 
@@ -150,10 +151,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     final willActivate = !product.isActive;
 
     emit(state.copyWith(actionState: ViewState.loading));
-    final result = await _repository.setProductActive(
-      productId: product.id,
-      isActive: willActivate,
-    );
+    final result = await setProductActiveUC(product.id, willActivate);
 
     return result.fold(
       (failure) {
@@ -175,7 +173,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   Future<void> forceSync() async {
     emit(state.copyWith(actionState: ViewState.loading));
-    await _repository.clearCache();
+    await clearCatalogCacheUC();
     await _fetchCategories();
     await refreshProducts();
     emit(state.copyWith(actionState: ViewState.success));

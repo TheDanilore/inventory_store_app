@@ -10,13 +10,25 @@ import 'package:inventory_store_app/features/catalog/domain/entities/variant_dra
 
 abstract class CatalogRepository {
   // Categorías
-  Future<Either<Failure, CategoryEntity>> createCategory({required String name, String? description, required bool isActive});
-  Future<Either<Failure, void>> updateCategory({required String id, required String name, String? description, required bool isActive});
+  Future<Either<Failure, CategoryEntity>> createCategory({
+    required String name,
+    String? description,
+    required bool isActive,
+  });
+  Future<Either<Failure, void>> updateCategory({
+    required String id,
+    required String name,
+    String? description,
+    required bool isActive,
+  });
   Future<Either<Failure, void>> deleteCategory(String id);
-  Future<Either<Failure, List<CategoryEntity>>> getCategories({bool activeOnly = false});
+  Future<Either<Failure, List<CategoryEntity>>> getCategories({
+    bool activeOnly = false,
+  });
 
   // Productos (Lectura)
-  Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>> getProducts({
+  Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>>
+  getProducts({
     String? searchQuery,
     String? categoryId,
     bool? isActive,
@@ -25,35 +37,64 @@ abstract class CatalogRepository {
     bool sortByPriceAsc = true,
   });
   Future<Either<Failure, ProductEntity?>> getProductById(String id);
-  Future<Either<Failure, Map<String, int>>> getProductStock({List<String>? productIds});
-  Future<Either<Failure, void>> setProductActive({required String productId, required bool isActive});
+  Future<Either<Failure, Map<String, int>>> getProductStock({
+    List<String>? productIds,
+  });
+  Future<Either<Failure, void>> setProductActive({
+    required String productId,
+    required bool isActive,
+  });
 
-  
   // Variantes (Lectura)
-  Future<Either<Failure, ProductVariantEntity?>> getVariantById(String variantId);
+  Future<Either<Failure, ProductVariantEntity?>> getVariantById(
+    String variantId,
+  );
   Future<Either<Failure, Map<String, int>>> getStockByVariant(String productId);
-  Future<Either<Failure, List<VariantDraftEntity>>> getVariantsDrafts(String productId);
-  
+  Future<Either<Failure, List<VariantDraftEntity>>> getVariantsDrafts(
+    String productId,
+  );
+
   // Atributos y Componentes Activos
   Future<Either<Failure, Map<String, dynamic>>> createAttribute(String name);
   Future<Either<Failure, void>> updateAttribute(String id, String name);
   Future<Either<Failure, void>> deleteAttribute(String id);
-  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(String attributeId, String value);
-  Future<Either<Failure, void>> updateAttributeValue(String valueId, String value);
+  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(
+    String attributeId,
+    String value,
+  );
+  Future<Either<Failure, void>> updateAttributeValue(
+    String valueId,
+    String value,
+  );
   Future<Either<Failure, void>> deleteAttributeValue(String valueId);
   Future<Either<Failure, List<Map<String, dynamic>>>> getAttributes();
-  Future<Either<Failure, List<Map<String, dynamic>>>> getProductIngredients(String productId);
-  Future<Either<Failure, List<ActiveIngredientEntity>>> searchIngredients(String term);
+  Future<Either<Failure, List<Map<String, dynamic>>>> getProductIngredients(
+    String productId,
+  );
+  Future<Either<Failure, List<ActiveIngredientEntity>>> searchIngredients(
+    String term,
+  );
   Future<Either<Failure, ActiveIngredientEntity>> createIngredient(String name);
   Future<Either<Failure, void>> updateIngredient(String id, String name);
   Future<Either<Failure, void>> deleteIngredient(String id);
-  Future<Either<Failure, List<ActiveIngredientEntity>>> getIngredients({String? searchQuery, int limit = 20, int offset = 0});
+  Future<Either<Failure, List<ActiveIngredientEntity>>> getIngredients({
+    String? searchQuery,
+    int limit = 20,
+    int offset = 0,
+  });
 
   // Imágenes
-  Future<Either<Failure, List<ProductImageEntity>>> getProductImages(String productId);
-  Future<Either<Failure, String?>> uploadImageToStorage(Uint8List bytes, String folder);
+  Future<Either<Failure, List<ProductImageEntity>>> getProductImages(
+    String productId,
+  );
+  Future<Either<Failure, String?>> uploadImageToStorage(
+    Uint8List bytes,
+    String folder,
+  );
   Future<Either<Failure, void>> deleteProductImage(String id, String imageUrl);
-  Future<Either<Failure, void>> syncProductImages(List<Map<String, dynamic>> payload);
+  Future<Either<Failure, void>> syncProductImages(
+    List<Map<String, dynamic>> payload,
+  );
 
   // Operaciones de Escritura / Mutación (Formulario)
   Future<Either<Failure, void>> deleteVariant(String variantId);
@@ -61,27 +102,66 @@ abstract class CatalogRepository {
   Future<Either<Failure, bool>> hasVariantSales(String variantId);
   Future<Either<Failure, void>> clearVariantImages(String variantId);
   Future<Either<Failure, void>> clearProductIngredients(String productId);
-  Future<Either<Failure, void>> insertProductIngredient(Map<String, dynamic> payload);
-  
-  
-  // Mutaciones complejas
-  Future<Either<Failure, String>> saveProductMaster(ProductEntity product, String? profileId);
-  Future<Either<Failure, String>> saveVariant({required String productId, required Map<String, dynamic> variantData, String? variantId});
-  Future<Either<Failure, void>> saveVariantAttributes(String variantId, List<String> attributeValueIds);
-  Future<Either<Failure, String?>> getFirstVariantId(String productId);
-  
-  Future<Either<Failure, String?>> fetchCurrentProfileId();
-  Future<Either<Failure, bool>> toggleWishlist(String productId, String profileId, bool currentState);
-  Future<Either<Failure, List<Map<String, dynamic>>>> fetchAdminFinancialData(String productId);
-  Future<Either<Failure, ({List<Map<String, dynamic>> stocks, List<Map<String, dynamic>> batches, List<ProductImageEntity> images, List<ProductVariantEntity> variants, List<Map<String, dynamic>> reviews, List<Map<String, dynamic>> ingredients})>> fetchProductExtraData(String productId);
+  Future<Either<Failure, void>> insertProductIngredient(
+    Map<String, dynamic> payload,
+  );
 
-  
-  Future<Either<Failure, Map<String, int>>> loadStockByVariant(String productId);
-  Future<Either<Failure, List<Map<String, dynamic>>>> loadActiveVariants(String productId);
-  Future<Either<Failure, Map<String, List<ProductVariantEntity>>>> fetchVariantsByProductIds(List<String> productIds);
-  Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(List<String> variantIds);
+  // Mutaciones complejas
+  Future<Either<Failure, String>> saveProductMaster(
+    ProductEntity product,
+    String? profileId,
+  );
+  Future<Either<Failure, String>> saveVariant({
+    required String productId,
+    required Map<String, dynamic> variantData,
+    String? variantId,
+  });
+  Future<Either<Failure, void>> saveVariantAttributes(
+    String variantId,
+    List<String> attributeValueIds,
+  );
+  Future<Either<Failure, String?>> getFirstVariantId(String productId);
+
+  Future<Either<Failure, String?>> fetchCurrentProfileId();
+  Future<Either<Failure, bool>> toggleWishlist(
+    String productId,
+    String profileId,
+    bool currentState,
+  );
+  Future<Either<Failure, List<Map<String, dynamic>>>> fetchAdminFinancialData(
+    String productId,
+  );
+  Future<
+    Either<
+      Failure,
+      ({
+        List<Map<String, dynamic>> stocks,
+        List<Map<String, dynamic>> batches,
+        List<ProductImageEntity> images,
+        List<ProductVariantEntity> variants,
+        List<Map<String, dynamic>> reviews,
+        List<Map<String, dynamic>> ingredients,
+      })
+    >
+  >
+  fetchProductExtraData(String productId);
+
+  Future<Either<Failure, Map<String, int>>> loadStockByVariant(
+    String productId,
+  );
+  Future<Either<Failure, List<Map<String, dynamic>>>> loadActiveVariants(
+    String productId,
+  );
+  Future<Either<Failure, Map<String, List<ProductVariantEntity>>>>
+  fetchVariantsByProductIds(List<String> productIds);
+  Future<Either<Failure, Map<String, int>>> fetchVariantStockByVariantIds(
+    List<String> variantIds,
+  );
 
   // Misc
-  Future<Either<Failure, bool>> checkWishlistState(String productId, String profileId);
+  Future<Either<Failure, bool>> checkWishlistState(
+    String productId,
+    String profileId,
+  );
   Future<Either<Failure, void>> clearCache();
 }

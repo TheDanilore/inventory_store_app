@@ -3,7 +3,8 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 
 class AttributesState extends Equatable {
   final ViewState viewState;
-  final List<Map<String, dynamic>> attributes; // Para simplificar asumo que es map por ahora
+  final List<Map<String, dynamic>>
+  attributes; // Para simplificar asumo que es map por ahora
   final String? errorMessage;
   final bool isSaving;
 
@@ -24,16 +25,12 @@ class AttributesState extends Equatable {
     return AttributesState(
       viewState: viewState ?? this.viewState,
       attributes: attributes ?? this.attributes,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       isSaving: isSaving ?? this.isSaving,
     );
   }
 
   @override
-  List<Object?> get props => [
-        viewState,
-        attributes,
-        errorMessage,
-        isSaving,
-      ];
+  List<Object?> get props => [viewState, attributes, errorMessage, isSaving];
 }

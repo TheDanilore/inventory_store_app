@@ -49,7 +49,8 @@ class VariantDraftEntity {
       wholesaleMinQuantity: variant.wholesaleMinQuantity?.toString(),
       reorderPoint: variant.reorderPoint.toString(),
       unitCost: variant.unitCost?.toString(),
-      urlsExistentes: variant.images.isNotEmpty ? [variant.images.first.imageUrl] : [],
+      urlsExistentes:
+          variant.images.isNotEmpty ? [variant.images.first.imageUrl] : [],
       isActive: variant.isActive,
     );
   }

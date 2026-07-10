@@ -33,11 +33,7 @@ class CategoriesSkeleton extends StatelessWidget {
             child: Row(
               children: [
                 // Icon Shimmer
-                AppShimmer(
-                  width: 46,
-                  height: 46,
-                  borderRadius: 12,
-                ),
+                AppShimmer(width: 46, height: 46, borderRadius: 12),
                 const SizedBox(width: 16),
 
                 // Text Shimmer
@@ -47,7 +43,8 @@ class CategoriesSkeleton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       AppShimmer(
-                        width: 100, // Menos ancho porque puede ser de 2 columnas
+                        width:
+                            100, // Menos ancho porque puede ser de 2 columnas
                         height: 16,
                         borderRadius: 4,
                       ),
@@ -68,17 +65,9 @@ class CategoriesSkeleton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    AppShimmer(
-                      width: 50,
-                      height: 18,
-                      borderRadius: 6,
-                    ),
+                    AppShimmer(width: 50, height: 18, borderRadius: 6),
                     const SizedBox(height: 8),
-                    AppShimmer(
-                      width: 40,
-                      height: 20,
-                      borderRadius: 10,
-                    ),
+                    AppShimmer(width: 40, height: 20, borderRadius: 10),
                   ],
                 ),
               ],

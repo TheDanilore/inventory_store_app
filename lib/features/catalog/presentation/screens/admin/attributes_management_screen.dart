@@ -94,15 +94,16 @@ class _AttributesManagementScreenState
           builder: (context, isExtended, _) {
             return AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: isExtended
-                  ? const Text(
-                      'Nueva Propiedad',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+              child:
+                  isExtended
+                      ? const Text(
+                        'Nueva Propiedad',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                      : const SizedBox.shrink(),
             );
           },
         ),
@@ -126,7 +127,11 @@ class _AttributesManagementScreenState
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.category_outlined, size: 60, color: Colors.grey.shade300),
+                Icon(
+                  Icons.category_outlined,
+                  size: 60,
+                  color: Colors.grey.shade300,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'No hay propiedades registradas',
@@ -216,8 +221,9 @@ class _AttributeCardState extends State<_AttributeCard> {
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor:
-                              AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           child: const Icon(
                             Icons.category_outlined,
                             color: AppColors.primary,
@@ -258,7 +264,11 @@ class _AttributeCardState extends State<_AttributeCard> {
                 if (widget.attribute['description'] != null &&
                     widget.attribute['description'].toString().isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: 4, left: 52),
+                    padding: const EdgeInsets.only(
+                      bottom: 12,
+                      top: 4,
+                      left: 52,
+                    ),
                     child: Text(
                       widget.attribute['description'],
                       style: TextStyle(
@@ -287,8 +297,9 @@ class _AttributeCardState extends State<_AttributeCard> {
                             size: 16,
                             color: AppColors.primary,
                           ),
-                          backgroundColor:
-                              AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           labelStyle: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -326,9 +337,9 @@ class _ValueChipState extends State<_ValueChip> {
 
   void _handleDelete() async {
     setState(() => _isDeleting = true);
-    await context
-        .read<AttributesCubit>()
-        .deleteAttributeValue(widget.value['id']);
+    await context.read<AttributesCubit>().deleteAttributeValue(
+      widget.value['id'],
+    );
     if (mounted) {
       setState(() => _isDeleting = false);
     }
@@ -341,10 +352,10 @@ class _ValueChipState extends State<_ValueChip> {
       deleteIcon:
           _isDeleting
               ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
               : const Icon(Icons.close, size: 14),
       onDeleted: _isDeleting ? null : _handleDelete,
       backgroundColor: Colors.grey.shade100,

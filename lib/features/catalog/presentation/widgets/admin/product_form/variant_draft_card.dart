@@ -203,7 +203,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                     ),
                   ),
-                  if (!_isExpanded && widget.draft.priceCtrl.text.isNotEmpty) ...[
+                  if (!_isExpanded &&
+                      widget.draft.priceCtrl.text.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Text(
                       'S/ ${widget.draft.priceCtrl.text}',
@@ -224,33 +225,48 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                     ),
                   ),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, color: Colors.grey),
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.grey,
+                    ),
                     onSelected: (value) {
                       if (value == 'duplicate') widget.onDuplicate();
                       if (value == 'delete') widget.onRemove();
                     },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'duplicate',
-                        child: Row(
-                          children: [
-                            Icon(Icons.copy_rounded, size: 20, color: AppColors.primary),
-                            SizedBox(width: 8),
-                            Text('Duplicar'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-                            SizedBox(width: 8),
-                            Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
-                          ],
-                        ),
-                      ),
-                    ],
+                    itemBuilder:
+                        (context) => [
+                          const PopupMenuItem(
+                            value: 'duplicate',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.copy_rounded,
+                                  size: 20,
+                                  color: AppColors.primary,
+                                ),
+                                SizedBox(width: 8),
+                                Text('Duplicar'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
+                                  color: Colors.redAccent,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Eliminar',
+                                  style: TextStyle(color: Colors.redAccent),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                   ),
                   Icon(
                     _isExpanded
@@ -265,235 +281,253 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               alignment: Alignment.topCenter,
-              child: _isExpanded ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  // ── FILA 1: SKU + Punto de Reorden ─────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    label: 'SKU',
-                    controller: widget.draft.skuCtrl,
-                    icon: Icons.qr_code_2_rounded,
-                    hintText: 'Ej: PROD-001',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppTextField(
-                    label: 'Punto de Reorden',
-                    controller: widget.draft.reorderPointCtrl,
-                    icon: Icons.warning_amber_rounded,
-                    keyboardType: TextInputType.number,
-                    hintText: 'Ej: 5',
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // ── SECCIÓN ATRIBUTOS ───────────────────────────────────────────
-            _buildDynamicAttributesSection(),
-            const SizedBox(height: 16),
-
-            // ── SECCIÓN PRECIOS ─────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.attach_money_rounded,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Precios de la variante',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(vacío = usa precio base)',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Costo unitario',
-                          controller: widget.draft.unitCostCtrl,
-                          icon: Icons.price_change_outlined,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+              child:
+                  _isExpanded
+                      ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+                          // ── FILA 1: SKU + Punto de Reorden ─────────────────────────────
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: AppTextField(
+                                  label: 'SKU',
+                                  controller: widget.draft.skuCtrl,
+                                  icon: Icons.qr_code_2_rounded,
+                                  hintText: 'Ej: PROD-001',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: AppTextField(
+                                  label: 'Punto de Reorden',
+                                  controller: widget.draft.reorderPointCtrl,
+                                  icon: Icons.warning_amber_rounded,
+                                  keyboardType: TextInputType.number,
+                                  hintText: 'Ej: 5',
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          hintText: '0.00',
-                          prefixText: 'S/ ',
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9.]'),
+                          const SizedBox(height: 16),
+
+                          // ── SECCIÓN ATRIBUTOS ───────────────────────────────────────────
+                          _buildDynamicAttributesSection(),
+                          const SizedBox(height: 16),
+
+                          // ── SECCIÓN PRECIOS ─────────────────────────────────────────────
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.03),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Precio venta',
-                          controller: widget.draft.priceCtrl,
-                          icon: Icons.sell_outlined,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.attach_money_rounded,
+                                      size: 14,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'Precios de la variante',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '(vacío = usa precio base)',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: AppTextField(
+                                        label: 'Costo unitario',
+                                        controller: widget.draft.unitCostCtrl,
+                                        icon: Icons.price_change_outlined,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        hintText: '0.00',
+                                        prefixText: 'S/ ',
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'[0-9.]'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: AppTextField(
+                                        label: 'Precio venta',
+                                        controller: widget.draft.priceCtrl,
+                                        icon: Icons.sell_outlined,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        hintText: '0.00',
+                                        prefixText: 'S/ ',
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'[0-9.]'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: AppTextField(
+                                        label: 'P. mayorista',
+                                        controller:
+                                            widget.draft.wholesalePriceCtrl,
+                                        icon: Icons.local_offer_outlined,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        hintText: '0.00',
+                                        prefixText: 'S/ ',
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'[0-9.]'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: AppTextField(
+                                        label: 'Mín. para mayoreo',
+                                        controller:
+                                            widget
+                                                .draft
+                                                .wholesaleMinQuantityCtrl,
+                                        icon: Icons.numbers_rounded,
+                                        keyboardType: TextInputType.number,
+                                        hintText: 'Ej: 10',
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                          hintText: '0.00',
-                          prefixText: 'S/ ',
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9.]'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          label: 'P. mayorista',
-                          controller: widget.draft.wholesalePriceCtrl,
-                          icon: Icons.local_offer_outlined,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(height: 1),
                           ),
-                          hintText: '0.00',
-                          prefixText: 'S/ ',
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9.]'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Mín. para mayoreo',
-                          controller: widget.draft.wholesaleMinQuantityCtrl,
-                          icon: Icons.numbers_rounded,
-                          keyboardType: TextInputType.number,
-                          hintText: 'Ej: 10',
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
 
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Divider(height: 1),
-            ),
-
-            // ── IMAGEN DE VARIANTE ──────────────────────────────────────────
-            Row(
-              children: [
-                Icon(
-                  Icons.photo_camera_outlined,
-                  size: 14,
-                  color: Colors.grey.shade500,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Imagen de la variante',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '(Máximo 1)',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 90,
-              child: Row(
-                children: [
-                  if (widget.draft.urlsExistentes.isEmpty &&
-                      widget.draft.nuevasImagenes.isEmpty)
-                    _buildAddButton(),
-                  if (widget.draft.urlsExistentes.isNotEmpty)
-                    _buildThumbnail(
-                      CachedNetworkImage(
-                        imageUrl: widget.draft.urlsExistentes.first,
-                        fit: BoxFit.cover,
-                        placeholder:
-                            (context, url) => const Center(
-                              child: CircularProgressIndicator(),
+                          // ── IMAGEN DE VARIANTE ──────────────────────────────────────────
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.photo_camera_outlined,
+                                size: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Imagen de la variante',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '(Máximo 1)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 90,
+                            child: Row(
+                              children: [
+                                if (widget.draft.urlsExistentes.isEmpty &&
+                                    widget.draft.nuevasImagenes.isEmpty)
+                                  _buildAddButton(),
+                                if (widget.draft.urlsExistentes.isNotEmpty)
+                                  _buildThumbnail(
+                                    CachedNetworkImage(
+                                      imageUrl:
+                                          widget.draft.urlsExistentes.first,
+                                      fit: BoxFit.cover,
+                                      placeholder:
+                                          (context, url) => const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                      errorWidget:
+                                          (context, url, error) =>
+                                              const Icon(Icons.error),
+                                    ),
+                                    onDelete: () {
+                                      setState(() {
+                                        widget.draft.urlsExistentes.clear();
+                                      });
+                                    },
+                                  ),
+                                if (widget.draft.nuevasImagenes.isNotEmpty)
+                                  _buildThumbnail(
+                                    Image.memory(
+                                      widget.draft.nuevasImagenes.first,
+                                      fit: BoxFit.cover,
+                                    ),
+                                    onDelete: () {
+                                      setState(() {
+                                        widget.draft.nuevasImagenes.clear();
+                                      });
+                                    },
+                                  ),
+                              ],
                             ),
-                        errorWidget:
-                            (context, url, error) => const Icon(Icons.error),
-                      ),
-                      onDelete: () {
-                        setState(() {
-                          widget.draft.urlsExistentes.clear();
-                        });
-                      },
-                    ),
-                  if (widget.draft.nuevasImagenes.isNotEmpty)
-                    _buildThumbnail(
-                      Image.memory(
-                        widget.draft.nuevasImagenes.first,
-                        fit: BoxFit.cover,
-                      ),
-                      onDelete: () {
-                        setState(() {
-                          widget.draft.nuevasImagenes.clear();
-                        });
-                      },
-                    ),
-                ],
-              ),
-            ),
-                ],
-              ) : const SizedBox.shrink(),
+                          ),
+                        ],
+                      )
+                      : const SizedBox.shrink(),
             ),
           ],
         ),

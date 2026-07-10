@@ -9,7 +9,10 @@ class CheckWishlistStateUseCase {
 
   CheckWishlistStateUseCase(this.repository);
 
-  Future<Either<Failure, bool>> call({required String productId, required String profileId}) {
+  Future<Either<Failure, bool>> call({
+    required String productId,
+    required String profileId,
+  }) {
     return repository.checkWishlistState(productId, profileId);
   }
 }

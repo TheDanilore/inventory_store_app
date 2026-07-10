@@ -212,7 +212,8 @@ class ProductModel {
       totalStock: totalStock ?? this.totalStock,
       categoryName: categoryName ?? this.categoryName,
       productVariants: productVariants ?? this.productVariants,
-      warehouseStockBatches: warehouseStockBatches ?? this.warehouseStockBatches,
+      warehouseStockBatches:
+          warehouseStockBatches ?? this.warehouseStockBatches,
     );
   }
 
@@ -262,10 +263,16 @@ class ProductModel {
       stockControl: entity.stockControl,
       usesBatches: entity.usesBatches,
       productType: entity.productType,
-      images: entity.images.map((img) => ProductImageModel.fromEntity(img)).toList(),
+      images:
+          entity.images
+              .map((img) => ProductImageModel.fromEntity(img))
+              .toList(),
       totalStock: entity.totalStock,
       categoryName: entity.categoryName,
-      productVariants: entity.productVariants.map((v) => ProductVariantModel.fromEntity(v)).toList(),
+      productVariants:
+          entity.productVariants
+              .map((v) => ProductVariantModel.fromEntity(v))
+              .toList(),
       warehouseStockBatches: entity.warehouseStockBatches,
     );
   }

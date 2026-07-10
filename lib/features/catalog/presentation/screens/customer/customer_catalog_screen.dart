@@ -243,23 +243,31 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 ),
               ]
               // --- Product Grid ---
-              else if ((state.viewState == ViewState.loading && state.products.isEmpty) && (state.viewState == ViewState.loading || state.isLoadingMore)) ...[
+              else if ((state.viewState == ViewState.loading &&
+                      state.products.isEmpty) &&
+                  (state.viewState == ViewState.loading ||
+                      state.isLoadingMore)) ...[
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 220,
-                      childAspectRatio: 0.58,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 220,
+                          childAspectRatio: 0.58,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
                     delegate: SliverChildBuilderDelegate(
                       (_, _) => const CatalogProductShimmer(),
                       childCount: 8,
                     ),
                   ),
                 ),
-              ] else if (state.errorMessage != null && state.products.isEmpty) ...[
+              ] else if (state.errorMessage != null &&
+                  state.products.isEmpty) ...[
                 SliverToBoxAdapter(
                   child: AppEmptyState(
                     icon: Icons.error_outline_rounded,
@@ -308,27 +316,31 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 ),
               ] else ...[
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 220,
-                      childAspectRatio: 0.58,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final product = state.products[index];
-                        return CatalogProductCard(
-                          product: product,
-                          onAddToCart: _handleAddToCart,
-                        );
-                      },
-                      childCount: state.products.length,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 220,
+                          childAspectRatio: 0.58,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final product = state.products[index];
+                      return CatalogProductCard(
+                        product: product,
+                        onAddToCart: _handleAddToCart,
+                      );
+                    }, childCount: state.products.length),
                   ),
                 ),
-                if ((state.viewState == ViewState.loading || state.isLoadingMore) && !(state.viewState == ViewState.loading && state.products.isEmpty))
+                if ((state.viewState == ViewState.loading ||
+                        state.isLoadingMore) &&
+                    !(state.viewState == ViewState.loading &&
+                        state.products.isEmpty))
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 24.0),

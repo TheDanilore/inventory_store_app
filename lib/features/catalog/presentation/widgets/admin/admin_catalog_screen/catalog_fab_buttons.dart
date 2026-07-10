@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-
 class CatalogAddProductFab extends StatelessWidget {
   final VoidCallback onTap;
   const CatalogAddProductFab({super.key, required this.onTap});

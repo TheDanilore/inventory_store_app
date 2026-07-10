@@ -9,7 +9,9 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/catalog
 class GetProductImagesUC {
   final CatalogRepository repository;
   GetProductImagesUC(this.repository);
-  Future<Either<Failure, List<ProductImageEntity>>> call(String productId) async {
+  Future<Either<Failure, List<ProductImageEntity>>> call(
+    String productId,
+  ) async {
     return await repository.getProductImages(productId);
   }
 }

@@ -26,7 +26,15 @@ class DeleteIngredientUC {
 class GetIngredientsUC {
   final CatalogRepository repository;
   GetIngredientsUC(this.repository);
-  Future<Either<Failure, List<ActiveIngredientEntity>>> call({String? searchQuery, int limit = 20, int offset = 0}) async {
-    return await repository.getIngredients(searchQuery: searchQuery, limit: limit, offset: offset);
+  Future<Either<Failure, List<ActiveIngredientEntity>>> call({
+    String? searchQuery,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    return await repository.getIngredients(
+      searchQuery: searchQuery,
+      limit: limit,
+      offset: offset,
+    );
   }
 }

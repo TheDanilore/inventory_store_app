@@ -28,7 +28,8 @@ class IngredientsState extends Equatable {
     return IngredientsState(
       viewState: viewState ?? this.viewState,
       ingredients: ingredients ?? this.ingredients,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       isSaving: isSaving ?? this.isSaving,
       searchQuery: searchQuery ?? this.searchQuery,
     );
@@ -36,10 +37,10 @@ class IngredientsState extends Equatable {
 
   @override
   List<Object?> get props => [
-        viewState,
-        ingredients,
-        errorMessage,
-        isSaving,
-        searchQuery,
-      ];
+    viewState,
+    ingredients,
+    errorMessage,
+    isSaving,
+    searchQuery,
+  ];
 }

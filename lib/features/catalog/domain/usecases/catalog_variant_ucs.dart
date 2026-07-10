@@ -27,7 +27,9 @@ class GetStockByVariantUC {
 class GetVariantsDraftsUC {
   final CatalogRepository repository;
   GetVariantsDraftsUC(this.repository);
-  Future<Either<Failure, List<VariantDraftEntity>>> call(String productId) async {
+  Future<Either<Failure, List<VariantDraftEntity>>> call(
+    String productId,
+  ) async {
     return await repository.getVariantsDrafts(productId);
   }
 }

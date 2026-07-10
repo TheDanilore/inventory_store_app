@@ -37,7 +37,7 @@ class AdminProductSkeleton extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Simulación de Información y Botones
           Padding(
             padding: const EdgeInsets.all(12),
@@ -47,17 +47,21 @@ class AdminProductSkeleton extends StatelessWidget {
                 // Simulación Badge de Stock
                 const AppShimmer(width: 60, height: 20, borderRadius: 6),
                 const SizedBox(height: 10),
-                
+
                 // Simulación Título
-                const AppShimmer(width: double.infinity, height: 12, borderRadius: 4),
+                const AppShimmer(
+                  width: double.infinity,
+                  height: 12,
+                  borderRadius: 4,
+                ),
                 const SizedBox(height: 6),
                 const AppShimmer(width: 130, height: 12, borderRadius: 4),
                 const SizedBox(height: 12),
-                
+
                 // Simulación Precio
                 const AppShimmer(width: 75, height: 16, borderRadius: 4),
                 const SizedBox(height: 16),
-                
+
                 // Simulación Fila de Botones Inferiores
                 Row(
                   children: [

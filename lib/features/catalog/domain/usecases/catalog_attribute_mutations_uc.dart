@@ -34,7 +34,10 @@ class DeleteAttributeUC {
 class CreateAttributeValueUC {
   final CatalogRepository repository;
   CreateAttributeValueUC(this.repository);
-  Future<Either<Failure, Map<String, dynamic>>> call(String attributeId, String value) async {
+  Future<Either<Failure, Map<String, dynamic>>> call(
+    String attributeId,
+    String value,
+  ) async {
     return await repository.createAttributeValue(attributeId, value);
   }
 }

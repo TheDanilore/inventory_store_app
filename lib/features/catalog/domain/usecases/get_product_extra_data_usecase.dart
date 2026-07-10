@@ -5,14 +5,15 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ima
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 
-typedef ProductExtraData = ({
-  List<Map<String, dynamic>> stocks,
-  List<Map<String, dynamic>> batches,
-  List<ProductImageEntity> images,
-  List<ProductVariantEntity> variants,
-  List<Map<String, dynamic>> reviews,
-  List<Map<String, dynamic>> ingredients,
-});
+typedef ProductExtraData =
+    ({
+      List<Map<String, dynamic>> stocks,
+      List<Map<String, dynamic>> batches,
+      List<ProductImageEntity> images,
+      List<ProductVariantEntity> variants,
+      List<Map<String, dynamic>> reviews,
+      List<Map<String, dynamic>> ingredients,
+    });
 
 @lazySingleton
 class GetProductExtraDataUseCase {

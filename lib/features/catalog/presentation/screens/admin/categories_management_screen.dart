@@ -6,7 +6,6 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/categorie
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 
-
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_form_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
@@ -38,9 +37,9 @@ class _CategoriesManagementScreenState
     if (name.isEmpty) return _categoryColors[0];
     return _categoryColors[name.hashCode.abs() % _categoryColors.length];
   }
+
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
-
 
   @override
   void initState() {
@@ -127,19 +126,23 @@ class _CategoriesManagementScreenState
         tooltip: 'Crear nueva categoría',
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                          duration: const Duration(milliseconds: 200),
-                          child: isExtended
-                              ? const Text(
-          'Nueva',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        )
-                              : const SizedBox.shrink(),
-                        );
-                          },
+          valueListenable: _isFabExtended,
+          builder: (context, isExtended, _) {
+            return AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child:
+                  isExtended
+                      ? const Text(
+                        'Nueva',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
+                      )
+                      : const SizedBox.shrink(),
+            );
+          },
+        ),
       ),
       body: BlocBuilder<CategoriesCubit, CategoriesState>(
         builder: (context, state) {
@@ -232,7 +235,6 @@ class _CategoriesManagementScreenState
                           : _buildCategoriesGrid(cubit, state),
                 ),
               ),
-
             ],
           );
         },

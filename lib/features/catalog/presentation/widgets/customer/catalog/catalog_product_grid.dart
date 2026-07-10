@@ -16,7 +16,8 @@ class CatalogProductGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<CustomerCatalogCubit>().state;
 
-    if (state.viewState == ViewState.initial && state.viewState == ViewState.loading) {
+    if (state.viewState == ViewState.initial &&
+        state.viewState == ViewState.loading) {
       return GridView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shrinkWrap: true,
@@ -100,7 +101,8 @@ class CatalogProductGrid extends StatelessWidget {
             );
           },
         ),
-        if (state.viewState == ViewState.loading && state.viewState != ViewState.initial)
+        if (state.viewState == ViewState.loading &&
+            state.viewState != ViewState.initial)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24.0),
             child: CircularProgressIndicator(),

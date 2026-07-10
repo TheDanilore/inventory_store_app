@@ -74,6 +74,8 @@ import '../../features/catalog/domain/usecases/get_product_extra_data_usecase.da
 import '../../features/catalog/domain/usecases/get_product_stock_uc.dart'
     as _i958;
 import '../../features/catalog/domain/usecases/get_products_uc.dart' as _i222;
+import '../../features/catalog/domain/usecases/save_product_usecase.dart'
+    as _i1064;
 import '../../features/catalog/domain/usecases/toggle_wishlist_usecase.dart'
     as _i839;
 import '../../features/catalog/presentation/bloc/admin_catalog_cubit.dart'
@@ -239,6 +241,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i222.GetProductsUC>(
       () => _i222.GetProductsUC(gh<_i1018.CatalogRepository>()),
     );
+    gh.lazySingleton<_i1064.SaveProductUseCase>(
+      () => _i1064.SaveProductUseCase(gh<_i1018.CatalogRepository>()),
+    );
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i1018.CatalogRepository>()),
     );
@@ -327,10 +332,6 @@ extension GetItInjectableX on _i174.GetIt {
         getProductsUC: gh<_i222.GetProductsUC>(),
       ),
     );
-    gh.factoryParam<_i150.ProductFormCubit, _i449.ProductEntity?, dynamic>(
-      (productToEdit, _) =>
-          _i150.ProductFormCubit(gh<_i1018.CatalogRepository>(), productToEdit),
-    );
     gh.factory<_i52.AuthCubit>(
       () => _i52.AuthCubit(
         getCurrentUserUseCase: gh<_i813.GetCurrentUserUseCase>(),
@@ -341,6 +342,19 @@ extension GetItInjectableX on _i174.GetIt {
         changePasswordUseCase: gh<_i832.ChangePasswordUseCase>(),
         deleteAccountUseCase: gh<_i853.DeleteAccountUseCase>(),
         updateProfileUseCase: gh<_i282.UpdateProfileUseCase>(),
+      ),
+    );
+    gh.factoryParam<_i150.ProductFormCubit, _i449.ProductEntity?, dynamic>(
+      (productToEdit, _) => _i150.ProductFormCubit(
+        gh<_i700.GetCategoriesUC>(),
+        gh<_i1014.GetProductImagesUC>(),
+        gh<_i597.GetProductIngredientsUC>(),
+        gh<_i929.GetVariantsDraftsUC>(),
+        gh<_i1014.DeleteProductImageUC>(),
+        gh<_i929.DeleteVariantUC>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+        gh<_i1064.SaveProductUseCase>(),
+        productToEdit,
       ),
     );
     return this;

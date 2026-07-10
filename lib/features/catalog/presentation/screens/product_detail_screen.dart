@@ -1,9 +1,4 @@
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_extra_data_usecase.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/get_admin_financial_data_usecase.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/check_wishlist_state_usecase.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/toggle_wishlist_usecase.dart';
-import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
@@ -14,7 +9,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
-import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_admin_info_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_availability_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
@@ -27,7 +21,6 @@ import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
@@ -55,7 +48,8 @@ class ProductDetailScreen extends StatelessWidget {
     ProductVariantEntity? selectedVariant,
     String? effectiveImageUrl,
     double effectivePrice,
-  )? onAddToCart;
+  )?
+  onAddToCart;
 
   const ProductDetailScreen({
     super.key,
@@ -102,7 +96,8 @@ class _ProductDetailScreenContent extends StatefulWidget {
     ProductVariantEntity? selectedVariant,
     String? effectiveImageUrl,
     double effectivePrice,
-  )? onAddToCart;
+  )?
+  onAddToCart;
 
   const _ProductDetailScreenContent({
     this.isEmbedded = false,
@@ -144,8 +139,7 @@ class _ProductDetailScreenContentState
   bool get _showVariantImage => state.showVariantImage;
   List<ProductVariantEntity> get _variants => state.variants;
   List<Map<String, dynamic>> get _reviewsList => state.reviewsList;
-  List<Map<String, dynamic>> get _activeIngredients =>
-      state.activeIngredients;
+  List<Map<String, dynamic>> get _activeIngredients => state.activeIngredients;
   double get _averageRating => state.averageRating;
 
   int get _selectedQty => state.selectedQty;
@@ -191,19 +185,6 @@ class _ProductDetailScreenContentState
     }
   }
 
-  void _selectVariant(
-    ProductVariantEntity variant, {
-    bool animateGallery = true,
-  }) {
-    cubit.setVariant(variant.id);
-    if (animateGallery) {
-      cubit.setImageIndex(0);
-      if (_pageController.hasClients) {
-        _pageController.jumpToPage(0);
-      }
-    }
-  }
-
   void _onGalleryChanged(int index) {
     cubit.setImageIndex(index);
   }
@@ -224,7 +205,14 @@ class _ProductDetailScreenContentState
             : widget.product.primaryImageUrl);
 
     if (variants.isNotEmpty && selectedVariant == null) {
-      widget.onAddToCart?.call(context, widget.product, qty, selectedVariant, effectiveImageUrl, effectivePrice);
+      widget.onAddToCart?.call(
+        context,
+        widget.product,
+        qty,
+        selectedVariant,
+        effectiveImageUrl,
+        effectivePrice,
+      );
       return;
     }
 
@@ -237,7 +225,14 @@ class _ProductDetailScreenContentState
       return;
     }
 
-    widget.onAddToCart?.call(context, widget.product, qty, selectedVariant, effectiveImageUrl, effectivePrice);
+    widget.onAddToCart?.call(
+      context,
+      widget.product,
+      qty,
+      selectedVariant,
+      effectiveImageUrl,
+      effectivePrice,
+    );
     // Solo vibrar si no es web para evitar MissingPluginException
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
@@ -353,9 +348,7 @@ class _ProductDetailScreenContentState
                         onPressed: () {
                           final n = int.tryParse(ctrl.text.trim());
                           if (n != null && n > 0) {
-                            cubit.setQty(
-                              n.clamp(1, _effectiveStock),
-                            );
+                            cubit.setQty(n.clamp(1, _effectiveStock));
                           }
                           Navigator.pop(ctx);
                         },
@@ -741,24 +734,33 @@ class _ProductDetailScreenContentState
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder: (dialogCtx) => const AlertDialog(
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 20),
-                                Text('Generando PDF...', textAlign: TextAlign.center),
-                              ],
-                            ),
-                          ),
+                          builder:
+                              (dialogCtx) => const AlertDialog(
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(),
+                                    SizedBox(height: 20),
+                                    Text(
+                                      'Generando PDF...',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
                         );
                         try {
                           if (currentState.product == null) return;
-await ProductPdfGenerator.shareProduct(
-ProductModel.fromEntity(currentState.product!),
-variants: currentState.variants.map((v) => ProductVariantModel.fromEntity(v)).toList(),
-stockByVariant: stockMap,
-);
+                          await ProductPdfGenerator.shareProduct(
+                            ProductModel.fromEntity(currentState.product!),
+                            variants:
+                                currentState.variants
+                                    .map(
+                                      (v) => ProductVariantModel.fromEntity(v),
+                                    )
+                                    .toList(),
+                            stockByVariant: stockMap,
+                          );
                         } catch (e) {
                           if (context.mounted) {
                             _showSnack('Error al generar PDF: $e');
@@ -788,7 +790,11 @@ stockByVariant: stockMap,
                 ),
               if (widget.cartActionWidget != null)
                 Padding(
-                  padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+                  padding: const EdgeInsets.only(
+                    right: 16.0,
+                    top: 8,
+                    bottom: 8,
+                  ),
                   child: widget.cartActionWidget,
                 ),
             ],
@@ -796,7 +802,8 @@ stockByVariant: stockMap,
           flexibleSpace: FlexibleSpaceBar(
             stretchModes: const [StretchMode.zoomBackground],
             background: ProductGallerySection(
-              images: gallery.map((e) => ProductImageModel.fromEntity(e)).toList(),
+              images:
+                  gallery.map((e) => ProductImageModel.fromEntity(e)).toList(),
               pageController: _pageController,
               selectedIndex: _selectedImageIndex,
               onPageChanged: _onGalleryChanged,

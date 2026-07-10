@@ -37,7 +37,9 @@ class VariantAttributeValueModel {
     );
   }
 
-  factory VariantAttributeValueModel.fromEntity(VariantAttributeValueEntity entity) {
+  factory VariantAttributeValueModel.fromEntity(
+    VariantAttributeValueEntity entity,
+  ) {
     return VariantAttributeValueModel(
       attributeValueId: entity.attributeValueId,
       attributeId: entity.attributeId,

@@ -43,11 +43,7 @@ class ActiveIngredientModel {
   }
 
   ActiveIngredientEntity toEntity() {
-    return ActiveIngredientEntity(
-      id: id,
-      name: name,
-      description: description,
-    );
+    return ActiveIngredientEntity(id: id, name: name, description: description);
   }
 
   factory ActiveIngredientModel.fromEntity(ActiveIngredientEntity entity) {

@@ -49,9 +49,9 @@ class ProductImagesSection extends StatelessWidget {
                   onTap:
                       context.watch<ProductFormCubit>().isSaving
                           ? null
-                          : () => context
-                              .read<ProductFormCubit>()
-                              .pickImages(context),
+                          : () => context.read<ProductFormCubit>().pickImages(
+                            context,
+                          ),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 100,
@@ -87,7 +87,7 @@ class ProductImagesSection extends StatelessWidget {
                 Expanded(
                   child: BlocBuilder<ProductFormCubit, ProductFormState>(
                     builder: (context, state) {
-        final cubit = context.read<ProductFormCubit>();
+                      final cubit = context.read<ProductFormCubit>();
                       return ReorderableListView.builder(
                         scrollDirection: Axis.horizontal,
                         buildDefaultDragHandles: false,

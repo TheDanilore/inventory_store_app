@@ -8,8 +8,16 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/catalog
 class CreateCategoryUC {
   final CatalogRepository repository;
   CreateCategoryUC(this.repository);
-  Future<Either<Failure, CategoryEntity>> call({required String name, String? description, required bool isActive}) async {
-    return await repository.createCategory(name: name, description: description, isActive: isActive);
+  Future<Either<Failure, CategoryEntity>> call({
+    required String name,
+    String? description,
+    required bool isActive,
+  }) async {
+    return await repository.createCategory(
+      name: name,
+      description: description,
+      isActive: isActive,
+    );
   }
 }
 
@@ -17,8 +25,18 @@ class CreateCategoryUC {
 class UpdateCategoryUC {
   final CatalogRepository repository;
   UpdateCategoryUC(this.repository);
-  Future<Either<Failure, void>> call({required String id, required String name, String? description, required bool isActive}) async {
-    return await repository.updateCategory(id: id, name: name, description: description, isActive: isActive);
+  Future<Either<Failure, void>> call({
+    required String id,
+    required String name,
+    String? description,
+    required bool isActive,
+  }) async {
+    return await repository.updateCategory(
+      id: id,
+      name: name,
+      description: description,
+      isActive: isActive,
+    );
   }
 }
 

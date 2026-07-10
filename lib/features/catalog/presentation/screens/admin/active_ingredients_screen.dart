@@ -54,10 +54,8 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (context) => ActiveIngredientFormSheet(
-            ingredientId: id,
-            ingredientName: name,
-          ),
+          (context) =>
+              ActiveIngredientFormSheet(ingredientId: id, ingredientName: name),
     );
   }
 
@@ -125,15 +123,16 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
           builder: (context, isExtended, _) {
             return AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: isExtended
-                  ? const Text(
-                      'Nuevo',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+              child:
+                  isExtended
+                      ? const Text(
+                        'Nuevo',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                      : const SizedBox.shrink(),
             );
           },
         ),
@@ -236,12 +235,12 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
         boxShadow:
             _isFocused
                 ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
                 : null,
       ),
       child: Focus(
@@ -259,12 +258,9 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
             suffixIcon:
                 widget.hasQuery
                     ? IconButton(
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          color: Colors.grey,
-                        ),
-                        onPressed: widget.onClear,
-                      )
+                      icon: const Icon(Icons.clear_rounded, color: Colors.grey),
+                      onPressed: widget.onClear,
+                    )
                     : null,
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(

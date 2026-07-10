@@ -26,7 +26,7 @@ class FormImageItem {
   final String? newName;
 
   FormImageItem({this.existing, this.newBytes, this.newName})
-      : id = UniqueKey().toString();
+    : id = UniqueKey().toString();
 
   bool get isExisting => existing != null;
 }
@@ -42,9 +42,9 @@ class IngredientRow {
     String name = '',
     String concentration = '',
     String unit = '',
-  })  : nameCtrl = TextEditingController(text: name),
-        concentrationCtrl = TextEditingController(text: concentration),
-        unitCtrl = TextEditingController(text: unit);
+  }) : nameCtrl = TextEditingController(text: name),
+       concentrationCtrl = TextEditingController(text: concentration),
+       unitCtrl = TextEditingController(text: unit);
 
   void dispose() {
     nameCtrl.dispose();
@@ -60,16 +60,16 @@ class ProductFormState extends Equatable {
   final String errorMessage;
   final bool isSaving;
   final bool isDirty;
-  
+
   final bool isLoadingCategories;
   final List<CategoryEntity> categories;
   final String? selectedCategoryId;
-  
+
   final String productType;
   final bool stockControl;
   final bool batchManagementEnabled;
   final bool ingredientsEnabled;
-  
+
   // Dynamic collections
   final List<DetailControllers> detailRows;
   final List<IngredientRow> ingredientRows;
@@ -132,7 +132,8 @@ class ProductFormState extends Equatable {
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
       productType: productType ?? this.productType,
       stockControl: stockControl ?? this.stockControl,
-      batchManagementEnabled: batchManagementEnabled ?? this.batchManagementEnabled,
+      batchManagementEnabled:
+          batchManagementEnabled ?? this.batchManagementEnabled,
       ingredientsEnabled: ingredientsEnabled ?? this.ingredientsEnabled,
       detailRows: detailRows ?? this.detailRows,
       ingredientRows: ingredientRows ?? this.ingredientRows,
@@ -167,23 +168,23 @@ class ProductFormState extends Equatable {
 
   @override
   List<Object?> get props => [
-        productToEdit,
-        isInitializingData,
-        hasErrorLoading,
-        errorMessage,
-        isSaving,
-        isDirty,
-        isLoadingCategories,
-        categories,
-        selectedCategoryId,
-        productType,
-        stockControl,
-        batchManagementEnabled,
-        ingredientsEnabled,
-        detailRows,
-        ingredientRows,
-        formImages,
-        variantDrafts,
-        removedVariantIds,
-      ];
+    productToEdit,
+    isInitializingData,
+    hasErrorLoading,
+    errorMessage,
+    isSaving,
+    isDirty,
+    isLoadingCategories,
+    categories,
+    selectedCategoryId,
+    productType,
+    stockControl,
+    batchManagementEnabled,
+    ingredientsEnabled,
+    detailRows,
+    ingredientRows,
+    formImages,
+    variantDrafts,
+    removedVariantIds,
+  ];
 }

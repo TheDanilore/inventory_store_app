@@ -25,23 +25,15 @@ class ActiveIngredientsSkeleton extends StatelessWidget {
             child: Row(
               children: [
                 // Icon Shimmer
-                const AppShimmer(
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                ),
+                const AppShimmer(width: 40, height: 40, borderRadius: 20),
                 const SizedBox(width: 16),
-                
+
                 // Text Shimmer
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AppShimmer(
-                        width: 180,
-                        height: 16,
-                        borderRadius: 4,
-                      ),
+                      const AppShimmer(width: 180, height: 16, borderRadius: 4),
                       const SizedBox(height: 8),
                       const AppShimmer(
                         width: double.infinity,
@@ -52,13 +44,9 @@ class ActiveIngredientsSkeleton extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // More button shimmer
-                const AppShimmer(
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                ),
+                const AppShimmer(width: 24, height: 24, borderRadius: 12),
               ],
             ),
           ),

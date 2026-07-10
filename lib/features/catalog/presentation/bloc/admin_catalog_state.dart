@@ -61,13 +61,13 @@ class AdminCatalogState extends Equatable {
       products: products ?? this.products,
       matchedIngredients: matchedIngredients ?? this.matchedIngredients,
       selectedCategoryId:
-          clearCategory ? null : (selectedCategoryId ?? this.selectedCategoryId),
+          clearCategory
+              ? null
+              : (selectedCategoryId ?? this.selectedCategoryId),
       searchTerm: searchTerm ?? this.searchTerm,
       searchByIngredient: searchByIngredient ?? this.searchByIngredient,
       filterIsActive:
-          clearFilterIsActive
-              ? null
-              : (filterIsActive ?? this.filterIsActive),
+          clearFilterIsActive ? null : (filterIsActive ?? this.filterIsActive),
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -76,17 +76,17 @@ class AdminCatalogState extends Equatable {
 
   @override
   List<Object?> get props => [
-        catalogState,
-        actionState,
-        categories,
-        products,
-        matchedIngredients,
-        selectedCategoryId,
-        searchTerm,
-        searchByIngredient,
-        filterIsActive,
-        totalCount,
-        currentPage,
-        errorMessage,
-      ];
+    catalogState,
+    actionState,
+    categories,
+    products,
+    matchedIngredients,
+    selectedCategoryId,
+    searchTerm,
+    searchByIngredient,
+    filterIsActive,
+    totalCount,
+    currentPage,
+    errorMessage,
+  ];
 }

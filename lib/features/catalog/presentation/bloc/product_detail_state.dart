@@ -11,7 +11,7 @@ class ProductDetailState extends Equatable {
   final bool isWishlistLoading;
   final bool isWishlisted;
   final bool showVariantImage;
-  
+
   final int selectedQty;
   final int selectedImageIndex;
   final String? selectedVariantId;
@@ -128,7 +128,9 @@ class ProductDetailState extends Equatable {
   }
 
   int get baseWholesaleMinQty =>
-      selectedVariant?.wholesaleMinQuantity ?? product?.wholesaleMinQuantity ?? 0;
+      selectedVariant?.wholesaleMinQuantity ??
+      product?.wholesaleMinQuantity ??
+      0;
 
   double get effectivePrice {
     final bwp = baseWholesalePrice;
@@ -206,12 +208,16 @@ class ProductDetailState extends Equatable {
   bool isOptionEnabled(String key, String value) {
     for (final v in variants) {
       final avList = v.attributeValues;
-      bool hasOption = avList.any((av) => av.attributeName == key && av.value == value);
+      bool hasOption = avList.any(
+        (av) => av.attributeName == key && av.value == value,
+      );
       if (hasOption) {
         bool matchesOther = true;
         selectedAttributes.forEach((k, selectedVal) {
           if (k != key) {
-            bool hasOtherOption = avList.any((av) => av.attributeName == k && av.value == selectedVal);
+            bool hasOtherOption = avList.any(
+              (av) => av.attributeName == k && av.value == selectedVal,
+            );
             if (!hasOtherOption) matchesOther = false;
           }
         });
@@ -221,29 +227,28 @@ class ProductDetailState extends Equatable {
     return false;
   }
 
-
   @override
   List<Object?> get props => [
-        product,
-        viewState,
-        isWishlistLoading,
-        isWishlisted,
-        showVariantImage,
-        selectedQty,
-        selectedImageIndex,
-        selectedVariantId,
-        selectedAttributes,
-        warehouseStocks,
-        batchesList,
-        images,
-        variants,
-        reviewsList,
-        activeIngredients,
-        totalSold,
-        reinvestmentNeeded,
-        inventoryValue,
-        totalRevenue,
-        variantSummaries,
-        averageRating,
-      ];
+    product,
+    viewState,
+    isWishlistLoading,
+    isWishlisted,
+    showVariantImage,
+    selectedQty,
+    selectedImageIndex,
+    selectedVariantId,
+    selectedAttributes,
+    warehouseStocks,
+    batchesList,
+    images,
+    variants,
+    reviewsList,
+    activeIngredients,
+    totalSold,
+    reinvestmentNeeded,
+    inventoryValue,
+    totalRevenue,
+    variantSummaries,
+    averageRating,
+  ];
 }

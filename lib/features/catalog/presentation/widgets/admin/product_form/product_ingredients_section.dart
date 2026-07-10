@@ -1,4 +1,4 @@
-// 
+//
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ingredient_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/create_ingredient_uc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -108,159 +108,182 @@ class ProductIngredientsSection extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
-            child: state.ingredientsEnabled ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 14),
-                if (state.ingredientRows.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Text(
-                  'Sin componentes. Agrega uno con el botón.',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: state.ingredientRows.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, idx) {
-                  final row = state.ingredientRows[idx];
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Column(
+            child:
+                state.ingredientsEnabled
+                    ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () async {
-                                  final result =
-                                      await showDialog<Map<String, dynamic>>(
-                                        context: context,
-                                        builder:
-                                            (_) =>
-                                                const IngredientSearchDialog(),
-                                      );
+                        const SizedBox(height: 14),
+                        if (state.ingredientRows.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Text(
+                              'Sin componentes. Agrega uno con el botón.',
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 13,
+                              ),
+                            ),
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: state.ingredientRows.length,
+                            separatorBuilder:
+                                (_, _) => const SizedBox(height: 10),
+                            itemBuilder: (context, idx) {
+                              final row = state.ingredientRows[idx];
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: () async {
+                                              final result = await showDialog<
+                                                Map<String, dynamic>
+                                              >(
+                                                context: context,
+                                                builder:
+                                                    (_) =>
+                                                        const IngredientSearchDialog(),
+                                              );
 
-                                  if (result != null) {
-                                    row.ingredientId = result['id'] as String;
-                                    row.nameCtrl.text =
-                                        result['name'] as String;
-                                  }
-                                },
-                                child: AbsorbPointer(
-                                  child: TextField(
-                                    controller: row.nameCtrl,
-                                    decoration: InputDecoration(
-                                      labelText:
-                                          'Componente / Ingrediente Activo *',
-                                      hintText: 'Toca para buscar o crear...',
-                                      isDense: true,
-                                      suffixIcon: const Icon(
-                                        Icons.search_rounded,
-                                        color: AppColors.primary,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                                              if (result != null) {
+                                                row.ingredientId =
+                                                    result['id'] as String;
+                                                row.nameCtrl.text =
+                                                    result['name'] as String;
+                                              }
+                                            },
+                                            child: AbsorbPointer(
+                                              child: TextField(
+                                                controller: row.nameCtrl,
+                                                decoration: InputDecoration(
+                                                  labelText:
+                                                      'Componente / Ingrediente Activo *',
+                                                  hintText:
+                                                      'Toca para buscar o crear...',
+                                                  isDense: true,
+                                                  suffixIcon: const Icon(
+                                                    Icons.search_rounded,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                ),
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed:
+                                              () => cubit.removeIngredientRow(
+                                                idx,
+                                              ),
+                                          icon: Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: Colors.red.shade400,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: row.concentrationCtrl,
+                                            keyboardType: TextInputType.number,
+                                            decoration: InputDecoration(
+                                              labelText: 'Concentración (Nro)',
+                                              hintText: 'Ej: 500',
+                                              isDense: true,
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: row.unitCtrl,
+                                            decoration: InputDecoration(
+                                              labelText: 'Unidad de medida',
+                                              hintText: 'Ej: mg',
+                                              isDense: true,
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
+                                  ],
                                 ),
+                              );
+                            },
+                          ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: cubit.addIngredientRow,
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Agregar componente'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: BorderSide(
+                                color: AppColors.primary.withValues(alpha: 0.4),
                               ),
-                            ),
-                            IconButton(
-                              onPressed:
-                                  () => cubit.removeIngredientRow(idx),
-                              icon: Icon(
-                                Icons.delete_outline_rounded,
-                                color: Colors.red.shade400,
-                                size: 20,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: row.concentrationCtrl,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  labelText: 'Concentración (Nro)',
-                                  hintText: 'Ej: 500',
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: row.unitCtrl,
-                                decoration: InputDecoration(
-                                  labelText: 'Unidad de medida',
-                                  hintText: 'Ej: mg',
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: cubit.addIngredientRow,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Agregar componente'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.4),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
-            ),
-              ],
-            ) : const SizedBox.shrink(),
+                    )
+                    : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -297,8 +320,13 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
     _debounce = Timer(const Duration(milliseconds: 400), () async {
       setState(() => _isLoading = true);
       try {
-        final resEither = await _getIngredientsUC.call(searchQuery: term.trim());
-        final res = resEither.fold((l) => <Map<String, dynamic>>[], (r) => r.map((e) => {'id': e.id, 'name': e.name}).toList());
+        final resEither = await _getIngredientsUC.call(
+          searchQuery: term.trim(),
+        );
+        final res = resEither.fold(
+          (l) => <Map<String, dynamic>>[],
+          (r) => r.map((e) => {'id': e.id, 'name': e.name}).toList(),
+        );
         if (mounted) {
           setState(() {
             _results = res;
@@ -319,7 +347,10 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
 
     try {
       final resEither = await _createIngredientUC.call(name);
-      final res = resEither.fold((l) => null, (r) => {'id': r.id, 'name': r.name});
+      final res = resEither.fold(
+        (l) => null,
+        (r) => {'id': r.id, 'name': r.name},
+      );
       if (mounted) Navigator.pop(context, res);
     } catch (e) {
       if (mounted) {

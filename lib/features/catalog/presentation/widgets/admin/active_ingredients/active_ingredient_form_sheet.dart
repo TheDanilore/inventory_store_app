@@ -21,8 +21,7 @@ class ActiveIngredientFormSheet extends StatefulWidget {
       _ActiveIngredientFormSheetState();
 }
 
-class _ActiveIngredientFormSheetState
-    extends State<ActiveIngredientFormSheet> {
+class _ActiveIngredientFormSheetState extends State<ActiveIngredientFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
 
@@ -136,20 +135,20 @@ class _ActiveIngredientFormSheetState
                   child:
                       isSaving
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              isEditing ? 'Guardar Cambios' : 'Crear Componente',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
                             ),
+                          )
+                          : Text(
+                            isEditing ? 'Guardar Cambios' : 'Crear Componente',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                 ),
               ),
             ],

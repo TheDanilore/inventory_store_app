@@ -55,9 +55,7 @@ class ProductBatchSection extends StatelessWidget {
                 Icon(
                   Icons.qr_code_2_rounded,
                   color:
-                      state.batchManagementEnabled
-                          ? Colors.teal
-                          : Colors.grey,
+                      state.batchManagementEnabled ? Colors.teal : Colors.grey,
                   size: 20,
                 ),
                 const SizedBox(width: 10),

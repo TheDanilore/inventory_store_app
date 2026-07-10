@@ -17,7 +17,9 @@ class GetAttributesUC {
 class GetProductIngredientsUC {
   final CatalogRepository repository;
   GetProductIngredientsUC(this.repository);
-  Future<Either<Failure, List<Map<String, dynamic>>>> call(String productId) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> call(
+    String productId,
+  ) async {
     return await repository.getProductIngredients(productId);
   }
 }
@@ -26,7 +28,9 @@ class GetProductIngredientsUC {
 class SearchIngredientsUC {
   final CatalogRepository repository;
   SearchIngredientsUC(this.repository);
-  Future<Either<Failure, List<ActiveIngredientEntity>>> call(String term) async {
+  Future<Either<Failure, List<ActiveIngredientEntity>>> call(
+    String term,
+  ) async {
     return await repository.searchIngredients(term);
   }
 }

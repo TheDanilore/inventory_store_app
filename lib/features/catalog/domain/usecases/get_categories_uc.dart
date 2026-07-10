@@ -10,7 +10,9 @@ class GetCategoriesUC {
 
   GetCategoriesUC(this.repository);
 
-  Future<Either<Failure, List<CategoryEntity>>> call({bool activeOnly = false}) async {
+  Future<Either<Failure, List<CategoryEntity>>> call({
+    bool activeOnly = false,
+  }) async {
     return await repository.getCategories(activeOnly: activeOnly);
   }
 }

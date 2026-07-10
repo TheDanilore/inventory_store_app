@@ -10,7 +10,8 @@ class GetProductsUC {
 
   GetProductsUC(this.repository);
 
-  Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>> call({
+  Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>>
+  call({
     String? searchQuery,
     String? categoryId,
     bool? isActive,

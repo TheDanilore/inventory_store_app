@@ -28,7 +28,8 @@ class CategoriesState extends Equatable {
     return CategoriesState(
       viewState: viewState ?? this.viewState,
       categories: categories ?? this.categories,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       isSaving: isSaving ?? this.isSaving,
       searchQuery: searchQuery ?? this.searchQuery,
     );
@@ -36,10 +37,10 @@ class CategoriesState extends Equatable {
 
   @override
   List<Object?> get props => [
-        viewState,
-        categories,
-        errorMessage,
-        isSaving,
-        searchQuery,
-      ];
+    viewState,
+    categories,
+    errorMessage,
+    isSaving,
+    searchQuery,
+  ];
 }

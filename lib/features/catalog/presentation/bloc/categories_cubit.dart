@@ -29,7 +29,10 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     return super.close();
   }
 
-  Future<void> loadCategories({bool forceRefresh = false, String? query}) async {
+  Future<void> loadCategories({
+    bool forceRefresh = false,
+    String? query,
+  }) async {
     if (query != null) {
       emit(state.copyWith(searchQuery: query, viewState: ViewState.loading));
     } else {
@@ -37,25 +40,34 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     }
 
     final result = await getCategoriesUC();
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(
-        viewState: ViewState.error,
-        errorMessage: failure.message,
-      )),
+      (failure) => emit(
+        state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: failure.message,
+        ),
+      ),
       (categories) {
         var filtered = categories;
         if (state.searchQuery.isNotEmpty) {
-          filtered = categories
-              .where((c) => c.name.toLowerCase().contains(state.searchQuery.toLowerCase()))
-              .toList();
+          filtered =
+              categories
+                  .where(
+                    (c) => c.name.toLowerCase().contains(
+                      state.searchQuery.toLowerCase(),
+                    ),
+                  )
+                  .toList();
         }
-        emit(state.copyWith(
-          viewState: filtered.isEmpty ? ViewState.empty : ViewState.success,
-          categories: filtered,
-          clearErrorMessage: true,
-        ));
-      }
+        emit(
+          state.copyWith(
+            viewState: filtered.isEmpty ? ViewState.empty : ViewState.success,
+            categories: filtered,
+            clearErrorMessage: true,
+          ),
+        );
+      },
     );
   }
 
@@ -75,28 +87,31 @@ class CategoriesCubit extends Cubit<CategoriesState> {
   Future<void> toggleStatus(CategoryEntity cat, bool isActive) async {
     emit(state.copyWith(isSaving: true));
     final result = await updateCategoryUC(
-      id: cat.id!, 
-      name: cat.name, 
-      description: cat.description, 
-      isActive: isActive
+      id: cat.id!,
+      name: cat.name,
+      description: cat.description,
+      isActive: isActive,
     );
     result.fold(
       (failure) {
         emit(state.copyWith(isSaving: false, errorMessage: failure.message));
       },
       (_) {
-        final updatedList = state.categories.map((c) {
-          if (c.id == cat.id) {
-            return c.copyWith(isActive: isActive);
-          }
-          return c;
-        }).toList();
-        emit(state.copyWith(
-          isSaving: false,
-          categories: updatedList,
-          clearErrorMessage: true,
-        ));
-      }
+        final updatedList =
+            state.categories.map((c) {
+              if (c.id == cat.id) {
+                return c.copyWith(isActive: isActive);
+              }
+              return c;
+            }).toList();
+        emit(
+          state.copyWith(
+            isSaving: false,
+            categories: updatedList,
+            clearErrorMessage: true,
+          ),
+        );
+      },
     );
   }
 
@@ -108,9 +123,19 @@ class CategoriesCubit extends Cubit<CategoriesState> {
   }) async {
     emit(state.copyWith(isSaving: true));
 
-    final result = existingCategory == null
-        ? await createCategoryUC(name: name, description: description, isActive: isActive)
-        : await updateCategoryUC(id: existingCategory.id!, name: name, description: description, isActive: isActive);
+    final result =
+        existingCategory == null
+            ? await createCategoryUC(
+              name: name,
+              description: description,
+              isActive: isActive,
+            )
+            : await updateCategoryUC(
+              id: existingCategory.id!,
+              name: name,
+              description: description,
+              isActive: isActive,
+            );
 
     return result.fold(
       (failure) {
@@ -121,7 +146,7 @@ class CategoriesCubit extends Cubit<CategoriesState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadCategories(forceRefresh: true);
         return true;
-      }
+      },
     );
   }
 }

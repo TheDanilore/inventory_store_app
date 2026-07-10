@@ -62,7 +62,6 @@ class ProductPricingSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<ProductFormCubit>();
 
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),

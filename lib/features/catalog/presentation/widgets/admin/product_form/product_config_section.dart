@@ -91,8 +91,7 @@ class ProductConfigSection extends StatelessWidget {
                 ),
               ),
               value: isService ? false : state.stockControl,
-              onChanged:
-                  isService ? null : (val) => cubit.setStockControl(val),
+              onChanged: isService ? null : (val) => cubit.setStockControl(val),
               activeThumbColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
             ),

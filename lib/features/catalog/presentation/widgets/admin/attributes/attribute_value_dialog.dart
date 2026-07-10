@@ -66,13 +66,13 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
           child:
               isSaving
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                   : const Text('Añadir'),
         ),
       ],

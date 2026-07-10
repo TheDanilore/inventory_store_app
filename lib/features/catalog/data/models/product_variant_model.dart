@@ -197,7 +197,10 @@ class ProductVariantModel {
       productId: entity.productId,
       sku: entity.sku,
       barcode: entity.barcode,
-      attributeValues: entity.attributeValues.map((v) => VariantAttributeValueModel.fromEntity(v)).toList(),
+      attributeValues:
+          entity.attributeValues
+              .map((v) => VariantAttributeValueModel.fromEntity(v))
+              .toList(),
       unitCost: entity.unitCost,
       salePrice: entity.salePrice,
       isActive: entity.isActive,
@@ -207,7 +210,10 @@ class ProductVariantModel {
       wholesaleMinQuantity: entity.wholesaleMinQuantity,
       createdBy: entity.createdBy,
       updatedBy: entity.updatedBy,
-      images: entity.images.map((img) => ProductImageModel.fromEntity(img)).toList(),
+      images:
+          entity.images
+              .map((img) => ProductImageModel.fromEntity(img))
+              .toList(),
     );
   }
 

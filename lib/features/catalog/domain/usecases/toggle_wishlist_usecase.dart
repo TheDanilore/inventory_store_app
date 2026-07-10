@@ -9,7 +9,11 @@ class ToggleWishlistUseCase {
 
   ToggleWishlistUseCase(this.repository);
 
-  Future<Either<Failure, bool>> call({required String productId, required String profileId, required bool currentStatus}) {
+  Future<Either<Failure, bool>> call({
+    required String productId,
+    required String profileId,
+    required bool currentStatus,
+  }) {
     return repository.toggleWishlist(productId, profileId, currentStatus);
   }
 }

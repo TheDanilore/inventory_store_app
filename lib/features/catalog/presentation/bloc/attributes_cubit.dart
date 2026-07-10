@@ -29,23 +29,28 @@ class AttributesCubit extends Cubit<AttributesState> {
     emit(state.copyWith(viewState: ViewState.loading));
     final result = await getAttributesUC();
     result.fold(
-      (failure) => emit(state.copyWith(
-        viewState: ViewState.error,
-        errorMessage: failure.message,
-      )),
-      (attributes) => emit(state.copyWith(
-        viewState: attributes.isEmpty ? ViewState.empty : ViewState.success,
-        attributes: attributes,
-        clearErrorMessage: true,
-      ))
+      (failure) => emit(
+        state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: failure.message,
+        ),
+      ),
+      (attributes) => emit(
+        state.copyWith(
+          viewState: attributes.isEmpty ? ViewState.empty : ViewState.success,
+          attributes: attributes,
+          clearErrorMessage: true,
+        ),
+      ),
     );
   }
 
   Future<bool> saveAttribute(String name, {String? id}) async {
     emit(state.copyWith(isSaving: true));
-    final result = id == null
-        ? await createAttributeUC(name)
-        : await updateAttributeUC(id, name);
+    final result =
+        id == null
+            ? await createAttributeUC(name)
+            : await updateAttributeUC(id, name);
 
     return result.fold(
       (failure) {
@@ -56,10 +61,10 @@ class AttributesCubit extends Cubit<AttributesState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadAttributes();
         return true;
-      }
+      },
     );
   }
-  
+
   Future<bool> deleteAttribute(String id) async {
     emit(state.copyWith(isSaving: true));
     final result = await deleteAttributeUC(id);
@@ -72,15 +77,20 @@ class AttributesCubit extends Cubit<AttributesState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadAttributes();
         return true;
-      }
+      },
     );
   }
-  
-  Future<bool> saveAttributeValue(String attributeId, String value, {String? valueId}) async {
+
+  Future<bool> saveAttributeValue(
+    String attributeId,
+    String value, {
+    String? valueId,
+  }) async {
     emit(state.copyWith(isSaving: true));
-    final result = valueId == null
-        ? await createAttributeValueUC(attributeId, value)
-        : await updateAttributeValueUC(valueId, value);
+    final result =
+        valueId == null
+            ? await createAttributeValueUC(attributeId, value)
+            : await updateAttributeValueUC(valueId, value);
 
     return result.fold(
       (failure) {
@@ -91,7 +101,7 @@ class AttributesCubit extends Cubit<AttributesState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadAttributes();
         return true;
-      }
+      },
     );
   }
 
@@ -107,7 +117,7 @@ class AttributesCubit extends Cubit<AttributesState> {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
         await loadAttributes();
         return true;
-      }
+      },
     );
   }
 }

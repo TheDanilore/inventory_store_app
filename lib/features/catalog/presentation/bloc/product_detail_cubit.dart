@@ -15,7 +15,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   final ProductEntity product;
   final bool isAdmin;
   final String? initialVariantId;
-  
+
   final GetProductExtraDataUseCase _getExtraData;
   final GetAdminFinancialDataUseCase _getAdminData;
   final CheckWishlistStateUseCase _checkWishlist;
@@ -43,7 +43,12 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
        _checkWishlist = checkWishlist,
        _toggleWishlist = toggleWishlist,
        _getProfileId = getProfileId,
-       super(ProductDetailState(product: product, selectedVariantId: initialVariantId)) {
+       super(
+         ProductDetailState(
+           product: product,
+           selectedVariantId: initialVariantId,
+         ),
+       ) {
     _initData();
   }
 
@@ -70,8 +75,12 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
         return;
       }
-      final isWishlisted = await _unwrap(_checkWishlist.call(productId: product.id, profileId: pid));
-      emit(state.copyWith(isWishlisted: isWishlisted, isWishlistLoading: false));
+      final isWishlisted = await _unwrap(
+        _checkWishlist.call(productId: product.id, profileId: pid),
+      );
+      emit(
+        state.copyWith(isWishlisted: isWishlisted, isWishlistLoading: false),
+      );
     } catch (_) {
       emit(state.copyWith(isWishlisted: false, isWishlistLoading: false));
     }
@@ -80,7 +89,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   Future<void> _fetchExtraData() async {
     try {
       final extraData = await _unwrap(_getExtraData.call(product.id));
-      
+
       final images = extraData.images;
       final variants = extraData.variants;
 
@@ -88,7 +97,10 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       for (final r in extraData.reviews) {
         totalRating += (r['rating'] as num).toDouble();
       }
-      final averageRating = extraData.reviews.isEmpty ? 0.0 : totalRating / extraData.reviews.length;
+      final averageRating =
+          extraData.reviews.isEmpty
+              ? 0.0
+              : totalRating / extraData.reviews.length;
 
       int totalSold = 0;
       double reinvestmentNeeded = 0.0;
@@ -123,7 +135,8 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         }
 
         for (final v in variants) {
-          final cost = ((v.unitCost ?? 0) > 0) ? v.unitCost! : (product.unitCost);
+          final cost =
+              ((v.unitCost ?? 0) > 0) ? v.unitCost! : (product.unitCost);
           int variantStock = 0;
           for (final row in extraData.stocks) {
             if (row['variant_id'] == v.id) {
@@ -149,23 +162,27 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
           }
         }
 
-        variantSummaries.sort((a, b) => b.soldQuantity.compareTo(a.soldQuantity));
+        variantSummaries.sort(
+          (a, b) => b.soldQuantity.compareTo(a.soldQuantity),
+        );
       }
 
-      emit(state.copyWith(
-        warehouseStocks: extraData.stocks,
-        batchesList: extraData.batches,
-        images: images,
-        variants: variants,
-        reviewsList: extraData.reviews,
-        activeIngredients: extraData.ingredients,
-        averageRating: averageRating,
-        totalSold: totalSold,
-        reinvestmentNeeded: reinvestmentNeeded,
-        totalRevenue: totalRevenue,
-        inventoryValue: inventoryValue,
-        variantSummaries: variantSummaries,
-      ));
+      emit(
+        state.copyWith(
+          warehouseStocks: extraData.stocks,
+          batchesList: extraData.batches,
+          images: images,
+          variants: variants,
+          reviewsList: extraData.reviews,
+          activeIngredients: extraData.ingredients,
+          averageRating: averageRating,
+          totalSold: totalSold,
+          reinvestmentNeeded: reinvestmentNeeded,
+          totalRevenue: totalRevenue,
+          inventoryValue: inventoryValue,
+          variantSummaries: variantSummaries,
+        ),
+      );
     } catch (_) {
       // Ignorar error y dejar viewState success, o manejar error
     }
@@ -174,11 +191,17 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   Future<void> toggleWishlist() async {
     final pid = _profileId;
     if (pid == null) return;
-    
+
     final currentStatus = state.isWishlisted;
     emit(state.copyWith(isWishlistLoading: true));
     try {
-      final success = await _unwrap(_toggleWishlist.call(productId: product.id, profileId: pid, currentStatus: currentStatus));
+      final success = await _unwrap(
+        _toggleWishlist.call(
+          productId: product.id,
+          profileId: pid,
+          currentStatus: currentStatus,
+        ),
+      );
       if (success) {
         emit(state.copyWith(isWishlisted: !currentStatus));
       }
@@ -218,19 +241,24 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   }
 
   void toggleAttributeSelection(String attrName, String attrValue) {
-    final Map<String, String> currentSelection = Map.from(state.selectedAttributes);
+    final Map<String, String> currentSelection = Map.from(
+      state.selectedAttributes,
+    );
     if (currentSelection[attrName] == attrValue) {
       currentSelection.remove(attrName);
     } else {
       currentSelection[attrName] = attrValue;
     }
-    
+
     String? newMatchedVariantId;
     for (final v in state.variants) {
       bool isMatch = true;
       for (final selectedAttr in currentSelection.entries) {
         final hasAttr = v.attributeValues.any(
-            (av) => av.attributeName == selectedAttr.key && av.value == selectedAttr.value);
+          (av) =>
+              av.attributeName == selectedAttr.key &&
+              av.value == selectedAttr.value,
+        );
         if (!hasAttr) {
           isMatch = false;
           break;
@@ -241,12 +269,14 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         break; // Toma la primera variante que coincida con todos los atributos seleccionados
       }
     }
-    
-    emit(state.copyWith(
-      selectedAttributes: currentSelection,
-      selectedVariantId: newMatchedVariantId ?? state.selectedVariantId
-    ));
-    
+
+    emit(
+      state.copyWith(
+        selectedAttributes: currentSelection,
+        selectedVariantId: newMatchedVariantId ?? state.selectedVariantId,
+      ),
+    );
+
     if (newMatchedVariantId != null) {
       selectVariantImage(newMatchedVariantId);
     }
