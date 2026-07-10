@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+
 class FinancialAccountModel {
   final String id;
   final String name;
@@ -43,4 +45,17 @@ class FinancialAccountModel {
       'created_at': createdAt.toIso8601String(),
     };
   }
+
+  /// Convierte el modelo de infraestructura a la entidad de dominio pura.
+  FinancialAccountEntity toEntity() {
+    return FinancialAccountEntity(
+      id: id,
+      name: name,
+      type: type,
+      balance: balance,
+      isActive: isActive,
+      createdAt: createdAt,
+    );
+  }
 }
+

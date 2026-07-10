@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/account_form_sheet.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_state.dart';
+import 'package:inventory_store_app/features/financial/presentation/widgets/account_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class AccountsTab extends StatefulWidget {
@@ -42,10 +43,10 @@ class _AccountsTabState extends State<AccountsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<FinancialAccountsProvider>(
-      builder: (context, provider, _) {
-        final accounts = provider.accounts;
-        final isLoading = provider.isLoading;
+    return BlocBuilder<FinancialAccountsCubit, FinancialAccountsState>(
+      builder: (context, state) {
+        final accounts = state is FinancialAccountsLoaded ? state.accounts : <FinancialAccountEntity>[];
+        final isLoading = state is FinancialAccountsLoading;
 
         final activeAccounts = accounts.where((a) => a.isActive).toList();
         final inactiveAccounts = accounts.where((a) => !a.isActive).toList();
@@ -65,7 +66,7 @@ class _AccountsTabState extends State<AccountsTab> {
                             message: 'No hay cuentas financieras registradas.',
                           )
                           : RefreshIndicator(
-                            onRefresh: () async => provider.fetchAccounts(),
+                            onRefresh: () async => context.read<FinancialAccountsCubit>().fetchAccounts(),
                             child: AnimationLimiter(
                               child: ListView(
                                 controller: _scrollController,
@@ -220,7 +221,7 @@ class _AccountsTabState extends State<AccountsTab> {
     );
   }
 
-  Widget _buildGlobalBalanceCard(List<FinancialAccountModel> activeAccounts) {
+  Widget _buildGlobalBalanceCard(List<FinancialAccountEntity> activeAccounts) {
     final totalBalance = activeAccounts.fold<double>(
       0.0,
       (sum, a) => sum + a.balance,
@@ -290,7 +291,7 @@ class _AccountsTabState extends State<AccountsTab> {
 }
 
 class _AccountCard extends StatelessWidget {
-  final FinancialAccountModel account;
+  final FinancialAccountEntity account;
   final VoidCallback onEdit;
 
   const _AccountCard({required this.account, required this.onEdit});

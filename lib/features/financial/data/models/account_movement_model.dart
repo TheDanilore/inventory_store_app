@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
+
 class AccountMovementModel {
   final String id;
   final String?
@@ -73,4 +75,23 @@ class AccountMovementModel {
       'profiles': profile,
     };
   }
+
+  /// Convierte el modelo de infraestructura a la entidad de dominio pura.
+  AccountMovementEntity toEntity() {
+    return AccountMovementEntity(
+      id: id,
+      accountId: accountId,
+      movementType: movementType,
+      amount: amount,
+      description: description,
+      referenceType: referenceType,
+      referenceId: referenceId,
+      createdAt: createdAt,
+      shiftId: shiftId,
+      accountName: accountName,
+      accountType: accountType,
+      createdByName: createdByName,
+    );
+  }
 }
+

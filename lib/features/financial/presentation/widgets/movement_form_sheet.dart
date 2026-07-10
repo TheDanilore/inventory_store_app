@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/account_movements_provider.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class MovementFormSheet extends StatefulWidget {
   const MovementFormSheet({super.key});
@@ -25,6 +26,9 @@ class MovementFormSheet extends StatefulWidget {
 }
 
 class _MovementFormSheetState extends State<MovementFormSheet> {
+  // TODO(tech-debt): Extraer lógica de transferencia a un UseCase en domain/usecases/.
+  // Por ahora este Supabase directo es una excepción pragmática justificada por la
+  // complejidad de la transacción multi-tabla (balance check + 2 inserts atómicos).
   final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
   final _amountCtrl = TextEditingController();
@@ -34,15 +38,17 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
   String? _sourceAccountId;
   String? _destAccountId;
 
-  List<FinancialAccountModel> _accounts = [];
+  List<FinancialAccountEntity> _accounts = [];
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    // Use accounts from the provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final accounts = context.read<FinancialAccountsProvider>().accounts.where((a) => a.isActive).toList();
+      final accState = context.read<FinancialAccountsCubit>().state;
+      final accounts = accState is FinancialAccountsLoaded
+          ? accState.accounts.where((a) => a.isActive).toList()
+          : <FinancialAccountEntity>[];
       setState(() {
         _accounts = accounts;
         if (_accounts.isNotEmpty) {
@@ -144,10 +150,10 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
       }
 
       if (!mounted) return;
-      
-      // Update both providers
-      context.read<AccountMovementsProvider>().fetchMovements();
-      context.read<FinancialAccountsProvider>().fetchAccounts();
+
+      // Refresh both Cubits after saving
+      context.read<AccountMovementsCubit>().fetchMovements();
+      context.read<FinancialAccountsCubit>().fetchAccounts();
 
       AppSnackbar.show(context, message: 'Movimiento registrado correctamente', type: SnackbarType.success);
       Navigator.pop(context, true);
@@ -358,7 +364,7 @@ class _TypeToggle extends StatelessWidget {
 
 class _AccountSelector extends StatelessWidget {
   final String? value;
-  final List<FinancialAccountModel> accounts;
+  final List<FinancialAccountEntity> accounts;
   final ValueChanged<String?> onChanged;
 
   const _AccountSelector({

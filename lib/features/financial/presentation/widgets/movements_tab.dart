@@ -4,16 +4,19 @@ import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/financial/data/models/account_movement_model.dart';
-import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/account_movements_provider.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_state.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_state.dart';
+import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/movement_form_sheet.dart';
+import 'package:inventory_store_app/features/financial/presentation/widgets/movement_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class MovementsTab extends StatefulWidget {
@@ -46,7 +49,7 @@ class _MovementsTabState extends State<MovementsTab> {
     super.dispose();
   }
 
-  void _showFiltersSheet(BuildContext context, AccountMovementsProvider movProvider, List<FinancialAccountModel> accounts) {
+  void _showFiltersSheet(BuildContext context, AccountMovementsCubit movCubit, MovementFilters filters, List<FinancialAccountEntity> accounts) {
     // Solo vibrar si no es web para evitar MissingPluginException
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
@@ -99,7 +102,7 @@ class _MovementsTabState extends State<MovementsTab> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: movProvider.filterType,
+                        value: filters.filterType,
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
                         style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
@@ -110,7 +113,7 @@ class _MovementsTabState extends State<MovementsTab> {
                         ],
                         onChanged: (v) {
                           if (v != null) {
-                            movProvider.setFilterType(v);
+                            movCubit.setFilterType(v);
                             Navigator.pop(ctx);
                           }
                         },
@@ -129,7 +132,7 @@ class _MovementsTabState extends State<MovementsTab> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: movProvider.filterAccountId,
+                        value: filters.filterAccountId,
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.textSecondary),
                         style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
@@ -139,7 +142,7 @@ class _MovementsTabState extends State<MovementsTab> {
                         ],
                         onChanged: (v) {
                           if (v != null) {
-                            movProvider.setFilterAccount(v);
+                            movCubit.setFilterAccount(v);
                             Navigator.pop(ctx);
                           }
                         },
@@ -151,18 +154,18 @@ class _MovementsTabState extends State<MovementsTab> {
                   const SizedBox(height: 8),
                   DateFilterCalendar(
                     isExpanded: true,
-                    dateRange: movProvider.dateFrom != null && movProvider.dateTo != null
-                        ? DateTimeRange(start: movProvider.dateFrom!, end: movProvider.dateTo!)
+                    dateRange: filters.dateFrom != null && filters.dateTo != null
+                        ? DateTimeRange(start: filters.dateFrom!, end: filters.dateTo!)
                         : null,
                     onDateRangeSelected: (picked) {
-                      movProvider.setDateRange(
+                      movCubit.setDateRange(
                         picked.start,
                         DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59),
                       );
                       Navigator.pop(ctx);
                     },
                     onClear: () {
-                      movProvider.setDateRange(null, null);
+                      movCubit.setDateRange(null, null);
                       Navigator.pop(ctx);
                     },
                   ),
@@ -178,19 +181,28 @@ class _MovementsTabState extends State<MovementsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<AccountMovementsProvider, FinancialAccountsProvider>(
-      builder: (context, movProvider, accProvider, _) {
-        final movements = movProvider.movements;
-        final isLoading = movProvider.isLoading;
-        final accounts = accProvider.accounts;
+    return BlocBuilder<AccountMovementsCubit, AccountMovementsState>(
+      builder: (context, movState) {
+        final movCubit = context.read<AccountMovementsCubit>();
+        final movements = movState is AccountMovementsLoaded ? movState.movements : <AccountMovementEntity>[];
+        final isLoading = movState is AccountMovementsLoading;
+        final totalIncome = movState is AccountMovementsLoaded ? movState.totalIncome : 0.0;
+        final totalExpense = movState is AccountMovementsLoaded ? movState.totalExpense : 0.0;
+        final filters = movState is AccountMovementsLoaded ? movState.filters : const MovementFilters();
+
+        final accounts = context.select<FinancialAccountsCubit, List<FinancialAccountEntity>>(
+          (cubit) => cubit.state is FinancialAccountsLoaded
+              ? (cubit.state as FinancialAccountsLoaded).accounts
+              : <FinancialAccountEntity>[],
+        );
 
         return Stack(
           children: [
             Column(
               children: [
                 _DashboardSummary(
-                  totalIncome: movProvider.totalIncome,
-                  totalExpense: movProvider.totalExpense,
+                  totalIncome: totalIncome,
+                  totalExpense: totalExpense,
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -212,7 +224,7 @@ class _MovementsTabState extends State<MovementsTab> {
                             ],
                           ),
                           child: TextField(
-                            onChanged: (val) => movProvider.setSearchText(val),
+                            onChanged: (val) => movCubit.setSearchText(val),
                             decoration: InputDecoration(
                               hintText: 'Buscar movimientos...',
                               hintStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary.withValues(alpha: 0.8)),
@@ -226,7 +238,7 @@ class _MovementsTabState extends State<MovementsTab> {
                       const SizedBox(width: 8),
                       // Filter Button
                       InkWell(
-                        onTap: () => _showFiltersSheet(context, movProvider, accounts),
+                        onTap: () => _showFiltersSheet(context, movCubit, filters, accounts),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           height: 48,
@@ -247,7 +259,7 @@ class _MovementsTabState extends State<MovementsTab> {
                             alignment: Alignment.center,
                             children: [
                               const Icon(Icons.tune_rounded, size: 22, color: AppColors.textPrimary),
-                              if (movProvider.filterType != 'Todos' || movProvider.filterAccountId != 'Todas' || movProvider.dateFrom != null)
+                              if (filters.filterType != 'Todos' || filters.filterAccountId != 'Todas' || filters.dateFrom != null)
                                 Positioned(
                                   top: 12,
                                   right: 12,
@@ -274,7 +286,7 @@ class _MovementsTabState extends State<MovementsTab> {
                               children: [
                                 Expanded(
                                   child: RefreshIndicator(
-                                    onRefresh: () async => movProvider.fetchMovements(),
+                                    onRefresh: () async => movCubit.fetchMovements(),
                                     child: AnimationLimiter(
                                       child: ListView.separated(
                                         controller: _scrollController,
@@ -299,7 +311,7 @@ class _MovementsTabState extends State<MovementsTab> {
                             ),
                 ),
                 // --- PAGINACIÓN ANCLADA ---
-                if (movProvider.totalPages > 1 && !isLoading)
+                if (movState is AccountMovementsLoaded && movState.totalPages > 1 && !isLoading)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -316,9 +328,9 @@ class _MovementsTabState extends State<MovementsTab> {
                     child: SafeArea(
                       top: false,
                       child: AdminPageBlocks(
-                        currentPage: movProvider.currentPage,
-                        totalPages: movProvider.totalPages,
-                        onPageChanged: (page) => movProvider.setPage(page),
+                        currentPage: movState.currentPage,
+                        totalPages: movState.totalPages,
+                        onPageChanged: (page) => movCubit.setPage(page),
                       ),
                     ),
                   ),
@@ -466,7 +478,7 @@ class _DashItem extends StatelessWidget {
 }
 
 class _MovementCard extends StatelessWidget {
-  final AccountMovementModel movement;
+  final AccountMovementEntity movement;
 
   const _MovementCard({required this.movement});
 
@@ -542,7 +554,7 @@ class _MovementCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  movement.createdByName.split(' ')[0],
+                  movement.createdByName?.split(' ').first ?? 'Sistema',
                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                 ),
               ],

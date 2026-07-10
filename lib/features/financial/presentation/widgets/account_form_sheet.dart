@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AccountFormSheet extends StatefulWidget {
-  final FinancialAccountModel? account;
+  final FinancialAccountEntity? account;
   const AccountFormSheet({super.key, this.account});
 
-  static Future<bool?> show(BuildContext context, {FinancialAccountModel? account}) {
+  static Future<bool?> show(BuildContext context, {FinancialAccountEntity? account}) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -60,7 +60,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     try {
       final balance = double.tryParse(_balanceCtrl.text.replaceAll(',', '.')) ?? 0.0;
       
-      await context.read<FinancialAccountsProvider>().saveAccount(
+      await context.read<FinancialAccountsCubit>().saveAccount(
         name: _nameCtrl.text.trim(),
         type: _type,
         isActive: _isActive,

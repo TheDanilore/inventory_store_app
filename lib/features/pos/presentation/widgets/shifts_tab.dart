@@ -8,8 +8,8 @@ import 'package:inventory_store_app/features/pos/data/models/cash_shift_model.da
 import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/close_shift_sheet.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/open_shift_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';

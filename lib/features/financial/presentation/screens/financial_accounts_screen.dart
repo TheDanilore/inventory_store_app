@@ -1,18 +1,17 @@
-﻿import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/accounts_tab.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/movements_tab.dart';
-import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/shifts_tab.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/financial/presentation/widgets/accounts_tab.dart';
+import 'package:inventory_store_app/features/financial/presentation/widgets/movements_tab.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/shifts_tab.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
-import 'package:inventory_store_app/features/financial/presentation/providers/account_movements_provider.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
+import 'package:provider/provider.dart';
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// FINANCIAL ACCOUNTS SCREEN â€” Cuentas Â· Movimientos Â· Turnos de Caja
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// FINANCIAL ACCOUNTS SCREEN - Cuentas Movimientos Turnos de Caja
 
 class FinancialAccountsScreen extends StatefulWidget {
   const FinancialAccountsScreen({super.key});
@@ -37,9 +36,9 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     // Fetch data initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<FinancialAccountsProvider>().fetchAccounts();
-        context.read<AccountMovementsProvider>().fetchMovements();
-        
+        context.read<FinancialAccountsCubit>().fetchAccounts();
+        context.read<AccountMovementsCubit>().fetchMovements();
+
         final profileId = context.read<AuthCubit>().state.currentUser?.id;
         context.read<CashShiftsProvider>().setProfileFilter(profileId);
       }
@@ -213,4 +212,3 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     );
   }
 }
-
