@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
+
 class CustomerCreditMovementModel {
   final String id;
   final String customerCreditId;
@@ -115,6 +117,25 @@ class CustomerCreditMovementModel {
       orderPaymentMethod: orderPaymentMethod ?? this.orderPaymentMethod,
       orderTotalAmount: orderTotalAmount ?? this.orderTotalAmount,
       orderNumber: orderNumber ?? this.orderNumber,
+    );
+  }
+
+  CreditMovementEntity toEntity() {
+    return CreditMovementEntity(
+      id: id,
+      customerCreditId: customerCreditId,
+      orderId: orderId,
+      movementType: movementType,
+      amount: amount,
+      paymentMethod: paymentMethod,
+      notes: notes,
+      createdAt: createdAt,
+      createdBy: createdBy,
+      createdByName: createdByName,
+      customerName: customerName,
+      orderPaymentMethod: orderPaymentMethod,
+      orderTotalAmount: orderTotalAmount,
+      orderNumber: orderNumber,
     );
   }
 }

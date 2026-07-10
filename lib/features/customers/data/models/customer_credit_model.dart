@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+
 class CustomerCreditModel {
   final String id;
   final String profileId;
@@ -76,6 +78,19 @@ class CustomerCreditModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       createdBy: createdBy ?? this.createdBy,
+    );
+  }
+
+  CustomerCreditEntity toEntity() {
+    return CustomerCreditEntity(
+      id: id,
+      profileId: profileId,
+      creditLimit: creditLimit,
+      currentDebt: currentDebt,
+      isActive: isActive,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      createdBy: createdBy,
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+
 class CreditAccountModel {
   final String creditId;
   final String profileId;
@@ -53,6 +55,19 @@ class CreditAccountModel {
       creditLimit: (json['credit_limit'] as num?)?.toDouble() ?? 0,
       currentDebt: (json['current_debt'] as num?)?.toDouble() ?? 0,
       isActive: json['is_active'] ?? false,
+    );
+  }
+
+  CustomerCreditEntity toEntity() {
+    return CustomerCreditEntity(
+      id: creditId,
+      profileId: profileId,
+      creditLimit: creditLimit,
+      currentDebt: currentDebt,
+      isActive: isActive,
+      customerName: partnerName,
+      customerDocument: partnerDocument,
+      customerPhone: partnerPhone,
     );
   }
 }

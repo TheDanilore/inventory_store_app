@@ -1,4 +1,6 @@
-class CustomerLocation {
+import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
+
+class CustomerLocationModel {
   final String id;
   final String profileId;
   final String name;
@@ -11,7 +13,7 @@ class CustomerLocation {
   final bool isDefault;
   final DateTime createdAt;
 
-  const CustomerLocation({
+  const CustomerLocationModel({
     required this.id,
     required this.profileId,
     required this.name,
@@ -25,8 +27,8 @@ class CustomerLocation {
     required this.createdAt,
   });
 
-  factory CustomerLocation.fromMap(Map<String, dynamic> map) {
-    return CustomerLocation(
+  factory CustomerLocationModel.fromMap(Map<String, dynamic> map) {
+    return CustomerLocationModel(
       id: map['id'] as String,
       profileId: map['profile_id'] as String,
       name: map['name'] as String? ?? '',
@@ -53,7 +55,7 @@ class CustomerLocation {
     'is_default': isDefault,
   };
 
-  CustomerLocation copyWith({
+  CustomerLocationModel copyWith({
     String? id,
     String? profileId,
     String? name,
@@ -105,4 +107,20 @@ class CustomerLocation {
     'local',
     'otro',
   ];
+
+  CustomerLocationEntity toEntity() {
+    return CustomerLocationEntity(
+      id: id,
+      profileId: profileId,
+      name: name,
+      locationType: locationType,
+      latitude: latitude,
+      longitude: longitude,
+      addressLine: addressLine,
+      reference: reference,
+      notes: notes,
+      isDefault: isDefault,
+      createdAt: createdAt,
+    );
+  }
 }
