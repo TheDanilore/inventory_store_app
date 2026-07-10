@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_form_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
-import 'package:inventory_store_app/features/catalog/presentation/utils/pdf/catalog_pdf_generator.dart';
+import 'package:inventory_store_app/features/catalog/data/utils/pdf/catalog_pdf_generator.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'admin_catalog_state.dart';
@@ -314,4 +314,5 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     return super.close();
   }
 }
+
 

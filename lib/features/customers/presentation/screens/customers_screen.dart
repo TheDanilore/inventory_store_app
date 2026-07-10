@@ -14,7 +14,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/customers/presentation/utils/pdf/customer_pdf_generator.dart';
+import 'package:inventory_store_app/features/customers/data/utils/pdf/customer_pdf_generator.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
@@ -347,4 +347,5 @@ class _CustomersSkeleton extends StatelessWidget {
     );
   }
 }
+
 

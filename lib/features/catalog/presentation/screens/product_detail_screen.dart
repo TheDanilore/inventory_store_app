@@ -13,7 +13,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/utils/pdf/product_pdf_generator.dart';
+import 'package:inventory_store_app/features/catalog/data/utils/pdf/product_pdf_generator.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
@@ -1119,4 +1119,5 @@ class _ProductDetailScreenContentState
     );
   }
 }
+
 

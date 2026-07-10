@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/offline_games_suggestion.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 
 class AppEmptyState extends StatelessWidget {
   final IconData icon;
@@ -67,4 +67,6 @@ class AppEmptyState extends StatelessWidget {
     );
   }
 }
+
+
 
