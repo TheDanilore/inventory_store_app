@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_form_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
-import 'package:inventory_store_app/core/utils/pdf/catalog_pdf_generator.dart';
+import 'package:inventory_store_app/features/catalog/presentation/utils/pdf/catalog_pdf_generator.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'admin_catalog_state.dart';
@@ -33,7 +33,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     await refreshProducts();
   }
 
-  // ─── Categories ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _fetchCategories() async {
     final result = await getCategoriesUC();
@@ -43,7 +43,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     );
   }
 
-  // ─── Filters ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void setSearchTerm(String term) {
     if (state.searchTerm == term) return;
@@ -94,7 +94,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
-  // ─── Products ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> refreshProducts() async {
     emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
@@ -118,13 +118,13 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
             errStr.contains('clientexception') ||
             errStr.contains('failed host lookup') ||
             errStr.contains('offline') ||
-            errStr.contains('sin conexión');
+            errStr.contains('sin conexiÃ³n');
 
         emit(
           state.copyWith(
             catalogState: ViewState.error,
             errorMessage:
-                isNetworkError ? 'Sin conexión a internet.' : failure.message,
+                isNetworkError ? 'Sin conexiÃ³n a internet.' : failure.message,
           ),
         );
       },
@@ -142,7 +142,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     );
   }
 
-  // ─── Actions ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<bool> toggleProductActive(ProductEntity product) async {
     if (state.isLoadingAction) return false;
@@ -270,7 +270,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
                         CircularProgressIndicator(),
                         SizedBox(height: 20),
                         Text(
-                          'Generando Catálogo PDF...',
+                          'Generando CatÃ¡logo PDF...',
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -314,3 +314,4 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     return super.close();
   }
 }
+

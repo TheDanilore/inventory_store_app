@@ -5,7 +5,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
 
@@ -131,3 +131,4 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen> {
     );
   }
 }
+

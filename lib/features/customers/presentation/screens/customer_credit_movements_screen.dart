@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_movements_cubit.dart';
 
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import '../widgets/customer_credit_movements/movements_summary_header.dart';
 import '../widgets/customer_credit_movements/movement_card.dart';
 
@@ -142,3 +142,4 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
     );
   }
 }
+

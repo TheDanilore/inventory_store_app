@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/orders/data/models/order_model.dart
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/pos/data/repositories/pos_checkout_service.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
-import 'package:inventory_store_app/core/utils/pos_calculator_utils.dart';
+import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -39,7 +39,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
   final _puntosCtrl = TextEditingController();
   final _descuentoCtrl = TextEditingController();
 
-  // Búsqueda de clientes
+  // BÃºsqueda de clientes
   List<Map<String, dynamic>> _clientMatches = [];
   bool _searchingClients = false;
   int _clientSearchVersion = 0;
@@ -47,13 +47,13 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
   bool _isDiscountPercentage = false;
 
-  // Almacén, Cuentas y Caja
+  // AlmacÃ©n, Cuentas y Caja
   List<WarehouseModel> _warehouseList = [];
   List<Map<String, dynamic>> _accountsList = [];
   String? _selectedAccountId;
   Map<String, dynamic>? _activeShift;
 
-  // Crédito del cliente seleccionado
+  // CrÃ©dito del cliente seleccionado
   Map<String, dynamic>? _creditInfo;
 
   // Venta
@@ -98,7 +98,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
             );
             _selectedAccountId = firstAcc['id'] as String;
 
-            if (pos.paymentMethod != 'CRÉDITO') {
+            if (pos.paymentMethod != 'CRÃ‰DITO') {
               final accountName = (firstAcc['name'] as String? ?? '');
               pos.setPaymentMethod(accountName);
             }
@@ -219,7 +219,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       );
       if (mounted) setState(() => _creditInfo = creditResp);
     } catch (e) {
-      debugPrint('Error cargando crédito: $e');
+      debugPrint('Error cargando crÃ©dito: $e');
     }
   }
 
@@ -227,7 +227,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     if (pos.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacén.',
+        message: 'Selecciona un almacÃ©n.',
         type: SnackbarType.error,
       );
       return;
@@ -235,13 +235,13 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     if (pos.itemCount == 0) {
       AppSnackbar.show(
         context,
-        message: 'La caja está vacía.',
+        message: 'La caja estÃ¡ vacÃ­a.',
         type: SnackbarType.error,
       );
       return;
     }
 
-    final isCredito = pos.paymentMethod == 'CRÉDITO';
+    final isCredito = pos.paymentMethod == 'CRÃ‰DITO';
 
     if (!isDraft && !isCredito) {
       if (_selectedAccountId == null) {
@@ -281,7 +281,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       if (pos.selectedClientId == null) {
         AppSnackbar.show(
           context,
-          message: 'Debes seleccionar un cliente para ventas a crédito.',
+          message: 'Debes seleccionar un cliente para ventas a crÃ©dito.',
           type: SnackbarType.error,
         );
         return;
@@ -289,7 +289,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       if (!PosCalculatorUtils.isCreditActivo(_creditInfo)) {
         AppSnackbar.show(
           context,
-          message: 'El cliente no tiene línea de crédito activa.',
+          message: 'El cliente no tiene lÃ­nea de crÃ©dito activa.',
           type: SnackbarType.error,
         );
         return;
@@ -300,7 +300,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         AppSnackbar.show(
           context,
           message:
-              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
+              'CrÃ©dito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
           type: SnackbarType.error,
         );
         return;
@@ -433,7 +433,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     if (pos.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacén primero',
+        message: 'Selecciona un almacÃ©n primero',
         type: SnackbarType.warning,
       );
       return;
@@ -565,9 +565,9 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
                                       context: context,
                                       builder:
                                           (ctx) => AlertDialog(
-                                            title: const Text('¿Vaciar caja?'),
+                                            title: const Text('Â¿Vaciar caja?'),
                                             content: const Text(
-                                              'Se eliminarán todos los productos de la caja actual.',
+                                              'Se eliminarÃ¡n todos los productos de la caja actual.',
                                             ),
                                             actions: [
                                               TextButton(
@@ -660,7 +660,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         const _SectionTitle('Cliente'),
         Consumer<PosProvider>(
           builder: (context, pos, _) {
-            final isCredito = pos.paymentMethod == 'CRÉDITO';
+            final isCredito = pos.paymentMethod == 'CRÃ‰DITO';
             return AdminSaleClientSection(
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
@@ -677,7 +677,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         ),
         Consumer<PosProvider>(
           builder: (context, pos, _) {
-            final isCredito = pos.paymentMethod == 'CRÉDITO';
+            final isCredito = pos.paymentMethod == 'CRÃ‰DITO';
             return AdminSalePointsSection(
               show:
                   isLoyaltyEnabled &&
@@ -705,10 +705,10 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
           },
         ),
         const SizedBox(height: 32),
-        const _SectionTitle('Configuración de venta'),
+        const _SectionTitle('ConfiguraciÃ³n de venta'),
         Consumer<PosProvider>(
           builder: (context, pos, _) {
-            final isCredito = pos.paymentMethod == 'CRÉDITO';
+            final isCredito = pos.paymentMethod == 'CRÃ‰DITO';
             return PaymentWarehouseAccountCard(
               paymentMethod: pos.paymentMethod,
               warehouseList: _warehouseList,
@@ -719,7 +719,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               isCredito: isCredito,
               onCreditoToggle: (isCredito) {
                 if (isCredito) {
-                  pos.setPaymentMethod('CRÉDITO');
+                  pos.setPaymentMethod('CRÃ‰DITO');
                   pos.setPuntosAUsar(0);
                   _puntosCtrl.text = '0';
                 } else {
@@ -763,7 +763,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
   ) {
     return Consumer<PosProvider>(
       builder: (context, pos, _) {
-        final isCredito = pos.paymentMethod == 'CRÉDITO';
+        final isCredito = pos.paymentMethod == 'CRÃ‰DITO';
         final puntosSeguros = PosCalculatorUtils.clampPointsValue(
           pos.puntosAUsar,
           pos,
@@ -1057,28 +1057,28 @@ class _CreditWarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!clienteSeleccionado) {
       return _buildAlert(
-        'Selecciona un cliente para ver su crédito.',
+        'Selecciona un cliente para ver su crÃ©dito.',
         Icons.info_outline,
         Colors.blue,
       );
     }
     if (!creditActivo) {
       return _buildAlert(
-        'El cliente no tiene crédito activo.',
+        'El cliente no tiene crÃ©dito activo.',
         Icons.warning_amber_rounded,
         AppColors.danger,
       );
     }
     if (totalFinal > creditDisponible) {
       return _buildAlert(
-        'Crédito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLímite: S/ ${(creditInfo?['credit_limit'] ?? 0).toStringAsFixed(2)}',
+        'CrÃ©dito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLÃ­mite: S/ ${(creditInfo?['credit_limit'] ?? 0).toStringAsFixed(2)}',
         Icons.error_outline_rounded,
         AppColors.danger,
       );
     }
 
     return _buildAlert(
-      'Crédito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
+      'CrÃ©dito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
       Icons.check_circle_outline_rounded,
       AppColors.success,
     );
@@ -1111,3 +1111,4 @@ class _CreditWarningCard extends StatelessWidget {
     );
   }
 }
+

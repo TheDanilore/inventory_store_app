@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/kardex_provider.dart';
@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/widg
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'dart:async';
 
@@ -276,7 +276,7 @@ class _KardexViewState extends State<_KardexView> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
-                          // --- STICKY HEADER (FILTROS Y BÚSQUEDA) ---
+                          // --- STICKY HEADER (FILTROS Y BÃšSQUEDA) ---
                           SliverPersistentHeader(
                             pinned: true,
                             delegate: _StickyKardexFiltersDelegate(
@@ -387,7 +387,7 @@ class _KardexViewState extends State<_KardexView> {
                                 icon: Icons.history,
                                 title: 'No hay movimientos',
                                 message:
-                                    'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
+                                    'AÃºn no se han registrado ingresos o salidas de inventario con estos filtros.',
                               ),
                             )
                           else
@@ -419,7 +419,7 @@ class _KardexViewState extends State<_KardexView> {
                     ),
                   ),
 
-                  // --- PAGINACIÓN ANCLADA ---
+                  // --- PAGINACIÃ“N ANCLADA ---
                   if (provider.totalPages > 1 && !provider.isLoading)
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -478,9 +478,9 @@ class _KardexViewState extends State<_KardexView> {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // DELEGATES Y WIDGETS AUXILIARES
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _StickyKardexFiltersDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
@@ -571,3 +571,4 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
+

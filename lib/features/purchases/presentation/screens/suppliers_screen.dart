@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/purchases/data/models/supplier_model.dart';
@@ -7,7 +7,7 @@ import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/suppliers/supplier_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/suppliers/supplier_form_modal.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SuppliersScreen extends StatelessWidget {
@@ -99,7 +99,7 @@ class _SuppliersViewState extends State<_SuppliersView> {
           ),
           body: Column(
             children: [
-              // ── Buscador ──
+              // â”€â”€ Buscador â”€â”€
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 decoration: BoxDecoration(
@@ -133,7 +133,7 @@ class _SuppliersViewState extends State<_SuppliersView> {
                 ),
               ),
 
-              // ── Lista ──
+              // â”€â”€ Lista â”€â”€
               Expanded(
                 child:
                     provider.isLoading
@@ -151,7 +151,7 @@ class _SuppliersViewState extends State<_SuppliersView> {
                               const SizedBox(height: 16),
                               Text(
                                 provider.searchQuery.isNotEmpty
-                                    ? 'No hay resultados para la búsqueda'
+                                    ? 'No hay resultados para la bÃºsqueda'
                                     : 'No hay proveedores registrados',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
@@ -168,7 +168,7 @@ class _SuppliersViewState extends State<_SuppliersView> {
                               child: Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  'Página ${provider.currentPage + 1} de ${provider.totalPages}',
+                                  'PÃ¡gina ${provider.currentPage + 1} de ${provider.totalPages}',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: AppColors.textSecondary,
@@ -321,3 +321,4 @@ class _SuppliersSkeleton extends StatelessWidget {
     );
   }
 }
+

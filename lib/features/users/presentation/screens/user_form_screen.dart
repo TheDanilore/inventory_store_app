@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/users/presentation/providers/user_form_provider.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class UserFormScreen extends StatelessWidget {
   final String? initialRole;
@@ -98,7 +98,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ─── SELECTOR DE ROL ─────────────────────────────────────
+                      // â”€â”€â”€ SELECTOR DE ROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       const Text(
                         'Tipo de cuenta',
                         style: TextStyle(
@@ -143,7 +143,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ─── ESTADO ACTIVO (solo en modo edición) ────────────────
+                      // â”€â”€â”€ ESTADO ACTIVO (solo en modo ediciÃ³n) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       if (isEditing) ...[
                         _SectionCard(
                           title: 'Estado de la cuenta',
@@ -165,7 +165,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                                     ),
                                     Text(
                                       provider.isActive
-                                          ? 'Puede iniciar sesión'
+                                          ? 'Puede iniciar sesiÃ³n'
                                           : 'Acceso bloqueado',
                                       style: TextStyle(
                                         fontSize: 12,
@@ -189,14 +189,14 @@ class _UserFormContentState extends State<_UserFormContent> {
                         const SizedBox(height: 20),
                       ],
 
-                      // ─── CREDENCIALES ────────────────────────────────────────
+                      // â”€â”€â”€ CREDENCIALES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _SectionCard(
                         title: 'Credenciales de Acceso',
                         icon: Icons.lock_person_rounded,
                         children: [
                           _CustomTextField(
                             controller: provider.emailCtrl,
-                            label: 'Correo Electrónico',
+                            label: 'Correo ElectrÃ³nico',
                             hint: 'ejemplo@correo.com',
                             icon: Icons.email_rounded,
                             keyboardType: TextInputType.emailAddress,
@@ -205,7 +205,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                                 isEditing
                                     ? null
                                     : (v) =>
-                                        _required(v, 'el correo electrónico'),
+                                        _required(v, 'el correo electrÃ³nico'),
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -216,12 +216,12 @@ class _UserFormContentState extends State<_UserFormContent> {
                                   controller: provider.passwordCtrl,
                                   label:
                                       isEditing
-                                          ? 'Nueva contraseña (opcional)'
-                                          : 'Contraseña temporal',
+                                          ? 'Nueva contraseÃ±a (opcional)'
+                                          : 'ContraseÃ±a temporal',
                                   hint:
                                       isEditing
-                                          ? 'Dejar vacío para no cambiar'
-                                          : 'Mínimo 6 caracteres',
+                                          ? 'Dejar vacÃ­o para no cambiar'
+                                          : 'MÃ­nimo 6 caracteres',
                                   icon: Icons.vpn_key_rounded,
                                   obscureText: provider.obscurePassword,
                                   validator: (v) {
@@ -229,15 +229,15 @@ class _UserFormContentState extends State<_UserFormContent> {
                                       if (v != null &&
                                           v.isNotEmpty &&
                                           v.length < 6) {
-                                        return 'Mínimo 6 caracteres';
+                                        return 'MÃ­nimo 6 caracteres';
                                       }
                                       return null;
                                     }
                                     if (v == null || v.isEmpty) {
-                                      return 'Ingresa una contraseña';
+                                      return 'Ingresa una contraseÃ±a';
                                     }
                                     if (v.length < 6) {
-                                      return 'Mínimo 6 caracteres';
+                                      return 'MÃ­nimo 6 caracteres';
                                     }
                                     return null;
                                   },
@@ -300,7 +300,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ─── DATOS PERSONALES ────────────────────────────────────
+                      // â”€â”€â”€ DATOS PERSONALES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _SectionCard(
                         title: 'Datos Personales',
                         icon: Icons.person_rounded,
@@ -316,7 +316,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                           const SizedBox(height: 16),
                           _CustomTextField(
                             controller: provider.phoneCtrl,
-                            label: 'Teléfono (Opcional)',
+                            label: 'TelÃ©fono (Opcional)',
                             hint: 'Ej. 987654321',
                             icon: Icons.phone_rounded,
                             keyboardType: TextInputType.phone,
@@ -381,7 +381,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                               Expanded(
                                 child: _CustomTextField(
                                   controller: provider.docCtrl,
-                                  hint: 'Número de documento',
+                                  hint: 'NÃºmero de documento',
                                   keyboardType: TextInputType.number,
                                 ),
                               ),
@@ -394,7 +394,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                 ),
               ),
 
-              // ─── BOTÓN FIJO INFERIOR ─────────────────────────────────────────
+              // â”€â”€â”€ BOTÃ“N FIJO INFERIOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Positioned(
                 left: 0,
                 right: 0,
@@ -474,7 +474,7 @@ class _UserFormContentState extends State<_UserFormContent> {
   }
 }
 
-// ─── WIDGETS AUXILIARES ────────────────────────────────────────────────────────
+// â”€â”€â”€ WIDGETS AUXILIARES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _RoleCard extends StatelessWidget {
   final String title;
@@ -683,3 +683,4 @@ class _CustomTextField extends StatelessWidget {
     );
   }
 }
+

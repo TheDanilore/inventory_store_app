@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:ui' as dart_ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_exit_form_provider.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory_exits/add_exit_product_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:provider/provider.dart';
 
@@ -38,7 +38,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Primero selecciona el almacén de origen.',
+        message: 'Primero selecciona el almacÃ©n de origen.',
         type: SnackbarType.warning,
       );
       return;
@@ -132,7 +132,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Seleccione un almacén',
+        message: 'Seleccione un almacÃ©n',
         type: SnackbarType.warning,
       );
       return;
@@ -146,7 +146,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       return;
     }
 
-    // Modal de Confirmación Estricta (CONFIRMAR)
+    // Modal de ConfirmaciÃ³n Estricta (CONFIRMAR)
     final confirmCtrl = TextEditingController();
     bool isConfirmed = false;
 
@@ -164,7 +164,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Confirmar Salida Múltiple',
+                    'Confirmar Salida MÃºltiple',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -179,7 +179,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Estás a punto de confirmar una pérdida valorizada de S/ ${provider.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
+                  'EstÃ¡s a punto de confirmar una pÃ©rdida valorizada de S/ ${provider.totalLossCost.toStringAsFixed(2)}. Esto impactarÃ¡ directamente el inventario fÃ­sico.',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
@@ -251,7 +251,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (success) {
       AppSnackbar.show(
         context,
-        message: 'Salida de inventario registrada con éxito.',
+        message: 'Salida de inventario registrada con Ã©xito.',
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
@@ -285,7 +285,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               (ctx) => AlertDialog(
                 title: const Text('Cambios sin guardar'),
                 content: const Text(
-                  'Tienes un registro en curso. ¿Qué deseas hacer al salir?',
+                  'Tienes un registro en curso. Â¿QuÃ© deseas hacer al salir?',
                 ),
                 actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 actions: [
@@ -370,9 +370,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // LAYOUTS
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildMobileLayout(InventoryExitFormProvider provider) {
     return SingleChildScrollView(
@@ -412,9 +412,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SECTIONS
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildGeneralInfoSection(InventoryExitFormProvider provider) {
     return _SectionCard(
@@ -423,7 +423,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         children: [
           const _SectionTitle(
             icon: Icons.output_rounded,
-            title: 'Información General',
+            title: 'InformaciÃ³n General',
             iconColor: AppColors.danger,
           ),
           const SizedBox(height: 16),
@@ -431,7 +431,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             initialValue: provider.selectedWarehouseId,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
-              'Almacén de Origen',
+              'AlmacÃ©n de Origen',
               icon: Icons.warehouse_rounded,
             ),
             items:
@@ -460,9 +460,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                 [
                       'AJUSTE',
                       'MERMA',
-                      'DAÑO',
+                      'DAÃ‘O',
                       'VENCIMIENTO',
-                      'ROBO/PÉRDIDA',
+                      'ROBO/PÃ‰RDIDA',
                       'CONSUMO INTERNO',
                     ]
                     .map(
@@ -484,7 +484,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             controller: _notesCtrl,
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: 'Notas / Justificación (Opcional)',
+              labelText: 'Notas / JustificaciÃ³n (Opcional)',
               hintText: 'Ej: Botellas rotas durante traslado',
               filled: true,
               fillColor: AppColors.background,
@@ -642,8 +642,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
     final attrValues =
         item.variant.attributeValues.map((v) => v.value).toList();
-    final attrsText = attrValues.join(' · ');
-    final displayVariantText = attrsText.isNotEmpty ? attrsText : 'Única';
+    final attrsText = attrValues.join(' Â· ');
+    final displayVariantText = attrsText.isNotEmpty ? attrsText : 'Ãšnica';
     final batchNumber = item.selectedBatch?['batch_number'] ?? 'DEFAULT';
     final double maxAvailable =
         (item.selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
@@ -758,7 +758,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       ),
                       child: Text(
                         isBatchMissing
-                            ? '⚠ Lote Requerido'
+                            ? 'âš  Lote Requerido'
                             : 'Lote: $batchNumber',
                         style: TextStyle(
                           fontSize: 10,
@@ -795,16 +795,16 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               color: AppColors.danger,
             ),
             onPressed: () => provider.removeItem(index),
-            tooltip: 'Eliminar ítem',
+            tooltip: 'Eliminar Ã­tem',
           ),
         ],
       ),
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // FIXED BOTTOM BUTTON
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildBottomActionButton(InventoryExitFormProvider provider) {
     return Positioned(
@@ -834,7 +834,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Pérdida Valorizada',
+                            'PÃ©rdida Valorizada',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -843,7 +843,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${provider.items.length} items · ${provider.totalUnits} unidades retiradas',
+                            '${provider.items.length} items Â· ${provider.totalUnits} unidades retiradas',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -901,9 +901,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // UTILS
-  // ════════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
     return InputDecoration(
@@ -929,7 +929,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 }
 
-// ── WIDGETS AUXILIARES ──
+// â”€â”€ WIDGETS AUXILIARES â”€â”€
 class _SectionCard extends StatelessWidget {
   final Widget child;
 
@@ -1069,3 +1069,4 @@ class _VerticalStepper extends StatelessWidget {
     );
   }
 }
+

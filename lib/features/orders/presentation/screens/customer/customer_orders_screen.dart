@@ -1,10 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/customer_orders_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/orders/customer_order_card.dart';
 
@@ -351,8 +351,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.person_off_outlined,
-            title: 'Necesitas iniciar sesión',
-            message: 'Inicia sesión para ver tu historial de pedidos.',
+            title: 'Necesitas iniciar sesiÃ³n',
+            message: 'Inicia sesiÃ³n para ver tu historial de pedidos.',
           ),
         ),
       );
@@ -364,7 +364,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.error_outline,
-            title: 'Algo salió mal',
+            title: 'Algo saliÃ³ mal',
             message: provider.errorMessage,
           ),
         ),
@@ -383,11 +383,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             title:
                 provider.searchQuery.isNotEmpty
                     ? 'No se encontraron resultados'
-                    : 'Aún no tienes pedidos',
+                    : 'AÃºn no tienes pedidos',
             message:
                 provider.searchQuery.isNotEmpty
-                    ? 'Intenta buscar con otro término u otro filtro.'
-                    : 'Cuando realices una compra, aparecerá aquí tu historial.',
+                    ? 'Intenta buscar con otro tÃ©rmino u otro filtro.'
+                    : 'Cuando realices una compra, aparecerÃ¡ aquÃ­ tu historial.',
           ),
         ),
       );
@@ -403,7 +403,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           isProcessing: isProcessing,
           onReorder: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Función de re-ordenar pronto.')),
+              const SnackBar(content: Text('FunciÃ³n de re-ordenar pronto.')),
             );
           },
         );
@@ -442,3 +442,4 @@ class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
     return true;
   }
 }
+

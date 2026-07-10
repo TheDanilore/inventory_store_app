@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -13,8 +13,8 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/utils/pdf/customer_pdf_generator.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/customers/presentation/utils/pdf/customer_pdf_generator.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
@@ -155,7 +155,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
           child: TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
-              hintText: 'Buscar por nombre, documento o teléfono...',
+              hintText: 'Buscar por nombre, documento o telÃ©fono...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: isLoading
                   ? const Padding(
@@ -283,7 +283,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
                     padding: const EdgeInsets.all(16.0),
                     child: !state.hasReachedMax
                         ? const CircularProgressIndicator()
-                        : const Text('No hay más clientes', style: TextStyle(color: Colors.grey)),
+                        : const Text('No hay mÃ¡s clientes', style: TextStyle(color: Colors.grey)),
                   ),
                 );
               }
@@ -347,3 +347,4 @@ class _CustomersSkeleton extends StatelessWidget {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/loyalty/presentation/screens/widget
 import 'package:inventory_store_app/features/loyalty/presentation/screens/widgets/points/points_mini_game_card.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/widgets/points/points_movements_section.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:provider/provider.dart';
 
 class PointsScreen extends StatefulWidget {
@@ -102,7 +102,7 @@ class _PointsScreenState extends State<PointsScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'El sistema de monedas se encuentra desactivado en este momento. Vuelve más tarde.',
+                      'El sistema de monedas se encuentra desactivado en este momento. Vuelve mÃ¡s tarde.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -125,13 +125,13 @@ class _PointsScreenState extends State<PointsScreen> {
 
           final claimMessage =
               provider.hasTodayCheckin
-                  ? 'Hoy ya reclamaste tus monedas. Vuelve mañana para seguir la racha.'
-                  : 'Reclama tus monedas de hoy con un toque y mantén activa tu racha.';
+                  ? 'Hoy ya reclamaste tus monedas. Vuelve maÃ±ana para seguir la racha.'
+                  : 'Reclama tus monedas de hoy con un toque y mantÃ©n activa tu racha.';
 
           final d1 = provider.rewardForStreakDay(1);
           final d2 = provider.rewardForStreakDay(2);
           final streakPreviewLabel =
-              'Día 1: $d1 monedas. Día 2: $d2 monedas. Sigue la racha para ganar más.';
+              'DÃ­a 1: $d1 monedas. DÃ­a 2: $d2 monedas. Sigue la racha para ganar mÃ¡s.';
 
           return SafeArea(
             child: AnimatedSwitcher(
@@ -216,3 +216,4 @@ class _PointsScreenState extends State<PointsScreen> {
     );
   }
 }
+

@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory/inventory_stock_tab.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory/inventory_batches_tab.dart';
 
@@ -34,7 +34,7 @@ class _InventoryScreenState extends State<InventoryScreen>
       showBackButton: true,
       body: Column(
         children: [
-          // ── Tab Bar ──
+          // â”€â”€ Tab Bar â”€â”€
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -72,7 +72,7 @@ class _InventoryScreenState extends State<InventoryScreen>
             ),
           ),
 
-          // ── Tab Views ──
+          // â”€â”€ Tab Views â”€â”€
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -84,3 +84,4 @@ class _InventoryScreenState extends State<InventoryScreen>
     );
   }
 }
+

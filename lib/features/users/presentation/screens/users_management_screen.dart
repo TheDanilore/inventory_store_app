@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/users/presentation/screens/widgets/users/users_tab.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -94,7 +94,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
       showBackButton: true,
       body: Column(
         children: [
-          // ─── BUSCADOR Y FILTROS ──────────────────────────────────────────
+          // â”€â”€â”€ BUSCADOR Y FILTROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Container(
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -120,7 +120,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
                           hintText:
-                              'Buscar por nombre, correo, teléfono o DNI...',
+                              'Buscar por nombre, correo, telÃ©fono o DNI...',
                           hintStyle: TextStyle(
                             color: Colors.grey.shade400,
                             fontSize: 14,
@@ -167,7 +167,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Botón de exportar
+                    // BotÃ³n de exportar
                     Container(
                       height: 48,
                       width: 48,
@@ -215,7 +215,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             ),
           ),
 
-          // ─── TABS ────────────────────────────────────────────────────────
+          // â”€â”€â”€ TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -272,7 +272,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             ),
           ),
 
-          // ─── LISTAS ──────────────────────────────────────────────────────
+          // â”€â”€â”€ LISTAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -342,3 +342,4 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     );
   }
 }
+

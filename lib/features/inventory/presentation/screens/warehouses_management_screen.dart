@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/warehouses_provider.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/warehouses/warehouses_skeleton.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/warehouses/warehouse_form_sheet.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class WarehousesManagementScreen extends StatefulWidget {
@@ -67,7 +67,7 @@ class _WarehousesManagementScreenState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── BUSCADOR ───────────────────────────────────────────────────────
+              // â”€â”€â”€ BUSCADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Container(
                 margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -85,7 +85,7 @@ class _WarehousesManagementScreenState
                   controller: _searchCtrl,
                   onChanged: provider.onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Buscar almacén por nombre o dirección...',
+                    hintText: 'Buscar almacÃ©n por nombre o direcciÃ³n...',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 14,
@@ -147,7 +147,7 @@ class _WarehousesManagementScreenState
                 ),
               ),
 
-              // ─── LISTA DE ALMACENES ─────────────────────────────────────────────
+              // â”€â”€â”€ LISTA DE ALMACENES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => provider.fetchWarehouses(),
@@ -259,7 +259,7 @@ class _WarehousesManagementScreenState
                                                       wh.address?.isNotEmpty ==
                                                               true
                                                           ? wh.address!
-                                                          : 'Sin dirección registrada',
+                                                          : 'Sin direcciÃ³n registrada',
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color:
@@ -387,3 +387,4 @@ class _WarehousesManagementScreenState
     );
   }
 }
+

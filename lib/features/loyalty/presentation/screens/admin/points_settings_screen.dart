@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -80,7 +80,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     _initSettingDef(
       _earningRateKey,
       0.03,
-      'Tasa de acumulación',
+      'Tasa de acumulaciÃ³n',
       format: SettingFormat.percent,
     );
     _initSettingDef(
@@ -92,7 +92,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     _initSettingDef(
       _checkinRewardKey,
       20,
-      'Premio Check-in día 1',
+      'Premio Check-in dÃ­a 1',
       format: SettingFormat.integer,
     );
     _initSettingDef(
@@ -102,7 +102,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       format: SettingFormat.integer,
     );
 
-    // Límites Diarios
+    // LÃ­mites Diarios
     _initSettingDef(
       _boxesDailyLimitKey,
       1,
@@ -124,7 +124,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     _initSettingDef(
       _pinataDailyLimitKey,
       1,
-      'Piñata',
+      'PiÃ±ata',
       format: SettingFormat.integer,
     );
     _initSettingDef(
@@ -136,7 +136,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     _initSettingDef(
       _clawDailyLimitKey,
       1,
-      'Máquina de Garra',
+      'MÃ¡quina de Garra',
       format: SettingFormat.integer,
     );
     _initSettingDef(
@@ -180,7 +180,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     _initSettingDef(
       _pinataConsolationPrizeKey,
       5,
-      'Consolación',
+      'ConsolaciÃ³n',
       format: SettingFormat.integer,
     );
     _initSettingDef(
@@ -304,7 +304,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     if (formKey == null || !formKey.currentState!.validate()) {
       AppSnackbar.show(
         context,
-        message: 'Corrige los errores en esta sección antes de guardar.',
+        message: 'Corrige los errores en esta secciÃ³n antes de guardar.',
         type: SnackbarType.error,
       );
       return;
@@ -336,13 +336,13 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       if (success) {
         AppSnackbar.show(
           context,
-          message: 'Configuración guardada correctamente.',
+          message: 'ConfiguraciÃ³n guardada correctamente.',
           type: SnackbarType.success,
         );
       } else {
         AppSnackbar.show(
           context,
-          message: 'Error al guardar la configuración.',
+          message: 'Error al guardar la configuraciÃ³n.',
           type: SnackbarType.error,
         );
       }
@@ -355,7 +355,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     final isGlobalEnabled = config.loyaltyGlobalEnabled;
 
     return AdminLayout(
-      title: 'Configuración de Juegos',
+      title: 'ConfiguraciÃ³n de Juegos',
       showBackButton: true,
       body:
           !_isInitialized
@@ -381,7 +381,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'El módulo de Lealtad (Monedas) está desactivado globalmente en la Información del Negocio. Estos ajustes no tendrán efecto hasta que lo actives.',
+                              'El mÃ³dulo de Lealtad (Monedas) estÃ¡ desactivado globalmente en la InformaciÃ³n del Negocio. Estos ajustes no tendrÃ¡n efecto hasta que lo actives.',
                               style: TextStyle(
                                 color: Colors.red.shade900,
                                 fontWeight: FontWeight.w600,
@@ -425,7 +425,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                               isScrollable: true,
                               tabs: const [
                                 Tab(text: 'Sistema y Ratio'),
-                                Tab(text: 'Límites Diarios'),
+                                Tab(text: 'LÃ­mites Diarios'),
                                 Tab(text: 'Premios'),
                               ],
                             ),
@@ -460,7 +460,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
         children: [
           const SizedBox(height: 16),
           _buildRailItem(0, Icons.settings_rounded, 'Sistema y Ratio'),
-          _buildRailItem(1, Icons.sports_esports_rounded, 'Límites Diarios'),
+          _buildRailItem(1, Icons.sports_esports_rounded, 'LÃ­mites Diarios'),
           _buildRailItem(2, Icons.redeem_rounded, 'Premios y Juegos'),
         ],
       ),
@@ -540,7 +540,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       children: [
         _buildSectionCard(
           title: 'Sistema de Puntos y Canjes',
-          subtitle: 'Define el valor monetario y la acumulación.',
+          subtitle: 'Define el valor monetario y la acumulaciÃ³n.',
           icon: Icons.currency_exchange_rounded,
           color: Colors.blue,
           children: [
@@ -592,9 +592,9 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionCard(
-          title: 'Límites de Juegos Diarios',
+          title: 'LÃ­mites de Juegos Diarios',
           subtitle:
-              'Controla el máximo de veces que los usuarios pueden jugar cada día.',
+              'Controla el mÃ¡ximo de veces que los usuarios pueden jugar cada dÃ­a.',
           icon: Icons.sports_esports_rounded,
           color: Colors.orange,
           children: [
@@ -652,8 +652,8 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
         ),
         const SizedBox(height: 24),
         _buildSectionCard(
-          title: 'Piñata y Memorama',
-          subtitle: 'Premios mayores, consolación y por pares.',
+          title: 'PiÃ±ata y Memorama',
+          subtitle: 'Premios mayores, consolaciÃ³n y por pares.',
           icon: Icons.celebration_rounded,
           color: Colors.pink,
           children: [
@@ -680,8 +680,8 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
         ),
         const SizedBox(height: 24),
         _buildSectionCard(
-          title: 'Máquina de Garra',
-          subtitle: 'Premios según la ranura donde cae el gancho (1 al 5).',
+          title: 'MÃ¡quina de Garra',
+          subtitle: 'Premios segÃºn la ranura donde cae el gancho (1 al 5).',
           icon: Icons.precision_manufacturing_rounded,
           color: Colors.amber,
           children: [
@@ -910,7 +910,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
         final text = value?.trim() ?? '';
         if (text.isEmpty) return 'Requerido';
         final parsed = double.tryParse(text);
-        if (parsed == null) return 'Número inválido';
+        if (parsed == null) return 'NÃºmero invÃ¡lido';
         if (!allowNegative && parsed < 0) return 'Debe ser positivo';
         if (def.format == SettingFormat.integer && parsed != parsed.toInt()) {
           return 'Debe ser entero';
@@ -941,3 +941,4 @@ class _SettingDefinition {
     this.icon,
   });
 }
+

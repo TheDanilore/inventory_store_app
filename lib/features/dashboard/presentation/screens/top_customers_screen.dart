@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/providers/top_customers_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:intl/intl.dart';
 import 'package:vibration/vibration.dart';
@@ -306,15 +306,15 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
     if (widget.position == 1) {
       borderColor = const Color(0xFFFFD700); // Oro
       gradientColors = [const Color(0xFFFFD700).withValues(alpha: 0.15), const Color(0xFFFFD700).withValues(alpha: 0.02)];
-      medalIcon = const Text('🥇', style: TextStyle(fontSize: 24));
+      medalIcon = const Text('ðŸ¥‡', style: TextStyle(fontSize: 24));
     } else if (widget.position == 2) {
       borderColor = const Color(0xFFC0C0C0); // Plata
       gradientColors = [const Color(0xFFC0C0C0).withValues(alpha: 0.15), const Color(0xFFC0C0C0).withValues(alpha: 0.02)];
-      medalIcon = const Text('🥈', style: TextStyle(fontSize: 24));
+      medalIcon = const Text('ðŸ¥ˆ', style: TextStyle(fontSize: 24));
     } else if (widget.position == 3) {
       borderColor = const Color(0xFFCD7F32); // Bronce
       gradientColors = [const Color(0xFFCD7F32).withValues(alpha: 0.15), const Color(0xFFCD7F32).withValues(alpha: 0.02)];
-      medalIcon = const Text('🥉', style: TextStyle(fontSize: 24));
+      medalIcon = const Text('ðŸ¥‰', style: TextStyle(fontSize: 24));
     }
 
     return MouseRegion(
@@ -355,7 +355,7 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Posición / Medalla
+                  // PosiciÃ³n / Medalla
                   SizedBox(
                     width: 40,
                     child: Center(
@@ -674,7 +674,7 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
               ),
               const SizedBox(height: 32),
 
-              // Botón de Girar
+              // BotÃ³n de Girar
               SizedBox(
                 width: double.infinity,
                 height: 60,
@@ -730,18 +730,18 @@ class _WinnerDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icono de celebración
+              // Icono de celebraciÃ³n
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Text('🎉', style: TextStyle(fontSize: 48)),
+                child: const Text('ðŸŽ‰', style: TextStyle(fontSize: 48)),
               ),
               const SizedBox(height: 24),
               Text(
-                '¡TENEMOS UN GANADOR!',
+                'Â¡TENEMOS UN GANADOR!',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
@@ -807,7 +807,7 @@ class _WinnerDialog extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // Botón aceptar
+              // BotÃ³n aceptar
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -831,3 +831,4 @@ class _WinnerDialog extends StatelessWidget {
     );
   }
 }
+

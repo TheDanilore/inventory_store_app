@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/core/widgets/app_drawer.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
@@ -83,7 +83,7 @@ class AdminLayout extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Ajustamos el ancho dependiendo de cuántos botones hay realmente
+                  // Ajustamos el ancho dependiendo de cuÃ¡ntos botones hay realmente
                   leadingWidth:
                       (showBackButton && showProfileButton) ? 104 : 60,
                   leading:
@@ -134,7 +134,7 @@ class AdminLayout extends StatelessWidget {
                         builder:
                             (context) => AdminAppBarIconButton(
                               icon: Icons.menu_rounded,
-                              tooltip: 'Menú principal',
+                              tooltip: 'MenÃº principal',
                               onTap: () => Scaffold.of(context).openEndDrawer(),
                             ),
                       ),
@@ -148,7 +148,7 @@ class AdminLayout extends StatelessWidget {
           bottom: false,
           child: Column(
             children: [
-              // Offline banner — Animates its height layout size so it doesn't leave gaps
+              // Offline banner â€” Animates its height layout size so it doesn't leave gaps
               Consumer<NetworkCubit>(
                 builder: (context, network, child) {
                   return AnimatedSize(
@@ -172,7 +172,7 @@ class AdminLayout extends StatelessWidget {
                                   ),
                                   SizedBox(width: 6),
                                   Text(
-                                    'Sin conexión a internet',
+                                    'Sin conexiÃ³n a internet',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
@@ -197,7 +197,7 @@ class AdminLayout extends StatelessWidget {
   }
 }
 
-/// Botón circular para la AppBar
+/// BotÃ³n circular para la AppBar
 class AdminAppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -267,7 +267,7 @@ class AdminSettingsMenuButton extends StatelessWidget {
   }
 }
 
-/// Avatar / botón de perfil — carga la foto real del usuario desde AuthCubit
+/// Avatar / botÃ³n de perfil â€” carga la foto real del usuario desde AuthCubit
 class AdminProfileAvatar extends StatelessWidget {
   final VoidCallback onTap;
   const AdminProfileAvatar({super.key, required this.onTap});
@@ -377,3 +377,4 @@ class AdminProfileAvatar extends StatelessWidget {
     );
   }
 }
+

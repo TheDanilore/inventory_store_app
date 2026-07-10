@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes_state.dart';
@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attribute_value_dialog.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attributes_skeleton.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class AttributesManagementScreen extends StatefulWidget {
   const AttributesManagementScreen({super.key});
@@ -168,7 +168,7 @@ class _AttributesManagementScreenState
   }
 }
 
-// ─── WIDGETS PRIVADOS ─────────────────────────────────────────────────────────
+// â”€â”€â”€ WIDGETS PRIVADOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AttributeCard extends StatefulWidget {
   final Map<String, dynamic> attribute;
@@ -291,7 +291,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                         scale: isSaving ? 0.95 : 1.0,
                         duration: const Duration(milliseconds: 150),
                         child: ActionChip(
-                          label: const Text('Añadir valor'),
+                          label: const Text('AÃ±adir valor'),
                           avatar: const Icon(
                             Icons.add,
                             size: 16,
@@ -364,3 +364,4 @@ class _ValueChipState extends State<_ValueChip> {
     );
   }
 }
+

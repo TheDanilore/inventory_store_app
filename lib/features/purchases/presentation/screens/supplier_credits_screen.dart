@@ -1,15 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:provider/provider.dart';
 
 import 'package:inventory_store_app/features/purchases/presentation/providers/supplier_credits_provider.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
-// Widgets extraídos
+// Widgets extraÃ­dos
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_global_stats_bar.dart';
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_credit_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_account_options_sheet.dart';
@@ -95,8 +95,8 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     context,
                     message:
                         acc.isActive
-                            ? 'Crédito suspendido.'
-                            : 'Crédito reactivado.',
+                            ? 'CrÃ©dito suspendido.'
+                            : 'CrÃ©dito reactivado.',
                     type: SnackbarType.success,
                   );
                 }
@@ -124,7 +124,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
         backgroundColor: Colors.blue.shade700,
         icon: const Icon(Icons.domain_add_rounded, color: Colors.white),
         label: const Text(
-          'Nueva Línea',
+          'Nueva LÃ­nea',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
@@ -283,7 +283,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     child: AppEmptyState(
                       icon: Icons.error_outline_rounded,
                       color: AppColors.danger,
-                      title: 'Ocurrió un error',
+                      title: 'OcurriÃ³ un error',
                       message: provider.errorMessage ?? '',
                       action: ElevatedButton.icon(
                         onPressed: provider.fetchAccounts,
@@ -301,10 +301,10 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                           _searchCtrl.text.isNotEmpty
                               ? 'No se encontraron resultados'
                               : (provider.withDebtOnly
-                                  ? 'No hay créditos con deuda'
-                                  : 'No hay líneas de crédito registradas'),
+                                  ? 'No hay crÃ©ditos con deuda'
+                                  : 'No hay lÃ­neas de crÃ©dito registradas'),
                       message:
-                          'Intenta cambiar los filtros o realizar otra búsqueda.',
+                          'Intenta cambiar los filtros o realizar otra bÃºsqueda.',
                     ),
                   )
                 else
@@ -324,7 +324,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                     ),
                   ),
 
-                // Paginación
+                // PaginaciÃ³n
                 if (!provider.isLoading && provider.totalPages > 1)
                   SliverToBoxAdapter(
                     child: Padding(
@@ -348,3 +348,4 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     );
   }
 }
+

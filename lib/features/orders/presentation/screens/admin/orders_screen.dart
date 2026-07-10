@@ -1,10 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
@@ -52,7 +52,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     });
   }
 
-  // ─── GENERACIÓN DE TICKET PDF ─────────────────────────────────────────────
+  // â”€â”€â”€ GENERACIÃ“N DE TICKET PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _printOrderTicket(OrderModel order) async {
     try {
@@ -68,23 +68,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  // ─── ACTUALIZAR ESTADO DE PEDIDO ─────────────────────────────────────────
+  // â”€â”€â”€ ACTUALIZAR ESTADO DE PEDIDO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _updateOrderStatus(OrderModel order, String newStatus) async {
     if (context.read<OrdersProvider>().isOrderProcessing(order.id)) return;
 
-    // Aviso si el método de pago es "POR ACORDAR" al completar
+    // Aviso si el mÃ©todo de pago es "POR ACORDAR" al completar
     if (newStatus == 'COMPLETED' &&
         (order.paymentMethod == 'POR ACORDAR' ||
             order.paymentMethod.trim().isEmpty)) {
       final selectedMethod = await _showPaymentMethodBottomSheet(order);
       if (selectedMethod == null) return; // Cancelado por el usuario
 
-      // Actualizamos la orden temporalmente para mandarla a guardar con el nuevo método
+      // Actualizamos la orden temporalmente para mandarla a guardar con el nuevo mÃ©todo
       order = order.copyWith(paymentMethod: selectedMethod);
     }
 
-    // Diálogo de confirmación enriquecido
+    // DiÃ¡logo de confirmaciÃ³n enriquecido
     final confirm = await _showConfirmDialog(order, newStatus);
     if (confirm != true) return;
 
@@ -118,7 +118,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final isCompleting = newStatus == 'COMPLETED';
     final isCancelling = newStatus == 'CANCELLED';
     final isReturning = newStatus == 'RETURNED';
-    final isCredit = order.paymentMethod == 'CRÉDITO';
+    final isCredit = order.paymentMethod == 'CRÃ‰DITO';
     final pendingPoints = order.pointsEarned;
     final config = context.read<AppConfigCubit>();
     final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
@@ -212,10 +212,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🪙', style: TextStyle(fontSize: 16)),
+                        const Text('ðŸª™', style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 6),
                         Text(
-                          'El cliente ganará $pendingPoints monedas',
+                          'El cliente ganarÃ¡ $pendingPoints monedas',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -248,7 +248,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Se registrará como deuda de crédito.',
+                            'Se registrarÃ¡ como deuda de crÃ©dito.',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -264,8 +264,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   const SizedBox(height: 10),
                   Text(
                     isReturning
-                        ? 'Se reintegrará el stock y se reembolsará el pago. Esta acción no se puede deshacer.'
-                        : 'Esta acción no se puede deshacer. El stock NO se reintegrará automáticamente si ya fue descontado.',
+                        ? 'Se reintegrarÃ¡ el stock y se reembolsarÃ¡ el pago. Esta acciÃ³n no se puede deshacer.'
+                        : 'Esta acciÃ³n no se puede deshacer. El stock NO se reintegrarÃ¡ automÃ¡ticamente si ya fue descontado.',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -295,7 +295,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 child: Text(
                   isCompleting
                       ? 'Confirmar cobro'
-                      : (isReturning ? 'Sí, devolver' : 'Sí, cancelar'),
+                      : (isReturning ? 'SÃ­, devolver' : 'SÃ­, cancelar'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -347,7 +347,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Selecciona cómo pagó el cliente:',
+          'Selecciona cÃ³mo pagÃ³ el cliente:',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
@@ -385,9 +385,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ),
         const SizedBox(height: 12),
         _PaymentOptionButton(
-          label: 'CRÉDITO',
+          label: 'CRÃ‰DITO',
           icon: Icons.schedule_rounded,
-          onSelect: () => Navigator.pop(context, 'CRÉDITO'),
+          onSelect: () => Navigator.pop(context, 'CRÃ‰DITO'),
         ),
         const SizedBox(height: 24),
       ],
@@ -452,7 +452,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  // ─── BUILD ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +460,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final isLoyaltyEnabled = config.loyaltyGlobalEnabled;
 
     return AdminLayout(
-      title: widget.customTitle ?? 'Gestión de Pedidos',
+      title: widget.customTitle ?? 'GestiÃ³n de Pedidos',
       showBackButton: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -515,7 +515,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           _selectedOrder == null
                               ? const AppEmptyState(
                                 icon: Icons.receipt_long_rounded,
-                                title: 'Ningún pedido seleccionado',
+                                title: 'NingÃºn pedido seleccionado',
                                 message:
                                     'Selecciona un pedido de la lista para ver o editar sus detalles.',
                               )
@@ -566,7 +566,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         child: AppEmptyState(
           icon: Icons.error_outline_rounded,
           color: Colors.red,
-          title: 'Ocurrió un error',
+          title: 'OcurriÃ³ un error',
           message: provider.errorMessage,
         ),
       );
@@ -577,7 +577,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         child: AppEmptyState(
           icon: Icons.receipt_long_rounded,
           title: 'No se encontraron pedidos.',
-          message: 'Intenta cambiar los filtros o la búsqueda.',
+          message: 'Intenta cambiar los filtros o la bÃºsqueda.',
         ),
       );
     }
@@ -599,7 +599,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
               const Spacer(),
               Text(
-                'Pág. ${provider.currentPage + 1} / $totalPages',
+                'PÃ¡g. ${provider.currentPage + 1} / $totalPages',
                 style: TextStyle(
                   color: Colors.grey.shade600,
                   fontSize: 12,
@@ -625,7 +625,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           );
         }),
 
-        // Paginación
+        // PaginaciÃ³n
         if (totalPages > 1)
           Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
@@ -640,7 +640,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 }
 
-// ─── DELGATE PARA EL HEADER STICKY DE BÚSQUEDA Y FILTROS ─────────────────────
+// â”€â”€â”€ DELGATE PARA EL HEADER STICKY DE BÃšSQUEDA Y FILTROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final TextEditingController searchCtrl;
@@ -860,7 +860,7 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// ─── Helpers: Modal de Opciones de Pago ────────────────────────────────────
+// â”€â”€â”€ Helpers: Modal de Opciones de Pago â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _PaymentOptionButton extends StatelessWidget {
   final String label;
@@ -904,3 +904,4 @@ class _PaymentOptionButton extends StatelessWidget {
     );
   }
 }
+

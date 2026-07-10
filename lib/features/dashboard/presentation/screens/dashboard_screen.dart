@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +6,7 @@ import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/dashboard/data/repositories/dashboard_service.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/widgets/dashboard/dashboard_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/widgets/dashboard/dashboard_skeleton.dart';
@@ -108,7 +108,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case SalesTimeFilter.thisMonth:
         return 'Este Mes';
       case SalesTimeFilter.allTime:
-        return 'Histórico';
+        return 'HistÃ³rico';
     }
   }
 
@@ -264,7 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SectionHeader(
                         icon: Icons.inventory_2_rounded,
                         title: 'Inventario',
-                        subtitle: 'Valorización y proyecciones de stock',
+                        subtitle: 'ValorizaciÃ³n y proyecciones de stock',
                       ),
                       const SizedBox(height: 12),
                       _buildInventoryContent(),
@@ -281,7 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SectionHeader(
                         icon: Icons.point_of_sale_rounded,
                         title: 'Ventas Registradas',
-                        subtitle: 'Órdenes con estado COMPLETADO',
+                        subtitle: 'Ã“rdenes con estado COMPLETADO',
                       ),
                       const SizedBox(height: 8),
                       _buildSalesFilters(),
@@ -332,7 +332,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: const SectionHeader(
               icon: Icons.inventory_2_rounded,
               title: 'Inventario',
-              subtitle: 'Valorización y proyecciones de stock',
+              subtitle: 'ValorizaciÃ³n y proyecciones de stock',
             ),
           ),
         ),
@@ -346,7 +346,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: const SectionHeader(
               icon: Icons.point_of_sale_rounded,
               title: 'Ventas Registradas',
-              subtitle: 'Órdenes con estado COMPLETADO',
+              subtitle: 'Ã“rdenes con estado COMPLETADO',
             ),
           ),
         ),
@@ -438,7 +438,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Expanded(
                     child: KpiCard(
-                      title: 'Órdenes',
+                      title: 'Ã“rdenes',
                       value: '${_sales!.totalSales}',
                       subtitle: 'Ventas completadas',
                       icon: Icons.shopping_bag_rounded,
@@ -496,7 +496,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 12),
               KpiCardWide(
-                title: 'Fondo de Reposición',
+                title: 'Fondo de ReposiciÃ³n',
                 value: 'S/ ${_sales!.replacementFund.toStringAsFixed(2)}',
                 subtitle: 'Costo unitario de lo vendido',
                 icon: Icons.currency_exchange_rounded,
@@ -576,9 +576,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 12),
         KpiCardWide(
-          title: 'Valorización a Costo',
+          title: 'ValorizaciÃ³n a Costo',
           value: 'S/ ${_inventory!.totalInvestment.toStringAsFixed(2)}',
-          subtitle: 'Inversión en almacén',
+          subtitle: 'InversiÃ³n en almacÃ©n',
           icon: Icons.account_balance_wallet_rounded,
           color: AppColors.primary,
           sparklineData: const [
@@ -619,9 +619,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: KpiCard(
-                title: 'G. Público',
+                title: 'G. PÃºblico',
                 value: 'S/ ${_inventory!.expectedMaxProfit.toStringAsFixed(2)}',
-                subtitle: 'Aplicando precio al público',
+                subtitle: 'Aplicando precio al pÃºblico',
                 icon: Icons.trending_up_rounded,
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -794,7 +794,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Atención requerida',
+                  'AtenciÃ³n requerida',
                   style: TextStyle(
                     color: AppColors.error,
                     fontWeight: FontWeight.bold,
@@ -807,8 +807,8 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
                     if (widget.lowStockCount > 0)
                       '${widget.lowStockCount} bajo stock',
                     if (widget.criticalBatchesCount > 0)
-                      '${widget.criticalBatchesCount} lotes críticos',
-                  ].join(' · '),
+                      '${widget.criticalBatchesCount} lotes crÃ­ticos',
+                  ].join(' Â· '),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -865,3 +865,4 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
       true;
 }
+

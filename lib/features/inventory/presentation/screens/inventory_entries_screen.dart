@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/widg
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/inventory/data/repositories/inventory_entries_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:provider/provider.dart';
@@ -80,7 +80,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         }
       }
 
-      final attrsText = attrValues.join(' · ');
+      final attrsText = attrValues.join(' Â· ');
       final bool usesBatches = prod?['uses_batches'] == true;
 
       String? finalImageUrl;
@@ -106,8 +106,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         entryId: entryId,
         productId: prod?['id'] as String? ?? '',
         variantId: variantId ?? '',
-        productName: prod?['name'] as String? ?? '—',
-        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
+        productName: prod?['name'] as String? ?? 'â€”',
+        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Ãšnica',
         quantity: (r['quantity'] as num).toDouble(),
         unitCost: (r['unit_cost'] as num).toDouble(),
         batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
@@ -291,7 +291,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        // ── Borrador ──────────────────────────────────────────
+        // â”€â”€ Borrador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (_hasDraft)
           SliverToBoxAdapter(
             child: Container(
@@ -347,21 +347,21 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             ),
           ),
 
-        // ── Resumen ──────────────────────────────────────────
+        // â”€â”€ Resumen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
                 _SummaryChip(
-                  label: 'Página actual',
+                  label: 'PÃ¡gina actual',
                   value: '${provider.entries.length}',
                   icon: Icons.move_to_inbox_rounded,
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 10),
                 _SummaryChip(
-                  label: 'Inversión (pág)',
+                  label: 'InversiÃ³n (pÃ¡g)',
                   value: 'S/ ${totalAmount.toStringAsFixed(2)}',
                   icon: Icons.payments_rounded,
                   color: AppColors.teal,
@@ -372,7 +372,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           ),
         ),
 
-        // ── Filtros Pegajosos (Sticky Header) ─────────────────
+        // â”€â”€ Filtros Pegajosos (Sticky Header) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyFilterDelegate(
@@ -453,7 +453,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           ),
         ),
 
-        // ── Lista ─────────────────────────────────────────────
+        // â”€â”€ Lista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (provider.isLoading)
           const SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -527,9 +527,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // STICKY DELEGATE
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _StickyFilterDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
@@ -565,9 +565,9 @@ class _StickyFilterDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ENTRY CARD
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _EntryCard extends StatelessWidget {
   final InventoryEntryModel entry;
@@ -693,10 +693,10 @@ class _EntryCard extends StatelessWidget {
                   children: [
                     _Pill(
                       icon: Icons.warehouse_rounded,
-                      label: entry.warehouseName ?? 'Sin almacén',
+                      label: entry.warehouseName ?? 'Sin almacÃ©n',
                       color:
                           AppColors
-                              .textPrimary, // Texto más oscuro para contraste
+                              .textPrimary, // Texto mÃ¡s oscuro para contraste
                       bgColor: Colors.grey.shade200,
                     ),
                     if (hasDoc)
@@ -724,9 +724,9 @@ class _EntryCard extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // WIDGETS AUXILIARES
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _SummaryChip extends StatelessWidget {
   final String label;
@@ -835,7 +835,7 @@ class _SearchField extends StatelessWidget {
       suffixIcon:
           controller.text.isNotEmpty
               ? IconButton(
-                tooltip: 'Borrar búsqueda',
+                tooltip: 'Borrar bÃºsqueda',
                 icon: const Icon(Icons.clear_rounded, size: 20),
                 onPressed: onClear,
               )
@@ -953,3 +953,4 @@ class _EntriesSkeleton extends StatelessWidget {
     );
   }
 }
+

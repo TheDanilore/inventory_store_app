@@ -1,4 +1,4 @@
-import 'package:inventory_store_app/core/di/injection_container.dart';
+﻿import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -13,9 +13,9 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
-import 'package:inventory_store_app/core/utils/pdf/product_pdf_generator.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/catalog/presentation/utils/pdf/product_pdf_generator.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -123,7 +123,7 @@ class _ProductDetailScreenContentState
     super.dispose();
   }
 
-  // ─── DERIVED GETTERS ─────────────────────────────────────────────────────
+  // â”€â”€â”€ DERIVED GETTERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   bool get _isWishlistLoading => state.isWishlistLoading;
   bool get _isWishlisted => state.isWishlisted;
@@ -167,7 +167,7 @@ class _ProductDetailScreenContentState
       await cubit.toggleWishlist();
       _showSnack(
         state.isWishlisted
-            ? '❤️ Guardado en favoritos'
+            ? 'â¤ï¸ Guardado en favoritos'
             : 'Eliminado de favoritos',
         isSuccess: state.isWishlisted,
       );
@@ -180,7 +180,7 @@ class _ProductDetailScreenContentState
     cubit.setImageIndex(index);
   }
 
-  // ─── CART & REVIEWS ───────────────────────────────────────────────────────
+  // â”€â”€â”€ CART & REVIEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void _addToCart() {
     final qty = state.selectedQty;
@@ -228,7 +228,7 @@ class _ProductDetailScreenContentState
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
     }
-    _showSnack('¡Añadido al carrito!', isSuccess: true);
+    _showSnack('Â¡AÃ±adido al carrito!', isSuccess: true);
   }
 
   void _showSnack(String msg, {bool isSuccess = false}) {
@@ -303,7 +303,7 @@ class _ProductDetailScreenContentState
                       ),
                     ),
                     Text(
-                      'Máx. $_effectiveStock disponibles',
+                      'MÃ¡x. $_effectiveStock disponibles',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -370,7 +370,7 @@ class _ProductDetailScreenContentState
     }
   }
 
-  // ─── REVIEWS ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ REVIEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _onAddReviewTapped() async {
     if (isAdmin) {
@@ -379,7 +379,7 @@ class _ProductDetailScreenContentState
     }
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      _showSnack('Inicia sesión para opinar.');
+      _showSnack('Inicia sesiÃ³n para opinar.');
       return;
     }
     try {
@@ -452,7 +452,7 @@ class _ProductDetailScreenContentState
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          '¿Qué te pareció?',
+                          'Â¿QuÃ© te pareciÃ³?',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -510,7 +510,7 @@ class _ProductDetailScreenContentState
                         const SizedBox(height: 12),
                         ProductInputField(
                           controller: commentCtrl,
-                          hint: 'Cuéntanos qué te pareció...',
+                          hint: 'CuÃ©ntanos quÃ© te pareciÃ³...',
                           label: 'Comentario',
                           maxLines: 3,
                         ),
@@ -580,7 +580,7 @@ class _ProductDetailScreenContentState
                                             if (!context.mounted) return;
                                             Navigator.pop(dialogCtx);
                                             _showSnack(
-                                              '¡Reseña publicada!',
+                                              'Â¡ReseÃ±a publicada!',
                                               isSuccess: true,
                                             );
                                             cubit.loadData();
@@ -649,15 +649,15 @@ class _ProductDetailScreenContentState
     return list;
   }
 
-  // ─── BUILD ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
     final gallery = _galleryImages;
 
     final Map<String, dynamic> mergedDetails = Map.from(product.details);
-    mergedDetails['Control de Stock'] = product.stockControl ? 'Sí' : 'No';
-    mergedDetails['Usa Lotes'] = product.usesBatches ? 'Sí' : 'No';
+    mergedDetails['Control de Stock'] = product.stockControl ? 'SÃ­' : 'No';
+    mergedDetails['Usa Lotes'] = product.usesBatches ? 'SÃ­' : 'No';
     mergedDetails['Tipo de Producto'] = _fmt(product.productType);
 
     final content = CustomScrollView(
@@ -721,7 +721,7 @@ class _ProductDetailScreenContentState
                             );
                           }
                         }
-                        // Mostrar diálogo de carga
+                        // Mostrar diÃ¡logo de carga
                         showDialog(
                           context: context,
                           barrierDismissible: false,
@@ -962,7 +962,7 @@ class _ProductDetailScreenContentState
                             mainAxisSize: MainAxisSize.min,
                             children: const [
                               Text(
-                                'Más',
+                                'MÃ¡s',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -1119,3 +1119,4 @@ class _ProductDetailScreenContentState
     );
   }
 }
+

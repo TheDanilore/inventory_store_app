@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
@@ -78,7 +78,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         AppSnackbar.show(
           context,
           message:
-              'Conexión actualizada. Por favor cierra la app completamente y vuelve a abrirla para aplicar los cambios.',
+              'ConexiÃ³n actualizada. Por favor cierra la app completamente y vuelve a abrirla para aplicar los cambios.',
           type: SnackbarType.success,
         );
       }
@@ -177,7 +177,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
           setState(() => _hasChanges = false);
           AppSnackbar.show(
             context,
-            message: 'Información del negocio guardada.',
+            message: 'InformaciÃ³n del negocio guardada.',
             type: SnackbarType.success,
           );
         } else if (state.saveStatus == ViewState.error) {
@@ -185,7 +185,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
             context,
             message:
                 state.errorMessage ??
-                'No se pudo guardar la información. Intente nuevamente.',
+                'No se pudo guardar la informaciÃ³n. Intente nuevamente.',
             type: SnackbarType.error,
           );
         }
@@ -199,7 +199,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         final hasError = state.status == ViewState.error;
 
         return AdminLayout(
-          title: 'Información del Negocio',
+          title: 'InformaciÃ³n del Negocio',
           showBackButton: true,
           bottomNavigationBar:
               (!isLoading && !hasError)
@@ -247,7 +247,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: Colors.red),
           const SizedBox(height: 16),
-          const Text('Error al cargar la información del negocio.'),
+          const Text('Error al cargar la informaciÃ³n del negocio.'),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => config.loadBusinessInfo(force: true),
@@ -305,7 +305,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
       businessName: _previewName.isEmpty ? 'Nombre del negocio' : _previewName,
       businessLogoUrl: _previewLogoUrl,
       businessAddress:
-          _previewAddress.isEmpty ? 'Dirección principal' : _previewAddress,
+          _previewAddress.isEmpty ? 'DirecciÃ³n principal' : _previewAddress,
     );
   }
 
@@ -363,7 +363,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               const SizedBox(height: 14),
               AppTextField(
                 controller: _addressCtrl,
-                label: 'Dirección',
+                label: 'DirecciÃ³n',
                 icon: Icons.location_on_outlined,
                 hintText: 'Av. Principal 123',
                 maxLines: 2,
@@ -378,7 +378,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               const SizedBox(height: 14),
               AppTextField(
                 controller: _phoneCtrl,
-                label: 'Teléfono',
+                label: 'TelÃ©fono',
                 icon: Icons.phone_outlined,
                 hintText: '+51 999 999 999',
                 keyboardType: TextInputType.phone,
@@ -400,14 +400,14 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                       keyboardType: TextInputType.url,
                       focusNode: _logoUrlFocus,
                       textInputAction: TextInputAction.done,
-                      helperText: 'URL pública de la imagen (jpg, png, webp)',
+                      helperText: 'URL pÃºblica de la imagen (jpg, png, webp)',
                       validator: (val) {
                         if (val != null && val.trim().isNotEmpty) {
                           final uri = Uri.tryParse(val.trim());
                           if (uri == null ||
                               !uri.hasAbsolutePath ||
                               !uri.scheme.startsWith('http')) {
-                            return 'Ingresa una URL válida (ej. https://...)';
+                            return 'Ingresa una URL vÃ¡lida (ej. https://...)';
                           }
                         }
                         return null;
@@ -503,7 +503,7 @@ class _LoyaltySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Módulo de Monedas y Lealtad',
+          'MÃ³dulo de Monedas y Lealtad',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -530,7 +530,7 @@ class _LoyaltySection extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: const Text(
-            'Si se apaga, los clientes no lo ven, pero los administradores sí.',
+            'Si se apaga, los clientes no lo ven, pero los administradores sÃ­.',
           ),
           value: customerVisible,
           activeThumbColor: Theme.of(context).colorScheme.primary,
@@ -561,7 +561,7 @@ class _InfoNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Esta información se usa en toda la app: título global, menú lateral y vista cliente.',
+              'Esta informaciÃ³n se usa en toda la app: tÃ­tulo global, menÃº lateral y vista cliente.',
               style: TextStyle(color: primary, fontSize: 13, height: 1.45),
             ),
           ),
@@ -816,3 +816,4 @@ class _ConnectionSection extends StatelessWidget {
     );
   }
 }
+

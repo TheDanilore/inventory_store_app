@@ -1,18 +1,18 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/accounts_tab.dart';
 import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/movements_tab.dart';
 import 'package:inventory_store_app/features/financial/presentation/screens/widgets/financial/shifts_tab.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/financial/presentation/providers/financial_accounts_provider.dart';
 import 'package:inventory_store_app/features/financial/presentation/providers/account_movements_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// FINANCIAL ACCOUNTS SCREEN — Cuentas · Movimientos · Turnos de Caja
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// FINANCIAL ACCOUNTS SCREEN â€” Cuentas Â· Movimientos Â· Turnos de Caja
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class FinancialAccountsScreen extends StatefulWidget {
   const FinancialAccountsScreen({super.key});
@@ -31,7 +31,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
   void initState() {
     super.initState();
     _mobileTabController = TabController(length: 3, vsync: this);
-    // En tablet, el lado derecho tiene 2 pestañas: Movimientos y Turnos
+    // En tablet, el lado derecho tiene 2 pestaÃ±as: Movimientos y Turnos
     _tabletTabController = TabController(length: 2, vsync: this);
 
     // Fetch data initially
@@ -213,3 +213,4 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     );
   }
 }
+

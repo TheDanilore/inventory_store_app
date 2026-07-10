@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/wishlist/wishlist_card.dart';
@@ -74,7 +74,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
     if (widget.onAddToCart != null) {
       widget.onAddToCart!(context, entry.product.toEntity());
     } else {
-      AppSnackbar.show(context, message: 'Función añadir al carrito no disponible.');
+      AppSnackbar.show(context, message: 'FunciÃ³n aÃ±adir al carrito no disponible.');
     }
   }
 
@@ -91,7 +91,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             content: Text(
-              '¿Quitar "${entry.product.name}" de tu lista?',
+              'Â¿Quitar "${entry.product.name}" de tu lista?',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -240,7 +240,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${items.length} guardado${items.length == 1 ? '' : 's'}  •  $availableCount disponibles',
+                  '${items.length} guardado${items.length == 1 ? '' : 's'}  â€¢  $availableCount disponibles',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
@@ -291,8 +291,8 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.favorite_border_rounded,
-            title: 'Necesitas iniciar sesión',
-            message: 'Inicia sesión para ver tu lista de deseos.',
+            title: 'Necesitas iniciar sesiÃ³n',
+            message: 'Inicia sesiÃ³n para ver tu lista de deseos.',
           ),
         ),
       );
@@ -304,7 +304,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.error_outline,
-            title: 'Algo salió mal',
+            title: 'Algo saliÃ³ mal',
             message: state.message,
           ),
         ),
@@ -318,9 +318,9 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
             padding: const EdgeInsets.only(top: 24),
             child: AppEmptyState(
               icon: Icons.favorite_border_rounded,
-              title: 'Tu lista está vacía',
+              title: 'Tu lista estÃ¡ vacÃ­a',
               message:
-                  'Toca el corazón en cualquier producto para guardarlo aquí.',
+                  'Toca el corazÃ³n en cualquier producto para guardarlo aquÃ­.',
               action: SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -337,7 +337,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                   ),
                   icon: const Icon(Icons.storefront_rounded, size: 18),
                   label: const Text(
-                    'Explorar catálogo',
+                    'Explorar catÃ¡logo',
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                   ),
                 ),
@@ -364,3 +364,4 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
     return const SliverToBoxAdapter(child: SizedBox.shrink());
   }
 }
+

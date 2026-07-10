@@ -1,4 +1,4 @@
-
+﻿
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
@@ -88,7 +88,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogState state) {
     return [
       const PopupMenuItem(value: 'export', child: Text('Exportar')),
-      const PopupMenuItem(value: 'sync', child: Text('Forzar Sincronización')),
+      const PopupMenuItem(value: 'sync', child: Text('Forzar SincronizaciÃ³n')),
     ];
   }
 
@@ -107,7 +107,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         if (ctx.mounted) {
           AppSnackbar.show(
             ctx,
-            message: 'Sincronización completada.',
+            message: 'SincronizaciÃ³n completada.',
             type: SnackbarType.success,
           );
         }
@@ -146,7 +146,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         title: const Padding(
                           padding: EdgeInsets.only(left: 4),
                           child: Text(
-                            'Catálogo',
+                            'CatÃ¡logo',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -485,7 +485,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             final bodyContent = buildBody();
 
             return AdminLayout(
-              title: 'Catálogo',
+              title: 'CatÃ¡logo',
               showSettingsButton: true,
               settingsActions: _buildMenuItems(state),
               onSettingsSelected:
@@ -534,3 +534,4 @@ class _CatalogHeaderDelegate extends SliverPersistentHeaderDelegate {
         child != oldDelegate.child;
   }
 }
+

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -13,7 +13,7 @@ import 'package:inventory_store_app/features/purchases/presentation/screens/widg
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/purchase_orders/po_detail_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
@@ -167,7 +167,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         (i) => EntryItemUI(
                           product: _dummyProduct(
                             i.productId,
-                            i.productName ?? '—',
+                            i.productName ?? 'â€”',
                             i.usesBatches,
                             i.imageUrl,
                           ),
@@ -248,11 +248,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         final pendingCount = provider.pendingCountFiltered;
 
         return AdminLayout(
-          title: 'Órdenes de Compra',
+          title: 'Ã“rdenes de Compra',
           showBackButton: true,
           body: Column(
             children: [
-              // ── Borrador ──────────────────────────────────────────────────
+              // â”€â”€ Borrador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               if (_hasDraft)
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -303,20 +303,20 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   ),
                 ),
 
-              // ── Resumen ───────────────────────────────────────────────────
+              // â”€â”€ Resumen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   children: [
                     _SummaryTile(
-                      label: 'Órdenes',
+                      label: 'Ã“rdenes',
                       value: '${filtered.length}',
                       icon: Icons.shopping_cart_rounded,
                       color: AppColors.primary,
                     ),
                     const SizedBox(width: 8),
                     _SummaryTile(
-                      label: 'Total Pág.',
+                      label: 'Total PÃ¡g.',
                       value: 'S/ ${totalAmount.toStringAsFixed(2)}',
                       icon: Icons.payments_rounded,
                       color: AppColors.teal,
@@ -335,7 +335,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 ),
               ),
 
-              // ── Filtros ───────────────────────────────────────────────────
+              // â”€â”€ Filtros â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Column(
@@ -411,7 +411,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           return Wrap(children: chips);
                         }
 
-                        // Scroll horizontal en móviles
+                        // Scroll horizontal en mÃ³viles
                         return SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(children: chips),
@@ -423,7 +423,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               ),
               const SizedBox(height: 6),
 
-              // ── Lista ─────────────────────────────────────────────────────
+              // â”€â”€ Lista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Expanded(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
@@ -468,7 +468,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   children: [
                                     const Spacer(),
                                     Text(
-                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                      'PÃ¡g. ${provider.currentPage + 1} / ${provider.totalPages}',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 12,
@@ -528,7 +528,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             ],
           ),
 
-          // ── FAB NUEVA ORDEN ──
+          // â”€â”€ FAB NUEVA ORDEN â”€â”€
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
               final result = await context.push<bool>(
@@ -660,7 +660,7 @@ class _DateRangeButton extends StatelessWidget {
 
   String _formatRange(DateTimeRange range) {
     final fmt = DateFormat('d MMM', 'es');
-    return '${fmt.format(range.start)} – ${fmt.format(range.end)}';
+    return '${fmt.format(range.start)} â€“ ${fmt.format(range.end)}';
   }
 
   @override
@@ -728,3 +728,4 @@ class _DateRangeButton extends StatelessWidget {
     );
   }
 }
+

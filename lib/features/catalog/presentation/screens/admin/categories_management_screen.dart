@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_cubit.dart';
@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/category_en
 
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_form_sheet.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 
@@ -100,12 +100,12 @@ class _CategoriesManagementScreenState
     CategoriesCubit cubit,
   ) async {
     if (!val) {
-      // Si se va a desactivar, pedir confirmación
+      // Si se va a desactivar, pedir confirmaciÃ³n
       final confirm = await AppConfirmDialog.show(
         context,
-        title: 'Desactivar Categoría',
+        title: 'Desactivar CategorÃ­a',
         message:
-            '¿Estás seguro de desactivar la categoría "${cat.name}"? Los productos asociados podrían dejar de ser visibles para los clientes.',
+            'Â¿EstÃ¡s seguro de desactivar la categorÃ­a "${cat.name}"? Los productos asociados podrÃ­an dejar de ser visibles para los clientes.',
         confirmText: 'Desactivar',
         confirmColor: Colors.orange.shade700,
       );
@@ -118,12 +118,12 @@ class _CategoriesManagementScreenState
   @override
   Widget build(BuildContext context) {
     return AdminLayout(
-      title: 'Categorías',
+      title: 'CategorÃ­as',
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCategoryForm(),
         backgroundColor: AppColors.primary,
-        tooltip: 'Crear nueva categoría',
+        tooltip: 'Crear nueva categorÃ­a',
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: ValueListenableBuilder<bool>(
           valueListenable: _isFabExtended,
@@ -150,16 +150,16 @@ class _CategoriesManagementScreenState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── BUSCADOR ───────────────────────────────────────────────────────
+              // â”€â”€â”€ BUSCADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Semantics(
-                  label: 'Buscador de categorías',
+                  label: 'Buscador de categorÃ­as',
                   child: TextField(
                     controller: _searchCtrl,
                     onChanged: cubit.onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Buscar categoría por nombre...',
+                      hintText: 'Buscar categorÃ­a por nombre...',
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,
@@ -213,7 +213,7 @@ class _CategoriesManagementScreenState
                   vertical: 4,
                 ),
                 child: Text(
-                  'Total: ${cubit.state.categories.length} categorías',
+                  'Total: ${cubit.state.categories.length} categorÃ­as',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 13,
@@ -222,7 +222,7 @@ class _CategoriesManagementScreenState
                 ),
               ),
 
-              // ─── LISTA DE CATEGORÍAS ────────────────────────────────────────────
+              // â”€â”€â”€ LISTA DE CATEGORÃAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => cubit.loadCategories(forceRefresh: true),
@@ -267,7 +267,7 @@ class _CategoriesManagementScreenState
               Text(
                 cubit.state.searchQuery.isNotEmpty
                     ? 'No se encontraron resultados'
-                    : 'Aún no tienes categorías',
+                    : 'AÃºn no tienes categorÃ­as',
                 style: const TextStyle(
                   color: Colors.black87,
                   fontSize: 18,
@@ -277,8 +277,8 @@ class _CategoriesManagementScreenState
               const SizedBox(height: 8),
               Text(
                 cubit.state.searchQuery.isNotEmpty
-                    ? 'Intenta con otro término de búsqueda'
-                    : 'Organiza tus productos creando la primera categoría.',
+                    ? 'Intenta con otro tÃ©rmino de bÃºsqueda'
+                    : 'Organiza tus productos creando la primera categorÃ­a.',
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
@@ -287,7 +287,7 @@ class _CategoriesManagementScreenState
                 ElevatedButton.icon(
                   onPressed: () => _showCategoryForm(),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Crear Categoría'),
+                  label: const Text('Crear CategorÃ­a'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -350,7 +350,7 @@ class _CategoriesManagementScreenState
             ),
             child: Row(
               children: [
-                // ─── Área de Info (Izquierda) ────────────────────────────────
+                // â”€â”€â”€ Ãrea de Info (Izquierda) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(
@@ -389,7 +389,7 @@ class _CategoriesManagementScreenState
                               Text(
                                 cat.description?.isNotEmpty == true
                                     ? cat.description!
-                                    : 'Sin descripción',
+                                    : 'Sin descripciÃ³n',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -418,26 +418,26 @@ class _CategoriesManagementScreenState
                   ),
                 ),
 
-                // ─── Área de Acciones (Derecha) ──────────────────────────────
+                // â”€â”€â”€ Ãrea de Acciones (Derecha) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Botón Editar explícito
+                      // BotÃ³n Editar explÃ­cito
                       IconButton(
                         icon: Icon(
                           Icons.edit_outlined,
                           color: Colors.grey.shade600,
                           size: 20,
                         ),
-                        tooltip: 'Editar categoría',
+                        tooltip: 'Editar categorÃ­a',
                         onPressed: () => _showCategoryForm(cat),
                       ),
 
                       // Switch de Estado independiente
                       Semantics(
-                        label: 'Estado de la categoría ${cat.name}',
+                        label: 'Estado de la categorÃ­a ${cat.name}',
                         child: Switch(
                           value: cat.isActive,
                           onChanged:
@@ -462,3 +462,4 @@ class _CategoriesManagementScreenState
     );
   }
 }
+

@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/purchases/presentation/providers/supplier_credit_movements_provider.dart';
 
-// Widgets extraídos
+// Widgets extraÃ­dos
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credit_movements/summary_header.dart';
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credit_movements/movement_card.dart';
 
@@ -391,3 +391,4 @@ class _MovementsSkeleton extends StatelessWidget {
     );
   }
 }
+

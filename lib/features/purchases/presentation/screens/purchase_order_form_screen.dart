@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/purchases/presentation/providers/purchase_order_form_provider.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory_entries/add_entry_product_sheet.dart';
@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/purchases/presentation/screens/widg
 import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/purchase_orders/po_form_summary_card.dart';
 import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class PurchaseOrderFormScreen extends StatefulWidget {
@@ -66,7 +66,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       initialDate: provider.documentDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      helpText: 'Fecha del Documento Físico',
+      helpText: 'Fecha del Documento FÃ­sico',
     );
     if (picked != null) {
       provider.setDocumentDate(picked);
@@ -86,11 +86,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       return;
     }
 
-    // Validar que se haya seleccionado un almacén de destino
+    // Validar que se haya seleccionado un almacÃ©n de destino
     if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacén de destino antes de agregar productos.',
+        message: 'Selecciona un almacÃ©n de destino antes de agregar productos.',
         type: SnackbarType.warning,
       );
       return;
@@ -120,7 +120,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     if (success && mounted) {
       AppSnackbar.show(
         context,
-        message: 'Orden generada con éxito',
+        message: 'Orden generada con Ã©xito',
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
@@ -140,7 +140,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           (_) => AlertDialog(
             title: const Text('Descartar Borrador'),
             content: const Text(
-              '¿Estás seguro de que quieres limpiar la orden actual? Perderás todos los ítems agregados.',
+              'Â¿EstÃ¡s seguro de que quieres limpiar la orden actual? PerderÃ¡s todos los Ã­tems agregados.',
             ),
             actions: [
               TextButton(
@@ -201,9 +201,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               context: context,
               builder:
                   (ctx) => AlertDialog(
-                    title: const Text('Órden en progreso'),
+                    title: const Text('Ã“rden en progreso'),
                     content: const Text(
-                      'Tienes productos en la órden actual. ¿Qué deseas hacer al salir?',
+                      'Tienes productos en la Ã³rden actual. Â¿QuÃ© deseas hacer al salir?',
                     ),
                     actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     actions: [
@@ -292,7 +292,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                   ),
                                 ),
                               ),
-                              // Derecha: Productos y Botón Guardar
+                              // Derecha: Productos y BotÃ³n Guardar
                               Expanded(
                                 flex: 4,
                                 child: Column(
@@ -311,7 +311,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                           );
                         }
 
-                        // Móvil
+                        // MÃ³vil
                         return Column(
                           children: [
                             Expanded(
@@ -423,7 +423,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             isExpanded: true,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
-              'Almacén Destino (Obligatorio)',
+              'AlmacÃ©n Destino (Obligatorio)',
               icon: Icons.warehouse_rounded,
             ),
             items:
@@ -480,7 +480,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   ),
                   if (provider.items.isNotEmpty)
                     PopupMenuButton<String>(
-                      tooltip: 'Más opciones',
+                      tooltip: 'MÃ¡s opciones',
                       icon: const Icon(
                         Icons.more_vert_rounded,
                         color: AppColors.textSecondary,
@@ -532,7 +532,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Tu orden está vacía',
+                    'Tu orden estÃ¡ vacÃ­a',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -634,7 +634,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               DropdownMenuItem(
                 value: 'CREDITO',
                 child: Text(
-                  'Línea de Crédito',
+                  'LÃ­nea de CrÃ©dito',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -760,7 +760,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 child: TextFormField(
                   controller: _documentNumberCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Número / Serie',
+                    labelText: 'NÃºmero / Serie',
                     filled: true,
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
@@ -778,7 +778,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           ),
           const SizedBox(height: 16),
           _DatePickerField(
-            label: 'Fecha Emisión Físico',
+            label: 'Fecha EmisiÃ³n FÃ­sico',
             value: provider.documentDate,
             onPick: () => _pickDocumentDate(context),
             onClear: () => provider.setDocumentDate(null),
@@ -808,7 +808,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 }
 
-// ── UTILS UI ──
+// â”€â”€ UTILS UI â”€â”€
 
 InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
@@ -943,3 +943,4 @@ class _DatePickerField extends StatelessWidget {
     );
   }
 }
+

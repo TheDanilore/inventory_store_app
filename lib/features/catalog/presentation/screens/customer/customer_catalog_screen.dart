@@ -1,10 +1,10 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/core/widgets/customer_layout.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_search_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_category_list.dart';
@@ -59,9 +59,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppColors.radius),
                 ),
-                title: const Text('¡Bienvenido!'),
+                title: const Text('Â¡Bienvenido!'),
                 content: const Text(
-                  'Inicia sesión para disfrutar de más beneficios, guardar tus favoritos y acumular puntos en tus compras.',
+                  'Inicia sesiÃ³n para disfrutar de mÃ¡s beneficios, guardar tus favoritos y acumular puntos en tus compras.',
                 ),
                 actions: [
                   TextButton(
@@ -80,7 +80,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                       backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Iniciar sesión'),
+                    child: const Text('Iniciar sesiÃ³n'),
                   ),
                 ],
               ),
@@ -101,7 +101,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     final state = context.watch<CustomerCatalogCubit>().state;
 
     return CustomerLayout(
-      title: 'Catálogo',
+      title: 'CatÃ¡logo',
       currentIndex: 0,
       showAppBar: false,
       body: RefreshIndicator(
@@ -138,7 +138,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'Categorías',
+                      'CategorÃ­as',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -185,7 +185,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 ),
               ],
 
-              // --- Historial de Búsqueda ---
+              // --- Historial de BÃºsqueda ---
               if (state.isSearchMode && state.searchTerm.isEmpty) ...[
                 SliverToBoxAdapter(
                   child:
@@ -194,7 +194,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                             padding: const EdgeInsets.all(32),
                             child: Center(
                               child: Text(
-                                'No hay búsquedas recientes',
+                                'No hay bÃºsquedas recientes',
                                 style: TextStyle(color: Colors.grey.shade500),
                               ),
                             ),
@@ -259,7 +259,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   child: AppEmptyState(
                     icon: Icons.error_outline_rounded,
                     color: Colors.red,
-                    title: 'Ocurrió un error',
+                    title: 'OcurriÃ³ un error',
                     message: state.errorMessage!,
                     action: ElevatedButton.icon(
                       onPressed: cubit.refreshProducts,
@@ -292,7 +292,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Prueba buscando otra cosa o cambiando de categoría.',
+                            'Prueba buscando otra cosa o cambiando de categorÃ­a.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey.shade500),
                           ),
@@ -376,3 +376,4 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _StickySearchDelegate old) => old.child != child;
 }
+
