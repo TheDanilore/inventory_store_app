@@ -1,19 +1,19 @@
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
 
-class SaveAccountMovementUseCase {
+class TransferFundsUseCase {
   final AccountMovementsRepository _repository;
 
-  SaveAccountMovementUseCase(this._repository);
+  TransferFundsUseCase(this._repository);
 
   Future<void> call({
-    required String accountId,
-    required String movementType,
+    required String sourceAccountId,
+    required String destAccountId,
     required double amount,
     required String description,
   }) {
-    return _repository.registerManualMovement(
-      accountId: accountId,
-      movementType: movementType,
+    return _repository.transferFunds(
+      sourceAccountId: sourceAccountId,
+      destAccountId: destAccountId,
       amount: amount,
       description: description,
     );

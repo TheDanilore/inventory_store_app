@@ -45,13 +45,19 @@ abstract class AccountMovementsRepository {
   /// Retorna los totales de ingresos y egresos del conjunto filtrado.
   Future<MovementTotals> getMovementTotals({required MovementFilters filters});
 
-  /// Registra un nuevo movimiento de cuenta.
-  Future<void> saveMovement({
+  /// Registra un movimiento de cuenta manual (ingreso o egreso) y actualiza el saldo de la cuenta.
+  Future<void> registerManualMovement({
     required String accountId,
     required String movementType,
     required double amount,
     required String description,
-    String? referenceType,
-    String? referenceId,
+  });
+
+  /// Realiza una transferencia de fondos entre dos cuentas, actualizando saldos y registrando ambos movimientos.
+  Future<void> transferFunds({
+    required String sourceAccountId,
+    required String destAccountId,
+    required double amount,
+    required String description,
   });
 }

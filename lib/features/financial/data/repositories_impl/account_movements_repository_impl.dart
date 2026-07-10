@@ -82,26 +82,101 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     }
   }
 
+  Future<String?> _getActiveShift(String accountId) async {
+    final res = await _supabase
+        .from('cash_shifts')
+        .select('id')
+        .eq('account_id', accountId)
+        .eq('status', 'OPEN')
+        .maybeSingle();
+    return res?['id'] as String?;
+  }
+
+  Future<String> _getProfileId() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) throw Exception('No hay sesión activa');
+    final profileRes = await _supabase.from('profiles').select('id').eq('auth_user_id', user.id).maybeSingle();
+    return profileRes?['id'] as String? ?? user.id;
+  }
+
   @override
-  Future<void> saveMovement({
+  Future<void> registerManualMovement({
     required String accountId,
     required String movementType,
     required double amount,
     required String description,
-    String? referenceType,
-    String? referenceId,
   }) async {
     try {
+      final profileId = await _getProfileId();
+      final sourceAccRes = await _supabase.from('financial_accounts').select('balance').eq('id', accountId).single();
+      final currentBalance = (sourceAccRes['balance'] as num).toDouble();
+      final shiftId = await _getActiveShift(accountId);
+
+      final isIncome = movementType == 'INCOME';
+      final newBalance = isIncome ? (currentBalance + amount) : (currentBalance - amount);
+
+      await _supabase.from('financial_accounts').update({'balance': newBalance}).eq('id', accountId);
+
       await _supabase.from('account_movements').insert({
         'account_id': accountId,
         'movement_type': movementType,
         'amount': amount,
         'description': description,
-        if (referenceType != null) 'reference_type': referenceType,
-        if (referenceId != null) 'reference_id': referenceId,
+        'created_by': profileId,
+        'shift_id': shiftId,
+        'reference_type': 'manual',
       });
     } catch (e) {
-      debugPrint('AccountMovementsRepositoryImpl.saveMovement error: $e');
+      debugPrint('AccountMovementsRepositoryImpl.registerManualMovement error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> transferFunds({
+    required String sourceAccountId,
+    required String destAccountId,
+    required double amount,
+    required String description,
+  }) async {
+    try {
+      final profileId = await _getProfileId();
+      
+      final sourceAccRes = await _supabase.from('financial_accounts').select('balance, name').eq('id', sourceAccountId).single();
+      final currentSourceBalance = (sourceAccRes['balance'] as num).toDouble();
+      final sourceName = sourceAccRes['name'] as String;
+      final sourceShiftId = await _getActiveShift(sourceAccountId);
+
+      final destAccRes = await _supabase.from('financial_accounts').select('balance, name').eq('id', destAccountId).single();
+      final currentDestBalance = (destAccRes['balance'] as num).toDouble();
+      final destName = destAccRes['name'] as String;
+      final destShiftId = await _getActiveShift(destAccountId);
+
+      await _supabase.from('financial_accounts').update({'balance': currentSourceBalance - amount}).eq('id', sourceAccountId);
+      await _supabase.from('financial_accounts').update({'balance': currentDestBalance + amount}).eq('id', destAccountId);
+
+      await _supabase.from('account_movements').insert([
+        {
+          'account_id': sourceAccountId,
+          'movement_type': 'EXPENSE',
+          'amount': amount,
+          'description': 'Transferencia enviada a $destName${description.isNotEmpty ? ' — $description' : ''}',
+          'created_by': profileId,
+          'shift_id': sourceShiftId,
+          'reference_type': 'manual_transfer',
+        },
+        {
+          'account_id': destAccountId,
+          'movement_type': 'INCOME',
+          'amount': amount,
+          'description': 'Transferencia recibida de $sourceName${description.isNotEmpty ? ' — $description' : ''}',
+          'created_by': profileId,
+          'shift_id': destShiftId,
+          'reference_type': 'manual_transfer',
+        },
+      ]);
+    } catch (e) {
+      debugPrint('AccountMovementsRepositoryImpl.transferFunds error: $e');
       rethrow;
     }
   }
