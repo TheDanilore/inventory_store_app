@@ -5,8 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -24,13 +23,12 @@ class PosAddToCartSheet extends StatefulWidget {
 }
 
 class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
-  ProductModel get _productModel => ProductModel.fromEntity(widget.productEntity);
 
   final _repo = sl<CatalogRepository>();
   bool _isLoading = true;
-  List<ProductVariantModel> _variants = [];
+  List<ProductVariantEntity> _variants = [];
   final Map<String, int> _stockByVariant = {};
-  ProductVariantModel? _selectedVariant;
+  ProductVariantEntity? _selectedVariant;
   int _quantity = 1;
 
   @override
@@ -44,10 +42,10 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
       // Usa fetchVariantsByProductIds del repositorio que ya tiene el join
       // correcto: variant_attribute_values → attribute_values → attributes
       final variantMapRes = await _repo.fetchVariantsByProductIds([
-        _productModel.id,
+        widget.productEntity.id,
       ]);
-      final variantMap = variantMapRes.fold((l) => <String, List<ProductVariantModel>>{}, (r) => r);
-      _variants = variantMap[_productModel.id] ?? [];
+      final variantMap = variantMapRes.fold((l) => <String, List<ProductVariantEntity>>{}, (r) => r);
+      _variants = variantMap[widget.productEntity.id] ?? [];
 
       if (_variants.isNotEmpty) {
         final variantIds = _variants.map((v) => v.id).toList();
@@ -69,17 +67,17 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
     }
   }
 
-  bool get _hasStockControl => _productModel.stockControl;
+  bool get _hasStockControl => widget.productEntity.stockControl;
 
   int get _currentStock {
-    if (_variants.isEmpty) return _productModel.totalStock;
+    if (_variants.isEmpty) return widget.productEntity.totalStock;
     if (_selectedVariant == null) return 0;
     return _stockByVariant[_selectedVariant!.id] ?? 0;
   }
 
   double get _currentPrice {
-    if (_variants.isEmpty) return _productModel.salePrice;
-    return _selectedVariant?.salePrice ?? _productModel.salePrice;
+    if (_variants.isEmpty) return widget.productEntity.salePrice;
+    return _selectedVariant?.salePrice ?? widget.productEntity.salePrice;
   }
 
   bool get _canSell =>
@@ -165,7 +163,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
     final String? imageUrl =
         _selectedVariant?.images.isNotEmpty == true
             ? _selectedVariant!.images.first.imageUrl
-            : _productModel.primaryImageUrl;
+            : widget.productEntity.primaryImageUrl;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -221,7 +219,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _productModel.name,
+                      widget.productEntity.name,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -270,7 +268,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 border: Border.all(color: AppColors.border),
               ),
               child: DropdownButtonHideUnderline(
-                child: DropdownButton<ProductVariantModel>(
+                child: DropdownButton<ProductVariantEntity>(
                   value: _selectedVariant,
                   isExpanded: true,
                   icon: const Icon(
@@ -287,7 +285,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                         return DropdownMenuItem(
                           value: v,
                           child: Text(
-                            '${v.label} · S/ ${(v.salePrice ?? _productModel.salePrice).toStringAsFixed(2)} $stockLabel',
+                            '${v.label} · S/ ${(v.salePrice ?? widget.productEntity.salePrice).toStringAsFixed(2)} $stockLabel',
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textPrimary,
@@ -374,19 +372,19 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                       }
 
                       context.read<PosProvider>().addProductToPos(
-                        product: _productModel,
+                        product: widget.productEntity,
                         quantity: _quantity,
                         variantId: _selectedVariant!.id,
                         variantLabel: _selectedVariant!.label,
                         unitPrice:
                             _selectedVariant!.salePrice ??
-                            _productModel.salePrice,
+                            widget.productEntity.salePrice,
                         wholesalePrice:
                             _selectedVariant!.wholesalePrice ??
-                            _productModel.wholesalePrice,
+                            widget.productEntity.wholesalePrice,
                         unitCost:
                             _selectedVariant!.unitCost ??
-                            _productModel.unitCost,
+                            widget.productEntity.unitCost,
                         imageUrl: imageUrl,
                         sku: _selectedVariant!.sku,
                         availableStock: _hasStockControl ? stock : 999999,
@@ -568,3 +566,4 @@ class _QtyButton extends StatelessWidget {
     );
   }
 }
+

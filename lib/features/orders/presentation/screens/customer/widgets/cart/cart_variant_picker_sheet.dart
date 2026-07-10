@@ -1,7 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -14,10 +15,10 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CartVariantPickerSheet extends StatefulWidget {
   final CartProvider cart;
-  final ProductModel product;
+  final ProductEntity product;
   final CartItemModel? existingCartItem;
   final int initialQuantity;
-  final ValueChanged<ProductVariantModel>? onVariantSelected;
+  final ValueChanged<ProductVariantEntity>? onVariantSelected;
   final String? selectedVariantId;
 
   const CartVariantPickerSheet({
@@ -37,7 +38,7 @@ class CartVariantPickerSheet extends StatefulWidget {
 class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
   final _service = sl<CatalogRepository>();
   bool _isLoading = true;
-  List<ProductVariantModel> _variants = [];
+  List<ProductVariantEntity> _variants = [];
   Map<String, int> _stockByVariant = {};
 
   @override
@@ -51,7 +52,7 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
       final variantsRes = await _service.loadActiveVariants(widget.product.id);
       final variantsData = variantsRes.fold((l) => <Map<String, dynamic>>[], (r) => r);
       _variants =
-          variantsData.map((v) => ProductVariantModel.fromJson(v)).toList();
+          variantsData.map((v) => ProductVariantModel.fromJson(v).toEntity()).toList();
       final stockRes = await _service.loadStockByVariant(widget.product.id);
       _stockByVariant = stockRes.fold((l) => <String, int>{}, (r) => r);
     } catch (e) {
@@ -163,7 +164,7 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
 
   Widget _buildVariantOption(
     BuildContext context,
-    ProductVariantModel variant,
+    ProductVariantEntity variant,
   ) {
     final int variantStock = _stockByVariant[variant.id] ?? 0;
     final bool isAgotado = widget.product.stockControl && variantStock <= 0;
@@ -202,7 +203,7 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                       variant.wholesalePrice ?? widget.product.wholesalePrice,
                   unitCost: variant.unitCost ?? widget.product.unitCost,
                   imageUrl:
-                      variant.primaryImageUrl ?? widget.product.primaryImageUrl,
+                      (variant.images.isNotEmpty ? variant.images.first.imageUrl : null) ?? widget.product.primaryImageUrl,
                   sku: variant.sku,
                   availableStock: variantStock,
                 );
@@ -239,9 +240,9 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                 child: AspectRatio(
                   aspectRatio: 1,
                   child:
-                      variant.primaryImageUrl != null
+                      variant.images.isNotEmpty
                           ? CachedNetworkImage(
-                            imageUrl: variant.primaryImageUrl!,
+                              imageUrl: variant.images.first.imageUrl,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => _imgFallback(),
                             errorWidget:

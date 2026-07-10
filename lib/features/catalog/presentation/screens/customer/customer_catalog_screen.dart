@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -96,7 +95,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   }
 
   Future<void> _handleAddToCart(ProductEntity productEntity) async {
-    final product = ProductModel.fromEntity(productEntity);
     final cart = context.read<CartProvider>();
 
     await showModalBottomSheet(
@@ -104,7 +102,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (context) => CartVariantPickerSheet(cart: cart, product: product),
+          (context) => CartVariantPickerSheet(cart: cart, product: productEntity),
     );
   }
 

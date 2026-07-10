@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 
 class CustomerOrdersProvider extends ChangeNotifier {
@@ -187,7 +188,7 @@ class CustomerOrdersProvider extends ChangeNotifier {
     }
   }
 
-  Future<ProductModel?> fetchProductDetailWithStock(String productId) async {
+  Future<ProductEntity?> fetchProductDetailWithStock(String productId) async {
     try {
       final response =
           await _supabase
@@ -216,7 +217,7 @@ class CustomerOrdersProvider extends ChangeNotifier {
 
       return ProductModel.fromJson(
         Map<String, dynamic>.from(response),
-      ).copyWith(totalStock: totalStock);
+      ).toEntity().copyWith(totalStock: totalStock);
     } catch (e) {
       throw Exception('Error al cargar producto: $e');
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 
@@ -107,7 +108,7 @@ class CartCloudService {
 
         final product = ProductModel.fromJson(
           Map<String, dynamic>.from(productJson as Map),
-        );
+        ).toEntity();
         final qty = (row['quantity'] as num?)?.toInt() ?? 1;
         final isSelected = row['is_selected'] as bool? ?? true;
         final rawVariantId = row['variant_id'] as String?;
@@ -120,12 +121,12 @@ class CartCloudService {
                     ? rawVariant.first
                     : null);
 
-        ProductVariantModel? variant;
+        ProductVariantEntity? variant;
         if (variantJson != null) {
           try {
             variant = ProductVariantModel.fromJson(
               Map<String, dynamic>.from(variantJson as Map),
-            );
+            ).toEntity();
           } catch (e) {
             debugPrint('CartCloudService: error parseando variante: $e');
           }
@@ -149,7 +150,7 @@ class CartCloudService {
           unitPrice: variant?.salePrice ?? product.salePrice,
           unitCost: effectiveUnitCost,
           wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
-          imageUrl: variant?.primaryImageUrl ?? product.primaryImageUrl,
+          imageUrl: (variant != null && variant.images.isNotEmpty) ? variant.images.first.imageUrl : product.primaryImageUrl,
           sku: variant?.sku,
           availableStock:
               999, // Stock se actualizará en background en la UI si hace falta

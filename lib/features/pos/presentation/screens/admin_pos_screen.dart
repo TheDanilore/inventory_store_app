@@ -1,4 +1,4 @@
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,7 +7,6 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -49,8 +48,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     super.dispose();
   }
 
-  Future<void> _irAVenta(ProductEntity productEntity) async {
-    final product = ProductModel.fromEntity(productEntity);
+  Future<void> _irAVenta(ProductEntity product) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -59,7 +57,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     try {
       final repo = sl<CatalogRepository>();
       final variantsMapRes = await repo.fetchVariantsByProductIds([product.id]);
-        final variantsMap = variantsMapRes.fold((l) => <String, List<ProductVariantModel>>{}, (r) => r);
+        final variantsMap = variantsMapRes.fold((l) => <String, List<ProductVariantEntity>>{}, (r) => r);
       final variants = variantsMap[product.id] ?? [];
 
       if (!mounted) return;
@@ -140,7 +138,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
             insetPadding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500, maxHeight: 750),
-              child: PosAddToCartSheet(productEntity: product.toEntity()),
+              child: PosAddToCartSheet(productEntity: product),
             ),
           ),
     );

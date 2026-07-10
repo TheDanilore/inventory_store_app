@@ -55,7 +55,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (context) =>
-              CartVariantPickerSheet(cart: cart, product: entry.product),
+              CartVariantPickerSheet(cart: cart, product: entry.product.toEntity()),
     );
   }
 

@@ -1,7 +1,8 @@
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 
 class CartItemModel {
-  final ProductModel product;
+  final ProductEntity product;
   int quantity;
   final String cartKey;
   final String? variantId;
@@ -14,7 +15,7 @@ class CartItemModel {
   int availableStock;
 
   // Indica si el producto gestiona stock por lotes (uses_batches en products).
-  // Se propaga desde ProductModel al añadir al carrito, NO viene de la BD
+  // Se propaga desde ProductEntity al añadir al carrito, NO viene de la BD
   // de cart_items — es un dato de producto, no del carrito.
   final bool usesBatches;
 
@@ -36,7 +37,7 @@ class CartItemModel {
     this.isSelected = true,
   }) : unitPrice = unitPrice ?? product.salePrice,
        unitCost = unitCost ?? product.unitCost,
-       // Si no se pasa explícitamente, lo tomamos del propio ProductModel.
+       // Si no se pasa explícitamente, lo tomamos del propio ProductEntity.
        // Así nunca queda en false por descuido al construir el ítem.
        usesBatches = usesBatches ?? product.usesBatches,
        availableStock = availableStock ?? 0,
@@ -54,7 +55,7 @@ class CartItemModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'product': product.toJson(),
+      'product': ProductModel.fromEntity(product).toJson(),
       'quantity': quantity,
       'variantId': variantId,
       'variantLabel': variantLabel,
@@ -72,7 +73,7 @@ class CartItemModel {
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
     final product = ProductModel.fromJson(
       json['product'] as Map<String, dynamic>,
-    );
+    ).toEntity();
     return CartItemModel(
       product: product,
       quantity: (json['quantity'] as num).toInt(),
@@ -94,7 +95,7 @@ class CartItemModel {
   }
 
   CartItemModel copyWith({
-    ProductModel? product,
+    ProductEntity? product,
     int? quantity,
     String? cartKey,
     String? variantId,

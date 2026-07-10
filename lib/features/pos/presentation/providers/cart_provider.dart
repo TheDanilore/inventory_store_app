@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/cart_cloud_service.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/cart_local_service.dart';
@@ -186,7 +186,7 @@ class CartProvider with ChangeNotifier {
 
   // ── CRUD del carrito ──────────────────────────────────────────────────────
   void addItem(
-    ProductModel product, {
+    ProductEntity product, {
     int quantity = 1,
     String? variantId,
     String? variantLabel,

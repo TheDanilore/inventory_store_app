@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -408,7 +408,7 @@ class PosCartItemRow extends StatelessWidget {
 class PosWholesaleHint extends StatelessWidget {
   final TextEditingController quantityController;
   final ProductVariantModel? selectedVariant;
-  final ProductModel product;
+  final ProductEntity product;
   final bool useWholesalePrice;
   final bool canUseWholesalePrice;
 

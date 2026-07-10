@@ -151,6 +151,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1067.GetFirstVariantIdUC>(
       () => _i1067.GetFirstVariantIdUC(gh<_i1018.CatalogRepository>()),
     );
+    gh.lazySingleton<_i1067.SetProductActiveUC>(
+      () => _i1067.SetProductActiveUC(gh<_i1018.CatalogRepository>()),
+    );
+    gh.lazySingleton<_i1067.ClearCatalogCacheUC>(
+      () => _i1067.ClearCatalogCacheUC(gh<_i1018.CatalogRepository>()),
+    );
     gh.lazySingleton<_i1014.GetProductImagesUC>(
       () => _i1014.GetProductImagesUC(gh<_i1018.CatalogRepository>()),
     );
@@ -298,6 +304,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i282.UpdateProfileUseCase>(
       () => _i282.UpdateProfileUseCase(gh<_i787.AuthRepository>()),
     );
+    gh.factory<_i332.AdminCatalogCubit>(
+      () => _i332.AdminCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
+        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
+      ),
+    );
     gh.factory<_i919.AttributesCubit>(
       () => _i919.AttributesCubit(
         getAttributesUC: gh<_i487.GetAttributesUC>(),
@@ -323,13 +337,6 @@ extension GetItInjectableX on _i174.GetIt {
         createCategoryUC: gh<_i110.CreateCategoryUC>(),
         updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
         deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
-      ),
-    );
-    gh.factory<_i332.AdminCatalogCubit>(
-      () => _i332.AdminCatalogCubit(
-        repository: gh<_i1018.CatalogRepository>(),
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
       ),
     );
     gh.factory<_i52.AuthCubit>(

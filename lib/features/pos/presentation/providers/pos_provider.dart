@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 
 class PosProvider with ChangeNotifier {
@@ -101,7 +101,7 @@ class PosProvider with ChangeNotifier {
   // --- MÉTODOS DEL CARRITO ---
 
   void addProductToPos({
-    required ProductModel product,
+    required ProductEntity product,
     required int quantity,
     String? variantId,
     String? variantLabel,
@@ -158,7 +158,7 @@ class PosProvider with ChangeNotifier {
           availableStock: stockLimit,
           cartKey: key,
           // Propagamos si el producto gestiona lotes para que el checkout
-          // pueda mostrar el chip de edición sin acceder al ProductModel.
+          // pueda mostrar el chip de edición sin acceder al ProductEntity.
           usesBatches: product.usesBatches,
         ),
       );
