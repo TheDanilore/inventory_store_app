@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/variant_draft_form_model.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
 // Clases de utilidad locales para el Formulario

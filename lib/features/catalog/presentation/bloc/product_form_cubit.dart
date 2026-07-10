@@ -6,7 +6,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/variant_draft_form_model.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_image_ucs.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ingredient_ucs.dart';
@@ -423,24 +423,21 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   void duplicateVariantDraft(int index) {
     final original = variantDrafts[index];
-    final copy = VariantDraftFormModel();
-    copy.skuCtrl.text =
-        original.skuCtrl.text.isNotEmpty ? '${original.skuCtrl.text}-COPY' : '';
-    copy.reorderPointCtrl.text = original.reorderPointCtrl.text;
-    copy.unitCostCtrl.text = original.unitCostCtrl.text;
-    copy.priceCtrl.text = original.priceCtrl.text;
-    copy.wholesalePriceCtrl.text = original.wholesalePriceCtrl.text;
-    copy.wholesaleMinQuantityCtrl.text = original.wholesaleMinQuantityCtrl.text;
-    copy.isActive = original.isActive;
-
-    final copiedAttributes = <Map<String, dynamic>>[];
-    for (var attr in original.selectedAttributes) {
-      copiedAttributes.add(Map<String, dynamic>.from(attr));
-    }
-    copy.selectedAttributes = copiedAttributes;
-
-    copy.urlsExistentes.addAll(original.urlsExistentes);
-
+    final copiedAttributes =
+        original.selectedAttributes.map((a) => Map<String, dynamic>.from(a)).toList();
+    final copy = original.copyWith(
+      id: null,
+      sku: original.sku.isNotEmpty ? '${original.sku}-COPY' : '',
+      reorderPoint: original.reorderPoint,
+      unitCost: original.unitCost,
+      price: original.price,
+      wholesalePrice: original.wholesalePrice,
+      wholesaleMinQuantity: original.wholesaleMinQuantity,
+      isActive: original.isActive,
+      selectedAttributes: copiedAttributes,
+      urlsExistentes: List.of(original.urlsExistentes),
+      nuevasImagenes: List.of(original.nuevasImagenes),
+    );
     variantDrafts.insert(index + 1, copy);
     markAsDirty();
     _syncState();
@@ -450,7 +447,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     final draft = variantDrafts[index];
 
     if (draft.id == null) {
-      draft.dispose();
       variantDrafts.removeAt(index);
       markAsDirty();
       _syncState();
@@ -472,7 +468,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       }
 
       await _unwrap(_deleteVariantUC.call(draft.id!));
-      draft.dispose();
+      // immutable model: nothing to dispose
       variantDrafts.removeAt(index);
       markAsDirty();
       _syncState();
@@ -507,12 +503,20 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final bytesOriginales = await file.readAsBytes();
       final bytesOptimizados = await _optimizarImagen(bytesOriginales);
 
-      draft.urlsExistentes.clear();
-      draft.nuevasImagenes.clear();
-      draft.nuevasImagenes.add(bytesOptimizados);
+      final updated = draft.copyWith(
+        urlsExistentes: [],
+        nuevasImagenes: [bytesOptimizados],
+      );
+      variantDrafts[index] = updated;
       markAsDirty();
       _syncState();
     }
+  }
+
+  void updateVariantDraft(int index, VariantDraftFormModel updated) {
+    variantDrafts[index] = updated;
+    markAsDirty();
+    _syncState();
   }
 
   // --- Helper Compress/Upload ---
@@ -563,8 +567,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (!formKey.currentState!.validate()) return false;
 
     final skus = variantDrafts
-        .where((d) => d.skuCtrl.text.trim().isNotEmpty)
-        .map((d) => d.skuCtrl.text.trim().toLowerCase());
+      .where((d) => d.sku.trim().isNotEmpty)
+      .map((d) => d.sku.trim().toLowerCase());
 
     if (skus.toSet().length != skus.length) {
       AppSnackbar.show(
@@ -636,32 +640,26 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       final variantsPayload =
           variantDrafts.map((draft) {
-            final valueIds =
-                draft.selectedAttributes
-                    .map((attr) => attr['value_id'] as String)
-                    .toList();
-            final skuValue = draft.skuCtrl.text.trim();
+            final valueIds = draft.selectedAttributes
+              .map((attr) => attr['value_id'] as String)
+              .toList();
+            final skuValue = draft.sku.trim();
 
             return VariantPayload(
               id: draft.id,
               sku: skuValue.isEmpty ? null : skuValue,
-              unitCost: _parseDecimal(draft.unitCostCtrl.text) ?? 0.0,
-              salePrice: _parseDecimal(draft.priceCtrl.text),
-              wholesalePrice: _parseDecimal(draft.wholesalePriceCtrl.text),
-              wholesaleMinQuantity: int.tryParse(
-                draft.wholesaleMinQuantityCtrl.text,
-              ),
-              reorderPoint: int.tryParse(draft.reorderPointCtrl.text),
+              unitCost: _parseDecimal(draft.unitCost) ?? 0.0,
+              salePrice: _parseDecimal(draft.price),
+              wholesalePrice: _parseDecimal(draft.wholesalePrice),
+              wholesaleMinQuantity: int.tryParse(draft.wholesaleMinQuantity),
+              reorderPoint: int.tryParse(draft.reorderPoint),
               isActive: draft.isActive,
               attributeValueIds: valueIds,
-              clearImages:
-                  draft.id != null &&
-                  (draft.urlsExistentes.isEmpty ||
-                      draft.nuevasImagenes.isNotEmpty),
-              newImageBytes:
-                  draft.nuevasImagenes.isNotEmpty
-                      ? draft.nuevasImagenes.first
-                      : null,
+              clearImages: draft.id != null &&
+                (draft.urlsExistentes.isEmpty || draft.nuevasImagenes.isNotEmpty),
+              newImageBytes: draft.nuevasImagenes.isNotEmpty
+                ? draft.nuevasImagenes.first
+                : null,
             );
           }).toList();
 
@@ -755,9 +753,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     precioMayorCtrl.dispose();
     cantidadMayorCtrl.dispose();
     descCtrl.dispose();
-    for (final draft in variantDrafts) {
-      draft.dispose();
-    }
     for (final row in detailRows) {
       row.dispose();
     }

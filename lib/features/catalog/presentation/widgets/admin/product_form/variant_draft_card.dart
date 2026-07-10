@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/attribute_search_dialog.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 
 class VariantDraftCard extends StatefulWidget {
   final int index;
@@ -31,11 +31,66 @@ class VariantDraftCard extends StatefulWidget {
 class _VariantDraftCardState extends State<VariantDraftCard> {
   final List<_AttributeSelection> _selectedAttributes = [];
   bool _isExpanded = false;
+  late final TextEditingController skuCtrl;
+  late final TextEditingController barcodeCtrl;
+  late final TextEditingController priceCtrl;
+  late final TextEditingController wholesalePriceCtrl;
+  late final TextEditingController wholesaleMinQuantityCtrl;
+  late final TextEditingController reorderPointCtrl;
+  late final TextEditingController unitCostCtrl;
 
   @override
   void initState() {
     super.initState();
     _parseInitialAttributes();
+    // Inicializar controladores locales a partir del modelo mutable
+    skuCtrl = TextEditingController(text: widget.draft.sku);
+    barcodeCtrl = TextEditingController(text: widget.draft.barcode);
+    priceCtrl = TextEditingController(text: widget.draft.price);
+    wholesalePriceCtrl = TextEditingController(
+      text: widget.draft.wholesalePrice,
+    );
+    wholesaleMinQuantityCtrl = TextEditingController(
+      text: widget.draft.wholesaleMinQuantity,
+    );
+    reorderPointCtrl = TextEditingController(text: widget.draft.reorderPoint);
+    unitCostCtrl = TextEditingController(text: widget.draft.unitCost);
+
+    skuCtrl.addListener(() {
+      widget.draft.sku = skuCtrl.text;
+      setState(() {});
+    });
+    barcodeCtrl.addListener(() {
+      widget.draft.barcode = barcodeCtrl.text;
+    });
+    priceCtrl.addListener(() {
+      widget.draft.price = priceCtrl.text;
+      setState(() {});
+    });
+    wholesalePriceCtrl.addListener(() {
+      widget.draft.wholesalePrice = wholesalePriceCtrl.text;
+    });
+    wholesaleMinQuantityCtrl.addListener(() {
+      widget.draft.wholesaleMinQuantity = wholesaleMinQuantityCtrl.text;
+    });
+    reorderPointCtrl.addListener(() {
+      widget.draft.reorderPoint = reorderPointCtrl.text;
+    });
+    unitCostCtrl.addListener(() {
+      widget.draft.unitCost = unitCostCtrl.text;
+    });
+  }
+
+  @override
+  void dispose() {
+    skuCtrl.dispose();
+    barcodeCtrl.dispose();
+    priceCtrl.dispose();
+    wholesalePriceCtrl.dispose();
+    wholesaleMinQuantityCtrl.dispose();
+    reorderPointCtrl.dispose();
+    unitCostCtrl.dispose();
+    super.dispose();
   }
 
   void _parseInitialAttributes() {
@@ -203,11 +258,10 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                       ),
                     ),
                   ),
-                  if (!_isExpanded &&
-                      widget.draft.priceCtrl.text.isNotEmpty) ...[
+                  if (!_isExpanded && priceCtrl.text.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Text(
-                      'S/ ${widget.draft.priceCtrl.text}',
+                      'S/ ${priceCtrl.text}',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -294,7 +348,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                               Expanded(
                                 child: AppTextField(
                                   label: 'SKU',
-                                  controller: widget.draft.skuCtrl,
+                                  controller: skuCtrl,
                                   icon: Icons.qr_code_2_rounded,
                                   hintText: 'Ej: PROD-001',
                                 ),
@@ -303,7 +357,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                               Expanded(
                                 child: AppTextField(
                                   label: 'Punto de Reorden',
-                                  controller: widget.draft.reorderPointCtrl,
+                                  controller: reorderPointCtrl,
                                   icon: Icons.warning_amber_rounded,
                                   keyboardType: TextInputType.number,
                                   hintText: 'Ej: 5',
@@ -367,7 +421,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     Expanded(
                                       child: AppTextField(
                                         label: 'Costo unitario',
-                                        controller: widget.draft.unitCostCtrl,
+                                        controller: unitCostCtrl,
                                         icon: Icons.price_change_outlined,
                                         keyboardType:
                                             const TextInputType.numberWithOptions(
@@ -386,7 +440,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     Expanded(
                                       child: AppTextField(
                                         label: 'Precio venta',
-                                        controller: widget.draft.priceCtrl,
+                                        controller: priceCtrl,
                                         icon: Icons.sell_outlined,
                                         keyboardType:
                                             const TextInputType.numberWithOptions(
@@ -411,8 +465,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     Expanded(
                                       child: AppTextField(
                                         label: 'P. mayorista',
-                                        controller:
-                                            widget.draft.wholesalePriceCtrl,
+                                        controller: wholesalePriceCtrl,
                                         icon: Icons.local_offer_outlined,
                                         keyboardType:
                                             const TextInputType.numberWithOptions(
@@ -431,10 +484,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     Expanded(
                                       child: AppTextField(
                                         label: 'Mín. para mayoreo',
-                                        controller:
-                                            widget
-                                                .draft
-                                                .wholesaleMinQuantityCtrl,
+                                        controller: wholesaleMinQuantityCtrl,
                                         icon: Icons.numbers_rounded,
                                         keyboardType: TextInputType.number,
                                         hintText: 'Ej: 10',
