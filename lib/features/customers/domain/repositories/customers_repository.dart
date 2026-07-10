@@ -1,8 +1,8 @@
-import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+﻿import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 
-abstract class ICustomersRepository {
+abstract class CustomersRepository {
   Future<List<CustomerEntity>> getCustomers({
     required int limit,
     required int offset,
@@ -38,3 +38,4 @@ abstract class ICustomersRepository {
   Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId);
   Future<List<TopProductEntity>> getCustomerTopProducts(String customerId);
 }
+

@@ -1,10 +1,10 @@
-import 'package:injectable/injectable.dart';
+﻿import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customers_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
 @lazySingleton
 class GetCustomerTopProductsUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   GetCustomerTopProductsUseCase(this.repository);
 
@@ -12,3 +12,4 @@ class GetCustomerTopProductsUseCase {
     return await repository.getCustomerTopProducts(customerId);
   }
 }
+

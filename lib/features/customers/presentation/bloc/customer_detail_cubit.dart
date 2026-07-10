@@ -3,7 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_recent_orders_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_top_products_usecase.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customer_locations_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customer_locations_repository.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_state.dart';
 
@@ -13,7 +13,7 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
   final UpdateCustomerUseCase _updateCustomerUseCase;
   final GetCustomerRecentOrdersUseCase _getRecentOrdersUseCase;
   final GetCustomerTopProductsUseCase _getTopProductsUseCase;
-  final ICustomerLocationsRepository _locationsRepository;
+  final CustomerLocationsRepository _locationsRepository;
 
   CustomerDetailCubit(
     this._getCustomerDetailUseCase,
@@ -132,3 +132,4 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     }
   }
 }
+

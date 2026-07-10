@@ -3,10 +3,10 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customers_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
-@LazySingleton(as: ICustomersRepository)
-class CustomersRepositoryImpl implements ICustomersRepository {
+@LazySingleton(as: CustomersRepository)
+class CustomersRepositoryImpl implements CustomersRepository {
   final SupabaseClient _supabase;
 
   CustomersRepositoryImpl() : _supabase = Supabase.instance.client;
@@ -303,3 +303,4 @@ class CustomersRepositoryImpl implements ICustomersRepository {
     return [];
   }
 }
+

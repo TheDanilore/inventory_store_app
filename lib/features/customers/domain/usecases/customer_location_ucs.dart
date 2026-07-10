@@ -1,10 +1,10 @@
-import 'package:injectable/injectable.dart';
+﻿import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customer_locations_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customer_locations_repository.dart';
 
 @lazySingleton
 class GetCustomerLocationsUseCase {
-  final ICustomerLocationsRepository repository;
+  final CustomerLocationsRepository repository;
 
   GetCustomerLocationsUseCase(this.repository);
 
@@ -15,7 +15,7 @@ class GetCustomerLocationsUseCase {
 
 @lazySingleton
 class AddCustomerLocationUseCase {
-  final ICustomerLocationsRepository repository;
+  final CustomerLocationsRepository repository;
 
   AddCustomerLocationUseCase(this.repository);
 
@@ -46,7 +46,7 @@ class AddCustomerLocationUseCase {
 
 @lazySingleton
 class UpdateCustomerLocationUseCase {
-  final ICustomerLocationsRepository repository;
+  final CustomerLocationsRepository repository;
 
   UpdateCustomerLocationUseCase(this.repository);
 
@@ -77,7 +77,7 @@ class UpdateCustomerLocationUseCase {
 
 @lazySingleton
 class DeleteCustomerLocationUseCase {
-  final ICustomerLocationsRepository repository;
+  final CustomerLocationsRepository repository;
 
   DeleteCustomerLocationUseCase(this.repository);
 
@@ -88,7 +88,7 @@ class DeleteCustomerLocationUseCase {
 
 @lazySingleton
 class SetDefaultCustomerLocationUseCase {
-  final ICustomerLocationsRepository repository;
+  final CustomerLocationsRepository repository;
 
   SetDefaultCustomerLocationUseCase(this.repository);
 
@@ -99,3 +99,4 @@ class SetDefaultCustomerLocationUseCase {
     return repository.setLocationAsDefault(customerId, locationId);
   }
 }
+

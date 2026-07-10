@@ -1,13 +1,13 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+﻿import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_models.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customer_credits_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
 
-@LazySingleton(as: ICustomerCreditsRepository)
-class CustomerCreditsRepositoryImpl implements ICustomerCreditsRepository {
+@LazySingleton(as: CustomerCreditsRepository)
+class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
   final SupabaseClient _supabase;
 
   CustomerCreditsRepositoryImpl() : _supabase = Supabase.instance.client;
@@ -173,3 +173,4 @@ class CustomerCreditsRepositoryImpl implements ICustomerCreditsRepository {
     );
   }
 }
+

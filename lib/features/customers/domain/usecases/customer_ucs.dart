@@ -1,10 +1,10 @@
-import 'package:injectable/injectable.dart';
+﻿import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customers_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
 @lazySingleton
 class GetCustomersUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   GetCustomersUseCase(this.repository);
 
@@ -25,7 +25,7 @@ class GetCustomersUseCase {
 
 @lazySingleton
 class GetCustomerDetailUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   GetCustomerDetailUseCase(this.repository);
 
@@ -36,7 +36,7 @@ class GetCustomerDetailUseCase {
 
 @lazySingleton
 class GetGlobalStatsUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   GetGlobalStatsUseCase(this.repository);
 
@@ -47,7 +47,7 @@ class GetGlobalStatsUseCase {
 
 @lazySingleton
 class GetTopCustomersUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   GetTopCustomersUseCase(this.repository);
 
@@ -58,7 +58,7 @@ class GetTopCustomersUseCase {
 
 @lazySingleton
 class CreateCustomerUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   CreateCustomerUseCase(this.repository);
 
@@ -79,7 +79,7 @@ class CreateCustomerUseCase {
 
 @lazySingleton
 class UpdateCustomerUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   UpdateCustomerUseCase(this.repository);
 
@@ -104,7 +104,7 @@ class UpdateCustomerUseCase {
 
 @lazySingleton
 class ToggleCustomerStatusUseCase {
-  final ICustomersRepository repository;
+  final CustomersRepository repository;
 
   ToggleCustomerStatusUseCase(this.repository);
 
@@ -112,3 +112,4 @@ class ToggleCustomerStatusUseCase {
     return repository.toggleCustomerStatus(customerId, isActive);
   }
 }
+

@@ -1,11 +1,11 @@
-import 'package:injectable/injectable.dart';
+﻿import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customer_credits_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
 
 @lazySingleton
 class GetCreditAccountsUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   GetCreditAccountsUseCase(this.repository);
 
@@ -26,7 +26,7 @@ class GetCreditAccountsUseCase {
 
 @lazySingleton
 class GetCreditAccountByCustomerUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   GetCreditAccountByCustomerUseCase(this.repository);
 
@@ -37,7 +37,7 @@ class GetCreditAccountByCustomerUseCase {
 
 @lazySingleton
 class CreateCreditAccountUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   CreateCreditAccountUseCase(this.repository);
 
@@ -54,7 +54,7 @@ class CreateCreditAccountUseCase {
 
 @lazySingleton
 class UpdateCreditLimitUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   UpdateCreditLimitUseCase(this.repository);
 
@@ -71,7 +71,7 @@ class UpdateCreditLimitUseCase {
 
 @lazySingleton
 class ToggleCreditStatusUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   ToggleCreditStatusUseCase(this.repository);
 
@@ -82,7 +82,7 @@ class ToggleCreditStatusUseCase {
 
 @lazySingleton
 class GetCreditMovementsUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   GetCreditMovementsUseCase(this.repository);
 
@@ -101,7 +101,7 @@ class GetCreditMovementsUseCase {
 
 @lazySingleton
 class RegisterCreditPaymentUseCase {
-  final ICustomerCreditsRepository repository;
+  final CustomerCreditsRepository repository;
 
   RegisterCreditPaymentUseCase(this.repository);
 
@@ -119,3 +119,4 @@ class RegisterCreditPaymentUseCase {
     );
   }
 }
+

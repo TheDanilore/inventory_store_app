@@ -1,7 +1,7 @@
-import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+﻿import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 
-abstract class ICustomerCreditsRepository {
+abstract class CustomerCreditsRepository {
   Future<List<CustomerCreditEntity>> getCreditAccounts({
     required int limit,
     required int offset,
@@ -37,3 +37,4 @@ abstract class ICustomerCreditsRepository {
     String? notes,
   });
 }
+

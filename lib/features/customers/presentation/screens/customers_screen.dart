@@ -14,6 +14,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/utils/pdf/customer_pdf_generator.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
@@ -95,7 +96,9 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
           ],
           onSettingsSelected: (value) {
             if (value == 'export') {
-              // TODO: Implement export PDF from Cubit or UseCase
+              if (state is CustomersLoaded) {
+                CustomerPdfGenerator.shareOrPrintPdf(state.customers);
+              }
             }
           },
           floatingActionButton:

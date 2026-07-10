@@ -1,11 +1,11 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+﻿import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_location.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/i_customer_locations_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/repositories/customer_locations_repository.dart';
 
-@LazySingleton(as: ICustomerLocationsRepository)
-class CustomerLocationsRepositoryImpl implements ICustomerLocationsRepository {
+@LazySingleton(as: CustomerLocationsRepository)
+class CustomerLocationsRepositoryImpl implements CustomerLocationsRepository {
   final SupabaseClient _supabase;
 
   CustomerLocationsRepositoryImpl() : _supabase = Supabase.instance.client;
@@ -129,3 +129,4 @@ class CustomerLocationsRepositoryImpl implements ICustomerLocationsRepository {
         .eq('id', locationId);
   }
 }
+
