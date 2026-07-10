@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customer_wishlist_provider.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class WishlistCard extends StatelessWidget {

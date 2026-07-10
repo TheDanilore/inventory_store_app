@@ -10,7 +10,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/providers/top_customers_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:intl/intl.dart';
 import 'package:vibration/vibration.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -278,7 +278,7 @@ class _AnimatedEntranceState extends State<_AnimatedEntrance> with SingleTickerP
 }
 
 class _PremiumCustomerCard extends StatefulWidget {
-  final CustomerSummary customer;
+  final CustomerEntity customer;
   final int position;
 
   const _PremiumCustomerCard({required this.customer, required this.position});
@@ -422,7 +422,7 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        formatCurrency.format(widget.customer.totalSpent),
+                        formatCurrency.format(widget.customer.totalRevenue),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: theme.colorScheme.primary,
@@ -708,7 +708,7 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
 }
 
 class _WinnerDialog extends StatelessWidget {
-  final CustomerSummary winner;
+  final CustomerEntity winner;
 
   const _WinnerDialog({required this.winner});
 
@@ -798,7 +798,7 @@ class _WinnerDialog extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  formatCurrency.format(winner.totalSpent),
+                  formatCurrency.format(winner.totalRevenue),
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: Colors.green[700],

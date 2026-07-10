@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/widgets/admin_layout.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customer_detail_provider.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_state.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_locations_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_locations_state.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_detail/customer_header_card.dart';
@@ -15,13 +21,25 @@ import 'package:inventory_store_app/features/customers/presentation/screens/widg
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class CustomerDetailScreen extends StatelessWidget {
-  final CustomerSummary customer;
+  final CustomerEntity customer;
   const CustomerDetailScreen({super.key, required this.customer});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CustomerDetailProvider(customer)..loadAllData(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => sl<CustomerDetailCubit>()..loadCustomer(customer.id),
+        ),
+        BlocProvider(
+          create:
+              (_) => sl<CustomerLocationsCubit>()..loadLocations(customer.id),
+        ),
+        BlocProvider(
+          create:
+              (_) => sl<CustomerCreditsCubit>()..loadCreditData(customer.id),
+        ),
+      ],
       child: const _CustomerDetailContent(),
     );
   }
@@ -31,98 +49,154 @@ class _CustomerDetailContent extends StatelessWidget {
   const _CustomerDetailContent();
 
   void _openEditCustomer(BuildContext context) async {
-    final customer = context.read<CustomerDetailProvider>().customer;
-    await CustomerFormSheet.show(context, customer: customer);
-    if (context.mounted) {
-      // Refresh the details
-      context.read<CustomerDetailProvider>().loadAllData();
+    final state = context.read<CustomerDetailCubit>().state;
+    if (state is CustomerDetailLoaded) {
+      await CustomerFormSheet.show(context, customer: state.customer);
+      if (context.mounted) {
+        context.read<CustomerDetailCubit>().loadCustomer(state.customer.id);
+      }
+    }
+  }
+
+  void _refreshData(BuildContext context) {
+    final state = context.read<CustomerDetailCubit>().state;
+    if (state is CustomerDetailLoaded) {
+      context.read<CustomerDetailCubit>().loadCustomer(state.customer.id);
+      context.read<CustomerLocationsCubit>().loadLocations(state.customer.id);
+      context.read<CustomerCreditsCubit>().loadCreditData(state.customer.id);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerDetailProvider>();
-    final c = provider.customer;
+    return BlocBuilder<CustomerDetailCubit, CustomerDetailState>(
+      builder: (context, state) {
+        final isLoading =
+            state is CustomerDetailLoading || state is CustomerDetailInitial;
+        final error = state is CustomerDetailError ? state.message : null;
+        final c = state is CustomerDetailLoaded ? state.customer : null;
 
-    return AdminLayout(
-      title: c.fullName,
-      showBackButton: true,
-      body: RefreshIndicator(
-        color: Theme.of(context).colorScheme.primary,
-        onRefresh: provider.loadAllData,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isTablet = constraints.maxWidth > 750;
-            final isLoyaltyEnabled =
-                context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+        final title = c?.fullName ?? 'Cargando...';
 
-            if (isTablet) {
-              return _buildTabletLayout(context, provider, isLoyaltyEnabled);
-            }
-            return _buildMobileLayout(context, provider, isLoyaltyEnabled);
-          },
-        ),
-      ),
+        return AdminLayout(
+          title: title,
+          showBackButton: true,
+          body: RefreshIndicator(
+            color: Theme.of(context).colorScheme.primary,
+            onRefresh: () async => _refreshData(context),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth > 750;
+                final isLoyaltyEnabled =
+                    context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+
+                if (isTablet) {
+                  return _buildTabletLayout(
+                    context,
+                    state,
+                    isLoyaltyEnabled,
+                    isLoading,
+                    error,
+                    c,
+                  );
+                }
+                return _buildMobileLayout(
+                  context,
+                  state,
+                  isLoyaltyEnabled,
+                  isLoading,
+                  error,
+                  c,
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildMobileLayout(
     BuildContext context,
-    CustomerDetailProvider provider,
+    CustomerDetailState state,
     bool isLoyaltyEnabled,
+    bool isLoading,
+    String? error,
+    CustomerEntity? c,
   ) {
-    final c = provider.customer;
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(
-          child: CustomerHeaderCard(
-            customer: c,
-            onEdit: () => _openEditCustomer(context),
+        if (c != null)
+          SliverToBoxAdapter(
+            child: CustomerHeaderCard(
+              customer: c,
+              onEdit: () => _openEditCustomer(context),
+            ),
           ),
-        ),
-        if (provider.isLoading)
+        if (isLoading)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: _CustomerDetailSkeleton(),
           )
-        else if (provider.errorMessage != null)
+        else if (error != null)
           SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
               child: Text(
-                provider.errorMessage!,
+                error,
                 style: const TextStyle(color: AppColors.danger),
                 textAlign: TextAlign.center,
               ),
             ),
           )
-        else
+        else if (state is CustomerDetailLoaded)
           SliverList(
             delegate: SliverChildListDelegate([
               const SizedBox(height: 8),
               CustomerKpiRow(
-                totalSpent: c.totalSpent,
+                totalSpent: c!.totalRevenue,
                 orderCount: c.orderCount,
-                avgOrder: provider.avgOrderValue,
+                avgOrder:
+                    state.recentOrders.isNotEmpty
+                        ? c.totalRevenue / c.orderCount
+                        : 0,
                 walletBalance: c.walletBalance,
                 isLoyaltyEnabled: isLoyaltyEnabled,
               ),
               const SizedBox(height: 24),
-              if (provider.hasCredit)
-                CustomerCreditSection(
-                  debt: provider.currentDebt,
-                  limit: provider.creditLimit,
-                  isActive: provider.creditIsActive,
-                  creditId: provider.creditId!,
-                  customer: c,
-                  movements: provider.creditMovements,
-                  onPaymentRegistered: provider.loadAllData,
-                ),
-              CustomerLocationsSection(locations: provider.locations),
-              if (provider.topProducts.isNotEmpty)
-                CustomerTopProductsSection(products: provider.topProducts),
-              CustomerRecentOrdersSection(orders: provider.recentOrders),
+              BlocBuilder<CustomerCreditsCubit, CustomerCreditsState>(
+                builder: (context, creditState) {
+                  if (creditState is CustomerCreditsLoaded) {
+                    return CustomerCreditSection(
+                      debt: creditState.creditAccount.currentDebt,
+                      limit: creditState.creditAccount.creditLimit,
+                      isActive: creditState.creditAccount.isActive,
+                      creditId: creditState.creditAccount.id,
+                      customer: c,
+                      movements: creditState.movements,
+                      onPaymentRegistered:
+                          () => context
+                              .read<CustomerCreditsCubit>()
+                              .loadCreditData(c.id),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              BlocBuilder<CustomerLocationsCubit, CustomerLocationsState>(
+                builder: (context, locState) {
+                  if (locState is CustomerLocationsLoaded) {
+                    return CustomerLocationsSection(
+                      locations: locState.locations,
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              if (state.topProducts.isNotEmpty)
+                CustomerTopProductsSection(products: state.topProducts),
+              CustomerRecentOrdersSection(orders: state.recentOrders, customerId: state.customer.id, customerName: state.customer.fullName),
               const SizedBox(height: 40),
             ]),
           ),
@@ -132,11 +206,12 @@ class _CustomerDetailContent extends StatelessWidget {
 
   Widget _buildTabletLayout(
     BuildContext context,
-    CustomerDetailProvider provider,
+    CustomerDetailState state,
     bool isLoyaltyEnabled,
+    bool isLoading,
+    String? error,
+    CustomerEntity? c,
   ) {
-    final c = provider.customer;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -146,49 +221,62 @@ class _CustomerDetailContent extends StatelessWidget {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(
-                child: CustomerHeaderCard(
-                  customer: c,
-                  onEdit: () => _openEditCustomer(context),
+              if (c != null)
+                SliverToBoxAdapter(
+                  child: CustomerHeaderCard(
+                    customer: c,
+                    onEdit: () => _openEditCustomer(context),
+                  ),
                 ),
-              ),
-              if (provider.isLoading)
+              if (isLoading)
                 const SliverToBoxAdapter(
                   child: _CustomerDetailSkeleton(isTabletLeftColumn: true),
                 )
-              else if (provider.errorMessage != null)
+              else if (error != null)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
                     child: Text(
-                      provider.errorMessage!,
+                      error,
                       style: const TextStyle(color: AppColors.danger),
                       textAlign: TextAlign.center,
                     ),
                   ),
                 )
-              else
+              else if (state is CustomerDetailLoaded)
                 SliverList(
                   delegate: SliverChildListDelegate([
                     const SizedBox(height: 8),
                     CustomerKpiRow(
-                      totalSpent: c.totalSpent,
+                      totalSpent: c!.totalRevenue,
                       orderCount: c.orderCount,
-                      avgOrder: provider.avgOrderValue,
+                      avgOrder:
+                          state.recentOrders.isNotEmpty
+                              ? c.totalRevenue / c.orderCount
+                              : 0,
                       walletBalance: c.walletBalance,
                       isLoyaltyEnabled: isLoyaltyEnabled,
                     ),
                     const SizedBox(height: 24),
-                    if (provider.hasCredit)
-                      CustomerCreditSection(
-                        debt: provider.currentDebt,
-                        limit: provider.creditLimit,
-                        isActive: provider.creditIsActive,
-                        creditId: provider.creditId!,
-                        customer: c,
-                        movements: provider.creditMovements,
-                        onPaymentRegistered: provider.loadAllData,
-                      ),
+                    BlocBuilder<CustomerCreditsCubit, CustomerCreditsState>(
+                      builder: (context, creditState) {
+                        if (creditState is CustomerCreditsLoaded) {
+                          return CustomerCreditSection(
+                            debt: creditState.creditAccount.currentDebt,
+                            limit: creditState.creditAccount.creditLimit,
+                            isActive: creditState.creditAccount.isActive,
+                            creditId: creditState.creditAccount.id,
+                            customer: c,
+                            movements: creditState.movements,
+                            onPaymentRegistered:
+                                () => context
+                                    .read<CustomerCreditsCubit>()
+                                    .loadCreditData(c.id),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                     const SizedBox(height: 40),
                   ]),
                 ),
@@ -197,7 +285,7 @@ class _CustomerDetailContent extends StatelessWidget {
         ),
 
         // Columna Derecha (Detail)
-        if (!provider.isLoading && provider.errorMessage == null)
+        if (!isLoading && error == null && state is CustomerDetailLoaded)
           Expanded(
             flex: 6,
             child: CustomScrollView(
@@ -207,14 +295,22 @@ class _CustomerDetailContent extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 16),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      CustomerLocationsSection(locations: provider.locations),
-                      if (provider.topProducts.isNotEmpty)
-                        CustomerTopProductsSection(
-                          products: provider.topProducts,
-                        ),
-                      CustomerRecentOrdersSection(
-                        orders: provider.recentOrders,
+                      BlocBuilder<
+                        CustomerLocationsCubit,
+                        CustomerLocationsState
+                      >(
+                        builder: (context, locState) {
+                          if (locState is CustomerLocationsLoaded) {
+                            return CustomerLocationsSection(
+                              locations: locState.locations,
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
                       ),
+                      if (state.topProducts.isNotEmpty)
+                        CustomerTopProductsSection(products: state.topProducts),
+                      CustomerRecentOrdersSection(orders: state.recentOrders, customerId: state.customer.id, customerName: state.customer.fullName),
                       const SizedBox(height: 40),
                     ]),
                   ),
@@ -222,18 +318,16 @@ class _CustomerDetailContent extends StatelessWidget {
               ],
             ),
           )
-        else if (provider.isLoading)
-          Expanded(
+        else if (isLoading)
+          const Expanded(
             flex: 6,
             child: CustomScrollView(
-              physics: const NeverScrollableScrollPhysics(),
+              physics: NeverScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: const _CustomerDetailSkeleton(
-                      isTabletRightColumn: true,
-                    ),
+                    padding: EdgeInsets.only(top: 16),
+                    child: _CustomerDetailSkeleton(isTabletRightColumn: true),
                   ),
                 ),
               ],

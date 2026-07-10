@@ -1,4 +1,6 @@
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 
 abstract class ICustomersRepository {
   Future<List<CustomerEntity>> getCustomers({
@@ -31,4 +33,8 @@ abstract class ICustomersRepository {
   // Stats y KPI
   Future<Map<String, dynamic>> getGlobalStats();
   Future<List<CustomerEntity>> getTopCustomers(int limit);
+
+  // Detail Extras
+  Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId);
+  Future<List<TopProductEntity>> getCustomerTopProducts(String customerId);
 }

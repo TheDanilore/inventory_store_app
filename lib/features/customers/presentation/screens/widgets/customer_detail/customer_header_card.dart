@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart'
-    show CustomerSummary;
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CustomerHeaderCard extends StatelessWidget {
-  final CustomerSummary customer;
+  final CustomerEntity customer;
   final VoidCallback onEdit;
 
   const CustomerHeaderCard({
@@ -142,7 +141,7 @@ class CustomerHeaderCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     _HeaderChip(
                       label:
-                          'Desde ${DateFormat('MMM yyyy', 'es').format(c.createdAt)}',
+                          'Desde ${DateFormat('MMM yyyy', 'es').format(c.createdAt ?? DateTime.now())}',
                       color: Colors.white54,
                     ),
                   ],

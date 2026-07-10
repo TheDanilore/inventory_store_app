@@ -1,6 +1,8 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+﻿import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/i_customers_repository.dart';
 
 @LazySingleton(as: ICustomersRepository)
@@ -16,7 +18,7 @@ class CustomersRepositoryImpl implements ICustomersRepository {
     String? query,
     bool showOnlyWithDebt = false,
   }) async {
-    var queryBuilder = _supabase.from('profiles').select(
+    dynamic queryBuilder = _supabase.from('profiles').select(
           'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at${showOnlyWithDebt ? ', customer_credits!inner(current_debt, credit_limit)' : ''}',
         );
 
@@ -69,9 +71,8 @@ class CustomersRepositoryImpl implements ICustomersRepository {
         }
       } else {
         // Viene del query separado
-        final creditRow = creditsRes.firstWhere(
-            (c) => c['profile_id'] == id,
-            orElse: () => null);
+        final creditRowMatch = creditsRes.where((c) => c['profile_id'] == id);
+        final creditRow = creditRowMatch.isNotEmpty ? creditRowMatch.first : null;
         if (creditRow != null) {
           currentDebt = (creditRow['current_debt'] as num?)?.toDouble() ?? 0.0;
           creditLimit = (creditRow['credit_limit'] as num?)?.toDouble() ?? 0.0;
@@ -291,5 +292,14 @@ class CustomersRepositoryImpl implements ICustomersRepository {
         totalRevenue: revMap[json['id'] as String] ?? 0.0,
       );
     }).toList();
+  }
+  @override
+  Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId) async {
+    return [];
+  }
+
+  @override
+  Future<List<TopProductEntity>> getCustomerTopProducts(String customerId) async {
+    return [];
   }
 }

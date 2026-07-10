@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_location.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customer_detail_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'customer_section_card.dart';
 
 class CustomerLocationsSection extends StatelessWidget {
-  final List<CustomerLocation> locations;
+  final List<CustomerLocationEntity> locations;
 
   const CustomerLocationsSection({super.key, required this.locations});
 
@@ -45,13 +45,13 @@ class CustomerLocationsSection extends StatelessWidget {
   }
 
   Future<void> _addLocation(BuildContext context) async {
-    final provider = context.read<CustomerDetailProvider>();
+    final cubit = context.read<CustomerDetailCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await CustomerLocationFormSheet.show(
       context,
       isFirstLocation: locations.isEmpty,
       onSave: (loc) async {
-        await provider.addLocation(loc);
+        await cubit.addLocation(loc);
       },
     );
 
@@ -64,14 +64,14 @@ class CustomerLocationsSection extends StatelessWidget {
     }
   }
 
-  Future<void> _editLocation(BuildContext context, CustomerLocation loc) async {
-    final provider = context.read<CustomerDetailProvider>();
+  Future<void> _editLocation(BuildContext context, CustomerLocationEntity loc) async {
+    final cubit = context.read<CustomerDetailCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await CustomerLocationFormSheet.show(
       context,
       existing: loc,
       onSave: (updatedLoc) async {
-        await provider.updateLocation(loc.id, updatedLoc);
+        await cubit.updateLocation(loc.id, updatedLoc);
       },
     );
 
@@ -86,9 +86,9 @@ class CustomerLocationsSection extends StatelessWidget {
 
   Future<void> _deleteLocation(
     BuildContext context,
-    CustomerLocation loc,
+    CustomerLocationEntity loc,
   ) async {
-    final provider = context.read<CustomerDetailProvider>();
+    final cubit = context.read<CustomerDetailCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await AppConfirmDialog.show(
       context,
@@ -99,7 +99,7 @@ class CustomerLocationsSection extends StatelessWidget {
     );
     if (confirmed != true) return;
     try {
-      await provider.deleteLocation(loc.id);
+      await cubit.deleteLocation(loc.id);
       AppSnackbar.showMessenger(
         messenger,
         message: 'Ubicación eliminada.',
@@ -114,7 +114,7 @@ class CustomerLocationsSection extends StatelessWidget {
     }
   }
 
-  void _openMap(BuildContext context, CustomerLocation loc) {
+  void _openMap(BuildContext context, CustomerLocationEntity loc) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder:
@@ -287,7 +287,7 @@ class _EmptyLocations extends StatelessWidget {
 }
 
 class _LocationItem extends StatelessWidget {
-  final CustomerLocation location;
+  final CustomerLocationEntity location;
   final Color typeColor;
   final IconData typeIcon;
   final VoidCallback onView;
@@ -387,7 +387,7 @@ class _LocationItem extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        CustomerLocation.typeLabel(location.locationType),
+                        CustomerLocationEntity.typeLabel(location.locationType),
                         style: TextStyle(
                           fontSize: 12,
                           color: typeColor,

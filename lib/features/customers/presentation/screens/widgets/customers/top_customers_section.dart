@@ -1,77 +1,88 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers_state.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class TopCustomersSection extends StatelessWidget {
-  final List<CustomerSummary> top;
-  final void Function(CustomerSummary) onTap;
+  const TopCustomersSection({super.key});
 
-  const TopCustomersSection({
-    super.key,
-    required this.top,
-    required this.onTap,
-  });
-
-  static const _medals = ['🥇', '🥈', '🥉', '4°', '5°'];
+  static const _medals = ['🥇', '🥈', '🥉', '4º', '5º'];
 
   @override
   Widget build(BuildContext context) {
-    if (top.isEmpty) return const SizedBox.shrink();
+    return BlocBuilder<TopCustomersCubit, TopCustomersState>(
+      builder: (context, state) {
+        if (state is TopCustomersLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is TopCustomersLoaded) {
+          final top = state.topCustomers;
+          if (top.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-          child: Row(
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.emoji_events_rounded,
-                color: Colors.amber,
-                size: 20,
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Top compradores',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.emoji_events_rounded,
+                      color: Colors.amber,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Top compradores',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => context.push('/admin/top-customers'),
+                      child: const Text('Ver todos'),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => context.push('/admin/top-customers'),
-                child: const Text('Ver todos'),
+              SizedBox(
+                height: 140, 
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: top.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) {
+                    final c = top[i];
+                    return _TopCustomerCard(
+                      customer: c,
+                      medal: _medals[i],
+                      onTap: (c) => context.push('/admin/customer-detail/${c.id}', extra: c),
+                    );
+                  },
+                ),
               ),
             ],
-          ),
-        ),
-        SizedBox(
-          height:
-              140, // Incrementado de 125 a 140 para prevenir overflow con fuentes grandes
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: top.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, i) {
-              final c = top[i];
-              return _TopCustomerCard(customer: c, medal: _medals[i], onTap: onTap);
-            },
-          ),
-        ),
-      ],
+          );
+        } else if (state is TopCustomersError) {
+          return Center(child: Text('Error: ${state.message}'));
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }
 
 class _TopCustomerCard extends StatefulWidget {
-  final CustomerSummary customer;
+  final CustomerEntity customer;
   final String medal;
-  final void Function(CustomerSummary) onTap;
+  final void Function(CustomerEntity) onTap;
 
   const _TopCustomerCard({
     required this.customer,
@@ -144,7 +155,7 @@ class _TopCustomerCardState extends State<_TopCustomerCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'S/ ${widget.customer.totalSpent.toStringAsFixed(0)}',
+                    'S/ ${widget.customer.totalRevenue.toStringAsFixed(0)}',
                     style: const TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.bold,

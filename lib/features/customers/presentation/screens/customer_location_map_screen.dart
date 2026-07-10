@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_location.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/map_markers.dart';
 
@@ -14,8 +14,8 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/map_
 /// - [isPickerMode] = true  → mueve el mapa para elegir coordenadas;
 ///   al confirmar retorna un [LatLng] via Navigator.pop().
 class CustomerLocationMapScreen extends StatefulWidget {
-  final List<CustomerLocation> locations;
-  final CustomerLocation? focusedLocation;
+  final List<CustomerLocationEntity> locations;
+  final CustomerLocationEntity? focusedLocation;
   final bool isPickerMode;
   final LatLng? initialPickerPoint;
 

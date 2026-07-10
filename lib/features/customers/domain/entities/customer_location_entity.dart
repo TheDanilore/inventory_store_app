@@ -1,6 +1,14 @@
 import 'package:equatable/equatable.dart';
 
 class CustomerLocationEntity extends Equatable {
+  static String typeLabel(String type) {
+    switch (type.toUpperCase()) {
+      case 'HOME': return 'Casa';
+      case 'WORK': return 'Trabajo';
+      case 'STORE': return 'Tienda / Local';
+      default: return 'Otro';
+    }
+  }
   final String id;
   final String profileId;
   final String name;

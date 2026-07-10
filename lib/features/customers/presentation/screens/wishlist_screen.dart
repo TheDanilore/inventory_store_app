@@ -1,31 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customer_wishlist_provider.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/widgets/wishlist/wishlist_card.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
-class WishlistScreen extends StatefulWidget {
-  const WishlistScreen({super.key});
+class WishlistScreen extends StatelessWidget {
+  final void Function(BuildContext context, ProductEntity product)? onAddToCart;
+
+  const WishlistScreen({super.key, this.onAddToCart});
 
   @override
-  State<WishlistScreen> createState() => _WishlistScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<CustomerWishlistCubit>(),
+      child: _WishlistScreenContent(onAddToCart: onAddToCart),
+    );
+  }
 }
 
-class _WishlistScreenState extends State<WishlistScreen> {
+class _WishlistScreenContent extends StatefulWidget {
+  final void Function(BuildContext context, ProductEntity product)? onAddToCart;
+
+  const _WishlistScreenContent({this.onAddToCart});
+
+  @override
+  State<_WishlistScreenContent> createState() => _WishlistScreenContentState();
+}
+
+class _WishlistScreenContentState extends State<_WishlistScreenContent> {
   final ScrollController _scrollController = ScrollController();
+  final String? profileId = Supabase.instance.client.auth.currentUser?.id; // Should get from a user session service ideally
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CustomerWishlistProvider>().init();
+      if (profileId != null) {
+        context.read<CustomerWishlistCubit>().fetchWishlist(profileId: profileId!, reset: true);
+      }
     });
     _scrollController.addListener(_onScroll);
   }
@@ -40,23 +61,21 @@ class _WishlistScreenState extends State<WishlistScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      final provider = context.read<CustomerWishlistProvider>();
-      if (!provider.isLoadingMore && provider.hasMore) {
-        provider.fetchWishlist(reset: false);
+      final state = context.read<CustomerWishlistCubit>().state;
+      if (state is CustomerWishlistLoaded && !state.hasReachedMax) {
+        if (profileId != null) {
+          context.read<CustomerWishlistCubit>().fetchWishlist(profileId: profileId!, reset: false);
+        }
       }
     }
   }
 
-  Future<void> _handleAddToCart(WishlistEntryModel entry) async {
-    final cart = context.read<CartProvider>();
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) =>
-              CartVariantPickerSheet(cart: cart, product: entry.product.toEntity()),
-    );
+  void _handleAddToCart(WishlistEntryModel entry) {
+    if (widget.onAddToCart != null) {
+      widget.onAddToCart!(context, entry.product.toEntity());
+    } else {
+      AppSnackbar.show(context, message: 'Función añadir al carrito no disponible.');
+    }
   }
 
   Future<void> _confirmRemove(WishlistEntryModel entry) async {
@@ -110,28 +129,15 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
     if (confirm == true) {
       if (!mounted) return;
-      final provider = context.read<CustomerWishlistProvider>();
-      try {
-        await provider.removeFromWishlist(entry);
-        if (mounted) {
-          AppSnackbar.show(context, message: 'Eliminado de tu lista de deseos');
-        }
-      } catch (e) {
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message: e.toString(),
-            type: SnackbarType.error,
-          );
-        }
+      if (profileId != null) {
+        context.read<CustomerWishlistCubit>().removeFromWishlist(profileId!, entry);
+        AppSnackbar.show(context, message: 'Eliminado de tu lista de deseos');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerWishlistProvider>();
-
     return CustomerLayout(
       title: 'Mis Deseos',
       showBackButton: true,
@@ -140,38 +146,55 @@ class _WishlistScreenState extends State<WishlistScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          await provider.fetchWishlist(reset: true);
+          if (profileId != null) {
+            await context.read<CustomerWishlistCubit>().fetchWishlist(profileId: profileId!, reset: true);
+          }
         },
         child: CustomScrollView(
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Column(
-                  children: [
-                    _buildHeaderBanner(provider),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
+            BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
+              builder: (context, state) {
+                if (state is CustomerWishlistLoaded) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Column(
+                        children: [
+                          _buildHeaderBanner(state.items),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              },
             ),
 
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: _buildBody(provider),
+              sliver: BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
+                builder: (context, state) => _buildBody(state),
+              ),
             ),
 
-            if (provider.isLoadingMore)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                ),
-              ),
+            BlocBuilder<CustomerWishlistCubit, CustomerWishlistState>(
+              builder: (context, state) {
+                if (state is CustomerWishlistLoaded && !state.hasReachedMax) {
+                  return const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    ),
+                  );
+                }
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              },
+            ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
@@ -180,11 +203,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
     );
   }
 
-  Widget _buildHeaderBanner(CustomerWishlistProvider provider) {
-    final availableCount =
-        provider.items
-            .where((e) => e.product.totalStock > 0 && e.product.isActive)
-            .length;
+  Widget _buildHeaderBanner(List<WishlistEntryModel> items) {
+    final availableCount = items.where((e) => e.product.totalStock > 0 && e.product.isActive).length;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -220,7 +240,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${provider.items.length} guardado${provider.items.length == 1 ? '' : 's'}  ·  $availableCount disponibles',
+                  '${items.length} guardado${items.length == 1 ? '' : 's'}  •  $availableCount disponibles',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
@@ -248,8 +268,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
     );
   }
 
-  Widget _buildBody(CustomerWishlistProvider provider) {
-    if (provider.isLoading) {
+  Widget _buildBody(CustomerWishlistState state) {
+    if (state is CustomerWishlistLoading || state is CustomerWishlistInitial) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => const Padding(
@@ -265,7 +285,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       );
     }
 
-    if (provider.profileId == null) {
+    if (profileId == null) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
@@ -278,66 +298,69 @@ class _WishlistScreenState extends State<WishlistScreen> {
       );
     }
 
-    if (provider.errorMessage.isNotEmpty && provider.items.isEmpty) {
+    if (state is CustomerWishlistError) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.error_outline,
             title: 'Algo salió mal',
-            message: provider.errorMessage,
+            message: state.message,
           ),
         ),
       );
     }
 
-    if (provider.items.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 24),
-          child: AppEmptyState(
-            icon: Icons.favorite_border_rounded,
-            title: 'Tu lista está vacía',
-            message:
-                'Toca el corazón en cualquier producto para guardarlo aquí.',
-            action: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () => context.go('/customer/catalog'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 6,
-                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+    if (state is CustomerWishlistLoaded) {
+      if (state.items.isEmpty) {
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: AppEmptyState(
+              icon: Icons.favorite_border_rounded,
+              title: 'Tu lista está vacía',
+              message:
+                  'Toca el corazón en cualquier producto para guardarlo aquí.',
+              action: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () => context.go('/customer/catalog'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 6,
+                    shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.storefront_rounded, size: 18),
-                label: const Text(
-                  'Explorar catálogo',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  icon: const Icon(Icons.storefront_rounded, size: 18),
+                  label: const Text(
+                    'Explorar catálogo',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        );
+      }
+
+      return SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final entry = state.items[index];
+          return WishlistCard(
+            key: ValueKey(entry.wishlistId),
+            entry: entry,
+            isProcessing: false,
+            onAddToCart: () => _handleAddToCart(entry),
+            onRemove: () => _confirmRemove(entry),
+          );
+        }, childCount: state.items.length),
       );
     }
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        final entry = provider.items[index];
-        final isProcessing = provider.isItemProcessing(entry.wishlistId);
-        return WishlistCard(
-          key: ValueKey(entry.wishlistId),
-          entry: entry,
-          isProcessing: isProcessing,
-          onAddToCart: () => _handleAddToCart(entry),
-          onRemove: () => _confirmRemove(entry),
-        );
-      }, childCount: provider.items.length),
-    );
+    return const SliverToBoxAdapter(child: SizedBox.shrink());
   }
 }

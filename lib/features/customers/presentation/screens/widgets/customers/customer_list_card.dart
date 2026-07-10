@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CustomerListCard extends StatefulWidget {
-  final CustomerSummary customer;
+  final CustomerEntity customer;
   final VoidCallback onTap;
 
   const CustomerListCard({
@@ -23,16 +23,13 @@ class _CustomerListCardState extends State<CustomerListCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label:
-          '${widget.customer.fullName}, ${widget.customer.orderCount} compras, ${widget.customer.currentDebt > 0 ? 'Deuda de S/ ${widget.customer.currentDebt.toStringAsFixed(0)}' : 'Sin deudas'}, Total gastado S/ ${widget.customer.totalSpent.toStringAsFixed(0)}',
-      button: true,
-      child: AnimatedScale(
-        scale: _isHovered ? 0.98 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOutCubic,
+    return AnimatedScale(
+      scale: _isHovered ? 0.98 : 1.0,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOutCubic,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
@@ -145,7 +142,7 @@ class _CustomerListCardState extends State<CustomerListCard> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'S/ ${widget.customer.totalSpent.toStringAsFixed(2)}',
+                          'S/ ${widget.customer.totalRevenue.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
@@ -175,7 +172,7 @@ class _CustomerListCardState extends State<CustomerListCard> {
 }
 
 class _CustomerAvatar extends StatelessWidget {
-  final CustomerSummary customer;
+  final CustomerEntity customer;
 
   const _CustomerAvatar({required this.customer});
 

@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/orders_service.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/widgets/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class MovementCard extends StatefulWidget {
-  final CustomerCreditMovementModel movement;
+  final CreditMovementEntity movement;
 
   const MovementCard({super.key, required this.movement});
 
@@ -49,7 +49,7 @@ class _MovementCardState extends State<MovementCard> {
   @override
   Widget build(BuildContext context) {
     final movement = widget.movement;
-    final isCharge = movement.isCharge;
+    final isCharge = movement.movementType == 'CHARGE';
     final color = isCharge ? Colors.orange.shade700 : Colors.green.shade700;
     final bgColor = isCharge ? Colors.orange.shade50 : Colors.green.shade50;
     final icon =
@@ -87,7 +87,7 @@ class _MovementCardState extends State<MovementCard> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Ícono
+                // Ãcono
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -181,7 +181,7 @@ class _MovementCardState extends State<MovementCard> {
                         ],
                       ),
 
-                      // Acción sugerida al expandir (opcional)
+                      // AcciÃ³n sugerida al expandir (opcional)
                       if (_expanded && movement.orderNumber != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
@@ -210,7 +210,7 @@ class _MovementCardState extends State<MovementCard> {
                   ),
                 ),
 
-                // Monto y hora (ahora monto es más jerárquico)
+                // Monto y hora (ahora monto es mÃ¡s jerÃ¡rquico)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [

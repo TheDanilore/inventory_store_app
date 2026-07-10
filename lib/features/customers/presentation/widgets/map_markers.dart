@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_location.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 
 /// Marcador estático para ubicaciones ya guardadas en el mapa.
 class MapMarker extends StatelessWidget {
-  final CustomerLocation location;
+  final CustomerLocationEntity location;
   final Color color;
   final IconData icon;
 

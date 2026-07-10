@@ -1,31 +1,30 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// ─── PUNTO DE ENTRADA ─────────────────────────────────────────────────────────
+// â”€â”€â”€ PUNTO DE ENTRADA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
-// Uso — crear:
+// Uso â€” crear:
 //   CustomerFormSheet.show(context, onSaved: () => _load());
 //
-// Uso — editar:
+// Uso â€” editar:
 //   CustomerFormSheet.show(context, customer: c, onSaved: () => _load());
 //
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class CustomerFormSheet extends StatefulWidget {
-  final CustomerSummary? customer; // null → modo crear
+  final CustomerEntity? customer; // null = modo crear
 
   const CustomerFormSheet({super.key, this.customer});
 
   static Future<bool?> show(
     BuildContext context, {
-    CustomerSummary? customer,
+    CustomerEntity? customer,
     VoidCallback? onSaved,
   }) async {
     final saved = await showModalBottomSheet<bool>(
@@ -46,7 +45,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
-  // ── Controladores ──────────────────────────────────────────────────────────
+  // â”€â”€ Controladores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _docNumberCtrl = TextEditingController();
@@ -55,19 +54,19 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   // Ajuste de billetera: solo se usa para registrar el DELTA en wallet_movements
   final _walletAdjustCtrl = TextEditingController(text: '0');
 
-  // ── Estado ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Estado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   String _docType = 'DNI';
   bool _isActive = true;
 
-  // Crédito
+  // CrÃ©dito
   bool _hasCredit = false;
-  bool _creditIsActive = false; // estado real del crédito en BD
+  bool _creditIsActive = false; // estado real del crÃ©dito en BD
   bool _creditExistsInDb = false;
   String? _creditId;
   double _currentDebt = 0; // solo lectura, viene de BD
 
   // Billetera
-  int _currentWalletBalance = 0; // saldo actual en BD
+  double _currentWalletBalance = 0; // saldo actual en BD
 
   // UI
   bool _isLoadingCredit = false;
@@ -75,7 +74,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
   bool get _isEditing => widget.customer != null;
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
+  // â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   void initState() {
@@ -136,7 +135,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     }
   }
 
-  // ── GUARDAR ────────────────────────────────────────────────────────────────
+  // â”€â”€ GUARDAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -176,7 +175,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
             .eq('id', widget.customer!.id);
         profileId = widget.customer!.id;
 
-        // Ajuste de billetera: solo si el delta ≠ 0
+        // Ajuste de billetera: solo si el delta â‰  0
         final delta = int.tryParse(_walletAdjustCtrl.text.trim()) ?? 0;
         if (delta != 0) {
           // 1. Actualizar saldo
@@ -197,7 +196,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           });
         }
       } else {
-        // Insertar perfil nuevo (sin auth_user_id → cliente manual)
+        // Insertar perfil nuevo (sin auth_user_id â†’ cliente manual)
         final inserted =
             await _supabase
                 .from('profiles')
@@ -207,7 +206,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
         profileId = inserted['id'] as String;
       }
 
-      // ── Crédito ────────────────────────────────────────────────────────────
+      // â”€â”€ CrÃ©dito â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       final newLimit = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
 
       if (_hasCredit) {
@@ -222,7 +221,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
               })
               .eq('id', _creditId!);
         } else {
-          // Crear crédito nuevo
+          // Crear crÃ©dito nuevo
           await _supabase.from('customer_credits').insert({
             'profile_id': profileId,
             'credit_limit': newLimit,
@@ -232,7 +231,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           });
         }
       } else if (_creditExistsInDb && _creditId != null && _creditIsActive) {
-        // El crédito existía activo y el usuario lo desactivó
+        // El crÃ©dito existÃ­a activo y el usuario lo desactivÃ³
         await _supabase
             .from('customer_credits')
             .update({
@@ -258,7 +257,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
       return 'Este usuario ya tiene un perfil registrado.';
     }
     if (msg.contains('unique') && msg.contains('document')) {
-      return 'Ya existe un cliente con ese número de documento.';
+      return 'Ya existe un cliente con ese nÃºmero de documento.';
     }
     return 'Error al guardar: ${e.message}';
   }
@@ -268,7 +267,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     AppSnackbar.show(context, message: msg, type: SnackbarType.error);
   }
 
-  // ── BUILD ──────────────────────────────────────────────────────────────────
+  // â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +288,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           ),
           child: Column(
             children: [
-              // ── Handle ────────────────────────────────────────────────────
+              // â”€â”€ Handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               const SizedBox(height: 12),
               Container(
                 width: 40,
@@ -301,7 +300,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
               ),
               const SizedBox(height: 4),
 
-              // ── Header ────────────────────────────────────────────────────
+              // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -358,7 +357,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
               const Divider(height: 1),
 
-              // ── Formulario ────────────────────────────────────────────────
+              // â”€â”€ Formulario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Expanded(
                 child: Form(
                   key: _formKey,
@@ -366,7 +365,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                     controller: scrollCtrl,
                     padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 100),
                     children: [
-                      // ══ SECCIÓN: Datos personales ══════════════════════════
+                      // â•â• SECCIÃ“N: Datos personales â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                       _SectionHeader(
                         icon: Icons.person_rounded,
                         title: 'Datos personales',
@@ -376,7 +375,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       _FieldLabel('Nombre completo *'),
                       _StyledField(
                         controller: _nameCtrl,
-                        hint: 'Ej: Juan Pérez López',
+                        hint: 'Ej: Juan PÃ©rez LÃ³pez',
                         prefixIcon: Icons.badge_rounded,
                         textCapitalization: TextCapitalization.words,
                         validator:
@@ -387,7 +386,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       ),
                       const SizedBox(height: 14),
 
-                      _FieldLabel('Teléfono'),
+                      _FieldLabel('TelÃ©fono'),
                       _StyledField(
                         controller: _phoneCtrl,
                         hint: 'Ej: 987654321',
@@ -452,7 +451,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                           Expanded(
                             child: _StyledField(
                               controller: _docNumberCtrl,
-                              hint: 'Número de documento',
+                              hint: 'NÃºmero de documento',
                               prefixIcon: Icons.numbers_rounded,
                               keyboardType: TextInputType.number,
                               inputFormatters: [
@@ -465,7 +464,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ══ SECCIÓN: Estado ════════════════════════════════════
+                      // â•â• SECCIÃ“N: Estado â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                       _SectionHeader(icon: Icons.tune_rounded, title: 'Estado'),
                       const SizedBox(height: 12),
 
@@ -484,7 +483,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ══ SECCIÓN: Billetera (solo edición) ═════════════════
+                      // â•â• SECCIÃ“N: Billetera (solo ediciÃ³n) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                       if (_isEditing && isLoyaltyEnabled) ...[
                         _SectionHeader(
                           icon: Icons.stars_rounded,
@@ -522,7 +521,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                               return null; // sin cambio, OK
                             }
                             final delta = int.tryParse(v.trim());
-                            if (delta == null) return 'Valor inválido';
+                            if (delta == null) return 'Valor invÃ¡lido';
                             final newBalance = _currentWalletBalance + delta;
                             if (newBalance < 0) {
                               return 'El saldo resultante no puede ser negativo';
@@ -543,14 +542,14 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                         const SizedBox(height: 24),
                       ],
 
-                      // ══ SECCIÓN: Línea de crédito ══════════════════════════
+                      // â•â• SECCIÃ“N: LÃ­nea de crÃ©dito â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                       _SectionHeader(
                         icon: Icons.credit_card_rounded,
-                        title: 'Línea de crédito',
+                        title: 'LÃ­nea de crÃ©dito',
                       ),
                       const SizedBox(height: 12),
 
-                      // Indicador de carga del crédito
+                      // Indicador de carga del crÃ©dito
                       if (_isLoadingCredit)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
@@ -570,11 +569,11 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                                   ? AppColors.primary
                                   : AppColors.textMuted,
                           title:
-                              _hasCredit ? 'Crédito habilitado' : 'Sin crédito',
+                              _hasCredit ? 'CrÃ©dito habilitado' : 'Sin crÃ©dito',
                           subtitle:
                               _hasCredit
-                                  ? 'El cliente puede comprar a crédito'
-                                  : 'Activa para asignar una línea de crédito',
+                                  ? 'El cliente puede comprar a crÃ©dito'
+                                  : 'Activa para asignar una lÃ­nea de crÃ©dito',
                           value: _hasCredit,
                           onChanged: (v) => setState(() => _hasCredit = v),
                         ),
@@ -582,7 +581,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                         if (_hasCredit) ...[
                           const SizedBox(height: 14),
 
-                          // Deuda actual (solo lectura en edición)
+                          // Deuda actual (solo lectura en ediciÃ³n)
                           if (_isEditing && _creditExistsInDb) ...[
                             _ReadOnlyInfoRow(
                               icon: Icons.money_off_rounded,
@@ -600,8 +599,8 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                             const SizedBox(height: 14),
                           ],
 
-                          // Límite de crédito (editable)
-                          _FieldLabel('Límite de crédito'),
+                          // LÃ­mite de crÃ©dito (editable)
+                          _FieldLabel('LÃ­mite de crÃ©dito'),
                           _StyledField(
                             controller: _creditLimitCtrl,
                             hint: '0.00',
@@ -619,19 +618,19 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                               if (!_hasCredit) return null;
                               final n = double.tryParse(v?.trim() ?? '');
                               if (n == null || n < 0) {
-                                return 'Ingresa un límite válido';
+                                return 'Ingresa un lÃ­mite vÃ¡lido';
                               }
-                              // Advertir si el nuevo límite es menor a la deuda
+                              // Advertir si el nuevo lÃ­mite es menor a la deuda
                               if (_isEditing &&
                                   n < _currentDebt &&
                                   _currentDebt > 0) {
-                                return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
+                                return 'El lÃ­mite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
                               }
                               return null;
                             },
                           ),
 
-                          // Preview de uso de crédito
+                          // Preview de uso de crÃ©dito
                           const SizedBox(height: 10),
                           _CreditPreview(
                             limitCtrl: _creditLimitCtrl,
@@ -642,7 +641,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                           const SizedBox(height: 8),
                           const _InfoNote(
                             text:
-                                'La deuda se actualiza automáticamente al registrar ventas y pagos. No se edita manualmente.',
+                                'La deuda se actualiza automÃ¡ticamente al registrar ventas y pagos. No se edita manualmente.',
                           ),
                         ],
                       ],
@@ -653,7 +652,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                 ),
               ),
 
-              // ── Footer ────────────────────────────────────────────────────
+              // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Container(
                 padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 16),
                 decoration: BoxDecoration(
@@ -727,7 +726,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   }
 }
 
-// ─── WIDGETS AUXILIARES ───────────────────────────────────────────────────────
+// â”€â”€â”€ WIDGETS AUXILIARES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
@@ -783,7 +782,7 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-/// Fila de información de solo lectura (no editable)
+/// Fila de informaciÃ³n de solo lectura (no editable)
 class _ReadOnlyInfoRow extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -854,7 +853,7 @@ class _ReadOnlyInfoRow extends StatelessWidget {
   }
 }
 
-/// Nota informativa pequeña
+/// Nota informativa pequeÃ±a
 class _InfoNote extends StatelessWidget {
   final String text;
   const _InfoNote({required this.text});
@@ -1022,10 +1021,10 @@ class _ToggleRow extends StatelessWidget {
   }
 }
 
-// ─── WIDGET: Preview de ajuste de billetera ───────────────────────────────────
+// â”€â”€â”€ WIDGET: Preview de ajuste de billetera â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _WalletAdjustPreview extends StatefulWidget {
-  final int currentBalance;
+  final double currentBalance;
   final TextEditingController adjustCtrl;
 
   const _WalletAdjustPreview({
@@ -1054,7 +1053,7 @@ class _WalletAdjustPreviewState extends State<_WalletAdjustPreview> {
 
   @override
   Widget build(BuildContext context) {
-    final delta = int.tryParse(widget.adjustCtrl.text.trim()) ?? 0;
+    final delta = double.tryParse(widget.adjustCtrl.text.trim()) ?? 0.0;
     final newBalance = widget.currentBalance + delta;
     final isValid = newBalance >= 0;
 
@@ -1087,7 +1086,7 @@ class _WalletAdjustPreviewState extends State<_WalletAdjustPreview> {
             ),
             const SizedBox(width: 8),
             Text(
-              '${widget.currentBalance}  →  ',
+              '${widget.currentBalance}  â†’  ',
               style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
             Text(
@@ -1105,7 +1104,7 @@ class _WalletAdjustPreviewState extends State<_WalletAdjustPreview> {
   }
 }
 
-// ─── WIDGET: Preview de crédito ───────────────────────────────────────────────
+// â”€â”€â”€ WIDGET: Preview de crÃ©dito â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _CreditPreview extends StatefulWidget {
   final TextEditingController limitCtrl;
@@ -1154,7 +1153,7 @@ class _CreditPreviewState extends State<_CreditPreview> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Vista previa del crédito',
+                'Vista previa del crÃ©dito',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -1200,7 +1199,7 @@ class _CreditPreviewState extends State<_CreditPreview> {
               ),
               Expanded(
                 child: _PreviewStat(
-                  label: 'Límite',
+                  label: 'LÃ­mite',
                   value: 'S/ ${limit.toStringAsFixed(2)}',
                   color: AppColors.textSecondary,
                 ),

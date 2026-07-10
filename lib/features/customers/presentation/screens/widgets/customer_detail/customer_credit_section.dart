@@ -1,11 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customer_detail_provider.dart'
-    show CreditMovement;
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart'
-    show CustomerSummary;
-import 'package:inventory_store_app/features/customers/data/models/customer_credit_models.dart'
-    show CreditAccountModel;
+import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/widgets/customer_credits/register_payment_modal.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'customer_section_card.dart';
@@ -15,8 +11,8 @@ class CustomerCreditSection extends StatelessWidget {
   final double limit;
   final bool isActive;
   final String creditId;
-  final CustomerSummary customer;
-  final List<CreditMovement> movements;
+  final CustomerEntity customer;
+  final List<CreditMovementEntity> movements;
   final VoidCallback onPaymentRegistered;
 
   const CustomerCreditSection({
@@ -31,26 +27,13 @@ class CustomerCreditSection extends StatelessWidget {
   });
 
   void _showRegisterPayment(BuildContext context) {
-    final account = CreditAccountModel(
-      creditId: creditId,
-      profileId: customer.id,
-      partnerName: customer.fullName,
-      partnerDocument: customer.documentNumber,
-      partnerDocumentType: customer.documentType,
-      partnerPhone: customer.phone,
-      creditLimit: limit,
-      currentDebt: debt,
-      isActive: isActive,
-    );
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
           (_) => RegisterPaymentModal(
-            account: account,
-            onPaymentSaved: onPaymentRegistered,
+            onSaved: onPaymentRegistered,
           ),
     );
   }
@@ -62,7 +45,7 @@ class CustomerCreditSection extends StatelessWidget {
     final isRisk = pct >= 0.8;
 
     return CustomerSectionCard(
-      title: 'Línea de Crédito',
+      title: 'LÃ­nea de CrÃ©dito',
       icon: Icons.credit_card_rounded,
       trailing:
           !isActive
@@ -103,7 +86,7 @@ class CustomerCreditSection extends StatelessWidget {
               ),
               Expanded(
                 child: _CreditStat(
-                  label: 'Límite',
+                  label: 'LÃ­mite',
                   value: 'S/ ${limit.toStringAsFixed(2)}',
                   color: AppColors.textSecondary,
                 ),
@@ -124,7 +107,7 @@ class CustomerCreditSection extends StatelessWidget {
               );
 
               return Semantics(
-                label: 'Crédito usado: ${(value * 100).toStringAsFixed(0)}%',
+                label: 'CrÃ©dito usado: ${(value * 100).toStringAsFixed(0)}%',
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
@@ -200,7 +183,7 @@ class CustomerCreditSection extends StatelessWidget {
 }
 
 class _CreditMovementRow extends StatelessWidget {
-  final CreditMovement movement;
+  final CreditMovementEntity movement;
   const _CreditMovementRow({required this.movement});
 
   @override
@@ -262,7 +245,7 @@ class _CreditMovementRow extends StatelessWidget {
                 ),
               ),
               Text(
-                DateFormat('d MMM', 'es').format(movement.createdAt),
+                DateFormat('d MMM', 'es').format(movement.createdAt ?? DateTime.now()),
                 style: const TextStyle(
                   fontSize: 11,
                   color: AppColors.textMuted,

@@ -68,7 +68,7 @@ class CustomerLocationModel {
     bool? isDefault,
     DateTime? createdAt,
   }) {
-    return CustomerLocation(
+    return CustomerLocationModel(
       id: id ?? this.id,
       profileId: profileId ?? this.profileId,
       name: name ?? this.name,

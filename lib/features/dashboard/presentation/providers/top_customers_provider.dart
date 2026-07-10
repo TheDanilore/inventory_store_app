@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 
 class TopCustomersProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -11,14 +11,14 @@ class TopCustomersProvider extends ChangeNotifier {
   int _limit = 10;
   int get limit => _limit;
 
-  List<CustomerSummary> _participants = [];
-  List<CustomerSummary> get participants => _participants;
+  List<CustomerEntity> _participants = [];
+  List<CustomerEntity> get participants => _participants;
 
   bool _isSpinning = false;
   bool get isSpinning => _isSpinning;
 
-  CustomerSummary? _winner;
-  CustomerSummary? get winner => _winner;
+  CustomerEntity? _winner;
+  CustomerEntity? get winner => _winner;
 
   TopCustomersProvider() {
     _fetchParticipants();
@@ -71,16 +71,16 @@ class TopCustomersProvider extends ChangeNotifier {
         _participants = topIds.map((id) {
           final p = profilesMap[id];
           if (p == null) return null;
-          return CustomerSummary(
+          return CustomerEntity(
             id: p['id'],
             fullName: p['full_name'] ?? 'Desconocido',
             avatarUrl: p['avatar_url'],
             isActive: p['is_active'] ?? true,
             walletBalance: p['wallet_balance'] ?? 0,
             createdAt: DateTime.parse(p['created_at']),
-            totalSpent: spentByCustomer[id] ?? 0,
+            totalRevenue: spentByCustomer[id] ?? 0,
           );
-        }).whereType<CustomerSummary>().toList();
+        }).whereType<CustomerEntity>().toList();
       } else {
         _participants = [];
       }
@@ -92,7 +92,7 @@ class TopCustomersProvider extends ChangeNotifier {
     }
   }
 
-  void startSpinning(CustomerSummary randomWinner) {
+  void startSpinning(CustomerEntity randomWinner) {
     _isSpinning = true;
     _winner = randomWinner;
     notifyListeners();

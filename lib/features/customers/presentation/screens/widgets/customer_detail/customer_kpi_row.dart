@@ -5,7 +5,7 @@ class CustomerKpiRow extends StatelessWidget {
   final double totalSpent;
   final int orderCount;
   final double avgOrder;
-  final int walletBalance;
+  final double walletBalance;
   final bool isLoyaltyEnabled;
 
   const CustomerKpiRow({

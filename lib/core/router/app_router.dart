@@ -23,12 +23,15 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_orders_screen.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/points_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
+import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 
 // Pantallas Admin
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
@@ -78,9 +81,9 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Widget auxiliar: carga el producto por ID sin relanzar el Future en rebuilds
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _ProductLoader extends StatefulWidget {
   final String productId;
   final bool isAdmin;
@@ -135,7 +138,7 @@ class _ProductLoaderState extends State<_ProductLoader> {
 }
 
 class AppRouter {
-  // ── Deep link preservation ───────────────────────────────────────────────
+  // â”€â”€ Deep link preservation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static String? _pendingDeepLink;
 
   /// Llamar desde main() ANTES de runApp() para capturar la ruta inicial.
@@ -145,19 +148,19 @@ class AppRouter {
       final path = uri.path;
       if (path.isNotEmpty && path != '/' && path != '/login') {
         _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
-        debugPrint('AppRouter: deep link capturado → $_pendingDeepLink');
+        debugPrint('AppRouter: deep link capturado â†’ $_pendingDeepLink');
       }
     } catch (_) {
-      // En móvil Uri.base no existe; simplemente ignoramos
+      // En mÃ³vil Uri.base no existe; simplemente ignoramos
     }
   }
 
   /// Crea el GoRouter recibiendo el [AuthProvider] directamente.
   ///
   /// IMPORTANTE: Esta firma reemplaza la anterior `createRouter(BuildContext context)`.
-  /// El provider se pasa como parámetro para que el router pueda crearse
-  /// FUERA del árbol de widgets (en main(), antes de runApp()), eliminando
-  /// así el crash "DartError: Assertion failed" causado por la recreación
+  /// El provider se pasa como parÃ¡metro para que el router pueda crearse
+  /// FUERA del Ã¡rbol de widgets (en main(), antes de runApp()), eliminando
+  /// asÃ­ el crash "DartError: Assertion failed" causado por la recreaciÃ³n
   /// del GoRouter en rebuilds de MyApp.
   static GoRouter createRouter(AuthCubit authCubit) {
     return GoRouter(
@@ -167,7 +170,7 @@ class AppRouter {
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
       errorBuilder:
           (context, state) => Scaffold(
-            appBar: AppBar(title: const Text('Página no encontrada')),
+            appBar: AppBar(title: const Text('PÃ¡gina no encontrada')),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -179,7 +182,7 @@ class AppRouter {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Esta página no existe',
+                    'Esta pÃ¡gina no existe',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -205,7 +208,7 @@ class AppRouter {
         final isSplash = currentPath == '/';
         final isLogin = currentPath == '/login';
 
-        // ── Paso 1: Sesión aún cargando -> mostrar splash siempre ─────────
+        // â”€â”€ Paso 1: SesiÃ³n aÃºn cargando -> mostrar splash siempre â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (!isSessionReady) {
           if (!isSplash && _pendingDeepLink == null) {
             final uri = state.uri.toString();
@@ -216,7 +219,7 @@ class AppRouter {
           return isSplash ? null : '/';
         }
 
-        // ── Paso 2: Sesión lista → restaurar deep link pendiente ──────────
+        // â”€â”€ Paso 2: SesiÃ³n lista â†’ restaurar deep link pendiente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (isSplash && _pendingDeepLink != null) {
           final target = _pendingDeepLink!;
           _pendingDeepLink = null;
@@ -229,12 +232,12 @@ class AppRouter {
           }
         }
 
-        // ── Rutas públicas de /customer ───────────────────────────────────
+        // â”€â”€ Rutas pÃºblicas de /customer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         final isPublicCustomerRoute =
             currentPath == '/customer' ||
             currentPath.startsWith('/customer/product/');
 
-        // ── Paso 3: Sin sesión ───────────────────────────────────────────
+        // â”€â”€ Paso 3: Sin sesiÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (role == null) {
           if (isSplash) return '/customer';
           if (isLogin) return null;
@@ -242,12 +245,12 @@ class AppRouter {
           return '/login';
         }
 
-        // ── Paso 4: Con sesión, en pantalla de auth ──────────────────────
+        // â”€â”€ Paso 4: Con sesiÃ³n, en pantalla de auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (isSplash || isLogin) {
           return role == AppRoles.admin ? '/admin' : '/customer';
         }
 
-        // ── Paso 5: Proteger rutas de admin ──────────────────────────────
+        // â”€â”€ Paso 5: Proteger rutas de admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (currentPath.startsWith('/admin') && role != AppRoles.admin) {
           return '/customer';
         }
@@ -552,7 +555,7 @@ class AppRouter {
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) => navigationShell,
           branches: [
-            // Rama 0: Catálogo
+            // Rama 0: CatÃ¡logo
             StatefulShellBranch(
               routes: [
                 GoRoute(
@@ -615,7 +618,7 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: '/customer/locations',
-                  builder: (context, state) => const LocationManagementScreen(),
+                  builder: (context, state) => LocationManagementScreen(customerId: Supabase.instance.client.auth.currentUser?.id ?? ''),
                 ),
                 GoRoute(
                   path: '/customer/orders',
@@ -627,7 +630,21 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: '/customer/wishlist',
-                  builder: (context, state) => const WishlistScreen(),
+                  builder:
+                      (context, state) => WishlistScreen(
+                        onAddToCart: (ctx, product) {
+                          showModalBottomSheet(
+                            context: ctx,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder:
+                                (bCtx) => CartVariantPickerSheet(
+                                  cart: bCtx.read<CartProvider>(),
+                                  product: product,
+                                ),
+                          );
+                        },
+                      ),
                 ),
                 // GAMES
                 GoRoute(

@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_location.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
 
 /// Bottom sheet para agregar o editar una ubicación de cliente.
-/// Retorna un [CustomerLocation] parcial (sin id/profileId) vía Navigator.pop().
+/// Retorna un [CustomerLocationEntity] parcial (sin id/profileId) vía Navigator.pop().
 class CustomerLocationFormSheet extends StatefulWidget {
-  final CustomerLocation? existing; // null = nueva ubicación
+  final CustomerLocationEntity? existing; // null = nueva ubicación
   final bool isFirstLocation;
   final bool isDialog;
-  final Future<void> Function(CustomerLocation)? onSave;
+  final Future<void> Function(CustomerLocationEntity)? onSave;
 
   const CustomerLocationFormSheet({
     super.key,
@@ -24,9 +24,9 @@ class CustomerLocationFormSheet extends StatefulWidget {
 
   static Future<bool?> show(
     BuildContext context, {
-    CustomerLocation? existing,
+    CustomerLocationEntity? existing,
     bool isFirstLocation = false,
-    Future<void> Function(CustomerLocation)? onSave,
+    Future<void> Function(CustomerLocationEntity)? onSave,
   }) async {
     final width = MediaQuery.sizeOf(context).width;
     if (width > 600) {
@@ -204,7 +204,7 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
       return;
     }
 
-    final result = CustomerLocation(
+    final result = CustomerLocationEntity(
       id: widget.existing?.id ?? '',
       profileId: widget.existing?.profileId ?? '',
       name: _nameCtrl.text.trim(),

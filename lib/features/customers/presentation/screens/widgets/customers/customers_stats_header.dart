@@ -1,64 +1,75 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customers_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customers_stats_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customers_stats_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CustomersStatsHeader extends StatelessWidget {
-  final CustomersProvider provider;
-
-  const CustomersStatsHeader({super.key, required this.provider});
+  const CustomersStatsHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF2A2A4A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _StatItem(
-            value: provider.totalCustomersCount.toDouble(),
-            label: 'Total',
-            icon: Icons.people_alt_rounded,
-          ),
-          _VerticalDivider(),
-          _StatItem(
-            value: provider.activeCustomersCount.toDouble(),
-            label: 'Activos',
-            icon: Icons.check_circle_rounded,
-            valueColor: Colors.greenAccent,
-          ),
-          _VerticalDivider(),
-          _StatItem(
-            value: provider.totalRevenue,
-            label: 'Ingresos',
-            icon: Icons.attach_money_rounded,
-            valueColor: Colors.amberAccent,
-            isCurrency: true,
-          ),
-          _VerticalDivider(),
-          _StatItem(
-            value: provider.totalDebt,
-            label: 'Por cobrar',
-            icon: Icons.credit_card_rounded,
-            valueColor: Colors.redAccent.shade100,
-            isCurrency: true,
-          ),
-        ],
-      ),
+    return BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
+      builder: (context, state) {
+        if (state is CustomersStatsLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is CustomersStatsLoaded) {
+          return Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, Color(0xFF2A2A4A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _StatItem(
+                  value: state.totalCustomersCount.toDouble(),
+                  label: 'Total',
+                  icon: Icons.people_alt_rounded,
+                ),
+                _VerticalDivider(),
+                _StatItem(
+                  value: state.activeCustomersCount.toDouble(),
+                  label: 'Activos',
+                  icon: Icons.check_circle_rounded,
+                  valueColor: Colors.greenAccent,
+                ),
+                _VerticalDivider(),
+                _StatItem(
+                  value: state.totalRevenue,
+                  label: 'Ingresos',
+                  icon: Icons.attach_money_rounded,
+                  valueColor: Colors.amberAccent,
+                  isCurrency: true,
+                ),
+                _VerticalDivider(),
+                _StatItem(
+                  value: state.totalDebt,
+                  label: 'Por cobrar',
+                  icon: Icons.credit_card_rounded,
+                  valueColor: Colors.redAccent.shade100,
+                  isCurrency: true,
+                ),
+              ],
+            ),
+          );
+        } else if (state is CustomersStatsError) {
+          return Center(child: Text('Error: ${state.message}'));
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 

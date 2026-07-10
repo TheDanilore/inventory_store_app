@@ -1,15 +1,23 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/customers/presentation/providers/customer_detail_provider.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/orders_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'customer_section_card.dart';
 
 class CustomerRecentOrdersSection extends StatelessWidget {
-  final List<RecentOrder> orders;
-  const CustomerRecentOrdersSection({super.key, required this.orders});
+  final List<RecentOrderEntity> orders;
+  final String customerId;
+  final String customerName;
+
+  const CustomerRecentOrdersSection({
+    super.key,
+    required this.orders,
+    required this.customerId,
+    required this.customerName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +30,7 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
-                    'Sin pedidos aún',
+                    'Sin pedidos aÃºn',
                     style: TextStyle(color: AppColors.textMuted),
                   ),
                 ),
@@ -42,14 +50,13 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                     width: double.infinity,
                     child: TextButton(
                       onPressed: () {
-                        final customer = context.read<CustomerDetailProvider>().customer;
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => ChangeNotifierProvider(
-                              create: (_) => OrdersProvider(customerIdFilter: customer.id),
+                              create: (_) => OrdersProvider(customerIdFilter: customerId),
                               child: OrdersScreen(
-                                customTitle: 'Pedidos de ${customer.fullName}',
+                                customTitle: 'Pedidos de $customerName',
                               ),
                             ),
                           ),
@@ -59,7 +66,7 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                         foregroundColor: AppColors.primary,
                         textStyle: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      child: const Text('Ver todos los pedidos →'),
+                      child: const Text('Ver todos los pedidos â†’'),
                     ),
                   ),
                 ],
@@ -69,7 +76,7 @@ class CustomerRecentOrdersSection extends StatelessWidget {
 }
 
 class _OrderRow extends StatelessWidget {
-  final RecentOrder order;
+  final RecentOrderEntity order;
   final bool isLast;
   const _OrderRow({required this.order, this.isLast = false});
 
@@ -108,8 +115,8 @@ class _OrderRow extends StatelessWidget {
       case 'EFECTIVO':
         return 'Efectivo';
       case 'CREDITO':
-      case 'CRÉDITO':
-        return 'Crédito';
+      case 'CRÃ‰DITO':
+        return 'CrÃ©dito';
       case 'YAPE':
         return 'Yape';
       case 'TRANSFERENCIA':
@@ -171,7 +178,7 @@ class _OrderRow extends StatelessWidget {
                           ),
                           TextSpan(
                             text:
-                                '• ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
+                                'â€¢ ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
                           ),
                         ],
                       ),
