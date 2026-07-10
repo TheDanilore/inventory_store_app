@@ -1,10 +1,9 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_search_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_category_list.dart';
@@ -17,10 +16,14 @@ import 'package:go_router/go_router.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
   final Future<void> Function(ProductEntity product)? onAddToCart;
+  final String businessName;
+  final String businessAddress;
 
   const CustomerCatalogScreen({
     super.key,
     this.onAddToCart,
+    this.businessName = 'Nuestra Tienda',
+    this.businessAddress = '',
   });
 
   @override
@@ -100,24 +103,28 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
     final cubit = context.read<CustomerCatalogCubit>();
     final state = context.watch<CustomerCatalogCubit>().state;
 
-    return CustomerLayout(
-      title: 'CatÃ¡logo',
-      currentIndex: 0,
-      showAppBar: false,
-      body: RefreshIndicator(
-        onRefresh: cubit.refreshProducts,
-        color: AppColors.primary,
-        child: SizedBox(
-          height: double.infinity,
-          child: CustomScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: cubit.refreshProducts,
+          color: AppColors.primary,
+          child: SizedBox(
+            height: double.infinity,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
               // --- Banners ---
               if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
-                const SliverToBoxAdapter(child: CatalogWelcomeBanner()),
+                SliverToBoxAdapter(
+                  child: CatalogWelcomeBanner(
+                    businessName: widget.businessName,
+                    businessAddress: widget.businessAddress,
+                  ),
+                ),
                 const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 const SliverToBoxAdapter(child: CatalogPromoBanner()),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -138,7 +145,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'CategorÃ­as',
+                      'Categorías',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -194,7 +201,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                             padding: const EdgeInsets.all(32),
                             child: Center(
                               child: Text(
-                                'No hay bÃºsquedas recientes',
+                                'No hay búsquedas recientes',
                                 style: TextStyle(color: Colors.grey.shade500),
                               ),
                             ),
@@ -259,7 +266,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                   child: AppEmptyState(
                     icon: Icons.error_outline_rounded,
                     color: Colors.red,
-                    title: 'OcurriÃ³ un error',
+                    title: 'Ocurrió un error',
                     message: state.errorMessage!,
                     action: ElevatedButton.icon(
                       onPressed: cubit.refreshProducts,
@@ -292,7 +299,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Prueba buscando otra cosa o cambiando de categorÃ­a.',
+                            'Prueba buscando otra cosa o cambiando de categoría.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey.shade500),
                           ),
@@ -340,7 +347,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

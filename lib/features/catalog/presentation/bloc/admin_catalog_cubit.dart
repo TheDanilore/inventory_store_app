@@ -1,5 +1,5 @@
-﻿import 'dart:async';
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -7,9 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_form_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
-import 'package:inventory_store_app/features/catalog/data/utils/pdf/catalog_pdf_generator.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/export_catalog_pdf_usecase.dart';
 import 'admin_catalog_state.dart';
 
 @injectable
@@ -18,6 +16,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetProductsUC getProductsUC;
   final SetProductActiveUC setProductActiveUC;
   final ClearCatalogCacheUC clearCatalogCacheUC;
+  final ExportCatalogPdfUseCase exportCatalogPdfUC;
 
   Timer? _debounce;
 
@@ -26,6 +25,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     required this.getProductsUC,
     required this.setProductActiveUC,
     required this.clearCatalogCacheUC,
+    required this.exportCatalogPdfUC,
   }) : super(const AdminCatalogState());
 
   Future<void> loadInitialData() async {
@@ -177,7 +177,10 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     emit(state.copyWith(actionState: ViewState.success));
   }
 
-  Future<void> exportCatalogPdf(BuildContext context) async {
+  Future<void> exportCatalogPdf({
+    required int optionsMode,
+    required List<String> selectedIds,
+  }) async {
     if (state.isLoadingAction) return;
     emit(state.copyWith(actionState: ViewState.loading));
 
@@ -191,29 +194,19 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         offset: 0,
         sortByPriceAsc: true,
       );
-
-      if (!context.mounted) {
-        emit(state.copyWith(actionState: ViewState.initial));
-        return;
-      }
-
       result.fold(
         (failure) {
-          AppSnackbar.show(
-            context,
-            message: 'Error al cargar productos: ${failure.message}',
-            type: SnackbarType.error,
-          );
-          emit(state.copyWith(actionState: ViewState.error));
+          emit(state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: 'Error al cargar productos: ${failure.message}',
+          ));
         },
         (data) async {
           if (data.products.isEmpty) {
-            AppSnackbar.show(
-              context,
-              message: 'No hay productos para exportar.',
-              type: SnackbarType.error,
-            );
-            emit(state.copyWith(actionState: ViewState.initial));
+            emit(state.copyWith(
+              actionState: ViewState.error,
+              errorMessage: 'No hay productos para exportar.',
+            ));
             return;
           }
 
@@ -221,90 +214,45 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           final visibleProducts = state.products;
           final max50Products = allProducts.take(50).toList();
 
-          // The CatalogDialogs show export options dialogs
-          // We need ProductModel for the dialog but we have ProductEntity
-          // For now we keep using the old dialog which works with ProductModel
-          // This is a valid temporary approach during migration
-          final options = await CatalogDialogs.showExportOptionsDialog(
-            context,
-            max50Products,
-            visibleProducts.length,
-          );
-
-          if (!context.mounted || options == null) {
-            emit(state.copyWith(actionState: ViewState.initial));
-            return;
-          }
-
           List<ProductEntity> filteredProducts = [];
-          if (options.mode == 0) {
+          if (optionsMode == 0) {
             filteredProducts = visibleProducts;
-          } else if (options.mode == 1) {
+          } else if (optionsMode == 1) {
             filteredProducts = max50Products;
-          } else if (options.mode == 2) {
-            filteredProducts =
-                max50Products
-                    .where((p) => options.selectedIds.contains(p.id))
-                    .toList();
+          } else if (optionsMode == 2) {
+            filteredProducts = max50Products
+                .where((p) => selectedIds.contains(p.id))
+                .toList();
           }
 
           if (filteredProducts.isEmpty) {
-            AppSnackbar.show(
-              context,
-              message: 'No hay productos seleccionados.',
-              type: SnackbarType.error,
-            );
-            emit(state.copyWith(actionState: ViewState.initial));
+            emit(state.copyWith(
+              actionState: ViewState.error,
+              errorMessage: 'No hay productos seleccionados.',
+            ));
             return;
           }
 
-          if (context.mounted) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder:
-                  (_) => const AlertDialog(
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 20),
-                        Text(
-                          'Generando CatÃ¡logo PDF...',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-            );
-          }
-
-          await Future.delayed(const Duration(milliseconds: 400));
-
-          try {
-            await CatalogPdfGenerator.shareCatalog(
-              products: filteredProducts,
-              variantsByProduct: const {},
-              stockByVariant: const {},
-            );
-          } finally {
-            if (context.mounted) {
-              Navigator.of(context, rootNavigator: true).pop();
-            }
-          }
-
-          emit(state.copyWith(actionState: ViewState.success));
+          final exportResult = await exportCatalogPdfUC(products: filteredProducts);
+          
+          exportResult.fold(
+            (failure) {
+              emit(state.copyWith(
+                actionState: ViewState.error,
+                errorMessage: 'Error al generar PDF: ${failure.message}',
+              ));
+            },
+            (_) {
+              emit(state.copyWith(actionState: ViewState.success));
+            },
+          );
         },
       );
     } catch (e) {
-      if (context.mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'No se pudo exportar el PDF: $e',
-          type: SnackbarType.error,
-        );
-      }
-      emit(state.copyWith(actionState: ViewState.error));
+      emit(state.copyWith(
+        actionState: ViewState.error,
+        errorMessage: 'Error inesperado: $e',
+      ));
     }
   }
 

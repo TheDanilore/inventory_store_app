@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -558,13 +558,16 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/customer',
-                  builder:
-                      (context, state) => BlocProvider(
-                        create:
-                            (_) =>
-                                sl<CustomerCatalogCubit>()..loadInitialData(),
-                        child: const CustomerCatalogScreen(),
+                  builder: (context, state) {
+                    final config = context.watch<AppConfigCubit>();
+                    return BlocProvider(
+                      create: (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
+                      child: CustomerCatalogScreen(
+                        businessName: config.businessName,
+                        businessAddress: config.businessAddress,
                       ),
+                    );
+                  },
                   routes: [
                     GoRoute(
                       path: 'product/:id',

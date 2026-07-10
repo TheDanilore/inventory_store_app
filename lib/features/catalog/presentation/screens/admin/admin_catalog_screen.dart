@@ -1,4 +1,4 @@
-﻿
+
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -13,6 +13,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_category_chips.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_skeleton.dart';
@@ -100,7 +101,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   ) async {
     switch (value) {
       case 'export':
-        await cubit.exportCatalogPdf(ctx);
+        await _exportCatalogPdf(ctx, cubit, state);
         break;
       case 'sync':
         await cubit.refreshProducts();
@@ -112,6 +113,52 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           );
         }
         break;
+    }
+  }
+
+  Future<void> _exportCatalogPdf(
+    BuildContext context,
+    AdminCatalogCubit cubit,
+    AdminCatalogState state,
+  ) async {
+    final allProducts = state.products;
+    final max50Products = allProducts.take(50).toList();
+    
+    // Convert entities to models temporarily for the dialog if needed by CatalogDialogs
+    // Since CatalogDialogs.showExportOptionsDialog expects ProductModel, we may need a workaround
+    // if the dialog still uses Models. For now we just pass what it expects (this may need fixes).
+    // Actually the dialog might take ProductEntity now, we will see.
+    final options = await CatalogDialogs.showExportOptionsDialog(
+      context,
+      max50Products, // It might fail if it strictly expects ProductModel
+      state.products.length,
+    );
+
+    if (!context.mounted || options == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Generando Catálogo PDF...', textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+    );
+
+    await cubit.exportCatalogPdf(
+      optionsMode: options.mode,
+      selectedIds: options.selectedIds.toList(),
+    );
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
     }
   }
 
@@ -263,7 +310,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                             ViewState.loading,
                                         onExport:
                                             () =>
-                                                cubit.exportCatalogPdf(context),
+                                                _exportCatalogPdf(context, cubit, state),
                                         onSearchChanged: cubit.setSearchTerm,
                                         searchByIngredient:
                                             state.searchByIngredient,

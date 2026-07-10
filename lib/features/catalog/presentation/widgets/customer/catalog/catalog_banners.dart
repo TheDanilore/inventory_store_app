@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CatalogWelcomeBanner extends StatelessWidget {
-  const CatalogWelcomeBanner({super.key});
+  final String businessName;
+  final String businessAddress;
+
+  const CatalogWelcomeBanner({
+    super.key,
+    required this.businessName,
+    required this.businessAddress,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final config = context.watch<AppConfigCubit>();
-    final businessName = config.businessName;
-    final businessAddress = config.businessAddress;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),

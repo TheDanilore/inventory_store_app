@@ -774,22 +774,6 @@ class CatalogRepositoryImpl implements CatalogRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, String?>> fetchCurrentProfileId() async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return right(null);
-      final profile =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', user.id)
-              .maybeSingle();
-      return right(profile?['id'] as String?);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
 
   @override
   Future<Either<Failure, bool>> toggleWishlist(

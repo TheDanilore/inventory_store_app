@@ -1,17 +1,17 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
 class VariantDraftEntity {
-  final String? id;
-  final String? sku;
-  final String? barcode;
-  final List<Map<String, dynamic>> selectedAttributes;
-  final String? price;
-  final String? wholesalePrice;
-  final String? wholesaleMinQuantity;
-  final String? reorderPoint;
-  final String? unitCost;
-  final List<String> urlsExistentes;
-  final bool isActive;
+  String? id;
+  String? sku;
+  String? barcode;
+  List<Map<String, dynamic>> selectedAttributes;
+  String? price;
+  String? wholesalePrice;
+  String? wholesaleMinQuantity;
+  String? reorderPoint;
+  String? unitCost;
+  List<String> urlsExistentes;
+  bool isActive;
 
   VariantDraftEntity({
     this.id,

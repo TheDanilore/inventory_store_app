@@ -44,8 +44,12 @@ import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
 import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
     as _i524;
+import '../../features/catalog/data/utils/pdf/catalog_pdf_generator.dart'
+    as _i440;
 import '../../features/catalog/domain/repositories/catalog_repository.dart'
     as _i1018;
+import '../../features/catalog/domain/repositories/pdf_generator_repository.dart'
+    as _i737;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_category_mutations_uc.dart'
@@ -64,6 +68,8 @@ import '../../features/catalog/domain/usecases/check_wishlist_state_usecase.dart
     as _i44;
 import '../../features/catalog/domain/usecases/create_ingredient_uc.dart'
     as _i498;
+import '../../features/catalog/domain/usecases/export_catalog_pdf_usecase.dart'
+    as _i961;
 import '../../features/catalog/domain/usecases/get_admin_financial_data_usecase.dart'
     as _i712;
 import '../../features/catalog/domain/usecases/get_attributes_uc.dart' as _i487;
@@ -169,6 +175,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1018.CatalogRepository>(
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.factory<_i737.PdfGeneratorRepository>(
+      () => _i440.CatalogPdfGeneratorImpl(),
+    );
+    gh.factory<_i961.ExportCatalogPdfUseCase>(
+      () => _i961.ExportCatalogPdfUseCase(gh<_i737.PdfGeneratorRepository>()),
+    );
     gh.lazySingleton<_i557.CustomerLocationsRepository>(
       () => _i429.CustomerLocationsRepositoryImpl(),
     );
@@ -208,20 +220,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i382.DeleteAttributeValueUC>(
       () => _i382.DeleteAttributeValueUC(gh<_i1018.CatalogRepository>()),
     );
-    gh.lazySingleton<_i110.CreateCategoryUC>(
-      () => _i110.CreateCategoryUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i110.UpdateCategoryUC>(
-      () => _i110.UpdateCategoryUC(gh<_i1018.CatalogRepository>()),
-    );
     gh.lazySingleton<_i110.DeleteCategoryUC>(
       () => _i110.DeleteCategoryUC(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i1067.SaveProductMasterUC>(
       () => _i1067.SaveProductMasterUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1067.SaveVariantUC>(
-      () => _i1067.SaveVariantUC(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i1067.SaveVariantAttributesUC>(
       () => _i1067.SaveVariantAttributesUC(gh<_i1018.CatalogRepository>()),
@@ -309,9 +312,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i700.GetCategoriesUC>(
       () => _i700.GetCategoriesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
-      () => _i927.GetCurrentProfileIdUseCase(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i567.GetProductByIdUC>(
       () => _i567.GetProductByIdUC(gh<_i1018.CatalogRepository>()),
@@ -460,13 +460,13 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i37.RestoreDefaultConnectionUseCase(gh<_i257.AppConfigRepository>()),
     );
-    gh.factory<_i711.ProductDetailCubit>(
-      () => _i711.ProductDetailCubit(
-        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
-        getAdminData: gh<_i712.GetAdminFinancialDataUseCase>(),
-        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
-        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
-        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
+    gh.factory<_i332.AdminCatalogCubit>(
+      () => _i332.AdminCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
+        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
+        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
       ),
     );
     gh.factory<_i832.ChangePasswordUseCase>(
@@ -501,14 +501,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i798.CustomersStatsCubit>(
       () => _i798.CustomersStatsCubit(gh<_i36.GetGlobalStatsUseCase>()),
     );
-    gh.factory<_i332.AdminCatalogCubit>(
-      () => _i332.AdminCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
-        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
-      ),
-    );
     gh.factory<_i1001.CustomerCreditsCubit>(
       () => _i1001.CustomerCreditsCubit(
         gh<_i580.GetCreditAccountByCustomerUseCase>(),
@@ -526,27 +518,6 @@ extension GetItInjectableX on _i174.GetIt {
         createAttributeValueUC: gh<_i382.CreateAttributeValueUC>(),
         updateAttributeValueUC: gh<_i382.UpdateAttributeValueUC>(),
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
-      ),
-    );
-    gh.factory<_i777.CategoriesCubit>(
-      () => _i777.CategoriesCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        createCategoryUC: gh<_i110.CreateCategoryUC>(),
-        updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
-        deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
-      ),
-    );
-    gh.factory<_i150.ProductFormCubit>(
-      () => _i150.ProductFormCubit(
-        gh<_i700.GetCategoriesUC>(),
-        gh<_i1014.GetProductImagesUC>(),
-        gh<_i597.GetProductIngredientsUC>(),
-        gh<_i929.GetVariantsDraftsUC>(),
-        gh<_i1014.DeleteProductImageUC>(),
-        gh<_i929.DeleteVariantUC>(),
-        gh<_i929.HasVariantSalesUC>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-        gh<_i1064.SaveProductUseCase>(),
       ),
     );
     gh.factory<_i685.CustomerDetailCubit>(
@@ -582,6 +553,9 @@ extension GetItInjectableX on _i174.GetIt {
         updateProfileUseCase: gh<_i282.UpdateProfileUseCase>(),
       ),
     );
+    gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
+      () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
+    );
     gh.factory<_i556.AppConfigCubit>(
       () => _i556.AppConfigCubit(
         getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
@@ -591,6 +565,60 @@ extension GetItInjectableX on _i174.GetIt {
         changeConnectionUseCase: gh<_i286.ChangeConnectionUseCase>(),
         restoreDefaultConnectionUseCase:
             gh<_i37.RestoreDefaultConnectionUseCase>(),
+      ),
+    );
+    gh.factory<_i711.ProductDetailCubit>(
+      () => _i711.ProductDetailCubit(
+        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
+        getAdminData: gh<_i712.GetAdminFinancialDataUseCase>(),
+        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
+        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
+        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.factory<_i150.ProductFormCubit>(
+      () => _i150.ProductFormCubit(
+        gh<_i700.GetCategoriesUC>(),
+        gh<_i1014.GetProductImagesUC>(),
+        gh<_i597.GetProductIngredientsUC>(),
+        gh<_i929.GetVariantsDraftsUC>(),
+        gh<_i1014.DeleteProductImageUC>(),
+        gh<_i929.DeleteVariantUC>(),
+        gh<_i929.HasVariantSalesUC>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+        gh<_i1064.SaveProductUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i110.CreateCategoryUC>(
+      () => _i110.CreateCategoryUC(
+        gh<_i1018.CatalogRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i110.UpdateCategoryUC>(
+      () => _i110.UpdateCategoryUC(
+        gh<_i1018.CatalogRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i1067.CatalogFormMutationsUC>(
+      () => _i1067.CatalogFormMutationsUC(
+        gh<_i1018.CatalogRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i1067.SaveVariantUC>(
+      () => _i1067.SaveVariantUC(
+        gh<_i1018.CatalogRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.factory<_i777.CategoriesCubit>(
+      () => _i777.CategoriesCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        createCategoryUC: gh<_i110.CreateCategoryUC>(),
+        updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
+        deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
       ),
     );
     return this;

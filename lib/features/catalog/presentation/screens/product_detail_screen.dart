@@ -1,4 +1,4 @@
-﻿import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -14,8 +14,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
 import 'package:inventory_store_app/features/catalog/data/utils/pdf/product_pdf_generator.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
+
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -1029,22 +1028,15 @@ class _ProductDetailScreenContentState
     }
 
     if (isAdmin) {
-      return AdminLayout(
-        title: product.name,
-        showBackButton: true,
-        showSettingsButton: false,
-        showAppBar: false,
-        body: Container(color: AppColors.background, child: content),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: content,
       );
     }
 
-    return CustomerLayout(
-      title: product.name,
-      showBackButton: true,
-      showBottomNav: false,
-      showCartIcon: false,
-      showAppBar: false,
-      body: Container(color: AppColors.background, child: content),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: content,
       bottomNavigationBar: ProductBottomBar(
         canBuy: _canBuy,
         isActive: _isActive,

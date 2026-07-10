@@ -1,17 +1,19 @@
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/pdf_generator_repository.dart';
 
 class _PdfIsolateArgs {
   final List<ProductEntity> products;
-  final Map<String, List<ProductVariantModel>> variantsByProduct;
+  final Map<String, List<ProductVariantEntity>> variantsByProduct;
   final Map<String, int> stockByVariant;
 
   _PdfIsolateArgs({
@@ -22,14 +24,15 @@ class _PdfIsolateArgs {
 }
 
 Future<Uint8List> _generatePdfInIsolate(_PdfIsolateArgs args) async {
-  return await CatalogPdfGenerator._buildPdfInternal(
+  return await CatalogPdfGeneratorImpl._buildPdfInternal(
     products: args.products,
     variantsByProduct: args.variantsByProduct,
     stockByVariant: args.stockByVariant,
   );
 }
 
-class CatalogPdfGenerator {
+@Injectable(as: PdfGeneratorRepository)
+class CatalogPdfGeneratorImpl implements PdfGeneratorRepository {
   // Formato de moneda idéntico al que usaba el screen
   static final _currencyFormat = NumberFormat.currency(
     locale: 'es_PE',
@@ -42,7 +45,7 @@ class CatalogPdfGenerator {
 
   static Future<Uint8List> _buildPdf({
     required List<ProductEntity> products,
-    required Map<String, List<ProductVariantModel>> variantsByProduct,
+    required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
     return await compute(
@@ -57,7 +60,7 @@ class CatalogPdfGenerator {
 
   static Future<Uint8List> _buildPdfInternal({
     required List<ProductEntity> products,
-    required Map<String, List<ProductVariantModel>> variantsByProduct,
+    required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
     final baseFont = await PdfGoogleFonts.notoSansRegular();
@@ -130,7 +133,7 @@ class CatalogPdfGenerator {
 
   static pw.Widget _buildProductCard({
     required ProductEntity product,
-    required List<ProductVariantModel> variants,
+    required List<ProductVariantEntity> variants,
     required Uint8List? imageBytes,
     required Map<String, int> stockByVariant,
   }) {
@@ -286,27 +289,10 @@ class CatalogPdfGenerator {
   // ── Métodos públicos (misma convención que OrderPdfGenerator) ────────────
 
   /// Abre el diálogo de impresión / vista previa del sistema.
-  static Future<void> printCatalog({
+  @override
+  Future<void> shareCatalog({
     required List<ProductEntity> products,
-    required Map<String, List<ProductVariantModel>> variantsByProduct,
-    required Map<String, int> stockByVariant,
-  }) async {
-    final bytes = await _buildPdf(
-      products: products,
-      variantsByProduct: variantsByProduct,
-      stockByVariant: stockByVariant,
-    );
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Catalogo_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-    );
-  }
-
-  /// Comparte el PDF usando el sistema de compartir del dispositivo.
-  /// Equivalente a `OrderPdfGenerator.shareTicket`.
-  static Future<void> shareCatalog({
-    required List<ProductEntity> products,
-    required Map<String, List<ProductVariantModel>> variantsByProduct,
+    required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(

@@ -125,7 +125,6 @@ abstract class CatalogRepository {
   );
   Future<Either<Failure, String?>> getFirstVariantId(String productId);
 
-  Future<Either<Failure, String?>> fetchCurrentProfileId();
   Future<Either<Failure, bool>> toggleWishlist(
     String productId,
     String profileId,
