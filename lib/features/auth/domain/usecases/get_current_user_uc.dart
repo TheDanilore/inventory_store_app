@@ -23,6 +23,11 @@ class GetCurrentUserUseCase implements UseCase<UserEntity, NoParams> {
         return left(failure);
       },
       (user) async {
+        if (!user.isActive) {
+          await repository.logout();
+          return left(Failure.from('Tu cuenta está inactiva o bloqueada.'));
+        }
+
         try {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('profile_cache_full_name_', user.fullName);

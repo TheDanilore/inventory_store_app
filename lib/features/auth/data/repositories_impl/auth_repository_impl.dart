@@ -31,10 +31,6 @@ class AuthRepositoryImpl implements AuthRepository {
         return left(Failure.from('Perfil no encontrado.'));
       }
 
-      if (data['is_active'] == false) {
-        return left(Failure.from('Tu cuenta está inactiva o bloqueada.'));
-      }
-
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
 
       return right(model.toEntity());
