@@ -1,5 +1,3 @@
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_add_to_cart_sheet.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_cart_fab.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
@@ -22,7 +20,16 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_fab_buttons.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
-  const AdminCatalogScreen({super.key});
+  final Widget? floatingActionButton;
+  final void Function(ProductEntity product)? onAddToCart;
+  final void Function(ProductEntity product)? onProductTap;
+
+  const AdminCatalogScreen({
+    super.key,
+    this.floatingActionButton,
+    this.onAddToCart,
+    this.onProductTap,
+  });
 
   @override
   State<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
@@ -72,37 +79,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
             },
           ),
         ),
-      );
-    }
-  }
-
-  Future<void> _irAVenta(ProductEntity productEntity) async {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-
-    if (!mounted) return;
-
-    if (isDesktop) {
-      showDialog(
-        context: context,
-        builder:
-            (_) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 500,
-                  maxHeight: 750,
-                ),
-                child: PosAddToCartSheet(productEntity: productEntity),
-              ),
-            ),
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => PosAddToCartSheet(productEntity: productEntity),
       );
     }
   }
@@ -423,7 +399,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           pageSize: 20,
                           currentPage: state.currentPage,
                           onPageChanged: cubit.setPage,
-                          onSale: _irAVenta,
+                          onSale: widget.onAddToCart ?? (_) {},
                           onToggleActive:
                               (p) => _toggleProductoActivo(p, cubit),
                           searchByIngredient: state.searchByIngredient,
@@ -495,7 +471,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const PosCartFab(),
+                        if (widget.floatingActionButton != null)
+                          widget.floatingActionButton!,
                         const SizedBox(height: 12),
                         CatalogAddProductFab(
                           onTap: () async {

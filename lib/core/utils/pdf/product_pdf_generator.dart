@@ -4,13 +4,13 @@ import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
 class ProductPdfGenerator {
   static Future<Uint8List> _buildPdf(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
   }) async {
     final pdf = pw.Document();
@@ -274,8 +274,8 @@ class ProductPdfGenerator {
   }
 
   static Future<void> printProduct(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(
@@ -291,8 +291,8 @@ class ProductPdfGenerator {
   }
 
   static Future<void> shareProduct(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(
@@ -308,8 +308,8 @@ class ProductPdfGenerator {
   }
 
   static Future<void> saveProduct(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(
@@ -327,8 +327,8 @@ class ProductPdfGenerator {
   }
 
   static Future<void> saveProductAs(
-    ProductModel product, {
-    required List<ProductVariantModel> variants,
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
   }) async {
     final bytes = await _buildPdf(

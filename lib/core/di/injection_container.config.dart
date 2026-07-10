@@ -88,6 +88,8 @@ import '../../features/catalog/presentation/bloc/customer_catalog_cubit.dart'
     as _i160;
 import '../../features/catalog/presentation/bloc/ingredients_cubit.dart'
     as _i841;
+import '../../features/catalog/presentation/bloc/product_detail_cubit.dart'
+    as _i711;
 import '../../features/catalog/presentation/bloc/product_form_cubit.dart'
     as _i150;
 import '../network/network_cubit.dart' as _i11;
@@ -317,6 +319,20 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i282.UpdateProfileUseCase>(
       () => _i282.UpdateProfileUseCase(gh<_i787.AuthRepository>()),
+    );
+    gh.factoryParam<
+      _i711.ProductDetailCubit,
+      _i711.ProductDetailParams,
+      dynamic
+    >(
+      (params, _) => _i711.ProductDetailCubit(
+        params,
+        getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
+        getAdminData: gh<_i712.GetAdminFinancialDataUseCase>(),
+        checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
+        toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
+        getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
     );
     gh.factory<_i332.AdminCatalogCubit>(
       () => _i332.AdminCatalogCubit(

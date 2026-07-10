@@ -159,6 +159,7 @@ class SaveProductUseCase {
             repository.saveVariant(
               productId: productId,
               variantData: variantData,
+              profileId: payload.profileId,
             ),
           );
           await _unwrap(repository.saveVariantAttributes(primaryVariantId, []));
@@ -181,6 +182,7 @@ class SaveProductUseCase {
               productId: productId,
               variantData: variantData,
               variantId: draft.id,
+              profileId: payload.profileId,
             ),
           );
 

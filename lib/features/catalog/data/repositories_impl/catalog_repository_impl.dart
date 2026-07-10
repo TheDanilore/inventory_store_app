@@ -465,19 +465,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
     required String name,
     String? description,
     required bool isActive,
+    String? profileId,
   }) async {
     try {
-      final authUserId = _supabase.auth.currentUser?.id;
-      String? profileId;
-      if (authUserId != null) {
-        final p =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        profileId = p?['id'] as String?;
-      }
       final response =
           await _supabase
               .from('categories')
@@ -502,19 +492,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
     required String name,
     String? description,
     required bool isActive,
+    String? profileId,
   }) async {
     try {
-      final authUserId = _supabase.auth.currentUser?.id;
-      String? profileId;
-      if (authUserId != null) {
-        final p =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        profileId = p?['id'] as String?;
-      }
       await _supabase
           .from('categories')
           .update({
@@ -720,19 +700,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
     required String productId,
     required Map<String, dynamic> variantData,
     String? variantId,
+    String? profileId,
   }) async {
     try {
-      final authUserId = _supabase.auth.currentUser?.id;
-      String? profileId;
-      if (authUserId != null) {
-        final profileResp =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        if (profileResp != null) profileId = profileResp['id'] as String;
-      }
       final payload = {
         ...variantData,
         'product_id': productId,

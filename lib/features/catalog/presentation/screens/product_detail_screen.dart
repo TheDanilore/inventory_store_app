@@ -1,7 +1,6 @@
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
@@ -19,8 +18,6 @@ import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
@@ -65,15 +62,12 @@ class ProductDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create:
-          (_) => ProductDetailCubit(
-            getExtraData: sl(),
-            getAdminData: sl(),
-            checkWishlist: sl(),
-            toggleWishlist: sl(),
-            getProfileId: sl(),
-            product: product,
-            isAdmin: isAdmin,
-            initialVariantId: initialVariantId,
+          (_) => sl<ProductDetailCubit>(
+            param1: ProductDetailParams(
+              product: product,
+              isAdmin: isAdmin,
+              initialVariantId: initialVariantId,
+            ),
           ),
       child: _ProductDetailScreenContent(
         isEmbedded: isEmbedded,
@@ -752,13 +746,8 @@ class _ProductDetailScreenContentState
                         try {
                           if (currentState.product == null) return;
                           await ProductPdfGenerator.shareProduct(
-                            ProductModel.fromEntity(currentState.product!),
-                            variants:
-                                currentState.variants
-                                    .map(
-                                      (v) => ProductVariantModel.fromEntity(v),
-                                    )
-                                    .toList(),
+                            currentState.product!,
+                            variants: currentState.variants.toList(),
                             stockByVariant: stockMap,
                           );
                         } catch (e) {
@@ -802,8 +791,7 @@ class _ProductDetailScreenContentState
           flexibleSpace: FlexibleSpaceBar(
             stretchModes: const [StretchMode.zoomBackground],
             background: ProductGallerySection(
-              images:
-                  gallery.map((e) => ProductImageModel.fromEntity(e)).toList(),
+              images: gallery.toList(),
               pageController: _pageController,
               selectedIndex: _selectedImageIndex,
               onPageChanged: _onGalleryChanged,

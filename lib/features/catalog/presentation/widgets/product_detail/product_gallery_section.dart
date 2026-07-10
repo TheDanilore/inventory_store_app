@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:go_router/go_router.dart';
 
 // ─── GALLERY ─────────────────────────────────────────────────────────────────
 
 class ProductGallerySection extends StatelessWidget {
-  final List<ProductImageModel> images;
+  final List<ProductImageEntity> images;
   final PageController pageController;
   final int selectedIndex;
   final ValueChanged<int> onPageChanged;

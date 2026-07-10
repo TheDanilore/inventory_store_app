@@ -10,7 +10,21 @@ import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
+import 'package:injectable/injectable.dart';
 
+class ProductDetailParams {
+  final ProductEntity product;
+  final bool isAdmin;
+  final String? initialVariantId;
+
+  ProductDetailParams({
+    required this.product,
+    this.isAdmin = false,
+    this.initialVariantId,
+  });
+}
+
+@injectable
 class ProductDetailCubit extends Cubit<ProductDetailState> {
   final ProductEntity product;
   final bool isAdmin;
@@ -29,10 +43,9 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
   String? _profileId;
 
-  ProductDetailCubit({
-    required this.product,
-    required this.isAdmin,
-    this.initialVariantId,
+  @factoryMethod
+  ProductDetailCubit(
+    @factoryParam ProductDetailParams params, {
     required GetProductExtraDataUseCase getExtraData,
     required GetAdminFinancialDataUseCase getAdminData,
     required CheckWishlistStateUseCase checkWishlist,
@@ -43,10 +56,13 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
        _checkWishlist = checkWishlist,
        _toggleWishlist = toggleWishlist,
        _getProfileId = getProfileId,
+       product = params.product,
+       isAdmin = params.isAdmin,
+       initialVariantId = params.initialVariantId,
        super(
          ProductDetailState(
-           product: product,
-           selectedVariantId: initialVariantId,
+           product: params.product,
+           selectedVariantId: params.initialVariantId,
          ),
        ) {
     _initData();

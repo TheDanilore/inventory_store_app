@@ -231,7 +231,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                             cubit.duplicateVariantDraft(index),
                                     onActiveChanged: (val) {
                                       state.variantDrafts[index].isActive = val;
-                                      // Esto idealmente debería notificar al provider, pero VariantDraftCard usa su estado local también.
+                                      // Esto idealmente debería notificar al Cubit, pero VariantDraftCard usa su estado local también.
                                     },
                                     onPickImage:
                                         () => cubit.pickVariantImage(

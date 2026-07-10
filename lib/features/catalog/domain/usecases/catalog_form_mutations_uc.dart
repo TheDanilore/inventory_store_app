@@ -26,11 +26,15 @@ class SaveVariantUC {
     required String productId,
     required Map<String, dynamic> variantData,
     String? variantId,
-  }) {
+  }) async {
+    final pIdRes = await repository.fetchCurrentProfileId();
+    final profileId = pIdRes.fold((l) => null, (r) => r);
+
     return repository.saveVariant(
       productId: productId,
       variantData: variantData,
       variantId: variantId,
+      profileId: profileId,
     );
   }
 }

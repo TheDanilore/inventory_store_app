@@ -14,12 +14,14 @@ abstract class CatalogRepository {
     required String name,
     String? description,
     required bool isActive,
+    String? profileId,
   });
   Future<Either<Failure, void>> updateCategory({
     required String id,
     required String name,
     String? description,
     required bool isActive,
+    String? profileId,
   });
   Future<Either<Failure, void>> deleteCategory(String id);
   Future<Either<Failure, List<CategoryEntity>>> getCategories({
@@ -115,6 +117,7 @@ abstract class CatalogRepository {
     required String productId,
     required Map<String, dynamic> variantData,
     String? variantId,
+    String? profileId,
   });
   Future<Either<Failure, void>> saveVariantAttributes(
     String variantId,

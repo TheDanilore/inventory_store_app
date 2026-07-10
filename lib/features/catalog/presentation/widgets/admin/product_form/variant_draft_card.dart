@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/attribute_search_dialog.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class VariantDraftCard extends StatefulWidget {
   final int index;
-  final VariantDraftModel draft;
+  final VariantDraftFormModel draft;
   final VoidCallback onRemove;
   final VoidCallback onDuplicate;
   final VoidCallback onPickImage;

@@ -1,14 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/widgets/customer_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/customer/widgets/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_search_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_category_list.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_banners.dart';
@@ -19,7 +16,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
-  const CustomerCatalogScreen({super.key});
+  final Future<void> Function(ProductEntity product)? onAddToCart;
+
+  const CustomerCatalogScreen({
+    super.key,
+    this.onAddToCart,
+  });
 
   @override
   State<CustomerCatalogScreen> createState() => _CustomerCatalogScreenState();
@@ -92,18 +94,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleAddToCart(ProductEntity productEntity) async {
-    final cart = context.read<CartProvider>();
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => CartVariantPickerSheet(cart: cart, product: productEntity),
-    );
   }
 
   @override
@@ -330,7 +320,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                       final product = state.products[index];
                       return CatalogProductCard(
                         product: product,
-                        onAddToCart: _handleAddToCart,
+                        onAddToCart: widget.onAddToCart ?? (p) async {},
                       );
                     }, childCount: state.products.length),
                   ),

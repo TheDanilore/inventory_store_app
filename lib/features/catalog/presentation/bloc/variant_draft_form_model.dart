@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 
-class VariantDraftModel {
+class VariantDraftFormModel {
   final String? id;
 
   // ── Campos básicos ──────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ class VariantDraftModel {
   List<Uint8List> nuevasImagenes;
   List<String> urlsExistentes;
 
-  VariantDraftModel({
+  VariantDraftFormModel({
     this.id,
     String? sku,
     String? barcode,
@@ -52,8 +52,8 @@ class VariantDraftModel {
        nuevasImagenes = nuevasImagenes ?? [];
 
   // ── Desde entidad existente ──────────────────────────────────────────────────
-  factory VariantDraftModel.fromEntity(VariantDraftEntity variant) {
-    return VariantDraftModel(
+  factory VariantDraftFormModel.fromEntity(VariantDraftEntity variant) {
+    return VariantDraftFormModel(
       id: variant.id,
       sku: variant.sku,
       barcode: variant.barcode,

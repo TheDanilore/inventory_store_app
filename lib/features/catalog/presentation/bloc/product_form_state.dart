@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
 // Clases de utilidad locales para el Formulario
@@ -74,7 +74,7 @@ class ProductFormState extends Equatable {
   final List<DetailControllers> detailRows;
   final List<IngredientRow> ingredientRows;
   final List<FormImageItem> formImages;
-  final List<VariantDraftModel> variantDrafts;
+  final List<VariantDraftFormModel> variantDrafts;
   final List<String> removedVariantIds;
 
   const ProductFormState({
@@ -117,7 +117,7 @@ class ProductFormState extends Equatable {
     List<DetailControllers>? detailRows,
     List<IngredientRow>? ingredientRows,
     List<FormImageItem>? formImages,
-    List<VariantDraftModel>? variantDrafts,
+    List<VariantDraftFormModel>? variantDrafts,
     List<String>? removedVariantIds,
   }) {
     return ProductFormState(

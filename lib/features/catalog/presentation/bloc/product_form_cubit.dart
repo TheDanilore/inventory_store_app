@@ -6,7 +6,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/variant_draft_model.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_image_ucs.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ingredient_ucs.dart';
@@ -56,7 +56,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final List<DetailControllers> detailRows = [];
   final List<IngredientRow> ingredientRows = [];
   final List<FormImageItem> formImages = [];
-  final List<VariantDraftModel> variantDrafts = [];
+  final List<VariantDraftFormModel> variantDrafts = [];
   final List<String> _removedVariantIds = [];
 
   // Categorías
@@ -267,7 +267,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   Future<void> _fetchVariants(String productId) async {
     try {
       final drafts = await _unwrap(_getVariantsDraftsUC.call(productId));
-      variantDrafts.addAll(drafts.map(VariantDraftModel.fromEntity));
+      variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
     } catch (e) {
       // El error se silencia o se maneja en el cubit. Aquí lo notificaremos por Snackbar desde UI idealmente.
     }
@@ -419,14 +419,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   // --- Variantes ---
 
   void addVariantDraft() {
-    variantDrafts.add(VariantDraftModel());
+    variantDrafts.add(VariantDraftFormModel());
     markAsDirty();
     _syncState();
   }
 
   void duplicateVariantDraft(int index) {
     final original = variantDrafts[index];
-    final copy = VariantDraftModel();
+    final copy = VariantDraftFormModel();
     copy.skuCtrl.text =
         original.skuCtrl.text.isNotEmpty ? '${original.skuCtrl.text}-COPY' : '';
     copy.reorderPointCtrl.text = original.reorderPointCtrl.text;

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class CatalogEmptyState extends StatelessWidget {

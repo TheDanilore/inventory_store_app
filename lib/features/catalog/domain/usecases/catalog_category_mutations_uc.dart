@@ -13,10 +13,14 @@ class CreateCategoryUC {
     String? description,
     required bool isActive,
   }) async {
+    final pIdRes = await repository.fetchCurrentProfileId();
+    final profileId = pIdRes.fold((l) => null, (r) => r);
+
     return await repository.createCategory(
       name: name,
       description: description,
       isActive: isActive,
+      profileId: profileId,
     );
   }
 }
@@ -31,11 +35,15 @@ class UpdateCategoryUC {
     String? description,
     required bool isActive,
   }) async {
+    final pIdRes = await repository.fetchCurrentProfileId();
+    final profileId = pIdRes.fold((l) => null, (r) => r);
+
     return await repository.updateCategory(
       id: id,
       name: name,
       description: description,
       isActive: isActive,
+      profileId: profileId,
     );
   }
 }
