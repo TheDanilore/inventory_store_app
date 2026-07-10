@@ -26,11 +26,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     required this.getProductsUC,
     required this.setProductActiveUC,
     required this.clearCatalogCacheUC,
-  }) : super(const AdminCatalogState()) {
-    _init();
-  }
+  }) : super(const AdminCatalogState());
 
-  Future<void> _init() async {
+  Future<void> loadInitialData() async {
     await _fetchCategories();
     await refreshProducts();
   }

@@ -40,7 +40,7 @@ class CatalogProductGrid extends StatelessWidget {
         title: 'Ocurrió un error',
         message: state.errorMessage!,
         action: ElevatedButton.icon(
-          onPressed: context.read<CustomerCatalogCubit>().init,
+          onPressed: context.read<CustomerCatalogCubit>().loadInitialData,
           icon: const Icon(Icons.refresh_rounded),
           label: const Text('Reintentar'),
         ),

@@ -18,6 +18,7 @@ import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 
 // ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
 // En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
@@ -94,6 +95,7 @@ class MyApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => PointsProvider()),
           ChangeNotifierProvider(create: (_) => PosProvider()),
           ChangeNotifierProvider(create: (_) => CartCheckoutProvider()),
+          ChangeNotifierProvider(create: (_) => CartProvider()),
         ],
         child: MaterialApp.router(
           restorationScopeId: 'app',

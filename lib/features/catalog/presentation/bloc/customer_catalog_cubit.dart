@@ -24,7 +24,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
     required this.getProductStockUC,
   }) : super(const CustomerCatalogState());
 
-  Future<void> init() async {
+  Future<void> loadInitialData() async {
     await _loadSearchHistory();
     await _fetchCategories();
     await refreshProducts();

@@ -35,7 +35,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CustomerCatalogCubit>().init();
       _checkLoginPrompt();
     });
 

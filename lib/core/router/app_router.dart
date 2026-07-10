@@ -20,6 +20,8 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/full_screen_gallery.dart';
 
 // Pantallas Cliente
+import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
@@ -99,7 +101,9 @@ class _ProductLoaderState extends State<_ProductLoader> {
   @override
   void initState() {
     super.initState();
-    _future = sl<CatalogRepository>().getProductById(widget.productId).then((res) => res.fold((l) => null, (r) => r));
+    _future = sl<CatalogRepository>()
+        .getProductById(widget.productId)
+        .then((res) => res.fold((l) => null, (r) => r));
   }
 
   @override
@@ -253,15 +257,16 @@ class AppRouter {
       routes: [
         GoRoute(
           path: '/',
-          builder: (context, state) => SplashScreen(
-            onInitialize: (ctx) async {
-              final configProvider = ctx.read<AppConfigCubit>();
-              await Future.wait([
-                configProvider.loadConfig(),
-                configProvider.loadBusinessInfo(),
-              ]).timeout(const Duration(seconds: 5));
-            },
-          ),
+          builder:
+              (context, state) => SplashScreen(
+                onInitialize: (ctx) async {
+                  final configProvider = ctx.read<AppConfigCubit>();
+                  await Future.wait([
+                    configProvider.loadConfig(),
+                    configProvider.loadBusinessInfo(),
+                  ]).timeout(const Duration(seconds: 5));
+                },
+              ),
         ),
         GoRoute(
           path: '/login',
@@ -269,259 +274,276 @@ class AppRouter {
         ),
 
         // ADMIN ROUTES
-        GoRoute(
-          path: '/admin',
-          builder: (context, state) => AdminCatalogScreen(
-            onProfileAvatarTap: () {
-              final auth = context.read<AuthCubit>();
-              if (auth.state.currentUser == null) {
-                context.go('/login');
-              } else {
-                context.push('/admin/profile');
-              }
-            },
-          ),
+        ShellRoute(
+          builder:
+              (context, state, child) => BlocProvider(
+                create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                child: child,
+              ),
           routes: [
             GoRoute(
-              path: 'profile',
+              path: '/admin',
               builder:
-                  (context, state) =>
-                      const ProfileScreen(openedFromAdmin: true),
-            ),
-            GoRoute(
-              path: 'active-ingredients',
-              builder: (context, state) => const ActiveIngredientsScreen(),
-            ),
-            GoRoute(
-              path: 'attributes',
-              builder: (context, state) => const AttributesManagementScreen(),
-            ),
-            GoRoute(
-              path: 'business-info',
-              builder: (context, state) => const BusinessInfoScreen(),
-            ),
-            GoRoute(
-              path: 'categories',
-              builder: (context, state) => const CategoriesManagementScreen(),
-            ),
-            GoRoute(
-              path: 'customer-credit-movements/:creditId',
-              builder: (context, state) {
-                final creditId = state.pathParameters['creditId'] ?? '';
-                final args = state.extra as Map<String, dynamic>? ?? {};
-                return CustomerCreditMovementsScreen(
-                  creditId: creditId,
-                  customerName:
-                      args['customerName'] ??
-                      state.uri.queryParameters['name'] ??
-                      '',
-                  currentDebt:
-                      args['currentDebt'] ??
-                      double.tryParse(
-                        state.uri.queryParameters['debt'] ?? '0',
-                      ) ??
-                      0.0,
-                  creditLimit:
-                      args['creditLimit'] ??
-                      double.tryParse(
-                        state.uri.queryParameters['limit'] ?? '0',
-                      ) ??
-                      0.0,
-                );
-              },
-            ),
-            GoRoute(
-              path: 'customer-credits',
-              builder: (context, state) => const CustomerCreditsScreen(),
-            ),
-            GoRoute(
-              path: 'customer-detail/:id',
-              builder: (context, state) {
-                final customer = state.extra;
-                final customerId = state.pathParameters['id'] ?? '';
-                if (customer == null && customerId.isEmpty) {
-                  return Scaffold(
-                    appBar: AppBar(title: const Text('Error')),
-                    body: const Center(child: Text('Cliente no encontrado.')),
-                  );
-                }
-                return CustomerDetailScreen(customer: customer as dynamic);
-              },
-            ),
-            GoRoute(
-              path: 'customers',
-              builder: (context, state) => const CustomersScreen(),
-            ),
-            GoRoute(
-              path: 'top-customers',
-              builder: (context, state) => const TopCustomersScreen(),
-            ),
-            GoRoute(
-              path: 'dashboard',
-              builder: (context, state) => const DashboardScreen(),
-            ),
-            GoRoute(
-              path: 'financial-accounts',
-              builder: (context, state) => const FinancialAccountsScreen(),
-            ),
-            GoRoute(
-              path: 'all-cash-shifts',
-              builder: (context, state) => const AllCashShiftsScreen(),
-            ),
-            GoRoute(
-              path: 'inventory-entries',
-              builder: (context, state) => const InventoryEntriesScreen(),
-            ),
-            GoRoute(
-              path: 'inventory-entry-form',
-              builder: (context, state) {
-                final args = state.extra as Map<String, dynamic>? ?? {};
-                return InventoryEntryFormScreen(
-                  purchaseOrderId:
-                      args['purchaseOrderId'] ??
-                      state.uri.queryParameters['purchaseOrderId'],
-                  prefillItems: args['prefillItems'],
-                  prefillSupplierId: args['prefillSupplierId'],
-                  prefillSupplierName: args['prefillSupplierName'],
-                  prefillDocumentType: args['prefillDocumentType'],
-                  prefillDocumentNumber: args['prefillDocumentNumber'],
-                  prefillDocumentDate: args['prefillDocumentDate'],
-                );
-              },
-            ),
-            GoRoute(
-              path: 'inventory-exit-form',
-              builder: (context, state) => const InventoryExitFormScreen(),
-            ),
-            GoRoute(
-              path: 'inventory-exits',
-              builder: (context, state) => const InventoryExitsScreen(),
-            ),
-            GoRoute(
-              path: 'inventory',
-              builder: (context, state) => const InventoryScreen(),
-            ),
-            GoRoute(
-              path: 'kardex',
-              builder: (context, state) => const KardexScreen(),
-            ),
-            GoRoute(
-              path: 'orders',
-              builder: (context, state) => const OrdersScreen(),
-            ),
-            GoRoute(
-              path: 'points-settings',
-              builder: (context, state) => const PointsSettingsScreen(),
-            ),
-            GoRoute(
-              path: 'pos-checkout',
-              builder: (context, state) {
-                final args = state.extra as Map<String, dynamic>? ?? {};
-                return PosCheckoutScreen(
-                  onSaleCompleted: args['onSaleCompleted'],
-                );
-              },
-            ),
-            GoRoute(
-              path: 'pos',
-              builder: (context, state) => const AdminPosScreen(),
-            ),
-            GoRoute(
-              path: 'product-form',
-              builder: (context, state) {
-                final args = state.extra as Map<String, dynamic>? ?? {};
-                return ProductFormScreen(
-                  productToEdit: args['productToEdit'] is ProductEntity
-                      ? args['productToEdit'] as ProductEntity?
-                      : (args['productToEdit'] as ProductModel?)?.toEntity(),
-                );
-              },
-            ),
-            GoRoute(
-              path: 'purchase-order-form',
-              builder: (context, state) => const PurchaseOrderFormScreen(),
-            ),
-            GoRoute(
-              path: 'purchase-orders',
-              builder: (context, state) => const PurchaseOrdersScreen(),
-            ),
-            GoRoute(
-              path: 'supplier-credit-movements/:creditId',
-              builder: (context, state) {
-                final creditId = state.pathParameters['creditId'] ?? '';
-                final args = state.extra as Map<String, dynamic>? ?? {};
-                return SupplierCreditMovementsScreen(
-                  creditId: creditId,
-                  supplierName:
-                      args['supplierName'] ??
-                      state.uri.queryParameters['name'] ??
-                      '',
-                  currentDebt:
-                      args['currentDebt'] ??
-                      double.tryParse(
-                        state.uri.queryParameters['debt'] ?? '0',
-                      ) ??
-                      0.0,
-                  creditLimit:
-                      args['creditLimit'] ??
-                      double.tryParse(
-                        state.uri.queryParameters['limit'] ?? '0',
-                      ) ??
-                      0.0,
-                );
-              },
-            ),
-            GoRoute(
-              path: 'supplier-credits',
-              builder: (context, state) => const SupplierCreditsScreen(),
-            ),
-            GoRoute(
-              path: 'suppliers',
-              builder: (context, state) => const SuppliersScreen(),
-            ),
-            GoRoute(
-              path: 'user-form',
-              builder: (context, state) {
-                final args = state.extra as Map<String, dynamic>?;
-                if (args == null) {
-                  return const UsersManagementScreen();
-                }
-                return UserFormScreen(
-                  initialRole: args['initialRole'],
-                  existingUser: args['existingUser'] as dynamic,
-                );
-              },
-            ),
-            GoRoute(
-              path: 'users',
-              builder: (context, state) => const UsersManagementScreen(),
-            ),
-            GoRoute(
-              path: 'warehouses',
-              builder: (context, state) => const WarehousesManagementScreen(),
-            ),
-            GoRoute(
-              path: 'product/:id',
-              builder: (context, state) {
-                final productId = state.pathParameters['id'];
-                final variantId = state.uri.queryParameters['variantId'];
-                final product = state.extra as ProductModel?;
-                if (product != null) {
-                  return ProductDetailScreen(
-                    product: product.toEntity(),
-                    isAdmin: true,
-                    initialVariantId: variantId,
-                  );
-                }
-                if (productId == null) {
-                  return const Scaffold(body: Center(child: Text('Error')));
-                }
-                return _ProductLoader(
-                  productId: productId,
-                  isAdmin: true,
-                  initialVariantId: variantId,
-                );
-              },
+                  (context, state) => AdminCatalogScreen(
+                    onProfileAvatarTap: () {
+                      final auth = context.read<AuthCubit>();
+                      if (auth.state.currentUser == null) {
+                        context.go('/login');
+                      } else {
+                        context.push('/admin/profile');
+                      }
+                    },
+                  ),
+              routes: [
+                GoRoute(
+                  path: 'profile',
+                  builder:
+                      (context, state) =>
+                          const ProfileScreen(openedFromAdmin: true),
+                ),
+                GoRoute(
+                  path: 'active-ingredients',
+                  builder: (context, state) => const ActiveIngredientsScreen(),
+                ),
+                GoRoute(
+                  path: 'attributes',
+                  builder:
+                      (context, state) => const AttributesManagementScreen(),
+                ),
+                GoRoute(
+                  path: 'business-info',
+                  builder: (context, state) => const BusinessInfoScreen(),
+                ),
+                GoRoute(
+                  path: 'categories',
+                  builder:
+                      (context, state) => const CategoriesManagementScreen(),
+                ),
+                GoRoute(
+                  path: 'customer-credit-movements/:creditId',
+                  builder: (context, state) {
+                    final creditId = state.pathParameters['creditId'] ?? '';
+                    final args = state.extra as Map<String, dynamic>? ?? {};
+                    return CustomerCreditMovementsScreen(
+                      creditId: creditId,
+                      customerName:
+                          args['customerName'] ??
+                          state.uri.queryParameters['name'] ??
+                          '',
+                      currentDebt:
+                          args['currentDebt'] ??
+                          double.tryParse(
+                            state.uri.queryParameters['debt'] ?? '0',
+                          ) ??
+                          0.0,
+                      creditLimit:
+                          args['creditLimit'] ??
+                          double.tryParse(
+                            state.uri.queryParameters['limit'] ?? '0',
+                          ) ??
+                          0.0,
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'customer-credits',
+                  builder: (context, state) => const CustomerCreditsScreen(),
+                ),
+                GoRoute(
+                  path: 'customer-detail/:id',
+                  builder: (context, state) {
+                    final customer = state.extra;
+                    final customerId = state.pathParameters['id'] ?? '';
+                    if (customer == null && customerId.isEmpty) {
+                      return Scaffold(
+                        appBar: AppBar(title: const Text('Error')),
+                        body: const Center(
+                          child: Text('Cliente no encontrado.'),
+                        ),
+                      );
+                    }
+                    return CustomerDetailScreen(customer: customer as dynamic);
+                  },
+                ),
+                GoRoute(
+                  path: 'customers',
+                  builder: (context, state) => const CustomersScreen(),
+                ),
+                GoRoute(
+                  path: 'top-customers',
+                  builder: (context, state) => const TopCustomersScreen(),
+                ),
+                GoRoute(
+                  path: 'dashboard',
+                  builder: (context, state) => const DashboardScreen(),
+                ),
+                GoRoute(
+                  path: 'financial-accounts',
+                  builder: (context, state) => const FinancialAccountsScreen(),
+                ),
+                GoRoute(
+                  path: 'all-cash-shifts',
+                  builder: (context, state) => const AllCashShiftsScreen(),
+                ),
+                GoRoute(
+                  path: 'inventory-entries',
+                  builder: (context, state) => const InventoryEntriesScreen(),
+                ),
+                GoRoute(
+                  path: 'inventory-entry-form',
+                  builder: (context, state) {
+                    final args = state.extra as Map<String, dynamic>? ?? {};
+                    return InventoryEntryFormScreen(
+                      purchaseOrderId:
+                          args['purchaseOrderId'] ??
+                          state.uri.queryParameters['purchaseOrderId'],
+                      prefillItems: args['prefillItems'],
+                      prefillSupplierId: args['prefillSupplierId'],
+                      prefillSupplierName: args['prefillSupplierName'],
+                      prefillDocumentType: args['prefillDocumentType'],
+                      prefillDocumentNumber: args['prefillDocumentNumber'],
+                      prefillDocumentDate: args['prefillDocumentDate'],
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'inventory-exit-form',
+                  builder: (context, state) => const InventoryExitFormScreen(),
+                ),
+                GoRoute(
+                  path: 'inventory-exits',
+                  builder: (context, state) => const InventoryExitsScreen(),
+                ),
+                GoRoute(
+                  path: 'inventory',
+                  builder: (context, state) => const InventoryScreen(),
+                ),
+                GoRoute(
+                  path: 'kardex',
+                  builder: (context, state) => const KardexScreen(),
+                ),
+                GoRoute(
+                  path: 'orders',
+                  builder: (context, state) => const OrdersScreen(),
+                ),
+                GoRoute(
+                  path: 'points-settings',
+                  builder: (context, state) => const PointsSettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'pos-checkout',
+                  builder: (context, state) {
+                    final args = state.extra as Map<String, dynamic>? ?? {};
+                    return PosCheckoutScreen(
+                      onSaleCompleted: args['onSaleCompleted'],
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'pos',
+                  builder: (context, state) => const AdminPosScreen(),
+                ),
+                GoRoute(
+                  path: 'product-form',
+                  builder: (context, state) {
+                    final args = state.extra as Map<String, dynamic>? ?? {};
+                    return ProductFormScreen(
+                      productToEdit:
+                          args['productToEdit'] is ProductEntity
+                              ? args['productToEdit'] as ProductEntity?
+                              : (args['productToEdit'] as ProductModel?)
+                                  ?.toEntity(),
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'purchase-order-form',
+                  builder: (context, state) => const PurchaseOrderFormScreen(),
+                ),
+                GoRoute(
+                  path: 'purchase-orders',
+                  builder: (context, state) => const PurchaseOrdersScreen(),
+                ),
+                GoRoute(
+                  path: 'supplier-credit-movements/:creditId',
+                  builder: (context, state) {
+                    final creditId = state.pathParameters['creditId'] ?? '';
+                    final args = state.extra as Map<String, dynamic>? ?? {};
+                    return SupplierCreditMovementsScreen(
+                      creditId: creditId,
+                      supplierName:
+                          args['supplierName'] ??
+                          state.uri.queryParameters['name'] ??
+                          '',
+                      currentDebt:
+                          args['currentDebt'] ??
+                          double.tryParse(
+                            state.uri.queryParameters['debt'] ?? '0',
+                          ) ??
+                          0.0,
+                      creditLimit:
+                          args['creditLimit'] ??
+                          double.tryParse(
+                            state.uri.queryParameters['limit'] ?? '0',
+                          ) ??
+                          0.0,
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'supplier-credits',
+                  builder: (context, state) => const SupplierCreditsScreen(),
+                ),
+                GoRoute(
+                  path: 'suppliers',
+                  builder: (context, state) => const SuppliersScreen(),
+                ),
+                GoRoute(
+                  path: 'user-form',
+                  builder: (context, state) {
+                    final args = state.extra as Map<String, dynamic>?;
+                    if (args == null) {
+                      return const UsersManagementScreen();
+                    }
+                    return UserFormScreen(
+                      initialRole: args['initialRole'],
+                      existingUser: args['existingUser'] as dynamic,
+                    );
+                  },
+                ),
+                GoRoute(
+                  path: 'users',
+                  builder: (context, state) => const UsersManagementScreen(),
+                ),
+                GoRoute(
+                  path: 'warehouses',
+                  builder:
+                      (context, state) => const WarehousesManagementScreen(),
+                ),
+                GoRoute(
+                  path: 'product/:id',
+                  builder: (context, state) {
+                    final productId = state.pathParameters['id'];
+                    final variantId = state.uri.queryParameters['variantId'];
+                    final product = state.extra as ProductModel?;
+                    if (product != null) {
+                      return ProductDetailScreen(
+                        product: product.toEntity(),
+                        isAdmin: true,
+                        initialVariantId: variantId,
+                      );
+                    }
+                    if (productId == null) {
+                      return const Scaffold(body: Center(child: Text('Error')));
+                    }
+                    return _ProductLoader(
+                      productId: productId,
+                      isAdmin: true,
+                      initialVariantId: variantId,
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -535,13 +557,20 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/customer',
-                  builder: (context, state) => const CustomerCatalogScreen(),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create:
+                            (_) =>
+                                sl<CustomerCatalogCubit>()..loadInitialData(),
+                        child: const CustomerCatalogScreen(),
+                      ),
                   routes: [
                     GoRoute(
                       path: 'product/:id',
                       builder: (context, state) {
                         final productId = state.pathParameters['id'];
-                        final variantId = state.uri.queryParameters['variantId'];
+                        final variantId =
+                            state.uri.queryParameters['variantId'];
                         final product = state.extra as ProductModel?;
                         if (product != null) {
                           return ProductDetailScreen(
@@ -551,7 +580,9 @@ class AppRouter {
                           );
                         }
                         if (productId == null) {
-                          return const Scaffold(body: Center(child: Text('Error')));
+                          return const Scaffold(
+                            body: Center(child: Text('Error')),
+                          );
                         }
                         return _ProductLoader(
                           productId: productId,
@@ -578,7 +609,9 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/customer/profile',
-                  builder: (context, state) => const ProfileScreen(openedFromAdmin: false),
+                  builder:
+                      (context, state) =>
+                          const ProfileScreen(openedFromAdmin: false),
                 ),
                 GoRoute(
                   path: '/customer/locations',
@@ -599,45 +632,52 @@ class AppRouter {
                 // GAMES
                 GoRoute(
                   path: '/customer/games/claw-machine/:profileId',
-                  builder: (context, state) => ClawMachineScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => ClawMachineScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
                 GoRoute(
                   path: '/customer/games/coin-catcher/:profileId',
-                  builder: (context, state) => CoinCatcherGameScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => CoinCatcherGameScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
                 GoRoute(
                   path: '/customer/games/dodge/:profileId',
-                  builder: (context, state) => DodgeGameScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => DodgeGameScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
                 GoRoute(
                   path: '/customer/games/memorama/:profileId',
-                  builder: (context, state) => MemoramaGameScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => MemoramaGameScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
                 GoRoute(
                   path: '/customer/games/pinata/:profileId',
-                  builder: (context, state) => PinataGameScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => PinataGameScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
                 GoRoute(
                   path: '/customer/games/stack/:profileId',
-                  builder: (context, state) => StackGameScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => StackGameScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
                 GoRoute(
                   path: '/customer/games/super-salto/:profileId',
-                  builder: (context, state) => SuperSaltoScreen(
-                    profileId: state.pathParameters['profileId'] ?? '',
-                  ),
+                  builder:
+                      (context, state) => SuperSaltoScreen(
+                        profileId: state.pathParameters['profileId'] ?? '',
+                      ),
                 ),
               ],
             ),
@@ -695,7 +735,6 @@ class AppRouter {
     );
   }
 }
-
 
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
