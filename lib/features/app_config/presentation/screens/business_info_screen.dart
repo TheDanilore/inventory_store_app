@@ -10,6 +10,8 @@ import 'package:inventory_store_app/core/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
 
 class BusinessInfoScreen extends StatefulWidget {
   const BusinessInfoScreen({super.key});
@@ -39,10 +41,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   String _previewName = '';
   String _previewAddress = '';
   String _previewLogoUrl = '';
+  String _supabaseUrl = 'Cargando...';
 
   @override
   void initState() {
     super.initState();
+    _loadConnectionInfo();
     _logoUrlFocus.addListener(() {
       if (!_logoUrlFocus.hasFocus) {
         setState(() => _previewLogoUrl = _logoUrlCtrl.text);
@@ -67,6 +71,20 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     }
   }
 
+  Future<void> _resetConnection() async {
+    final changed = await ChangeConnectionDialog.show(context, _supabaseUrl);
+    if (changed == true) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Conexión actualizada. Por favor cierra la app completamente y vuelve a abrirla para aplicar los cambios.',
+          type: SnackbarType.success,
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _businessNameCtrl.dispose();
@@ -79,6 +97,15 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     _phoneFocus.dispose();
     _logoUrlFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadConnectionInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _supabaseUrl = prefs.getString('SUPABASE_URL') ?? 'Desconocida';
+      });
+    }
   }
 
   void _markChanged() {
@@ -442,6 +469,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                         }
                         : null,
               ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              _ConnectionSection(
+                supabaseUrl: _supabaseUrl,
+                onResetPressed: _resetConnection,
+              ),
             ],
           ),
         ),
@@ -704,6 +738,81 @@ class _LogoBadge extends StatelessWidget {
               size: 34,
             ),
       ),
+    );
+  }
+}
+
+class _ConnectionSection extends StatelessWidget {
+  final String supabaseUrl;
+  final VoidCallback onResetPressed;
+
+  const _ConnectionSection({
+    required this.supabaseUrl,
+    required this.onResetPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.dns_rounded, color: Colors.blueGrey),
+            const SizedBox(width: 8),
+            Text(
+              'Servidor de Base de Datos',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blueGrey.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Supabase URL conectada',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey.shade700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                supabaseUrl,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: onResetPressed,
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                label: const Text('Cambiar Servidor (Multi-Tenant)'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.blueGrey.shade700,
+                  side: BorderSide(color: Colors.blueGrey.shade300),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -17,6 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
 // En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
@@ -28,34 +29,42 @@ GoRouter? _router;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   usePathUrlStrategy();
+  await initializeDateFormatting('es', null);
 
-  // Inicializar Inyección de Dependencias
-  initDI();
+  final prefs = await SharedPreferences.getInstance();
+  
+  // Si no hay conexión guardada, usamos la de por defecto
+  final url = prefs.getString('SUPABASE_URL') ?? 'https://lvupdgdmlmzztjmydqak.supabase.co';
+  final key = prefs.getString('SUPABASE_KEY') ?? 'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB';
 
+  await _initErpAndRunApp(url, key);
+}
+
+Future<void> _initErpAndRunApp(String url, String publishableKey) async {
   // Supabase.initialize lanza si ya fue inicializado (en hot restart).
   // Lo envolvemos para que sea idempotente.
   try {
-    await initializeDateFormatting('es', null);
     await Supabase.initialize(
-      url: 'https://lvupdgdmlmzztjmydqak.supabase.co',
-      publishableKey: 'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB',
+      url: url,
+      publishableKey: publishableKey,
     );
   } catch (e) {
     // En hot restart Supabase ya está inicializado → ignoramos el error.
     debugPrint('Supabase init (posiblemente ya inicializado): $e');
   }
 
+  // Inicializar Inyección de Dependencias
+  try {
+    initDI();
+  } catch (e) {
+    debugPrint('DI init: $e');
+  }
+
   // Capturamos la URL inicial solo la primera vez.
-  // En llamadas subsiguientes de main() (hot restart) _pendingDeepLink
-  // ya fue capturado, así que captureInitialRoute() lo sobreescribirá
-  // solo si hay una nueva ruta, lo cual es el comportamiento correcto.
   AppRouter.captureInitialRoute();
 
-  // Inicialización idempotente: solo creamos las instancias la primera vez.
-  // En hot restart estas variables ya tienen valor → no las recreamos,
-  // evitando así duplicar el NavigatorKey y el GoRouter.
+  // Inicialización idempotente
   _authCubit ??= sl<AuthCubit>()..checkSession();
   _router ??= AppRouter.createRouter(_authCubit!);
 
