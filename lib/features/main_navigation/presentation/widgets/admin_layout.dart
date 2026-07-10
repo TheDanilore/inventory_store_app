@@ -1,6 +1,7 @@
 ﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
@@ -11,7 +12,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
-
 
 class AdminLayout extends StatelessWidget {
   final String title;
@@ -83,7 +83,7 @@ class AdminLayout extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Ajustamos el ancho dependiendo de cuÃ¡ntos botones hay realmente
+                  // Ajustamos el ancho dependiendo de cuántos botones hay realmente
                   leadingWidth:
                       (showBackButton && showProfileButton) ? 104 : 60,
                   leading:
@@ -134,7 +134,7 @@ class AdminLayout extends StatelessWidget {
                         builder:
                             (context) => AdminAppBarIconButton(
                               icon: Icons.menu_rounded,
-                              tooltip: 'MenÃº principal',
+                              tooltip: 'MenÃƒÂº principal',
                               onTap: () => Scaffold.of(context).openEndDrawer(),
                             ),
                       ),
@@ -148,7 +148,7 @@ class AdminLayout extends StatelessWidget {
           bottom: false,
           child: Column(
             children: [
-              // Offline banner â€” Animates its height layout size so it doesn't leave gaps
+              // Offline banner Animates its height layout size so it doesn't leave gaps
               Consumer<NetworkCubit>(
                 builder: (context, network, child) {
                   return AnimatedSize(
@@ -158,30 +158,38 @@ class AdminLayout extends StatelessWidget {
                     child:
                         network.isOnline
                             ? const SizedBox(width: double.infinity, height: 0)
-                            : Container(
-                              width: double.infinity,
-                              color: const Color(0xFFFF3B30),
-                              padding: const EdgeInsets.symmetric(vertical: 7),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.wifi_off_rounded,
-                                    color: Colors.white,
-                                    size: 14,
+                            : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  color: const Color(0xFFFF3B30),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 7,
                                   ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Sin conexiÃ³n a internet',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.2,
-                                    ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.wifi_off_rounded,
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Sin conexión a internet',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                const OfflineGamesSuggestion(),
+                              ],
                             ),
                   );
                 },
@@ -197,7 +205,7 @@ class AdminLayout extends StatelessWidget {
   }
 }
 
-/// BotÃ³n circular para la AppBar
+/// Botón circular para la AppBar
 class AdminAppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -267,7 +275,7 @@ class AdminSettingsMenuButton extends StatelessWidget {
   }
 }
 
-/// Avatar / botÃ³n de perfil â€” carga la foto real del usuario desde AuthCubit
+/// Avatar / botón de perfil - carga la foto real del usuario desde AuthCubit
 class AdminProfileAvatar extends StatelessWidget {
   final VoidCallback onTap;
   const AdminProfileAvatar({super.key, required this.onTap});

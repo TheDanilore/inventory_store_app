@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -11,7 +12,6 @@ import 'package:inventory_store_app/features/pos/presentation/providers/cart_pro
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class CustomerLayout extends StatelessWidget {
-  // ← StatelessWidget ahora
   final String title;
   final Widget body;
   final Widget? floatingActionButton;
@@ -41,7 +41,7 @@ class CustomerLayout extends StatelessWidget {
     this.hideAppBarOnScroll = false,
   });
 
-  // ─── WALLET CHIP ─────────────────────────────────────────────────────────
+  // WALLET CHIP
 
   Widget _buildWalletChip(BuildContext context) {
     // Usamos Consumer2 para reaccionar a cambios en configuración y saldo
@@ -118,7 +118,7 @@ class CustomerLayout extends StatelessWidget {
       },
     );
   }
-  // ─── LEADING ─────────────────────────────────────────────────────────────
+  // LEADING
 
   Widget? _buildLeading(BuildContext context) {
     if (!showBackButton && !showProfileIcon) return null;
@@ -171,7 +171,7 @@ class CustomerLayout extends StatelessWidget {
     );
   }
 
-  // ─── TITLE ───────────────────────────────────────────────────────────────
+  // TITLE
 
   // Recibe context para poder hacer watch dentro del NestedScrollView,
   // ya que su headerSliverBuilder no se reconstruye con el padre.
@@ -201,7 +201,7 @@ class CustomerLayout extends StatelessWidget {
     );
   }
 
-  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+  //  ACTIONS
 
   List<Widget> _buildActions(BuildContext context) {
     return [
@@ -257,7 +257,7 @@ class CustomerLayout extends StatelessWidget {
     ];
   }
 
-  // ─── APPBAR ──────────────────────────────────────────────────────────────
+  //  APPBAR
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     final bool hasLeading = showBackButton || showProfileIcon;
@@ -284,7 +284,7 @@ class CustomerLayout extends StatelessWidget {
     );
   }
 
-  // ─── NAVITATION (BOTTOM & RAIL) ──────────────────────────────────────────
+  //  NAVITATION (BOTTOM & RAIL)
 
   void _onNavDestinationSelected(BuildContext context, int index) {
     if (index == 2) {
@@ -461,7 +461,7 @@ class CustomerLayout extends StatelessWidget {
     );
   }
 
-  // ─── BUILD ───────────────────────────────────────────────────────────────
+  //  BUILD
 
   @override
   Widget build(BuildContext context) {
@@ -484,29 +484,37 @@ class CustomerLayout extends StatelessWidget {
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 250),
                           opacity: isOnline ? 0 : 1,
-                          child: Container(
-                            width: double.infinity,
-                            color: Colors.red.shade500,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.wifi_off_rounded,
-                                  color: Colors.white,
-                                  size: 16,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                color: Colors.red.shade500,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
                                 ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Sin conexión a internet',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.wifi_off_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Sin conexiÃ³n a internet',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              const OfflineGamesSuggestion(),
+                            ],
                           ),
                         ),
                       ),
@@ -719,3 +727,4 @@ class _AnimatedCartBadgeState extends State<_AnimatedCartBadge>
     );
   }
 }
+

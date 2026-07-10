@@ -1,5 +1,4 @@
-﻿import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
+import 'package:flutter/material.dart';
 
 class AppEmptyState extends StatelessWidget {
   final IconData icon;
@@ -60,7 +59,6 @@ class AppEmptyState extends StatelessWidget {
               ),
             ),
             if (action != null) ...[const SizedBox(height: 24), action!],
-            OfflineGamesSuggestion(errorMessage: message),
           ],
         ),
       ),
