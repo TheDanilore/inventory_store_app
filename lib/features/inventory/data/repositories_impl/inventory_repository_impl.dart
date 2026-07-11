@@ -66,7 +66,6 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   /// Retorna las categorías activas para el filtro
-  @override
   Future<List<String>> getCategories() async {
     final response = await _supabase.from('categories').select('name');
     final cats = (response as List).map((e) => e['name'].toString()).toList();

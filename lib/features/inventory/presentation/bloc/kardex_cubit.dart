@@ -43,7 +43,7 @@ class KardexCubit extends Cubit<KardexState> {
 
       final totalPages = (count / pageSize).ceil();
 
-      final movements = await getKardexMovements.call(
+      final movements = await getKardexMovements.callForDisplay(
         dateRange: currentDateRange,
         typeFilter: currentTypeFilter,
         searchText: currentSearchText,

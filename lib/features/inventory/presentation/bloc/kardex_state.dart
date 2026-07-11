@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
+import 'package:inventory_store_app/features/inventory/data/models/kardex_movement_model.dart';
 
 abstract class KardexState extends Equatable {
   const KardexState();
@@ -14,7 +14,7 @@ class KardexInitial extends KardexState {}
 class KardexLoading extends KardexState {}
 
 class KardexLoaded extends KardexState {
-  final List<KardexMovementEntity> movements;
+  final List<KardexMovementModel> movements;
   final DateTimeRange? dateRange;
   final String typeFilter;
   final String searchText;
@@ -35,7 +35,7 @@ class KardexLoaded extends KardexState {
   });
 
   KardexLoaded copyWith({
-    List<KardexMovementEntity>? movements,
+    List<KardexMovementModel>? movements,
     DateTimeRange? dateRange,
     String? typeFilter,
     String? searchText,

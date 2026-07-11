@@ -3,12 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class WarehouseFormSheet extends StatefulWidget {
-  final WarehouseModel? warehouse;
+  final WarehouseEntity? warehouse;
 
   const WarehouseFormSheet({super.key, this.warehouse});
 

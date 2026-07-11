@@ -45,10 +45,11 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         .order('name', ascending: true)
         .range(start, end);
 
-    return {
-      'data': res,
-      'count': totalRecords,
-    };
+    final data = (res as List<dynamic>)
+        .map((e) => WarehouseModel.fromJson(e as Map<String, dynamic>).toEntity())
+        .toList();
+
+    return (data: data, count: totalRecords);
   }
 
   @override
@@ -80,7 +81,7 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
       await _supabase
           .from('warehouses')
           .update(payload)
-          .eq('id', existingWarehouse.id!);
+          .eq('id', existingWarehouse.id);
     } else {
       if (profileId != null) payload['created_by'] = profileId;
       await _supabase.from('warehouses').insert(payload);
@@ -103,6 +104,6 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     await _supabase.from('warehouses').update({
       'is_active': isActive,
       if (profileId != null) 'updated_by': profileId,
-    }).eq('id', wh.id!);
+    }).eq('id', wh.id);
   }
 }

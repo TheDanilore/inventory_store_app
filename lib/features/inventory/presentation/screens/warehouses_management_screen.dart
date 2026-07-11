@@ -4,7 +4,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/warehou
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_state.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_skeleton.dart';
@@ -52,7 +52,7 @@ class _WarehousesManagementScreenState
     super.dispose();
   }
 
-  void _showWarehouseForm(BuildContext context, WarehousesCubit cubit, [WarehouseModel? warehouse]) {
+  void _showWarehouseForm(BuildContext context, WarehousesCubit cubit, [WarehouseEntity? warehouse]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -32,11 +32,11 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
         dateRange: state.dateRange,
       );
 
-      final dataList = response.data as List;
+      final dataList = response.data;
       final exits = dataList
           .map((e) => InventoryExitModel.fromJson(e as Map<String, dynamic>))
           .toList();
-      final totalRecords = response.count as int;
+      final totalRecords = response.count;
 
       emit(state.copyWith(
         exits: exits,

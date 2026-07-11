@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/save_warehouse_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/toggle_warehouse_status_usecase.dart';
@@ -43,11 +43,8 @@ class WarehousesCubit extends Cubit<WarehousesState> {
         searchQuery: state.searchQuery,
       );
 
-      final dataList = response.data as List;
-      final warehouses = dataList
-          .map((e) => WarehouseEntity.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final totalRecords = response.count as int;
+      final warehouses = response.data;
+      final totalRecords = response.count;
 
       emit(state.copyWith(
         warehouses: warehouses,

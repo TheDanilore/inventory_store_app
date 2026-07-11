@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 class WarehousesState extends Equatable {
-  final List<WarehouseModel> warehouses;
+  final List<WarehouseEntity> warehouses;
   final bool isLoading;
   final bool isSaving;
   final String? errorMessage;
@@ -31,7 +31,7 @@ class WarehousesState extends Equatable {
   }
 
   WarehousesState copyWith({
-    List<WarehouseModel>? warehouses,
+    List<WarehouseEntity>? warehouses,
     bool? isLoading,
     bool? isSaving,
     String? errorMessage,

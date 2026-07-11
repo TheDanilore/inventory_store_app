@@ -64,7 +64,11 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> initStockTab() async {
     emit(const InventoryLoading());
     try {
-      final categories = await _getCategories(NoParams());
+      final categoriesResult = await _getCategories();
+      final categoriesNames = categoriesResult.fold(
+        (l) => <String>['Todos'],
+        (r) => <String>['Todos', ...r.map((c) => c.name)],
+      );
       final metrics = await _getGeneralStockMetrics(NoParams());
       
       final currentState = _getLoadedState();
@@ -84,7 +88,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       );
 
       emit(currentState.copyWith(
-        categories: categories,
+        categories: categoriesNames,
         globalTotalVariants: metrics['totalVariants'] ?? 0,
         globalTotalStock: metrics['totalStock'] ?? 0,
         globalLowStockCount: metrics['lowStockCount'] ?? 0,

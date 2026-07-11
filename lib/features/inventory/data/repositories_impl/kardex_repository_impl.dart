@@ -79,7 +79,7 @@ class KardexRepositoryImpl implements KardexRepository {
         .range(start, end);
 
     return (response as List)
-        .map((row) => KardexMovementModel.fromSupabaseRow(row))
+        .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
         .toList();
   }
 
@@ -133,6 +133,45 @@ class KardexRepositoryImpl implements KardexRepository {
     );
 
     final response = await query.order('created_at', ascending: false);
+
+    return (response as List)
+        .map((row) => KardexMovementModel.fromSupabaseRow(row).toEntity())
+        .toList();
+  }
+
+  @override
+  Future<List<KardexMovementModel>> getKardexMovementsForDisplay({
+    DateTimeRange? dateRange,
+    String typeFilter = 'ALL',
+    String searchText = '',
+    int page = 0,
+    int pageSize = 12,
+  }) async {
+    var query = _supabase.from('inventory_movements').select('''
+      *,
+      warehouses!inner(name),
+      warehouse_stock_batches(batch_number),
+      product_variants!inner(
+        sku,
+        variant_attribute_values(attribute_values(value)),
+        product_images(image_url, is_main, variant_id),
+        products!inner(name, uses_batches, product_images(image_url, is_main, variant_id))
+      )
+    ''');
+
+    query = _buildBaseQuery(
+      query,
+      dateRange: dateRange,
+      typeFilter: typeFilter,
+      searchText: searchText,
+    );
+
+    final start = page * pageSize;
+    final end = start + pageSize - 1;
+
+    final response = await query
+        .order('created_at', ascending: false)
+        .range(start, end);
 
     return (response as List)
         .map((row) => KardexMovementModel.fromSupabaseRow(row))

@@ -1,6 +1,6 @@
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
 
 @injectable
 class GetActiveWarehousesExitsUseCase {
@@ -8,7 +8,7 @@ class GetActiveWarehousesExitsUseCase {
 
   GetActiveWarehousesExitsUseCase(this.repository);
 
-  Future<List<dynamic>> call() async {
+  Future<List<WarehouseEntity>> call() {
     return repository.getActiveWarehouses();
   }
 }

@@ -52,14 +52,22 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       final results = await Future.wait([
         getActiveWarehouses.call(),
         getActiveSuppliers.call(),
-        getActiveAccounts.call(),
+        getActiveAccounts.call(page: 1, pageSize: 100),
       ]);
 
       final warehousesList = results[0] as List;
       final warehouses = warehousesList.map((w) => WarehouseModel(id: w.id, name: w.name)).toList();
-      final suppliers = List<Map<String, dynamic>>.from(results[1]);
-      final accounts = (results[2] as List)
-          .map((a) => FinancialAccountModel.fromJson(Map<String, dynamic>.from(a)))
+      final suppliers = List<Map<String, dynamic>>.from(results[1] as List);
+      final accountEntities = results[2] as List;
+      final accounts = accountEntities
+          .map((a) => FinancialAccountModel(
+                id: a.id,
+                name: a.name,
+                type: a.type,
+                balance: a.balance,
+                isActive: a.isActive,
+                createdAt: a.createdAt,
+              ))
           .toList();
 
       String? initialWarehouseId;

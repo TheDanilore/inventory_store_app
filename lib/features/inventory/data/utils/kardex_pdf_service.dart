@@ -3,11 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:inventory_store_app/features/inventory/data/models/kardex_movement_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 
 class KardexPdfService {
   static Future<void> exportKardexToPdf(
-    List<KardexMovementModel> allMovements, {
+    List<KardexMovementEntity> allMovements, {
     DateTimeRange? dateRange,
     required String typeFilter,
   }) async {
@@ -65,17 +65,13 @@ class KardexPdfService {
               data:
                   allMovements.map((m) {
                     return [
-                      m.movement.createdAt != null
-                          ? DateFormat(
-                            'dd/MM/yy HH:mm',
-                          ).format(m.movement.createdAt!.toLocal())
-                          : '',
-                      m.movementType,
-                      '${m.productName} ${m.attrsText != 'Única' ? '(${m.attrsText})' : ''} ${m.sku != null ? '\nSKU: ${m.sku}' : ''}',
-                      m.warehouseName,
-                      m.movement.previousStock.toString(),
-                      '${(m.isEntry || m.isReturn) ? '+' : ''}${m.movement.quantity}',
-                      m.movement.newStock.toString(),
+                      DateFormat('dd/MM/yy HH:mm').format(m.date.toLocal()),
+                      m.type,
+                      m.description,
+                      m.reference,
+                      m.balance.toString(),
+                      '${m.quantity > 0 ? '+' : ''}${m.quantity}',
+                      (m.balance).toString(),
                     ];
                   }).toList(),
             ),

@@ -68,7 +68,6 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
     return resp as List<dynamic>;
   }
 
-  @override
   Future<List<dynamic>> getActiveWarehouses() async {
     return await _supabase
         .from('warehouses')
