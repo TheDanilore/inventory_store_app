@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
 
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_state.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
-import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,7 +30,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   final _searchCtrl = TextEditingController();
 
   bool _hasDraft = false;
-  InventoryExitModel? _selectedExit;
+  InventoryExitEntity? _selectedExit;
 
   @override
   void initState() {
@@ -40,7 +38,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cubit = context.read<InventoryExitsCubit>();
       _searchCtrl.text = cubit.state.searchQuery;
-      cubit.initLoad();
     });
     _checkDraft();
   }
@@ -62,7 +59,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   }
 
   Future<List<InventoryExitItemModel>> _loadItems(
-    InventoryExitModel exitData,
+    InventoryExitEntity exitData,
   ) async {
     final getItemsUseCase = sl<GetExitItemsUseCase>();
     final itemsList = await getItemsUseCase.call(exitData.id);
@@ -121,7 +118,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
   Future<void> _loadItemsAndShowDetailMobile(
     BuildContext context,
-    InventoryExitModel exitData,
+    InventoryExitEntity exitData,
   ) async {
     showModalBottomSheet(
       context: context,
@@ -151,99 +148,81 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           });
         }
 
-        return AdminLayout(
-          title: 'Salidas de Inventario',
-          showBackButton: true,
-          showSettingsButton: true,
-          settingsActions: const [
-            PopupMenuItem(
-              value: 'pdf',
-              child: Text('Exportar a PDF (Historial)'),
-            ),
-          ],
-          onSettingsSelected: (val) {
-            if (val == 'pdf' && cubit.state.exits.isNotEmpty) {
-              InventoryExitsPdfGenerator.shareReport(
-                exits: cubit.state.exits,
-                dateRange: cubit.state.dateRange,
-              );
-            } else if (val == 'pdf') {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No hay datos para exportar')),
-              );
-            }
-          },
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 800;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 800;
 
-              // Si es tablet pero borramos la búsqueda, limpiamos la selección si ya no existe
-              if (isTablet && _selectedExit != null) {
-                final exists = cubit.state.exits.any(
-                  (e) => e.id == _selectedExit!.id,
-                );
-                if (!exists && cubit.state.exits.isNotEmpty) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      setState(() => _selectedExit = null);
-                    }
-                  });
-                }
+            // Si es tablet pero borramos la búsqueda, limpiamos la selección si ya no existe
+            if (isTablet && _selectedExit != null) {
+              final exists = cubit.state.exits.any(
+                (e) => e.id == _selectedExit!.id,
+              );
+              if (!exists && cubit.state.exits.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    setState(() => _selectedExit = null);
+                  }
+                });
               }
+            }
 
-              return Stack(
-                children: [
-                  isTablet
-                      ? _buildTabletLayout(context, state, cubit)
-                      : _buildMobileLayout(context, state, cubit),
+            return Stack(
+              children: [
+                isTablet
+                    ? _buildTabletLayout(context, state, cubit)
+                    : _buildMobileLayout(context, state, cubit),
 
-                  // ── Paginación anclada al fondo ──
-                  if (cubit.state.totalPages > 1 && !cubit.state.isLoading)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: isTablet ? constraints.maxWidth * 0.6 : 0,
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background.withValues(alpha: 0.9),
-                          border: Border(
-                            top: BorderSide(
-                              color: Colors.grey.withValues(alpha: 0.2),
-                            ),
-                          ),
-                        ),
-                        child: SafeArea(
-                          top: false,
-                          child: AdminPageBlocks(
-                            currentPage: cubit.state.currentPage,
-                            totalPages: cubit.state.totalPages,
-                            onPageChanged: cubit.changePage,
+                // ── Paginación anclada al fondo ──
+                if (cubit.state.totalPages > 1 && !cubit.state.isLoading)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: isTablet ? constraints.maxWidth * 0.6 : 0,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.background.withValues(alpha: 0.9),
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.grey.withValues(alpha: 0.2),
                           ),
                         ),
                       ),
+                      child: SafeArea(
+                        top: false,
+                        child: AdminPageBlocks(
+                          currentPage: cubit.state.currentPage,
+                          totalPages: cubit.state.totalPages,
+                          onPageChanged: cubit.changePage,
+                        ),
+                      ),
                     ),
-                ],
-              );
-            },
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () async {
-              final result = await context.push<bool>(
-                '/admin/inventory-exit-form',
-              );
-              if (result == true) {
-                cubit.loadExits(isRefresh: true);
-              }
-            },
-            icon: const Icon(Icons.remove_circle_outline_rounded),
-            label: const Text(
-              'Nueva Salida',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: AppColors.danger,
-            foregroundColor: Colors.white,
-          ),
+                  ),
+
+                Positioned(
+                  right: 24,
+                  bottom: 24,
+                  child: FloatingActionButton.extended(
+                    onPressed: () async {
+                      final result = await context.push<bool>(
+                        '/admin/inventory-exit-form',
+                      );
+                      if (result == true) {
+                        cubit.loadExits(isRefresh: true);
+                      }
+                    },
+                    icon: const Icon(Icons.remove_circle_outline_rounded),
+                    label: const Text(
+                      'Nueva Salida',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor: AppColors.danger,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -438,9 +417,19 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     ),
                     const SizedBox(width: 8),
                     DateFilterCalendar(
-                      dateRange: cubit.state.dateRange,
-                      onDateRangeSelected: cubit.updateDateRange,
-                      onClear: () => cubit.updateDateRange(null),
+                      dateRange:
+                          cubit.state.startDate != null &&
+                                  cubit.state.endDate != null
+                              ? DateTimeRange(
+                                start: cubit.state.startDate!,
+                                end: cubit.state.endDate!,
+                              )
+                              : null,
+                      onDateRangeSelected: (picked) => cubit.updateDateRange(
+                        picked.start,
+                        picked.end,
+                      ),
+                      onClear: () => cubit.updateDateRange(null, null),
                     ),
                   ],
                 ),
@@ -473,8 +462,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                 icon: Icons.inventory_2_outlined,
                 title: 'Sin Resultados',
                 message:
-                    cubit.state.searchQuery.isEmpty &&
-                            cubit.state.dateRange == null
+                      cubit.state.searchQuery.isEmpty &&
+                              cubit.state.startDate == null &&
+                              cubit.state.endDate == null
                         ? 'No hay salidas registradas'
                         : 'Sin resultados para los filtros',
               ),
@@ -543,7 +533,7 @@ class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _ExitCard extends StatelessWidget {
-  final InventoryExitModel exitData;
+  final InventoryExitEntity exitData;
   final VoidCallback onTap;
   final bool isSelected;
 

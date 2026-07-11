@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/kardex_movement_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 
 abstract class KardexState extends Equatable {
   const KardexState();
@@ -14,8 +13,9 @@ class KardexInitial extends KardexState {}
 class KardexLoading extends KardexState {}
 
 class KardexLoaded extends KardexState {
-  final List<KardexMovementModel> movements;
-  final DateTimeRange? dateRange;
+  final List<KardexMovementEntity> movements;
+  final DateTime? startDate;
+  final DateTime? endDate;
   final String typeFilter;
   final String searchText;
   final int currentPage;
@@ -25,7 +25,8 @@ class KardexLoaded extends KardexState {
 
   const KardexLoaded({
     required this.movements,
-    this.dateRange,
+    this.startDate,
+    this.endDate,
     required this.typeFilter,
     required this.searchText,
     required this.currentPage,
@@ -35,8 +36,9 @@ class KardexLoaded extends KardexState {
   });
 
   KardexLoaded copyWith({
-    List<KardexMovementModel>? movements,
-    DateTimeRange? dateRange,
+    List<KardexMovementEntity>? movements,
+    DateTime? startDate,
+    DateTime? endDate,
     String? typeFilter,
     String? searchText,
     int? currentPage,
@@ -47,7 +49,8 @@ class KardexLoaded extends KardexState {
   }) {
     return KardexLoaded(
       movements: movements ?? this.movements,
-      dateRange: clearDateRange ? null : (dateRange ?? this.dateRange),
+      startDate: clearDateRange ? null : (startDate ?? this.startDate),
+      endDate: clearDateRange ? null : (endDate ?? this.endDate),
       typeFilter: typeFilter ?? this.typeFilter,
       searchText: searchText ?? this.searchText,
       currentPage: currentPage ?? this.currentPage,
@@ -60,7 +63,8 @@ class KardexLoaded extends KardexState {
   @override
   List<Object?> get props => [
         movements,
-        dateRange,
+        startDate,
+        endDate,
         typeFilter,
         searchText,
         currentPage,

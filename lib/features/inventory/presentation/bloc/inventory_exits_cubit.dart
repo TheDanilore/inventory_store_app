@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_inventory_exits_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_state.dart';
 
@@ -29,13 +28,12 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
         start: (state.currentPage - 1) * state.pageSize,
         end: (state.currentPage * state.pageSize) - 1,
         searchQuery: state.searchQuery,
-        dateRange: state.dateRange,
+        startDate: state.startDate,
+        endDate: state.endDate,
       );
 
       final dataList = response.data;
-      final exits = dataList
-          .map((e) => InventoryExitModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final exits = List<InventoryExitEntity>.from(dataList);
       final totalRecords = response.count;
 
       emit(state.copyWith(
@@ -79,8 +77,14 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
     loadExits(isRefresh: true);
   }
 
-  void updateDateRange(DateTimeRange? range) {
-    emit(state.copyWith(dateRange: range, clearDateRange: range == null));
+  void updateDateRange(DateTime? startDate, DateTime? endDate) {
+    emit(
+      state.copyWith(
+        startDate: startDate,
+        endDate: endDate,
+        clearDateRange: startDate == null && endDate == null,
+      ),
+    );
     loadExits(isRefresh: true);
   }
 

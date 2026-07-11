@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class POFormSummaryCard extends StatelessWidget {
-  final List<EntryItemUI> items;
+  final List<InventoryEntryItemEntity> items;
 
   const POFormSummaryCard({super.key, required this.items});
 

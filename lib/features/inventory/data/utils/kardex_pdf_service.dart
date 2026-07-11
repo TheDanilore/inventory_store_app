@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -8,7 +7,8 @@ import 'package:inventory_store_app/features/inventory/domain/entities/kardex_mo
 class KardexPdfService {
   static Future<void> exportKardexToPdf(
     List<KardexMovementEntity> allMovements, {
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
     required String typeFilter,
   }) async {
     final pdf = pw.Document();
@@ -39,9 +39,9 @@ class KardexPdfService {
             ),
             pw.SizedBox(height: 10),
 
-            if (dateRange != null)
+            if (startDate != null && endDate != null)
               pw.Text(
-                'Fechas: ${DateFormat('dd/MM/yyyy').format(dateRange.start)} - ${DateFormat('dd/MM/yyyy').format(dateRange.end)}',
+                'Fechas: ${DateFormat('dd/MM/yyyy').format(startDate)} - ${DateFormat('dd/MM/yyyy').format(endDate)}',
               ),
 
             pw.Text('Tipo de filtro: ${_getTypeFilterName(typeFilter)}'),

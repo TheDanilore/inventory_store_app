@@ -5,9 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:collection/collection.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_suppliers_uc.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
@@ -32,7 +30,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
   Future<void> init({
     String? purchaseOrderId,
-    List<EntryItemUI>? prefillItems,
+    List<InventoryEntryItemEntity>? prefillItems,
     String? prefillSupplierId,
     String? prefillDocumentType,
     String? prefillDocumentNumber,
@@ -138,13 +136,15 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     emit(state.copyWith(activeShiftId: id));
   }
 
-  void addItem(EntryItemUI item) {
-    final newItems = List<EntryItemUI>.from(state.items);
+  void addItem(InventoryEntryItemEntity item) {
+    final newItems = List<InventoryEntryItemEntity>.from(state.items);
     final existingIndex = newItems.indexWhere(
-      (i) => i.variant.id == item.variant.id && i.batchNumber == item.batchNumber,
+      (i) => i.variantId == item.variantId && i.batchNumber == item.batchNumber,
     );
     if (existingIndex != -1) {
-      newItems[existingIndex].quantity += item.quantity;
+      newItems[existingIndex] = newItems[existingIndex].copyWith(
+        quantity: newItems[existingIndex].quantity + item.quantity,
+      );
     } else {
       newItems.add(item);
     }
@@ -154,14 +154,14 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
   void updateItemQuantity(int index, double newQty) {
     if (newQty <= 0) return;
-    final newItems = List<EntryItemUI>.from(state.items);
-    newItems[index].quantity = newQty;
+    final newItems = List<InventoryEntryItemEntity>.from(state.items);
+    newItems[index] = newItems[index].copyWith(quantity: newQty);
     emit(state.copyWith(items: newItems));
     _saveDraft();
   }
 
   void removeItem(int index) {
-    final newItems = List<EntryItemUI>.from(state.items);
+    final newItems = List<InventoryEntryItemEntity>.from(state.items);
     newItems.removeAt(index);
     emit(state.copyWith(items: newItems));
     _saveDraft();
@@ -202,9 +202,9 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     }
 
     for (final item in state.items) {
-      if (item.product.usesBatches &&
+      if (item.usesBatches &&
           (item.batchNumber == 'DEFAULT' || item.batchNumber.trim().isEmpty)) {
-        emit(state.copyWith(errorMessage: 'El producto "${item.product.name}" requiere un lote válido.'));
+        emit(state.copyWith(errorMessage: 'El producto "${item.productName}" requiere un lote válido.'));
         return false;
       }
     }
@@ -248,8 +248,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
     final itemsJson = state.items.map((e) {
       return {
-        'product': e.product.toJson(),
-        'variant': e.variant.toJson(),
+        'product_id': e.productId,
+        'product_name': e.productName,
+        'variant_id': e.variantId,
+        'variant_label': e.variantLabel,
+        'image_url': e.imageUrl,
+        'uses_batches': e.usesBatches,
         'quantity': e.quantity,
         'unit_cost': e.unitCost,
         'batch_number': e.batchNumber,
@@ -281,21 +285,22 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       try {
         final draftData = jsonDecode(draftString) as Map<String, dynamic>;
 
-        final newItems = <EntryItemUI>[];
+        final newItems = <InventoryEntryItemEntity>[];
         final itemsJson = draftData['items'] as List<dynamic>? ?? [];
         for (final itemJson in itemsJson) {
-          final p = ProductModel.fromJson(itemJson['product']);
-          final v = ProductVariantModel.fromJson(itemJson['variant']);
-
           newItems.add(
-            EntryItemUI(
-              product: p,
-              variant: v,
+            InventoryEntryItemEntity(
+              productId: itemJson['product_id'] as String? ?? '',
+              productName: itemJson['product_name'] as String? ?? '—',
+              variantId: itemJson['variant_id'] as String? ?? '',
+              variantLabel: itemJson['variant_label'] as String? ?? 'Variante Única',
+              imageUrl: itemJson['image_url'] as String?,
+              usesBatches: itemJson['uses_batches'] as bool? ?? false,
               quantity: (itemJson['quantity'] as num).toDouble(),
               unitCost: (itemJson['unit_cost'] as num).toDouble(),
-              batchNumber: itemJson['batch_number'] ?? 'DEFAULT',
+              batchNumber: itemJson['batch_number'] as String? ?? 'DEFAULT',
               expiryDate: itemJson['expiry_date'] != null
-                  ? DateTime.tryParse(itemJson['expiry_date'])
+                  ? DateTime.tryParse(itemJson['expiry_date'] as String)
                   : null,
             ),
           );

@@ -1,5 +1,5 @@
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
 
 @injectable
@@ -9,7 +9,7 @@ class CreateInventoryEntryUseCase {
   CreateInventoryEntryUseCase(this.repository);
 
   Future<void> call({
-    required List<EntryItemUI> items,
+    required List<InventoryEntryItemEntity> items,
     required String warehouseId,
     required String? supplierId,
     required String? purchaseOrderId,

@@ -197,8 +197,7 @@ class PurchaseOrdersService {
     required String supplierId,
     required String supplierName,
     required String warehouseId,
-    required List<dynamic>
-    items, // Expected to be EntryItemUI from UI layer, we will use dynamic to avoid circular import, or just pass primitives
+    required List<dynamic> items,
     required double totalAmount,
     required String paymentMode,
     required String paymentStatus,
@@ -251,8 +250,8 @@ class PurchaseOrdersService {
     for (final item in items) {
       await _supabase.from('purchase_order_items').insert({
         'purchase_order_id': poId,
-        'product_id': item.product.id,
-        'variant_id': item.variant.id,
+        'product_id': item.productId,
+        'variant_id': item.variantId,
         'quantity_ordered': item.quantity,
         'unit_cost': item.unitCost,
         'net_cost': item.subtotal,

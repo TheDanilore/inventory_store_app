@@ -1,6 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_exits_repository.dart';
@@ -14,7 +13,8 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
     required int start,
     required int end,
     String? searchQuery,
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     var query = _supabase.from('inventory_exits').select('''
           id, created_at, reason, notes, warehouse_id,
@@ -27,13 +27,14 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
       query = query.or('reason.ilike.$sq,notes.ilike.$sq');
     }
 
-    if (dateRange != null) {
-      query = query
-          .gte('created_at', dateRange.start.toIso8601String())
-          .lte(
-            'created_at',
-            dateRange.end.add(const Duration(days: 1)).toIso8601String(),
-          );
+    if (startDate != null) {
+      query = query.gte('created_at', startDate.toIso8601String());
+    }
+    if (endDate != null) {
+      query = query.lte(
+        'created_at',
+        endDate.add(const Duration(days: 1)).toIso8601String(),
+      );
     }
 
     final resp = await query

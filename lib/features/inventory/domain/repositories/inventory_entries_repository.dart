@@ -1,10 +1,9 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
-import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 
 abstract class InventoryEntriesRepository {
   Future<void> createInventoryEntry({
-    required List<EntryItemUI> items,
+    required List<InventoryEntryItemEntity> items,
     required String warehouseId,
     required String? supplierId,
     required String? purchaseOrderId,
@@ -22,7 +21,8 @@ abstract class InventoryEntriesRepository {
     required int end,
     String? searchQuery,
     String? warehouseFilter,
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
   });
 
   Future<List<dynamic>> getEntryItems(String entryId);

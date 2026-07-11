@@ -12,7 +12,6 @@ import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/inventory_entry_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,9 +32,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<InventoryEntriesCubit>().init();
-    });
     _checkDraft();
   }
 
@@ -176,24 +172,20 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
         final isLoading = state is InventoryEntriesLoading;
 
-        return AdminLayout(
-          title: 'Historial de Entradas',
-          showBackButton: true,
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 800;
-              return Stack(
-                children: [
-                  if (isTablet)
-                    _buildTabletLayout(context, currentState, isLoading)
-                  else
-                    _buildMobileLayout(context, currentState, isLoading),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 800;
+            return Stack(
+              children: [
+                if (isTablet)
+                  _buildTabletLayout(context, currentState, isLoading)
+                else
+                  _buildMobileLayout(context, currentState, isLoading),
 
-                  _buildFloatingAction(context),
-                ],
-              );
-            },
-          ),
+                _buildFloatingAction(context),
+              ],
+            );
+          },
         );
       },
     );

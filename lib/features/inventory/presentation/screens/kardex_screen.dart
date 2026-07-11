@@ -282,12 +282,14 @@ class _KardexScreenState extends State<KardexScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                         DateFilterCalendar(
-                                          dateRange: currentState.dateRange,
+                                          dateRange: currentState.startDate != null && currentState.endDate != null
+                                              ? DateTimeRange(start: currentState.startDate!, end: currentState.endDate!)
+                                              : null,
                                           onDateRangeSelected: (picked) {
-                                            context.read<KardexCubit>().setDateRange(picked);
+                                            context.read<KardexCubit>().setDateRange(picked.start, picked.end);
                                           },
                                           onClear: () {
-                                            context.read<KardexCubit>().setDateRange(null);
+                                            context.read<KardexCubit>().setDateRange(null, null);
                                           },
                                         ),
                                       ],

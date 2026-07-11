@@ -66,7 +66,8 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         end: end,
         searchQuery: currentQuery,
         warehouseFilter: currentWarehouse == 'Todos' ? null : currentWarehouse,
-        dateRange: currentDateRange,
+        startDate: currentDateRange?.start,
+        endDate: currentDateRange?.end,
       );
 
       final dataList = response.data;

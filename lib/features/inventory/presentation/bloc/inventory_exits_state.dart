@@ -1,9 +1,8 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 
 class InventoryExitsState extends Equatable {
-  final List<InventoryExitModel> exits;
+  final List<InventoryExitEntity> exits;
   final bool isLoading;
   final String? errorMessage;
 
@@ -12,7 +11,8 @@ class InventoryExitsState extends Equatable {
   final int pageSize;
 
   final String searchQuery;
-  final DateTimeRange? dateRange;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   const InventoryExitsState({
     this.exits = const [],
@@ -22,20 +22,22 @@ class InventoryExitsState extends Equatable {
     this.totalRecords = 0,
     this.pageSize = 8,
     this.searchQuery = '',
-    this.dateRange,
+    this.startDate,
+    this.endDate,
   });
 
   int get totalPages => totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();
 
   InventoryExitsState copyWith({
-    List<InventoryExitModel>? exits,
+    List<InventoryExitEntity>? exits,
     bool? isLoading,
     String? errorMessage,
     int? currentPage,
     int? totalRecords,
     int? pageSize,
     String? searchQuery,
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
     bool clearErrorMessage = false,
     bool clearDateRange = false,
   }) {
@@ -47,7 +49,8 @@ class InventoryExitsState extends Equatable {
       totalRecords: totalRecords ?? this.totalRecords,
       pageSize: pageSize ?? this.pageSize,
       searchQuery: searchQuery ?? this.searchQuery,
-      dateRange: clearDateRange ? null : (dateRange ?? this.dateRange),
+      startDate: clearDateRange ? null : (startDate ?? this.startDate),
+      endDate: clearDateRange ? null : (endDate ?? this.endDate),
     );
   }
 
@@ -60,6 +63,7 @@ class InventoryExitsState extends Equatable {
         totalRecords,
         pageSize,
         searchQuery,
-        dateRange,
+        startDate,
+        endDate,
       ];
 }

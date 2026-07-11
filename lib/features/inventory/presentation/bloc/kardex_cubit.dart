@@ -17,7 +17,8 @@ class KardexCubit extends Cubit<KardexState> {
   }) : super(KardexInitial());
 
   Future<void> loadMovements({
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
     String? typeFilter,
     String? searchText,
     int? page,
@@ -29,22 +30,23 @@ class KardexCubit extends Cubit<KardexState> {
       final currentTypeFilter = typeFilter ?? currentState?.typeFilter ?? 'ALL';
       final currentSearchText = searchText ?? currentState?.searchText ?? '';
       final currentPage = page ?? currentState?.currentPage ?? 0;
-      final currentDateRange = clearDateRange 
-          ? null 
-          : (dateRange ?? currentState?.dateRange);
+        final currentStartDate = clearDateRange ? null : (startDate ?? currentState?.startDate);
+        final currentEndDate = clearDateRange ? null : (endDate ?? currentState?.endDate);
 
       emit(KardexLoading());
 
       final count = await getKardexMovements.count(
-        dateRange: currentDateRange,
+        startDate: currentStartDate,
+        endDate: currentEndDate,
         typeFilter: currentTypeFilter,
         searchText: currentSearchText,
       );
 
       final totalPages = (count / pageSize).ceil();
 
-      final movements = await getKardexMovements.callForDisplay(
-        dateRange: currentDateRange,
+      final movements = await getKardexMovements.call(
+        startDate: currentStartDate,
+        endDate: currentEndDate,
         typeFilter: currentTypeFilter,
         searchText: currentSearchText,
         page: currentPage,
@@ -53,7 +55,8 @@ class KardexCubit extends Cubit<KardexState> {
 
       emit(KardexLoaded(
         movements: movements,
-        dateRange: currentDateRange,
+        startDate: currentStartDate,
+        endDate: currentEndDate,
         typeFilter: currentTypeFilter,
         searchText: currentSearchText,
         currentPage: currentPage,
@@ -74,8 +77,13 @@ class KardexCubit extends Cubit<KardexState> {
     }
   }
 
-  void setDateRange(DateTimeRange? range) {
-    loadMovements(dateRange: range, page: 0, clearDateRange: range == null);
+  void setDateRange(DateTime? startDate, DateTime? endDate) {
+    loadMovements(
+      startDate: startDate,
+      endDate: endDate,
+      page: 0,
+      clearDateRange: startDate == null && endDate == null,
+    );
   }
 
   void setTypeFilter(String type) {
@@ -106,7 +114,8 @@ class KardexCubit extends Cubit<KardexState> {
 
     try {
       await exportKardexPdf.call(
-        dateRange: currentState.dateRange,
+        startDate: currentState.startDate,
+        endDate: currentState.endDate,
         typeFilter: currentState.typeFilter,
         searchText: currentState.searchText,
       );

@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 
 class InventoryEntryFormState extends Equatable {
   final List<WarehouseModel> warehouses;
@@ -18,7 +18,7 @@ class InventoryEntryFormState extends Equatable {
   final String? purchaseOrderId;
   final String? activeShiftId;
 
-  final List<EntryItemUI> items;
+  final List<InventoryEntryItemEntity> items;
 
   final bool isLoading;
   final bool isSaving;
@@ -58,7 +58,7 @@ class InventoryEntryFormState extends Equatable {
     String? selectedAccountId,
     String? purchaseOrderId,
     String? activeShiftId,
-    List<EntryItemUI>? items,
+    List<InventoryEntryItemEntity>? items,
     bool? isLoading,
     bool? isSaving,
     String? errorMessage,

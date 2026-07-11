@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -15,7 +15,7 @@ class InventoryExitsPdfGenerator {
   );
 
   static Future<Uint8List> _buildPdf({
-    required List<InventoryExitModel> exits,
+    required List<InventoryExitEntity> exits,
     required DateTimeRange? dateRange,
   }) async {
     final baseFont = await PdfGoogleFonts.notoSansRegular();
@@ -227,7 +227,7 @@ class InventoryExitsPdfGenerator {
   }
 
   static Future<void> printReport({
-    required List<InventoryExitModel> exits,
+    required List<InventoryExitEntity> exits,
     required DateTimeRange? dateRange,
   }) async {
     final bytes = await _buildPdf(exits: exits, dateRange: dateRange);
@@ -239,7 +239,7 @@ class InventoryExitsPdfGenerator {
   }
 
   static Future<void> shareReport({
-    required List<InventoryExitModel> exits,
+    required List<InventoryExitEntity> exits,
     required DateTimeRange? dateRange,
   }) async {
     final bytes = await _buildPdf(exits: exits, dateRange: dateRange);

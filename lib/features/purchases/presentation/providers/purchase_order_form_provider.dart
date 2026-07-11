@@ -4,11 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/purchases/data/repositories/purchase_orders_service.dart';
 import 'package:collection/collection.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 
 class PurchaseOrderFormProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -36,8 +34,8 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
   List<FinancialAccountModel> get accounts => _accounts;
 
   // Form Data
-  List<EntryItemUI> _items = [];
-  List<EntryItemUI> get items => _items;
+  List<InventoryEntryItemEntity> _items = [];
+  List<InventoryEntryItemEntity> get items => _items;
 
   String? _selectedSupplierId;
   String? get selectedSupplierId => _selectedSupplierId;
@@ -215,16 +213,18 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addItem(EntryItemUI item) {
+  void addItem(InventoryEntryItemEntity item) {
     final existingIdx = _items.indexWhere(
       (i) =>
-          i.product.id == item.product.id &&
-          i.variant.id == item.variant.id &&
+          i.productId == item.productId &&
+          i.variantId == item.variantId &&
           i.batchNumber == item.batchNumber,
     );
     if (existingIdx >= 0) {
-      _items[existingIdx].quantity += item.quantity;
-      _items[existingIdx].unitCost = item.unitCost;
+      _items[existingIdx] = _items[existingIdx].copyWith(
+        quantity: _items[existingIdx].quantity + item.quantity,
+        unitCost: item.unitCost,
+      );
     } else {
       _items.add(item);
     }
@@ -234,7 +234,7 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
   void updateItemQuantity(int index, double qty) {
     if (qty > 0) {
-      _items[index].quantity = qty;
+      _items[index] = _items[index].copyWith(quantity: qty);
       _saveDraft();
       notifyListeners();
     }
@@ -377,16 +377,15 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
   Future<void> _saveDraft() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // We only save the items list to keep it simple, since products are hard to lose.
-    // If we want to save everything, we serialize to JSON.
     final itemsJson =
         _items.map((e) {
-          final pJson = e.product.toJson();
-          final vJson = e.variant.toJson();
-
           return {
-            'product': pJson,
-            'variant': vJson,
+            'product_id': e.productId,
+            'product_name': e.productName,
+            'variant_id': e.variantId,
+            'variant_label': e.variantLabel,
+            'image_url': e.imageUrl,
+            'uses_batches': e.usesBatches,
             'quantity': e.quantity,
             'unit_cost': e.unitCost,
             'batch_number': e.batchNumber,
@@ -426,15 +425,21 @@ class PurchaseOrderFormProvider extends ChangeNotifier {
 
           _items =
               itemsList.map((i) {
-                return EntryItemUI(
-                  product: ProductModel.fromJson(i['product']),
-                  variant: ProductVariantModel.fromJson(i['variant']),
+                final productId = i['product_id'] as String?;
+                final variantId = i['variant_id'] as String?;
+                return InventoryEntryItemEntity(
+                  productId: productId ?? '',
+                  productName: i['product_name'] as String? ?? '—',
+                  variantId: variantId ?? '',
+                  variantLabel: i['variant_label'] as String? ?? 'Variante Única',
+                  imageUrl: i['image_url'] as String?,
+                  usesBatches: i['uses_batches'] as bool? ?? false,
                   quantity: (i['quantity'] as num).toDouble(),
                   unitCost: (i['unit_cost'] as num).toDouble(),
                   batchNumber: i['batch_number'] as String? ?? 'DEFAULT',
                   expiryDate:
                       i['expiry_date'] != null
-                          ? DateTime.tryParse(i['expiry_date'])
+                          ? DateTime.tryParse(i['expiry_date'] as String)
                           : null,
                 );
               }).toList();

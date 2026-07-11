@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/kardex_movement_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/kardex_repository.dart';
 
@@ -12,31 +10,16 @@ class GetKardexMovementsUseCase {
 
   /// Returns entities — for domain logic (e.g. PDF export)
   Future<List<KardexMovementEntity>> call({
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
     int page = 0,
     int pageSize = 12,
   }) {
     return repository.getKardexMovements(
-      dateRange: dateRange,
-      typeFilter: typeFilter,
-      searchText: searchText,
-      page: page,
-      pageSize: pageSize,
-    );
-  }
-
-  /// Returns rich display models — for the presentation layer (KardexCard)
-  Future<List<KardexMovementModel>> callForDisplay({
-    DateTimeRange? dateRange,
-    String typeFilter = 'ALL',
-    String searchText = '',
-    int page = 0,
-    int pageSize = 12,
-  }) {
-    return repository.getKardexMovementsForDisplay(
-      dateRange: dateRange,
+      startDate: startDate,
+      endDate: endDate,
       typeFilter: typeFilter,
       searchText: searchText,
       page: page,
@@ -45,12 +28,14 @@ class GetKardexMovementsUseCase {
   }
 
   Future<int> count({
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
     String typeFilter = 'ALL',
     String searchText = '',
   }) {
     return repository.getKardexMovementsCount(
-      dateRange: dateRange,
+      startDate: startDate,
+      endDate: endDate,
       typeFilter: typeFilter,
       searchText: searchText,
     );

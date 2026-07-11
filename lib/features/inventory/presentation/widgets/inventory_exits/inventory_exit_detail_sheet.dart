@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -8,7 +8,7 @@ import 'package:inventory_store_app/core/widgets/detail_sheet_header.dart';
 import 'package:inventory_store_app/core/widgets/product_item_card.dart';
 
 class InventoryExitDetailSheet extends StatefulWidget {
-  final InventoryExitModel exitData;
+  final InventoryExitEntity exitData;
   final Future<List<InventoryExitItemModel>> Function() loadItems;
   final bool isBottomSheet;
 

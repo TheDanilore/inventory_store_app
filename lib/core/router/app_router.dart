@@ -82,6 +82,7 @@ import 'package:inventory_store_app/features/purchases/presentation/screens/supp
 import 'package:inventory_store_app/features/users/presentation/screens/user_form_screen.dart';
 import 'package:inventory_store_app/features/users/presentation/screens/users_management_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/warehouses_management_screen.dart';
+import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 
 // Juegos
@@ -550,8 +551,12 @@ class AppRouter {
                 GoRoute(
                   path: 'inventory-entries',
                   builder: (context, state) => BlocProvider(
-                    create: (_) => sl<InventoryEntriesCubit>(),
-                    child: const InventoryEntriesScreen(),
+                    create: (_) => sl<InventoryEntriesCubit>()..init(),
+                    child: const AdminLayout(
+                      title: 'Historial de Entradas',
+                      showBackButton: true,
+                      body: InventoryEntriesScreen(),
+                    ),
                   ),
                 ),
                 GoRoute(
@@ -584,8 +589,46 @@ class AppRouter {
                 GoRoute(
                   path: 'inventory-exits',
                   builder: (context, state) => BlocProvider(
-                    create: (_) => sl<InventoryExitsCubit>(),
-                    child: const InventoryExitsScreen(),
+                    create: (_) => sl<InventoryExitsCubit>()..initLoad(),
+                    child: Builder(
+                      builder: (innerContext) => AdminLayout(
+                        title: 'Salidas de Inventario',
+                        showBackButton: true,
+                        showSettingsButton: true,
+                        settingsActions: const [
+                          PopupMenuItem(
+                            value: 'pdf',
+                            child: Text('Exportar a PDF (Historial)'),
+                          ),
+                        ],
+                        onSettingsSelected: (val) {
+                          if (val != 'pdf') return;
+                          final cubit = innerContext.read<InventoryExitsCubit>();
+                          if (cubit.state.exits.isNotEmpty) {
+                            final startDate = cubit.state.startDate;
+                            final endDate = cubit.state.endDate;
+                            final selectedRange =
+                                startDate != null && endDate != null
+                                    ? DateTimeRange(
+                                      start: startDate,
+                                      end: endDate,
+                                    )
+                                    : null;
+                            InventoryExitsPdfGenerator.shareReport(
+                              exits: cubit.state.exits,
+                              dateRange: selectedRange,
+                            );
+                          } else {
+                            ScaffoldMessenger.of(innerContext).showSnackBar(
+                              const SnackBar(
+                                content: Text('No hay datos para exportar'),
+                              ),
+                            );
+                          }
+                        },
+                        body: const InventoryExitsScreen(),
+                      ),
+                    ),
                   ),
                 ),
                 GoRoute(
@@ -602,7 +645,7 @@ class AppRouter {
                 GoRoute(
                   path: 'kardex',
                   builder: (context, state) => BlocProvider(
-                    create: (_) => sl<KardexCubit>(),
+                    create: (_) => sl<KardexCubit>()..loadMovements(),
                     child: Builder(
                       builder: (innerContext) => AdminLayout(
                         title: 'Kardex',

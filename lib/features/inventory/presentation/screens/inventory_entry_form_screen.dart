@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as dart_ui;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_state.dart';
 
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -15,7 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InventoryEntryFormScreen extends StatefulWidget {
   final String? purchaseOrderId;
-  final List<EntryItemUI>? prefillItems;
+  final List<InventoryEntryItemEntity>? prefillItems;
   final String? prefillSupplierId;
   final String? prefillSupplierName;
 
@@ -116,7 +116,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       return;
     }
 
-    final newItem = await showModalBottomSheet<EntryItemUI>(
+    final newItem = await showModalBottomSheet<InventoryEntryItemEntity>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

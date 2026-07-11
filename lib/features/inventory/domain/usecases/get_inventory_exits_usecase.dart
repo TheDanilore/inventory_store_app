@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_exits_repository.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
@@ -13,13 +12,15 @@ class GetInventoryExitsUseCase {
     required int start,
     required int end,
     String? searchQuery,
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     return repository.getExits(
       start: start,
       end: end,
       searchQuery: searchQuery,
-      dateRange: dateRange,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 }

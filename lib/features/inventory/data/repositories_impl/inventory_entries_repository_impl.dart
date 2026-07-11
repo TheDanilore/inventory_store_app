@@ -1,10 +1,9 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
 
 @LazySingleton(as: InventoryEntriesRepository)
@@ -13,7 +12,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
 
   @override
   Future<void> createInventoryEntry({
-    required List<EntryItemUI> items,
+    required List<InventoryEntryItemEntity> items,
     required String warehouseId,
     required String? supplierId,
     required String? purchaseOrderId,
@@ -67,8 +66,8 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       final entryItem = InventoryEntryItemModel(
         id: '',
         entryId: entryId,
-        productId: item.product.id,
-        variantId: item.variant.id,
+        productId: item.productId,
+        variantId: item.variantId,
         quantity: item.quantity,
         unitCost: item.unitCost,
         batchNumber: item.batchNumber,
@@ -83,7 +82,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
           await _supabase
               .from('warehouse_stock_batches')
               .select('id, available_quantity')
-              .eq('variant_id', item.variant.id)
+              .eq('variant_id', item.variantId)
               .eq('warehouse_id', warehouseId)
               .eq('batch_number', item.batchNumber)
               .maybeSingle();
@@ -110,9 +109,9 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             await _supabase
                 .from('warehouse_stock_batches')
                 .insert({
-                  'variant_id': item.variant.id,
+                  'variant_id': item.variantId,
                   'warehouse_id': warehouseId,
-                  'product_id': item.product.id,
+                  'product_id': item.productId,
                   'supplier_id': supplierId,
                   'batch_number': item.batchNumber,
                   'expiry_date':
@@ -133,11 +132,11 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             'unit_cost': item.unitCost,
             'updated_by': createdByProfileId,
           })
-          .eq('id', item.variant.id);
+          .eq('id', item.variantId);
 
       // 4. ── inventory_movements (kardex) ──────────────────────────────
       await _supabase.from('inventory_movements').insert({
-        'variant_id': item.variant.id,
+        'variant_id': item.variantId,
         'warehouse_id': warehouseId,
         'stock_batch_id': stockBatchId,
         'inventory_entry_id': entryId,
@@ -254,7 +253,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         double received = (poi['quantity_received'] as num).toDouble();
 
         final sumReceivedNow = items
-            .where((i) => i.variant.id == variantId)
+            .where((i) => i.variantId == variantId)
             .fold(0.0, (s, i) => s + i.quantity);
 
         if (sumReceivedNow > 0) {
@@ -309,7 +308,8 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     required int end,
     String? searchQuery,
     String? warehouseFilter,
-    DateTimeRange? dateRange,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     var query = _supabase.from('inventory_entries').select('''
           id, created_at, notes, total_amount,
@@ -333,13 +333,15 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
       query = query.eq('warehouses.name', warehouseFilter);
     }
 
-    if (dateRange != null) {
-      query = query
-          .gte('created_at', dateRange.start.toIso8601String())
-          .lte(
-            'created_at',
-            dateRange.end.add(const Duration(days: 1)).toIso8601String(),
-          );
+    if (startDate != null) {
+      query = query.gte('created_at', startDate.toIso8601String());
+    }
+
+    if (endDate != null) {
+      query = query.lte(
+        'created_at',
+        endDate.add(const Duration(days: 1)).toIso8601String(),
+      );
     }
 
     final resp = await query

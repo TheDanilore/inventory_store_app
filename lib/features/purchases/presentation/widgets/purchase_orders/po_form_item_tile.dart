@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class POFormItemTile extends StatelessWidget {
-  final EntryItemUI item;
+  final InventoryEntryItemEntity item;
   final ValueChanged<double> onUpdateQuantity;
   final VoidCallback onRemove;
 
@@ -40,7 +40,7 @@ class POFormItemTile extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
             content: Text(
-              '¿Eliminar "${item.product.name}" de la orden?',
+              '¿Eliminar "${item.productName}" de la orden?',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             actions: [
@@ -125,22 +125,10 @@ class POFormItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String? currentImageUrl;
-    if (item.variant.images.isNotEmpty) {
-      currentImageUrl = item.variant.images.first.imageUrl;
-    } else if (item.product.images.isNotEmpty) {
-      currentImageUrl =
-          item.product.images
-              .firstWhere(
-                (img) => img.isMain,
-                orElse: () => item.product.images.first,
-              )
-              .imageUrl;
-    }
+    currentImageUrl = item.imageUrl;
 
-    final String variantAttrs =
-        item.variant.label.replaceAll(item.product.name, '').trim();
     final String attributesText =
-        variantAttrs.isNotEmpty ? variantAttrs : 'Variante Única';
+        item.variantLabel.isNotEmpty ? item.variantLabel : 'Variante Única';
 
     // Mostrar cantidad con o sin decimal según sea entero o no
     final String quantityText =
@@ -170,7 +158,7 @@ class POFormItemTile extends StatelessWidget {
         children: [
           // Imagen miniatura
           Semantics(
-            label: 'Imagen de ${item.product.name}',
+            label: 'Imagen de ${item.productName}',
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child:
@@ -199,7 +187,7 @@ class POFormItemTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.product.name,
+                  item.productName,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
@@ -221,7 +209,7 @@ class POFormItemTile extends StatelessWidget {
                   ),
                 const SizedBox(height: 6),
                 // Chip de lote con color semafórico
-                if (item.product.usesBatches &&
+                if (item.usesBatches &&
                     item.batchNumber.isNotEmpty &&
                     item.batchNumber != 'DEFAULT')
                   Semantics(
@@ -302,7 +290,7 @@ class POFormItemTile extends StatelessWidget {
               const SizedBox(height: 4),
               // Botón eliminar con confirmación y semántica
               Semantics(
-                label: 'Eliminar ${item.product.name} de la orden',
+                label: 'Eliminar ${item.productName} de la orden',
                 button: true,
                 child: Tooltip(
                   message: 'Quitar de la orden',

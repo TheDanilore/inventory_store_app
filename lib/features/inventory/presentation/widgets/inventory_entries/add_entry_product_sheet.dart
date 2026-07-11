@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
-import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -260,9 +260,13 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
     Navigator.pop(
       context,
-      EntryItemUI(
-        product: _selectedProduct!,
-        variant: variantToUse,
+      InventoryEntryItemEntity(
+        productId: _selectedProduct!.id,
+        productName: _selectedProduct!.name,
+        variantId: variantToUse.id,
+        variantLabel: _selectedVariant?.label ?? 'Variante Única',
+        imageUrl: _resolveCurrentImageUrl(),
+        usesBatches: usesBatches,
         quantity: _quantity,
         unitCost: cost,
         batchNumber: usesBatches ? _batchCtrl.text.trim() : 'DEFAULT',
@@ -285,19 +289,8 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       overlayWidth = 492; // Max width de 540 - 48
     }
 
-    String? currentImageUrl;
-    if (_selectedVariant?.images.isNotEmpty == true) {
-      currentImageUrl = _selectedVariant!.images.first.imageUrl;
-    } else if (_selectedProduct?.images.isNotEmpty == true) {
-      currentImageUrl = _selectedProduct!.images
-          .firstWhere(
-            (img) => img.isMain,
-            orElse: () => _selectedProduct!.images.first,
-          )
-          .imageUrl;
-    }
-
     final bool usesBatches = _selectedProduct?.usesBatches == true;
+    final currentImageUrl = _resolveCurrentImageUrl();
 
     return SafeArea(
       child: Align(
@@ -815,6 +808,21 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
         ),
       ),
     );
+  }
+
+  String? _resolveCurrentImageUrl() {
+    if (_selectedVariant?.images.isNotEmpty == true) {
+      return _selectedVariant!.images.first.imageUrl;
+    }
+    if (_selectedProduct?.images.isNotEmpty == true) {
+      return _selectedProduct!.images
+          .firstWhere(
+            (img) => img.isMain,
+            orElse: () => _selectedProduct!.images.first,
+          )
+          .imageUrl;
+    }
+    return null;
   }
 }
 
