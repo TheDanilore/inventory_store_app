@@ -58,14 +58,14 @@ class _KardexScreenState extends State<KardexScreen> {
 
   Future<void> _openExitScreen(BuildContext context) async {
     final result = await context.push('/admin/inventory-exit-form');
-    if (result == true && mounted) {
+    if (result == true && context.mounted) {
       context.read<KardexCubit>().loadMovements();
     }
   }
 
   Future<void> _openEntryScreen(BuildContext context) async {
     final result = await context.push('/admin/inventory-entry-form');
-    if (result == true && mounted) {
+    if (result == true && context.mounted) {
       context.read<KardexCubit>().loadMovements();
     }
   }

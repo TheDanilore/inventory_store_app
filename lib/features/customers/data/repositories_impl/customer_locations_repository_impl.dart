@@ -1,6 +1,6 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_location.dart';
+import 'package:inventory_store_app/features/customers/data/models/customer_location_model.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_locations_repository.dart';
 

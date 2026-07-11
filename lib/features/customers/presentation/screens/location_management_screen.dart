@@ -5,7 +5,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_locations_state.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_form_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_location_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
 
 class LocationManagementScreen extends StatelessWidget {

@@ -1,6 +1,6 @@
 ﻿import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/customers/data/models/customer_credit_models.dart';
+import 'package:inventory_store_app/features/customers/data/models/customer_credit_model.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';

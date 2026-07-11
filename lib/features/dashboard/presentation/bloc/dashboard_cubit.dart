@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/dashboard/domain/enums/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_critical_batches_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_inventory_metrics_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_sales_metrics_usecase.dart';

@@ -2,27 +2,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_ucs.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 
-abstract class CustomerFormState {}
-
-class CustomerFormInitial extends CustomerFormState {}
-
-class CustomerFormSaving extends CustomerFormState {}
-
-class CustomerFormSuccess extends CustomerFormState {}
-
-class CustomerFormError extends CustomerFormState {
-  final String message;
-  CustomerFormError(this.message);
-}
-
-class CustomerFormCreditLoading extends CustomerFormState {}
-
-class CustomerFormCreditLoaded extends CustomerFormState {
-  final CustomerCreditEntity? creditAccount;
-  CustomerFormCreditLoaded(this.creditAccount);
-}
+import 'customer_form_state.dart';
 
 @injectable
 class CustomerFormCubit extends Cubit<CustomerFormState> {

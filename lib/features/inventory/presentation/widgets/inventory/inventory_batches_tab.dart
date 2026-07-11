@@ -27,11 +27,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   @override
   bool get wantKeepAlive => true;
 
-  @override
-  void initState() {
-    super.initState();
-    // No action needed here, the Cubit init happens when the tab is clicked or lazily
-  }
+
 
   @override
   void dispose() {

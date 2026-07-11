@@ -27,11 +27,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   @override
   bool get wantKeepAlive => true;
 
-  @override
-  void initState() {
-    super.initState();
-    // No action needed here, constructor does initStockTab
-  }
+
 
   @override
   void dispose() {

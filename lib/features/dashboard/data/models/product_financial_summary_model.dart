@@ -1,6 +1,6 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
-class VariantFinancialSummary {
+class ProductFinancialSummaryModel {
   final ProductVariantEntity variant;
   final double unitCost;
   final int stockQuantity;
@@ -9,7 +9,7 @@ class VariantFinancialSummary {
   final double soldCost;
   final double soldRevenue;
 
-  const VariantFinancialSummary({
+  const ProductFinancialSummaryModel({
     required this.variant,
     required this.unitCost,
     required this.stockQuantity,

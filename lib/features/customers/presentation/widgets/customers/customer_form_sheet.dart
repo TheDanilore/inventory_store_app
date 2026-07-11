@@ -7,16 +7,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form_cubit.dart';
-
-// â”€â”€â”€ PUNTO DE ENTRADA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-//
-// Uso â€” crear:
-//   CustomerFormSheet.show(context, onSaved: () => _load());
-//
-// Uso â€” editar:
-//   CustomerFormSheet.show(context, customer: c, onSaved: () => _load());
-//
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form_state.dart';
 
 class CustomerFormSheet extends StatelessWidget {
   final CustomerEntity? customer;

@@ -5,7 +5,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_form_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_location_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
 import 'customer_section_card.dart';
 

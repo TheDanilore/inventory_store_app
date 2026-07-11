@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
-import 'package:inventory_store_app/features/dashboard/domain/enums/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 
 abstract class DashboardState extends Equatable {
   const DashboardState();
