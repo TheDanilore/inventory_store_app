@@ -8,8 +8,8 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/admin/widgets/orders/order_detail_sheet.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/admin/widgets/orders/admin_order_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/orders/order_detail_sheet.dart';
+import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/orders/admin_order_card.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/orders_provider.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';

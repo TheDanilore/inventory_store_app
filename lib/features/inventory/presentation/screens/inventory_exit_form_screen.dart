@@ -2,7 +2,7 @@
 import 'dart:ui' as dart_ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_exit_form_provider.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory_exits/add_exit_product_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/add_exit_product_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';

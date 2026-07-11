@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/users/presentation/screens/widgets/users/users_tab.dart';
+import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';

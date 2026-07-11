@@ -10,10 +10,10 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 // Widgets extraÃ­dos
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_global_stats_bar.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_credit_card.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_account_options_sheet.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/supplier_credits/supplier_credit_account_modal.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_global_stats_bar.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_card.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_account_options_sheet.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_account_modal.dart';
 
 class SupplierCreditsScreen extends StatefulWidget {
   const SupplierCreditsScreen({super.key});

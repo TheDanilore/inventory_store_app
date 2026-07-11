@@ -5,14 +5,14 @@ import 'package:inventory_store_app/features/inventory/data/models/inventory_exi
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_exits_provider.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/inventory/data/repositories/inventory_exits_service.dart';
 import 'package:inventory_store_app/features/inventory/data/repositories/inventory_exits_pdf_generator.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/kardex/kardex_skeleton.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';

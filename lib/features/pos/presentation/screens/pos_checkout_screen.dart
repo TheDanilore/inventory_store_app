@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/pos/presentation/screens/widgets/po
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/payment_warehouse_account_card.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_cart_items_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_total_summary_section.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/batch_edit_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/features/pos/data/repositories/pos_checkout_service.dart';

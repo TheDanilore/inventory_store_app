@@ -1,9 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/purchases/presentation/providers/purchase_order_form_provider.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory_entries/add_entry_product_sheet.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/purchase_orders/po_form_item_tile.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/purchase_orders/po_form_summary_card.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
 import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';

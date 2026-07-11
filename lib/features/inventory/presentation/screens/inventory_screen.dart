@@ -1,8 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory/inventory_stock_tab.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/inventory/inventory_batches_tab.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_tab.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_batches_tab.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});

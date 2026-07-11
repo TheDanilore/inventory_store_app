@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/warehouses_provider.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/warehouses/warehouses_skeleton.dart';
-import 'package:inventory_store_app/features/inventory/presentation/screens/widgets/warehouses/warehouse_form_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_skeleton.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_form_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 

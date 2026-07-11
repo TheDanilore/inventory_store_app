@@ -9,8 +9,8 @@ import 'package:inventory_store_app/features/catalog/data/models/product_model.d
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 import 'package:inventory_store_app/features/purchases/presentation/providers/purchase_orders_provider.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/purchase_orders/po_card.dart';
-import 'package:inventory_store_app/features/purchases/presentation/screens/widgets/purchase_orders/po_detail_sheet.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_card.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_detail_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
