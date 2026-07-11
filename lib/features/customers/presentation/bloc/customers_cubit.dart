@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers_state.dart';
+import 'package:inventory_store_app/features/customers/data/utils/customer_pdf_generator.dart';
 
 @injectable
 class CustomersCubit extends Cubit<CustomersState> {
@@ -58,7 +59,13 @@ class CustomersCubit extends Cubit<CustomersState> {
         ),
       );
     } catch (e) {
-      emit(CustomersError(e.toString()));
+      emit(CustomersError('Error al cargar clientes: $e'));
+    }
+  }
+
+  void exportPdf() {
+    if (state is CustomersLoaded) {
+      CustomerPdfGenerator.shareOrPrintPdf((state as CustomersLoaded).customers);
     }
   }
 

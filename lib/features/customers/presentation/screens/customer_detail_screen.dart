@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_cubit.dart';
@@ -84,11 +83,10 @@ class _CustomerDetailContent extends StatelessWidget {
         final error = state is CustomerDetailError ? state.message : null;
         final c = state is CustomerDetailLoaded ? state.customer : null;
 
-        final title = c?.fullName ?? 'Cargando...';
 
-        return AdminLayout(
-          title: title,
-          showBackButton: true,
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
           body: RefreshIndicator(
             color: Theme.of(context).colorScheme.primary,
             onRefresh: () async => _refreshData(context),

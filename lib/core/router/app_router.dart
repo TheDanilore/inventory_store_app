@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customers_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customers_stats_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 import 'package:flutter/material.dart';
@@ -313,11 +316,12 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'active-ingredients',
-                  builder: (context, state) => const AdminLayout(
-                    title: 'Componentes Químicos',
-                    showBackButton: true,
-                    body: ActiveIngredientsScreen(),
-                  ),
+                  builder:
+                      (context, state) => const AdminLayout(
+                        title: 'Componentes Químicos',
+                        showBackButton: true,
+                        body: ActiveIngredientsScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'attributes',
@@ -346,54 +350,71 @@ class AppRouter {
                   builder: (context, state) {
                     final creditId = state.pathParameters['creditId'] ?? '';
                     final args = state.extra as Map<String, dynamic>? ?? {};
-                    return CustomerCreditMovementsScreen(
-                      creditId: creditId,
-                      customerName:
-                          args['customerName'] ??
-                          state.uri.queryParameters['name'] ??
-                          '',
-                      currentDebt:
-                          args['currentDebt'] ??
-                          double.tryParse(
-                            state.uri.queryParameters['debt'] ?? '0',
-                          ) ??
-                          0.0,
-                      creditLimit:
-                          args['creditLimit'] ??
-                          double.tryParse(
-                            state.uri.queryParameters['limit'] ?? '0',
-                          ) ??
-                          0.0,
-                      onOpenOrder: (orderId) async {
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator()),
-                        );
-                        final order = await OrdersService().getOrderById(orderId);
-                        if (context.mounted) {
-                          Navigator.pop(context); // Cerrar loading dialog
-                          if (order != null) {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              useRootNavigator: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (ctx) => OrderDetailSheet(order: order),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('No se pudo cargar el pedido. Es posible que haya sido eliminado.')),
-                            );
+                    return AdminLayout(
+                      title: 'Movimientos de Crédito',
+                      body: CustomerCreditMovementsScreen(
+                        creditId: creditId,
+                        customerName:
+                            args['customerName'] ??
+                            state.uri.queryParameters['name'] ??
+                            '',
+                        currentDebt:
+                            args['currentDebt'] ??
+                            double.tryParse(
+                              state.uri.queryParameters['debt'] ?? '0',
+                            ) ??
+                            0.0,
+                        creditLimit:
+                            args['creditLimit'] ??
+                            double.tryParse(
+                              state.uri.queryParameters['limit'] ?? '0',
+                            ) ??
+                            0.0,
+                        onOpenOrder: (orderId) async {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder:
+                                (_) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                          );
+                          final order = await OrdersService().getOrderById(
+                            orderId,
+                          );
+                          if (context.mounted) {
+                            Navigator.pop(context); // Cerrar loading dialog
+                            if (order != null) {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                useRootNavigator: true,
+                                backgroundColor: Colors.transparent,
+                                builder:
+                                    (ctx) => OrderDetailSheet(order: order),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'No se pudo cargar el pedido. Es posible que haya sido eliminado.',
+                                  ),
+                                ),
+                              );
+                            }
                           }
-                        }
-                      },
+                        },
+                      ),
                     );
                   },
                 ),
                 GoRoute(
                   path: 'customer-credits',
-                  builder: (context, state) => const CustomerCreditsScreen(),
+                  builder:
+                      (context, state) => const AdminLayout(
+                        title: 'Cuentas por Cobrar',
+                        body: CustomerCreditsScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'customer-detail/:id',
@@ -408,28 +429,79 @@ class AppRouter {
                         ),
                       );
                     }
-                    return CustomerDetailScreen(
-                      customer: customer as dynamic,
-                      onViewAllOrders: () {
-                        // Delegado al router global para evitar acoplamiento en features/customers
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChangeNotifierProvider(
-                              create: (_) => OrdersProvider(customerIdFilter: customerId),
-                              child: OrdersScreen(
-                                customTitle: 'Pedidos de ${customer?.fullName ?? ''}',
-                              ),
+                    return AdminLayout(
+                      title:
+                          (customer as dynamic)?.fullName ??
+                          'Detalle de Cliente',
+                      showBackButton: true,
+                      body: CustomerDetailScreen(
+                        customer: customer as dynamic,
+                        onViewAllOrders: () {
+                          // Delegado al router global para evitar acoplamiento en features/customers
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => ChangeNotifierProvider(
+                                    create:
+                                        (_) => OrdersProvider(
+                                          customerIdFilter: customerId,
+                                        ),
+                                    child: OrdersScreen(
+                                      customTitle:
+                                          'Pedidos de ${(customer as dynamic)?.fullName ?? ''}',
+                                    ),
+                                  ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
                 GoRoute(
                   path: 'customers',
-                  builder: (context, state) => const CustomersScreen(),
+                  builder: (context, state) {
+                    return MultiBlocProvider(
+                      providers: [
+                        BlocProvider(
+                          create:
+                              (_) =>
+                                  sl<CustomersCubit>()
+                                    ..fetchCustomers(reset: true),
+                        ),
+                        BlocProvider(
+                          create: (_) => sl<CustomersStatsCubit>()..loadStats(),
+                        ),
+                        BlocProvider(
+                          create:
+                              (_) =>
+                                  sl<TopCustomersCubit>()..loadTopCustomers(),
+                        ),
+                      ],
+                      child: Builder(
+                        builder:
+                            (innerContext) => AdminLayout(
+                              title: 'Clientes',
+                              showBackButton: true,
+                              settingsActions: const [
+                                PopupMenuItem(
+                                  value: 'export',
+                                  child: Text('Exportar a PDF'),
+                                ),
+                              ],
+                              onSettingsSelected: (value) {
+                                if (value == 'export') {
+                                  innerContext
+                                      .read<CustomersCubit>()
+                                      .exportPdf();
+                                }
+                              },
+                              body: const CustomersScreen(),
+                            ),
+                      ),
+                    );
+                  },
                 ),
                 GoRoute(
                   path: 'top-customers',
@@ -510,7 +582,10 @@ class AppRouter {
                   builder: (context, state) {
                     final args = state.extra as Map<String, dynamic>? ?? {};
                     return AdminLayout(
-                      title: args['productToEdit'] != null ? 'Editar Producto' : 'Nuevo Producto',
+                      title:
+                          args['productToEdit'] != null
+                              ? 'Editar Producto'
+                              : 'Nuevo Producto',
                       showBackButton: true,
                       showProfileButton: false,
                       showDrawerButton: false,
@@ -628,7 +703,8 @@ class AppRouter {
                   builder: (context, state) {
                     final config = context.watch<AppConfigCubit>();
                     return BlocProvider(
-                      create: (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
+                      create:
+                          (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
                       child: CustomerCatalogScreen(
                         businessName: config.businessName,
                         businessAddress: config.businessAddress,
@@ -687,7 +763,8 @@ class AppRouter {
                 GoRoute(
                   path: '/customer/locations',
                   builder: (context, state) {
-                    final customerId = context.read<AuthCubit>().state.currentUser?.id ?? '';
+                    final customerId =
+                        context.read<AuthCubit>().state.currentUser?.id ?? '';
                     return LocationManagementScreen(customerId: customerId);
                   },
                 ),
@@ -840,4 +917,3 @@ class GoRouterRefreshStream extends ChangeNotifier {
     super.dispose();
   }
 }
-

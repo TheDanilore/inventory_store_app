@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -6,7 +6,6 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
 
 class CustomerCreditsScreen extends StatefulWidget {
@@ -31,16 +30,21 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen> {
       create: (_) => sl<CustomerCreditListCubit>()..loadAccounts(),
       child: Builder(
         builder: (context) {
-          return AdminLayout(
-            title: 'Cuentas por Cobrar',
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: () {
-                  context.read<CustomerCreditListCubit>().loadAccounts();
-                },
-              ),
-            ],
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              title: const Text('Cuentas por Cobrar'),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    context.read<CustomerCreditListCubit>().loadAccounts();
+                  },
+                ),
+              ],
+            ),
             body: Column(
               children: [
                 // Búsqueda

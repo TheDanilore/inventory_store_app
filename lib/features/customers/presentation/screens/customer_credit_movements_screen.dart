@@ -4,7 +4,6 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_movements_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_movements_state.dart';
 
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credit_movements/movements_summary_header.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credit_movements/movement_card.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -91,8 +90,13 @@ class _CustomerCreditMovementsScreenContentState
             ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
             : 0.0;
 
-    return AdminLayout(
-      title: 'Movimientos de Crédito',
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: const Text('Movimientos de Crédito'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Column(
         children: [
           MovementsSummaryHeader(

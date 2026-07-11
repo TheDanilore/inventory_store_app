@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers_state.dart';
@@ -13,22 +12,13 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/customers/data/repositories_impl/customer_pdf_generator_impl.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => sl<CustomersCubit>()..fetchCustomers(reset: true)),
-        BlocProvider(create: (_) => sl<CustomersStatsCubit>()..loadStats()),
-        BlocProvider(create: (_) => sl<TopCustomersCubit>()..loadTopCustomers()),
-      ],
-      child: const _CustomersScreenContent(),
-    );
+    return const _CustomersScreenContent();
   }
 }
 
@@ -88,19 +78,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
     return BlocBuilder<CustomersCubit, CustomersState>(
       builder: (context, state) {
         final isLoading = state is CustomersLoading;
-        return AdminLayout(
-          title: 'Clientes',
-          showBackButton: true,
-          settingsActions: const [
-            PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
-          ],
-          onSettingsSelected: (value) {
-            if (value == 'export') {
-              if (state is CustomersLoaded) {
-                CustomerPdfGenerator.shareOrPrintPdf(state.customers);
-              }
-            }
-          },
+        return Scaffold(
+          backgroundColor: Colors.transparent,
           floatingActionButton:
               _tabCtrl.index == 0 && _searchCtrl.text.isEmpty
                   ? FloatingActionButton(
