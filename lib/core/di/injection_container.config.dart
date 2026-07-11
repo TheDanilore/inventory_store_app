@@ -333,13 +333,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i1018.CatalogRepository>()),
     );
-    gh.factory<_i160.CustomerCatalogCubit>(
-      () => _i160.CustomerCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        getProductStockUC: gh<_i958.GetProductStockUC>(),
-      ),
-    );
     gh.lazySingleton<_i36.GetCustomersUseCase>(
       () => _i36.GetCustomersUseCase(gh<_i875.CustomersRepository>()),
     );
@@ -541,6 +534,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i263.AddCustomerLocationUseCase>(),
         gh<_i263.UpdateCustomerLocationUseCase>(),
         gh<_i263.DeleteCustomerLocationUseCase>(),
+      ),
+    );
+    gh.factory<_i160.CustomerCatalogCubit>(
+      () => _i160.CustomerCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
+        catalogRepository: gh<_i1018.CatalogRepository>(),
       ),
     );
     gh.factory<_i556.AppConfigCubit>(

@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class ProductPricingSection extends StatelessWidget {
   final GlobalKey<FormState> formKey;
+  final TextEditingController costoCtrl;
+  final TextEditingController precioCtrl;
+  final TextEditingController precioMayorCtrl;
+  final TextEditingController cantidadMayorCtrl;
 
-  const ProductPricingSection({super.key, required this.formKey});
+  const ProductPricingSection({
+    super.key,
+    required this.formKey,
+    required this.costoCtrl,
+    required this.precioCtrl,
+    required this.precioMayorCtrl,
+    required this.cantidadMayorCtrl,
+  });
 
   double? _parseDecimal(String value) {
     final normalized = value.trim().replaceAll(',', '.');
@@ -59,8 +68,7 @@ class ProductPricingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<ProductFormCubit>();
-
+    // No se lee el Cubit aquí — todos los datos llegan por parámetro.
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -92,7 +100,7 @@ class ProductPricingSection extends StatelessWidget {
             children: [
               Expanded(
                 child: AppTextField(
-                  controller: cubit.costoCtrl,
+                  controller: costoCtrl,
                   label: 'Costo (S/.)',
                   icon: Icons.attach_money,
                   keyboardType: TextInputType.number,
@@ -103,12 +111,12 @@ class ProductPricingSection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: AppTextField(
-                  controller: cubit.precioCtrl,
+                  controller: precioCtrl,
                   label: 'Precio Venta (S/.)',
                   icon: Icons.sell_outlined,
                   keyboardType: TextInputType.number,
-                  validator:
-                      (val) => _validateSalePrice(val, cubit.costoCtrl.text),
+                  validator: (val) =>
+                      _validateSalePrice(val, costoCtrl.text),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),
@@ -122,23 +130,22 @@ class ProductPricingSection extends StatelessWidget {
             children: [
               Expanded(
                 child: AppTextField(
-                  controller: cubit.precioMayorCtrl,
+                  controller: precioMayorCtrl,
                   label: 'Precio Mayorista',
                   icon: Icons.local_offer_outlined,
                   keyboardType: TextInputType.number,
-                  validator:
-                      (val) => _validateWholesalePrice(
-                        val,
-                        cubit.costoCtrl.text,
-                        cubit.precioCtrl.text,
-                      ),
+                  validator: (val) => _validateWholesalePrice(
+                    val,
+                    costoCtrl.text,
+                    precioCtrl.text,
+                  ),
                   onChanged: (_) => formKey.currentState?.validate(),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: AppTextField(
-                  controller: cubit.cantidadMayorCtrl,
+                  controller: cantidadMayorCtrl,
                   label: 'Cant. Mínima',
                   icon: Icons.numbers,
                   keyboardType: TextInputType.number,

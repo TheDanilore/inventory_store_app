@@ -166,4 +166,9 @@ abstract class CatalogRepository {
     String profileId,
   );
   Future<Either<Failure, void>> clearCache();
+
+  // Historial de búsqueda (capa de datos — SharedPreferences en repositorio)
+  Future<List<String>> getSearchHistory();
+  Future<void> saveSearchHistory(List<String> history);
+  Future<void> clearSearchHistory();
 }

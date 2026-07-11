@@ -1,11 +1,11 @@
-import 'package:injectable/injectable.dart';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
+import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_image_ucs.dart';
@@ -15,8 +15,6 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/get_current
 import 'package:inventory_store_app/features/catalog/domain/usecases/save_product_usecase.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'product_form_state.dart';
 
 @injectable
@@ -38,36 +36,26 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   ProductEntity? _productToEdit;
 
-  // Controladores Generales
-  final nombreCtrl = TextEditingController();
-  final costoCtrl = TextEditingController();
-  final precioCtrl = TextEditingController();
-  final precioMayorCtrl = TextEditingController();
-  final cantidadMayorCtrl = TextEditingController();
-  final descCtrl = TextEditingController();
-
-  // Estados de Configuración
   String _productType = 'good';
   bool _stockControl = true;
   bool _batchManagementEnabled = false;
   bool _ingredientsEnabled = false;
 
-  // Colecciones dinámicas
-  final List<DetailControllers> detailRows = [];
-  final List<IngredientRow> ingredientRows = [];
-  final List<FormImageItem> formImages = [];
-  final List<VariantDraftFormModel> variantDrafts = [];
-  final List<String> _removedVariantIds = [];
-
-  // Categorías
   String? _selectedCategoryId;
   List<CategoryEntity> _categories = [];
   bool _isLoadingCategories = true;
 
-  // Flags de progreso
   bool _isInitializingData = false;
   bool _isSaving = false;
   bool _isDirty = false;
+  bool _hasErrorLoading = false;
+  String _errorMessage = '';
+
+  List<DetailModel> _detailRows = [];
+  List<IngredientRowModel> _ingredientRows = [];
+  List<FormImageItem> _formImages = [];
+  List<VariantDraftFormModel> _variantDrafts = [];
+  final List<String> _removedVariantIds = [];
 
   ProductFormCubit(
     this._getCategoriesUC,
@@ -81,28 +69,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     this._saveProductUC,
   ) : super(ProductFormState.initial());
 
-  bool _hasErrorLoading = false;
-  String _errorMessage = '';
-
-  // Getters
+  // ── Getters ──────────────────────────────────────────────────────────────────
   bool get isInitializingData => _isInitializingData;
   bool get hasErrorLoading => _hasErrorLoading;
   String get errorMessage => _errorMessage;
-
   bool get isSaving => _isSaving;
   bool get hasUnsavedChanges => _isDirty;
-  bool get isLoadingCategories => _isLoadingCategories;
-  List<CategoryEntity> get categories => _categories;
-  String? get selectedCategoryId => _selectedCategoryId;
-
-  String get productType => _productType;
-  bool get stockControl => _stockControl;
-  bool get batchManagementEnabled => _batchManagementEnabled;
-  bool get ingredientsEnabled => _ingredientsEnabled;
-
   ProductEntity? get productToEdit => _productToEdit;
 
-  // Setters
+  // ── Setters de configuración ─────────────────────────────────────────────────
   void setProductType(String type) {
     _productType = type;
     if (_productType == 'service') {
@@ -153,55 +128,62 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         stockControl: _stockControl,
         batchManagementEnabled: _batchManagementEnabled,
         ingredientsEnabled: _ingredientsEnabled,
-        detailRows: List.of(detailRows),
-        ingredientRows: List.of(ingredientRows),
-        formImages: List.of(formImages),
-        variantDrafts: List.of(variantDrafts),
+        detailRows: List.of(_detailRows),
+        ingredientRows: List.of(_ingredientRows),
+        formImages: List.of(_formImages),
+        variantDrafts: List.of(_variantDrafts),
         removedVariantIds: List.of(_removedVariantIds),
+        clearSnacks: true,
       ),
     );
   }
 
   void markAsDirty() {
-    if (!_isDirty) {
-      _isDirty = true;
-    }
+    if (!_isDirty) _isDirty = true;
   }
 
-  // --- Inicialización ---
+  // ── Inicialización ───────────────────────────────────────────────────────────
 
-  Future<void> loadInitialData(ProductEntity? product) async {
+  /// Carga los datos iniciales del formulario a partir de la entidad de producto.
+  /// Retorna los valores iniciales de los controllers como [ProductFormInitialValues]
+  /// para que la pantalla los inyecte en sus propios [TextEditingController].
+  Future<ProductFormInitialValues> loadInitialData(
+    ProductEntity? product,
+  ) async {
     _productToEdit = product;
     _isInitializingData = true;
     _hasErrorLoading = false;
     _errorMessage = '';
+    _detailRows = [];
+    _ingredientRows = [];
+    _formImages = [];
+    _variantDrafts = [];
     _syncState();
+
+    // Valores de texto para los controllers de la pantalla
+    String nombre = '';
+    String costo = '';
+    String precio = '';
+    String precioMayor = '';
+    String cantidadMayor = '3';
+    String desc = '';
 
     try {
       if (product != null) {
-        // Editar
-        nombreCtrl.text = product.name;
-        costoCtrl.text = product.unitCost.toString();
-        precioCtrl.text = product.salePrice.toString();
-        precioMayorCtrl.text = product.wholesalePrice?.toString() ?? '';
-        cantidadMayorCtrl.text = product.wholesaleMinQuantity.toString();
-        descCtrl.text = product.description ?? '';
+        nombre = product.name;
+        costo = product.unitCost.toString();
+        precio = product.salePrice.toString();
+        precioMayor = product.wholesalePrice?.toString() ?? '';
+        cantidadMayor = product.wholesaleMinQuantity.toString();
+        desc = product.description ?? '';
         _selectedCategoryId = product.categoryId;
-
         _productType = product.productType;
         _stockControl = product.stockControl;
         _batchManagementEnabled = product.usesBatches;
 
-        if (product.details.isNotEmpty) {
-          product.details.forEach((key, value) {
-            detailRows.add(
-              DetailControllers(
-                keyCtrl: TextEditingController(text: key),
-                valueCtrl: TextEditingController(text: value.toString()),
-              ),
-            );
-          });
-        }
+        product.details.forEach((key, value) {
+          _detailRows.add(DetailModel(key: key, value: value.toString()));
+        });
 
         await Future.wait([
           _fetchCategories(),
@@ -210,12 +192,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           _fetchVariants(product.id),
         ]);
       } else {
-        // Nuevo
-        cantidadMayorCtrl.text = '3';
         await _fetchCategories();
       }
     } catch (e) {
-      debugPrint('Error en loadInitialData: $e');
       _hasErrorLoading = true;
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
@@ -230,6 +209,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       _isInitializingData = false;
       _syncState();
     }
+
+    return ProductFormInitialValues(
+      nombre: nombre,
+      costo: costo,
+      precio: precio,
+      precioMayor: precioMayor,
+      cantidadMayor: cantidadMayor,
+      desc: desc,
+    );
   }
 
   Future<void> _fetchCategories() async {
@@ -240,7 +228,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<void> _fetchProductImages(String productId) async {
     final images = await _unwrap(_getProductImagesUC.call(productId));
-    formImages.addAll(images.map((img) => FormImageItem(existing: img)));
+    _formImages.addAll(images.map((img) => FormImageItem(existing: img)));
     _syncState();
   }
 
@@ -248,8 +236,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     final list = await _unwrap(_getProductIngredientsUC.call(productId));
     for (final row in list) {
       final activeIng = row['active_ingredients'] as Map<String, dynamic>?;
-      ingredientRows.add(
-        IngredientRow(
+      _ingredientRows.add(
+        IngredientRowModel(
           ingredientId: row['ingredient_id'] as String,
           name: activeIng?['name'] as String? ?? '',
           concentration: row['concentration']?.toString() ?? '',
@@ -257,118 +245,121 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         ),
       );
     }
-    if (ingredientRows.isNotEmpty) _ingredientsEnabled = true;
+    if (_ingredientRows.isNotEmpty) _ingredientsEnabled = true;
     _syncState();
   }
 
   Future<void> _fetchVariants(String productId) async {
     try {
       final drafts = await _unwrap(_getVariantsDraftsUC.call(productId));
-      variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
-    } catch (e) {
-      // El error se silencia o se maneja en el cubit. Aquí lo notificaremos por Snackbar desde UI idealmente.
-    }
+      _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
+    } catch (_) {}
     _syncState();
   }
 
-  // --- Manejo de Detalles y Formato ---
+  // ── Detalles ─────────────────────────────────────────────────────────────────
 
   void addDetailRow() {
-    detailRows.add(
-      DetailControllers(
-        keyCtrl: TextEditingController(),
-        valueCtrl: TextEditingController(),
-      ),
-    );
+    _detailRows = [..._detailRows, DetailModel()];
     markAsDirty();
     _syncState();
   }
 
   void removeDetailRow(int index) {
-    detailRows[index].dispose();
-    detailRows.removeAt(index);
+    _detailRows = List.of(_detailRows)..removeAt(index);
     markAsDirty();
     _syncState();
   }
 
+  // ── Ingredientes ─────────────────────────────────────────────────────────────
+
   void addIngredientRow() {
-    ingredientRows.add(IngredientRow());
+    _ingredientRows = [..._ingredientRows, IngredientRowModel()];
     markAsDirty();
     _syncState();
   }
 
   void removeIngredientRow(int index) {
-    ingredientRows[index].dispose();
-    ingredientRows.removeAt(index);
+    _ingredientRows = List.of(_ingredientRows)..removeAt(index);
     markAsDirty();
     _syncState();
   }
 
-  // --- Imágenes ---
-
-  Future<void> pickImages(BuildContext context) async {
-    final picker = ImagePicker();
-    final archivos = await picker.pickMultiImage();
-
-    if (archivos.isNotEmpty) {
-      const maxImages = 5;
-      final int currentCount = formImages.length;
-
-      if (currentCount >= maxImages) {
-        if (context.mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Límite de imágenes alcanzado ($maxImages).',
-            backgroundColor: Colors.orange,
-          );
-        }
-        return;
-      }
-
-      var duplicadas = 0;
-      var excedidas = 0;
-      final nuevosItems = <FormImageItem>[];
-
-      for (final archivo in archivos) {
-        if (currentCount + nuevosItems.length >= maxImages) {
-          excedidas++;
-          continue;
-        }
-
-        final nombre = _normalizarNombreArchivo(archivo);
-        if (formImages.any((img) => !img.isExisting && img.newName == nombre)) {
-          duplicadas++;
-          continue;
-        }
-
-        final bytesOriginales = await archivo.readAsBytes();
-        final bytesOptimizados = await _optimizarImagen(bytesOriginales);
-
-        nuevosItems.add(
-          FormImageItem(newBytes: bytesOptimizados, newName: nombre),
-        );
-      }
-
-      formImages.addAll(nuevosItems);
-      markAsDirty();
-      _syncState();
-
-      if ((duplicadas > 0 || excedidas > 0) && context.mounted) {
-        String msg = '';
-        if (duplicadas > 0) msg += '$duplicadas repetida(s). ';
-        if (excedidas > 0) msg += '$excedidas exceden el límite de $maxImages.';
-
-        AppSnackbar.show(
-          context,
-          message: msg.trim(),
-          backgroundColor: Colors.orange,
-        );
-      }
-    }
+  /// Actualiza los datos de una fila de ingrediente desde la UI.
+  void updateIngredientRow(int index, IngredientRowModel updated) {
+    final rows = List.of(_ingredientRows);
+    rows[index] = updated;
+    _ingredientRows = rows;
+    markAsDirty();
+    _syncState();
   }
 
-  Future<void> removeImage(BuildContext context, int index) async {
-    final item = formImages[index];
+  // ── Imágenes ─────────────────────────────────────────────────────────────────
+
+  /// Abre el selector de imágenes y procesa las seleccionadas.
+  /// El resultado (mensajes de advertencia) se emite como estado — sin [BuildContext].
+  Future<void> pickImages() async {
+    final picker = ImagePicker();
+    final archivos = await picker.pickMultiImage();
+    if (archivos.isEmpty) return;
+
+    const maxImages = 5;
+    final currentCount = _formImages.length;
+
+    if (currentCount >= maxImages) {
+      emit(
+        state.copyWith(
+          snackMessage: 'Límite de imágenes alcanzado ($maxImages).',
+        ),
+      );
+      return;
+    }
+
+    var duplicadas = 0;
+    var excedidas = 0;
+    final nuevosItems = <FormImageItem>[];
+
+    for (final archivo in archivos) {
+      if (currentCount + nuevosItems.length >= maxImages) {
+        excedidas++;
+        continue;
+      }
+
+      final nombre = _normalizarNombreArchivo(archivo);
+      if (_formImages.any((img) => !img.isExisting && img.newName == nombre)) {
+        duplicadas++;
+        continue;
+      }
+
+      final bytesOriginales = await archivo.readAsBytes();
+      final bytesOptimizados = await _optimizarImagen(bytesOriginales);
+      nuevosItems.add(
+        FormImageItem(newBytes: bytesOptimizados, newName: nombre),
+      );
+    }
+
+    _formImages = [..._formImages, ...nuevosItems];
+    markAsDirty();
+
+    String? snackMsg;
+    if (duplicadas > 0 || excedidas > 0) {
+      String msg = '';
+      if (duplicadas > 0) msg += '$duplicadas repetida(s). ';
+      if (excedidas > 0) msg += '$excedidas exceden el límite de $maxImages.';
+      snackMsg = msg.trim();
+    }
+
+    emit(
+      state.copyWith(
+        formImages: List.of(_formImages),
+        isDirty: _isDirty,
+        snackMessage: snackMsg,
+      ),
+    );
+  }
+
+  Future<void> removeImage(int index) async {
+    final item = _formImages[index];
 
     if (item.isExisting) {
       try {
@@ -378,53 +369,46 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             item.existing!.imageUrl,
           ),
         );
-        if (context.mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Imagen eliminada',
-            backgroundColor: AppColors.success,
-          );
-        }
       } catch (e) {
-        debugPrint('Error deleting product image: $e');
-        if (context.mounted) {
-          final errStr = e.toString().toLowerCase();
-          String msg = 'Ocurrió un error al intentar actualizar el estado.';
-          if (errStr.contains('socketexception') ||
-              errStr.contains('clientexception') ||
-              errStr.contains('failed host lookup')) {
-            msg = 'Sin conexión a internet.';
-          }
-          AppSnackbar.show(context, message: msg, type: SnackbarType.error);
-        }
+        emit(state.copyWith(snackError: _parseNetworkError(e)));
         return;
       }
     }
 
-    formImages.removeAt(index);
+    _formImages = List.of(_formImages)..removeAt(index);
     markAsDirty();
-    _syncState();
+    emit(
+      state.copyWith(
+        formImages: List.of(_formImages),
+        isDirty: _isDirty,
+        snackMessage: item.isExisting ? 'Imagen eliminada.' : null,
+      ),
+    );
   }
 
   void reorderImages(int oldIndex, int newIndex) {
-    final item = formImages.removeAt(oldIndex);
-    formImages.insert(newIndex, item);
+    final list = List.of(_formImages);
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    _formImages = list;
     markAsDirty();
     _syncState();
   }
 
-  // --- Variantes ---
+  // ── Variantes ────────────────────────────────────────────────────────────────
 
   void addVariantDraft() {
-    variantDrafts.add(VariantDraftFormModel());
+    _variantDrafts = [..._variantDrafts, VariantDraftFormModel()];
     markAsDirty();
     _syncState();
   }
 
   void duplicateVariantDraft(int index) {
-    final original = variantDrafts[index];
+    final original = _variantDrafts[index];
     final copiedAttributes =
-        original.selectedAttributes.map((a) => Map<String, dynamic>.from(a)).toList();
+        original.selectedAttributes
+            .map((a) => Map<String, dynamic>.from(a))
+            .toList();
     final copy = original.copyWith(
       id: null,
       sku: original.sku.isNotEmpty ? '${original.sku}-COPY' : '',
@@ -438,16 +422,17 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       urlsExistentes: List.of(original.urlsExistentes),
       nuevasImagenes: List.of(original.nuevasImagenes),
     );
-    variantDrafts.insert(index + 1, copy);
+    final list = List.of(_variantDrafts)..insert(index + 1, copy);
+    _variantDrafts = list;
     markAsDirty();
     _syncState();
   }
 
-  Future<void> removeVariantDraft(BuildContext context, int index) async {
-    final draft = variantDrafts[index];
+  Future<void> removeVariantDraft(int index) async {
+    final draft = _variantDrafts[index];
 
     if (draft.id == null) {
-      variantDrafts.removeAt(index);
+      _variantDrafts = List.of(_variantDrafts)..removeAt(index);
       markAsDirty();
       _syncState();
       return;
@@ -456,46 +441,32 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     try {
       final hasSales = await _unwrap(_hasVariantSalesUC(draft.id!));
       if (hasSales) {
-        if (context.mounted) {
-          AppSnackbar.show(
-            context,
-            message:
-                "No se puede eliminar: Esta variante tiene ventas asociadas.",
-            backgroundColor: Colors.red,
-          );
-        }
+        emit(
+          state.copyWith(
+            snackError:
+                'No se puede eliminar: Esta variante tiene ventas asociadas.',
+          ),
+        );
         return;
       }
 
       await _unwrap(_deleteVariantUC.call(draft.id!));
-      // immutable model: nothing to dispose
-      variantDrafts.removeAt(index);
+      _variantDrafts = List.of(_variantDrafts)..removeAt(index);
       markAsDirty();
-      _syncState();
-
-      if (context.mounted) {
-        AppSnackbar.show(
-          context,
-          message: "Variante y su imagen eliminadas correctamente.",
-        );
-      }
+      emit(
+        state.copyWith(
+          variantDrafts: List.of(_variantDrafts),
+          isDirty: _isDirty,
+          snackMessage: 'Variante y su imagen eliminadas correctamente.',
+        ),
+      );
     } catch (e) {
-      debugPrint('Error deleting product image: $e');
-      if (context.mounted) {
-        final errStr = e.toString().toLowerCase();
-        String msg = 'Error al intentar eliminar.';
-        if (errStr.contains('socketexception') ||
-            errStr.contains('clientexception') ||
-            errStr.contains('failed host lookup')) {
-          msg = 'Sin conexión a internet.';
-        }
-        AppSnackbar.show(context, message: msg, type: SnackbarType.error);
-      }
+      emit(state.copyWith(snackError: _parseNetworkError(e)));
     }
   }
 
-  Future<void> pickVariantImage(BuildContext context, int index) async {
-    final draft = variantDrafts[index];
+  Future<void> pickVariantImage(int index) async {
+    final draft = _variantDrafts[index];
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
 
@@ -507,114 +478,76 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         urlsExistentes: [],
         nuevasImagenes: [bytesOptimizados],
       );
-      variantDrafts[index] = updated;
+      final list = List.of(_variantDrafts);
+      list[index] = updated;
+      _variantDrafts = list;
       markAsDirty();
       _syncState();
     }
   }
 
   void updateVariantDraft(int index, VariantDraftFormModel updated) {
-    variantDrafts[index] = updated;
+    final list = List.of(_variantDrafts);
+    list[index] = updated;
+    _variantDrafts = list;
     markAsDirty();
     _syncState();
   }
 
-  // --- Helper Compress/Upload ---
+  // ── Guardado ─────────────────────────────────────────────────────────────────
 
-  Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
-    if (bytesOriginales.lengthInBytes < 250 * 1024) {
-      return bytesOriginales;
-    }
-    try {
-      final bytesComprimidos = await FlutterImageCompress.compressWithList(
-        bytesOriginales,
-        minWidth: 1024,
-        minHeight: 1024,
-        quality: 75,
-        format: CompressFormat.jpeg,
-      );
-      if (bytesComprimidos.isNotEmpty &&
-          bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
-        return bytesComprimidos;
-      }
-    } catch (e) {
-      debugPrint('Error compresión: $e');
-    }
-    return bytesOriginales;
-  }
-
-  String _normalizarNombreArchivo(XFile archivo) {
-    final rawName = archivo.name.trim();
-    if (rawName.isNotEmpty) return rawName.toLowerCase();
-    final segments = archivo.path.split(RegExp(r'[\\/]'));
-    return segments.isEmpty
-        ? archivo.path.toLowerCase()
-        : segments.last.toLowerCase();
-  }
-
-  double? _parseDecimal(String value) {
-    final normalized = value.trim().replaceAll(',', '.');
-    if (normalized.isEmpty) return null;
-    return double.tryParse(normalized);
-  }
-
-  // --- Guardado General ---
-
-  Future<bool> saveProduct(
-    BuildContext context,
-    GlobalKey<FormState> formKey,
-  ) async {
-    if (!formKey.currentState!.validate()) return false;
-
-    final skus = variantDrafts
-      .where((d) => d.sku.trim().isNotEmpty)
-      .map((d) => d.sku.trim().toLowerCase());
-
+  /// Guarda el producto. No recibe [BuildContext] ni [GlobalKey<FormState>].
+  /// Los datos del formulario (controllers) son leídos por la pantalla y pasados
+  /// como primitivos. El resultado se señala mediante [ProductFormState.saveSuccess]
+  /// o [ProductFormState.snackError].
+  Future<void> saveProduct({
+    required String nombre,
+    required String costo,
+    required String precio,
+    required String precioMayor,
+    required String cantidadMayor,
+    required String desc,
+    required List<IngredientRowModel> ingredients,
+  }) async {
+    // Validación de SKUs duplicados (regla de negocio)
+    final skus = _variantDrafts
+        .where((d) => d.sku.trim().isNotEmpty)
+        .map((d) => d.sku.trim().toLowerCase());
     if (skus.toSet().length != skus.length) {
-      AppSnackbar.show(
-        context,
-        message: "Hay SKUs duplicados en las variantes.",
-        backgroundColor: Colors.red,
-      );
-      return false;
+      emit(state.copyWith(snackError: 'Hay SKUs duplicados en las variantes.'));
+      return;
     }
 
     _isSaving = true;
     _syncState();
 
     try {
-      final Map<String, String> detailsMap = {};
-      for (final row in detailRows) {
-        final key = row.keyCtrl.text.trim();
-        final value = row.valueCtrl.text.trim();
-        if (key.isNotEmpty) detailsMap[key] = value;
-      }
-
       final isUpdating = _productToEdit != null;
-      final unitCost = _parseDecimal(costoCtrl.text)!;
-      final salePrice = _parseDecimal(precioCtrl.text)!;
-      final wholesalePrice =
-          precioMayorCtrl.text.trim().isEmpty
-              ? null
-              : _parseDecimal(precioMayorCtrl.text);
+      final unitCost = _parseDecimal(costo)!;
+      final salePrice = _parseDecimal(precio)!;
+      final wholesalePriceVal =
+          precioMayor.trim().isEmpty ? null : _parseDecimal(precioMayor);
 
       final profileIdRes = await _getCurrentProfileIdUC.call();
       final profileId = profileIdRes.fold((l) => null, (r) => r);
 
       final productEntity = ProductEntity(
         id: isUpdating ? _productToEdit!.id : '',
-        name: nombreCtrl.text.trim(),
+        name: nombre.trim(),
         unitCost: unitCost,
         salePrice: salePrice,
-        wholesalePrice: wholesalePrice,
+        wholesalePrice: wholesalePriceVal,
         wholesaleMinQuantity:
-            cantidadMayorCtrl.text.trim().isEmpty
+            cantidadMayor.trim().isEmpty
                 ? 3
-                : (int.tryParse(cantidadMayorCtrl.text) ?? 3),
+                : (int.tryParse(cantidadMayor) ?? 3),
         isActive: isUpdating ? _productToEdit!.isActive : true,
-        description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+        description: desc.trim().isEmpty ? null : desc.trim(),
         categoryId: _selectedCategoryId,
-        details: detailsMap,
+        details: {
+          for (final d in _detailRows)
+            if (d.key.trim().isNotEmpty) d.key.trim(): d.value.trim(),
+        },
         productType: _productType,
         stockControl: _stockControl,
         usesBatches: _batchManagementEnabled,
@@ -630,7 +563,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       );
 
       final imagesPayload =
-          formImages.map((item) {
+          _formImages.map((item) {
             return ImagePayload(
               existingId: item.isExisting ? item.existing!.id : null,
               existingUrl: item.isExisting ? item.existing!.imageUrl : null,
@@ -639,12 +572,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           }).toList();
 
       final variantsPayload =
-          variantDrafts.map((draft) {
-            final valueIds = draft.selectedAttributes
-              .map((attr) => attr['value_id'] as String)
-              .toList();
+          _variantDrafts.map((draft) {
+            final valueIds =
+                draft.selectedAttributes
+                    .map((attr) => attr['value_id'] as String)
+                    .toList();
             final skuValue = draft.sku.trim();
-
             return VariantPayload(
               id: draft.id,
               sku: skuValue.isEmpty ? null : skuValue,
@@ -655,36 +588,30 @@ class ProductFormCubit extends Cubit<ProductFormState> {
               reorderPoint: int.tryParse(draft.reorderPoint),
               isActive: draft.isActive,
               attributeValueIds: valueIds,
-              clearImages: draft.id != null &&
-                (draft.urlsExistentes.isEmpty || draft.nuevasImagenes.isNotEmpty),
-              newImageBytes: draft.nuevasImagenes.isNotEmpty
-                ? draft.nuevasImagenes.first
-                : null,
+              clearImages:
+                  draft.id != null &&
+                  (draft.urlsExistentes.isEmpty ||
+                      draft.nuevasImagenes.isNotEmpty),
+              newImageBytes:
+                  draft.nuevasImagenes.isNotEmpty
+                      ? draft.nuevasImagenes.first
+                      : null,
             );
           }).toList();
 
       final ingredientsPayload =
-          ingredientRows
-              .where(
-                (r) =>
-                    r.ingredientId != null && r.nameCtrl.text.trim().isNotEmpty,
-              )
+          ingredients
+              .where((r) => r.ingredientId != null && r.name.trim().isNotEmpty)
               .map(
                 (row) => IngredientPayload(
                   ingredientId: row.ingredientId!,
                   concentration:
-                      row.concentrationCtrl.text.trim().isEmpty
+                      row.concentration.trim().isEmpty
                           ? null
                           : double.tryParse(
-                            row.concentrationCtrl.text.trim().replaceAll(
-                              ',',
-                              '.',
-                            ),
+                            row.concentration.trim().replaceAll(',', '.'),
                           ),
-                  unit:
-                      row.unitCtrl.text.trim().isEmpty
-                          ? null
-                          : row.unitCtrl.text.trim(),
+                  unit: row.unit.trim().isEmpty ? null : row.unit.trim(),
                 ),
               )
               .toList();
@@ -702,63 +629,90 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       final result = await _saveProductUC.call(payload);
 
-      return result.fold(
+      result.fold(
         (failure) {
-          if (context.mounted) _showError(context, failure.message);
-          return false;
+          emit(state.copyWith(snackError: _parseNetworkError(failure.message)));
         },
         (_) {
           _removedVariantIds.clear();
           _isDirty = false;
-          _syncState();
-
-          if (context.mounted) {
-            AppSnackbar.show(
-              context,
-              message: 'Producto guardado con éxito.',
-              type: SnackbarType.success,
-            );
-          }
-          return true;
+          emit(
+            state.copyWith(saveSuccess: true, isDirty: false, isSaving: false),
+          );
         },
       );
     } catch (e) {
-      debugPrint('Error saveProduct: $e');
-      if (context.mounted) _showError(context, e.toString());
-      return false;
+      emit(state.copyWith(snackError: _parseNetworkError(e)));
     } finally {
       _isSaving = false;
-      _syncState();
+      // Solo sincronizamos si no fue un saveSuccess (que ya emitió estado)
+      if (!state.saveSuccess) _syncState();
     }
   }
 
-  void _showError(BuildContext context, String error) {
-    if (!context.mounted) return;
-    final errStr = error.toLowerCase();
-    String msg = 'Ocurrió un error al guardar el producto.';
-    if (errStr.contains('socketexception') ||
-        errStr.contains('clientexception') ||
-        errStr.contains('failed host lookup') ||
-        errStr.contains('timeout')) {
-      msg = 'Error de red. Verifica tu conexión a internet e intenta de nuevo.';
+  // ── Helpers privados ─────────────────────────────────────────────────────────
+
+  String _parseNetworkError(Object e) {
+    final s = e.toString().toLowerCase();
+    if (s.contains('socketexception') ||
+        s.contains('clientexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('timeout')) {
+      return 'Error de red. Verifica tu conexión e intenta de nuevo.';
     }
-    AppSnackbar.show(context, message: msg, type: SnackbarType.error);
+    return 'Ocurrió un error al guardar el producto.';
   }
 
-  @override
-  Future<void> close() async {
-    nombreCtrl.dispose();
-    costoCtrl.dispose();
-    precioCtrl.dispose();
-    precioMayorCtrl.dispose();
-    cantidadMayorCtrl.dispose();
-    descCtrl.dispose();
-    for (final row in detailRows) {
-      row.dispose();
-    }
-    for (final row in ingredientRows) {
-      row.dispose();
-    }
-    super.close();
+  Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
+    if (bytesOriginales.lengthInBytes < 250 * 1024) return bytesOriginales;
+    try {
+      final bytesComprimidos = await FlutterImageCompress.compressWithList(
+        bytesOriginales,
+        minWidth: 1024,
+        minHeight: 1024,
+        quality: 75,
+        format: CompressFormat.jpeg,
+      );
+      if (bytesComprimidos.isNotEmpty &&
+          bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
+        return bytesComprimidos;
+      }
+    } catch (_) {}
+    return bytesOriginales;
   }
+
+  String _normalizarNombreArchivo(XFile archivo) {
+    final rawName = archivo.name.trim();
+    if (rawName.isNotEmpty) return rawName.toLowerCase();
+    final segments = archivo.path.split(RegExp(r'[/\\]'));
+    return segments.isEmpty
+        ? archivo.path.toLowerCase()
+        : segments.last.toLowerCase();
+  }
+
+  double? _parseDecimal(String value) {
+    final normalized = value.trim().replaceAll(',', '.');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
+}
+
+/// Valores de texto iniciales que el Cubit retorna a la pantalla para
+/// inicializar sus propios [TextEditingController].
+class ProductFormInitialValues {
+  final String nombre;
+  final String costo;
+  final String precio;
+  final String precioMayor;
+  final String cantidadMayor;
+  final String desc;
+
+  const ProductFormInitialValues({
+    required this.nombre,
+    required this.costo,
+    required this.precio,
+    required this.precioMayor,
+    required this.cantidadMayor,
+    required this.desc,
+  });
 }

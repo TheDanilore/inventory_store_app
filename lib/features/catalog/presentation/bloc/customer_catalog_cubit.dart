@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
@@ -15,14 +15,19 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
   final GetProductsUC getProductsUC;
   final GetProductStockUC getProductStockUC;
 
+  /// Repositorio inyectado únicamente para las operaciones de historial de búsqueda.
+  /// SharedPreferences permanece en la capa de datos — no en el Cubit.
+  final CatalogRepository _catalogRepository;
+
   static const int _pageSize = 24;
-  static const String _historyKey = 'search_history';
 
   CustomerCatalogCubit({
     required this.getCategoriesUC,
     required this.getProductsUC,
     required this.getProductStockUC,
-  }) : super(const CustomerCatalogState());
+    required CatalogRepository catalogRepository,
+  })  : _catalogRepository = catalogRepository,
+        super(const CustomerCatalogState());
 
   Future<void> loadInitialData() async {
     await _loadSearchHistory();
@@ -33,11 +38,8 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
   // ─── Search History ────────────────────────────────────────────────────────
 
   Future<void> _loadSearchHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final history = prefs.getStringList(_historyKey) ?? [];
-      emit(state.copyWith(searchHistory: history));
-    } catch (_) {}
+    final history = await _catalogRepository.getSearchHistory();
+    emit(state.copyWith(searchHistory: history));
   }
 
   Future<void> saveSearchTerm(String term) async {
@@ -48,18 +50,12 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
     history.insert(0, t);
     if (history.length > 10) history.removeRange(10, history.length);
     emit(state.copyWith(searchHistory: history));
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_historyKey, history);
-    } catch (_) {}
+    await _catalogRepository.saveSearchHistory(history);
   }
 
   Future<void> clearSearchHistory() async {
     emit(state.copyWith(searchHistory: []));
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_historyKey);
-    } catch (_) {}
+    await _catalogRepository.clearSearchHistory();
   }
 
   void setSearchMode(bool mode) {
@@ -143,10 +139,9 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
           stockResult.fold((_) {}, (s) => stock = s);
         }
 
-        final enriched =
-            data.products
-                .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
-                .toList();
+        final enriched = data.products
+            .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
+            .toList();
 
         final updated = List<ProductEntity>.from(state.products)
           ..addAll(enriched);

@@ -1,14 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 
-class ProductDetailsSection extends StatelessWidget {
+/// Sección de Detalles y Especificaciones.
+///
+/// Gestiona un [Map] local de [TextEditingController] indexados por [DetailModel.id].
+/// Esto permite que los controllers sobrevivan los rebuilds del estado del Cubit
+/// sin necesidad de que el Cubit los conozca.
+class ProductDetailsSection extends StatefulWidget {
   const ProductDetailsSection({super.key});
+
+  @override
+  State<ProductDetailsSection> createState() => _ProductDetailsSectionState();
+}
+
+class _ProductDetailsSectionState extends State<ProductDetailsSection> {
+  final Map<String, TextEditingController> _keyControllers = {};
+  final Map<String, TextEditingController> _valueControllers = {};
+
+  @override
+  void dispose() {
+    for (final ctrl in _keyControllers.values) {
+      ctrl.dispose();
+    }
+    for (final ctrl in _valueControllers.values) {
+      ctrl.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Sincroniza los controllers con el estado del Cubit:
+  /// - Crea controllers para nuevas filas.
+  /// - Elimina controllers de filas removidas.
+  void _syncControllers(List<DetailModel> rows) {
+    final ids = rows.map((r) => r.id).toSet();
+
+    // Eliminar controllers huérfanos
+    _keyControllers.keys.toList().forEach((id) {
+      if (!ids.contains(id)) {
+        _keyControllers.remove(id)?.dispose();
+        _valueControllers.remove(id)?.dispose();
+      }
+    });
+
+    // Crear controllers faltantes
+    for (final row in rows) {
+      if (!_keyControllers.containsKey(row.id)) {
+        _keyControllers[row.id] = TextEditingController(text: row.key);
+        _valueControllers[row.id] = TextEditingController(text: row.value);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ProductFormCubit>();
     final state = context.watch<ProductFormCubit>().state;
+
+    _syncControllers(state.detailRows);
 
     return Container(
       width: double.infinity,
@@ -56,7 +106,8 @@ class ProductDetailsSection extends StatelessWidget {
           if (state.detailRows.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(12),
@@ -64,7 +115,8 @@ class ProductDetailsSection extends StatelessWidget {
               ),
               child: Text(
                 'Sin detalles adicionales',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                style:
+                    TextStyle(color: Colors.grey.shade500, fontSize: 13),
               ),
             )
           else
@@ -75,21 +127,22 @@ class ProductDetailsSection extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, idx) {
                 final row = state.detailRows[idx];
+                final keyCtrl = _keyControllers[row.id]!;
+                final valueCtrl = _valueControllers[row.id]!;
+
                 return Row(
                   children: [
                     Expanded(
                       flex: 4,
                       child: TextField(
-                        controller: row.keyCtrl,
+                        controller: keyCtrl,
+                        onChanged: (_) => cubit.markAsDirty(),
                         decoration: InputDecoration(
                           hintText: 'Propiedad (ej: Material)',
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
+                              horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                              borderRadius: BorderRadius.circular(8)),
                           isDense: true,
                         ),
                         style: const TextStyle(fontSize: 13),
@@ -97,24 +150,20 @@ class ProductDetailsSection extends StatelessWidget {
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        ':',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      child: Text(':',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                     Expanded(
                       flex: 5,
                       child: TextField(
-                        controller: row.valueCtrl,
+                        controller: valueCtrl,
+                        onChanged: (_) => cubit.markAsDirty(),
                         decoration: InputDecoration(
                           hintText: 'Valor (ej: Acero)',
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
+                              horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                              borderRadius: BorderRadius.circular(8)),
                           isDense: true,
                         ),
                         style: const TextStyle(fontSize: 13),
@@ -122,11 +171,8 @@ class ProductDetailsSection extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: () => cubit.removeDetailRow(idx),
-                      icon: Icon(
-                        Icons.remove_circle_outline,
-                        color: Colors.red.shade400,
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.remove_circle_outline,
+                          color: Colors.red.shade400, size: 20),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),

@@ -4,7 +4,14 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/product_f
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 
 class ProductBasicInfoSection extends StatelessWidget {
-  const ProductBasicInfoSection({super.key});
+  final TextEditingController nombreCtrl;
+  final TextEditingController descCtrl;
+
+  const ProductBasicInfoSection({
+    super.key,
+    required this.nombreCtrl,
+    required this.descCtrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +45,7 @@ class ProductBasicInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           AppTextField(
-            controller: cubit.nombreCtrl,
+            controller: nombreCtrl,
             label: 'Nombre del producto',
             icon: Icons.inventory_2_outlined,
             validator: (v) => v!.isEmpty ? 'Requerido' : null,
@@ -47,33 +54,33 @@ class ProductBasicInfoSection extends StatelessWidget {
           state.isLoadingCategories
               ? const Center(child: CircularProgressIndicator())
               : DropdownButtonFormField<String>(
-                initialValue: state.selectedCategoryId,
-                decoration: InputDecoration(
-                  labelText: 'Categoría',
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  initialValue: state.selectedCategoryId,
+                  decoration: InputDecoration(
+                    labelText: 'Categoría',
+                    prefixIcon: const Icon(Icons.category_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Sin categoría'),
+                    ),
+                    ...state.categories.map(
+                      (cat) => DropdownMenuItem(
+                          value: cat.id!, child: Text(cat.name)),
+                    ),
+                  ],
+                  onChanged: cubit.setSelectedCategory,
                 ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Sin categoría'),
-                  ),
-                  ...state.categories.map(
-                    (cat) =>
-                        DropdownMenuItem(value: cat.id!, child: Text(cat.name)),
-                  ),
-                ],
-                onChanged: cubit.setSelectedCategory,
-              ),
           const SizedBox(height: 16),
           AppTextField(
-            controller: cubit.descCtrl,
+            controller: descCtrl,
             label: 'Descripción general',
             icon: Icons.description_outlined,
             maxLines: 3,
