@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -168,7 +169,7 @@ class AppRouter {
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
       errorBuilder:
           (context, state) => Scaffold(
-            appBar: AppBar(title: const Text('PÃƒÂ¡gina no encontrada')),
+            appBar: AppBar(title: const Text('Página no encontrada')),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -180,7 +181,7 @@ class AppRouter {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Esta pÃƒÂ¡gina no existe',
+                    'Esta página no existe',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -285,15 +286,19 @@ class AppRouter {
             GoRoute(
               path: '/admin',
               builder:
-                  (context, state) => AdminCatalogScreen(
-                    onProfileAvatarTap: () {
-                      final auth = context.read<AuthCubit>();
-                      if (auth.state.currentUser == null) {
-                        context.go('/login');
-                      } else {
-                        context.push('/admin/profile');
-                      }
-                    },
+                  (context, state) => AdminLayout(
+                    title: 'Catálogo',
+                    showAppBar: false,
+                    body: AdminCatalogScreen(
+                      onProfileAvatarTap: () {
+                        final auth = context.read<AuthCubit>();
+                        if (auth.state.currentUser == null) {
+                          context.go('/login');
+                        } else {
+                          context.push('/admin/profile');
+                        }
+                      },
+                    ),
                   ),
               routes: [
                 GoRoute(
@@ -304,12 +309,20 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'active-ingredients',
-                  builder: (context, state) => const ActiveIngredientsScreen(),
+                  builder: (context, state) => const AdminLayout(
+                    title: 'Componentes Químicos',
+                    showBackButton: true,
+                    body: ActiveIngredientsScreen(),
+                  ),
                 ),
                 GoRoute(
                   path: 'attributes',
                   builder:
-                      (context, state) => const AttributesManagementScreen(),
+                      (context, state) => const AdminLayout(
+                        title: 'Atributos de Variantes',
+                        showBackButton: true,
+                        body: AttributesManagementScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'business-info',
@@ -318,7 +331,11 @@ class AppRouter {
                 GoRoute(
                   path: 'categories',
                   builder:
-                      (context, state) => const CategoriesManagementScreen(),
+                      (context, state) => const AdminLayout(
+                        title: 'Categorías',
+                        showBackButton: true,
+                        body: CategoriesManagementScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'customer-credit-movements/:creditId',
@@ -448,12 +465,18 @@ class AppRouter {
                   path: 'product-form',
                   builder: (context, state) {
                     final args = state.extra as Map<String, dynamic>? ?? {};
-                    return ProductFormScreen(
-                      productToEdit:
-                          args['productToEdit'] is ProductEntity
-                              ? args['productToEdit'] as ProductEntity?
-                              : (args['productToEdit'] as ProductModel?)
-                                  ?.toEntity(),
+                    return AdminLayout(
+                      title: args['productToEdit'] != null ? 'Editar Producto' : 'Nuevo Producto',
+                      showBackButton: true,
+                      showProfileButton: false,
+                      showDrawerButton: false,
+                      body: ProductFormScreen(
+                        productToEdit:
+                            args['productToEdit'] is ProductEntity
+                                ? args['productToEdit'] as ProductEntity?
+                                : (args['productToEdit'] as ProductModel?)
+                                    ?.toEntity(),
+                      ),
                     );
                   },
                 ),

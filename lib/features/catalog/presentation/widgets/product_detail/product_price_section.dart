@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-// ─── PRICE SECTION ───────────────────────────────────────────────────────────
-
 class ProductPriceSection extends StatelessWidget {
   final double effectivePrice;
   final double baseSalePrice;

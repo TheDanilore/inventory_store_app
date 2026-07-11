@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/get_admin_f
 import 'package:inventory_store_app/features/catalog/domain/usecases/check_wishlist_state_usecase.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/toggle_wishlist_usecase.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/export_product_pdf_usecase.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';
@@ -23,6 +24,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
   final CheckWishlistStateUseCase _checkWishlist;
   final ToggleWishlistUseCase _toggleWishlist;
   final GetCurrentProfileIdUseCase _getProfileId;
+  final ExportProductPdfUseCase _exportProductPdf;
 
   Future<T> _unwrap<T>(Future<Either<Failure, T>> future) async {
     final res = await future;
@@ -38,11 +40,13 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     required CheckWishlistStateUseCase checkWishlist,
     required ToggleWishlistUseCase toggleWishlist,
     required GetCurrentProfileIdUseCase getProfileId,
+    required ExportProductPdfUseCase exportProductPdf,
   }) : _getExtraData = getExtraData,
        _getAdminData = getAdminData,
        _checkWishlist = checkWishlist,
        _toggleWishlist = toggleWishlist,
        _getProfileId = getProfileId,
+       _exportProductPdf = exportProductPdf,
        super(const ProductDetailState());
 
   void loadInitialData({
@@ -292,5 +296,39 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     if (newMatchedVariantId != null) {
       selectVariantImage(newMatchedVariantId);
     }
+  }
+
+  Future<void> exportProductPdf() async {
+    if (product == null) return;
+    
+    emit(state.copyWith(viewState: ViewState.loading));
+    final stockMap = <String, int>{};
+    for (final row in state.warehouseStocks) {
+      final variantId = row['variant_id'] as String?;
+      final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+      if (variantId != null) {
+        stockMap.update(
+          variantId,
+          (current) => current + stock,
+          ifAbsent: () => stock,
+        );
+      }
+    }
+
+    final result = await _exportProductPdf(
+      product: product!,
+      variants: state.variants,
+      stockByVariant: stockMap,
+    );
+    
+    result.fold(
+      (failure) {
+        // Handle failure if needed, maybe emit an error state
+        emit(state.copyWith(viewState: ViewState.success));
+      },
+      (_) {
+        emit(state.copyWith(viewState: ViewState.success));
+      },
+    );
   }
 }

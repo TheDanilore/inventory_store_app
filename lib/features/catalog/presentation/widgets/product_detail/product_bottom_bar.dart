@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-// ─── COMPACT BOTTOM BAR ──────────────────────────────────────────────────────
-
 class ProductBottomBar extends StatelessWidget {
   final bool canBuy;
   final bool isActive;

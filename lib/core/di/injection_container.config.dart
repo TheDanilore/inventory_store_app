@@ -42,10 +42,10 @@ import '../../features/auth/domain/usecases/register_uc.dart' as _i182;
 import '../../features/auth/domain/usecases/reset_password_uc.dart' as _i878;
 import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
+import '../../features/catalog/data/repositories_impl/catalog_pdf_generator_impl.dart'
+    as _i508;
 import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
     as _i524;
-import '../../features/catalog/data/utils/pdf/catalog_pdf_generator.dart'
-    as _i440;
 import '../../features/catalog/domain/repositories/catalog_repository.dart'
     as _i1018;
 import '../../features/catalog/domain/repositories/pdf_generator_repository.dart'
@@ -70,6 +70,8 @@ import '../../features/catalog/domain/usecases/create_ingredient_uc.dart'
     as _i498;
 import '../../features/catalog/domain/usecases/export_catalog_pdf_usecase.dart'
     as _i961;
+import '../../features/catalog/domain/usecases/export_product_pdf_usecase.dart'
+    as _i967;
 import '../../features/catalog/domain/usecases/get_admin_financial_data_usecase.dart'
     as _i712;
 import '../../features/catalog/domain/usecases/get_attributes_uc.dart' as _i487;
@@ -176,10 +178,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.factory<_i737.PdfGeneratorRepository>(
-      () => _i440.CatalogPdfGeneratorImpl(),
+      () => _i508.CatalogPdfGeneratorImpl(),
     );
     gh.factory<_i961.ExportCatalogPdfUseCase>(
       () => _i961.ExportCatalogPdfUseCase(gh<_i737.PdfGeneratorRepository>()),
+    );
+    gh.factory<_i967.ExportProductPdfUseCase>(
+      () => _i967.ExportProductPdfUseCase(gh<_i737.PdfGeneratorRepository>()),
     );
     gh.lazySingleton<_i557.CustomerLocationsRepository>(
       () => _i429.CustomerLocationsRepositoryImpl(),
@@ -574,6 +579,7 @@ extension GetItInjectableX on _i174.GetIt {
         checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
         toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
         getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
+        exportProductPdf: gh<_i967.ExportProductPdfUseCase>(),
       ),
     );
     gh.factory<_i150.ProductFormCubit>(

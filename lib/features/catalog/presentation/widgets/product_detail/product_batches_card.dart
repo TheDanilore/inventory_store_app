@@ -1,8 +1,5 @@
 import 'package:inventory_store_app/core/enums/view_state.dart';
-// ─── PRODUCT BATCHES CARD ──────────────────────────────────
-
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';

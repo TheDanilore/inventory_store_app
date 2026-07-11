@@ -36,9 +36,9 @@ class _AdminProductCardState extends State<AdminProductCard> {
 
   /// Devuelve el color del badge de stock según nivel de alerta.
   Color _stockBadgeColor(int stock) {
-    if (stock <= 5) return const Color(0xFFEF4444); // 🔴 crítico
-    if (stock <= 15) return const Color(0xFFF59E0B); // 🟡 bajo
-    return Colors.black.withValues(alpha: 0.60); // ⚫ normal
+    if (stock <= 5) return const Color(0xFFEF4444); //  crítico
+    if (stock <= 15) return const Color(0xFFF59E0B); //  bajo
+    return Colors.black.withValues(alpha: 0.60); //  normal
   }
 
   /// Maneja el toggle con estado de carga local.
@@ -279,8 +279,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 '${widget.product.totalStock}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize:
-                                      11, // Aumentado de 10 a 11 para legibilidad
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -302,7 +301,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize:
-                              13, // ↑ subido de 12 a 13 para mejor jerarquía
+                              13,
                           color:
                               isDesactivado
                                   ? AppColors.textMuted
@@ -331,7 +330,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             children: [
                               const Icon(
                                 Icons.science_rounded,
-                                size: 11, // Aumentado de 9 a 11
+                                size: 11,
                                 color: Color(0xFF059669),
                               ),
                               const SizedBox(width: 3),
@@ -339,7 +338,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 child: Text(
                                   widget.highlightIngredient!,
                                   style: const TextStyle(
-                                    fontSize: 11, // Aumentado de 9 a 11
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF065F46),
                                   ),
@@ -355,7 +354,6 @@ class _AdminProductCardState extends State<AdminProductCard> {
                       Text(
                         'S/ ${widget.product.salePrice.toStringAsFixed(2)}',
                         style: TextStyle(
-                          // ↑ color más oscuro: #0B7A73 da ratio ~4.6:1 sobre blanco (cumple WCAG AA)
                           color:
                               isDesactivado
                                   ? AppColors.textMuted

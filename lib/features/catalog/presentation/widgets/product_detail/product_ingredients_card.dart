@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-// ─── INGREDIENTES ACTIVOS / COMPONENTES QUÍMICOS ────────────────────────────
-
 class ProductIngredientsCard extends StatelessWidget {
   final List<Map<String, dynamic>> ingredients;
 

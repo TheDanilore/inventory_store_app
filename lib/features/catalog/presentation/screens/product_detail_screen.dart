@@ -13,8 +13,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_quick_decisions_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
-import 'package:inventory_store_app/features/catalog/data/utils/pdf/product_pdf_generator.dart';
-
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -24,7 +22,6 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_top_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_price_section.dart';
-//
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_bottom_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_input_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_description_card.dart';
@@ -60,11 +57,13 @@ class ProductDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ProductDetailCubit>()..loadInitialData(
-        product: product,
-        isAdmin: isAdmin,
-        initialVariantId: initialVariantId,
-      ),
+      create:
+          (_) =>
+              sl<ProductDetailCubit>()..loadInitialData(
+                product: product,
+                isAdmin: isAdmin,
+                initialVariantId: initialVariantId,
+              ),
       child: _ProductDetailScreenContent(
         isEmbedded: isEmbedded,
         cartActionWidget: cartActionWidget,
@@ -122,7 +121,7 @@ class _ProductDetailScreenContentState
     super.dispose();
   }
 
-  // â”€â”€â”€ DERIVED GETTERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // DERIVED GETTERS
 
   bool get _isWishlistLoading => state.isWishlistLoading;
   bool get _isWishlisted => state.isWishlisted;
@@ -165,9 +164,7 @@ class _ProductDetailScreenContentState
     try {
       await cubit.toggleWishlist();
       _showSnack(
-        state.isWishlisted
-            ? 'â¤ï¸ Guardado en favoritos'
-            : 'Eliminado de favoritos',
+        state.isWishlisted ? 'Guardado en favoritos' : 'Eliminado de favoritos',
         isSuccess: state.isWishlisted,
       );
     } catch (e) {
@@ -179,7 +176,7 @@ class _ProductDetailScreenContentState
     cubit.setImageIndex(index);
   }
 
-  // â”€â”€â”€ CART & REVIEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // CART & REVIEWS
 
   void _addToCart() {
     final qty = state.selectedQty;
@@ -227,7 +224,7 @@ class _ProductDetailScreenContentState
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
     }
-    _showSnack('Â¡AÃ±adido al carrito!', isSuccess: true);
+    _showSnack('Añadido al carrito!', isSuccess: true);
   }
 
   void _showSnack(String msg, {bool isSuccess = false}) {
@@ -302,7 +299,7 @@ class _ProductDetailScreenContentState
                       ),
                     ),
                     Text(
-                      'MÃ¡x. $_effectiveStock disponibles',
+                      'Máx. $_effectiveStock disponibles',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -369,7 +366,7 @@ class _ProductDetailScreenContentState
     }
   }
 
-  // â”€â”€â”€ REVIEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // REVIEWS
 
   Future<void> _onAddReviewTapped() async {
     if (isAdmin) {
@@ -378,7 +375,7 @@ class _ProductDetailScreenContentState
     }
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      _showSnack('Inicia sesiÃ³n para opinar.');
+      _showSnack('Inicia sesión para opinar.');
       return;
     }
     try {
@@ -451,7 +448,7 @@ class _ProductDetailScreenContentState
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Â¿QuÃ© te pareciÃ³?',
+                          '¿Qué te pareció?',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -509,7 +506,7 @@ class _ProductDetailScreenContentState
                         const SizedBox(height: 12),
                         ProductInputField(
                           controller: commentCtrl,
-                          hint: 'CuÃ©ntanos quÃ© te pareciÃ³...',
+                          hint: 'Cuéntanos qué te pareció...',
                           label: 'Comentario',
                           maxLines: 3,
                         ),
@@ -579,7 +576,7 @@ class _ProductDetailScreenContentState
                                             if (!context.mounted) return;
                                             Navigator.pop(dialogCtx);
                                             _showSnack(
-                                              'Â¡ReseÃ±a publicada!',
+                                              '¡Reseña publicada!',
                                               isSuccess: true,
                                             );
                                             cubit.loadData();
@@ -648,15 +645,15 @@ class _ProductDetailScreenContentState
     return list;
   }
 
-  // â”€â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // BUILD
 
   @override
   Widget build(BuildContext context) {
     final gallery = _galleryImages;
 
     final Map<String, dynamic> mergedDetails = Map.from(product.details);
-    mergedDetails['Control de Stock'] = product.stockControl ? 'SÃ­' : 'No';
-    mergedDetails['Usa Lotes'] = product.usesBatches ? 'SÃ­' : 'No';
+    mergedDetails['Control de Stock'] = product.stockControl ? 'Sí' : 'No';
+    mergedDetails['Usa Lotes'] = product.usesBatches ? 'Sí' : 'No';
     mergedDetails['Tipo de Producto'] = _fmt(product.productType);
 
     final content = CustomScrollView(
@@ -720,7 +717,7 @@ class _ProductDetailScreenContentState
                             );
                           }
                         }
-                        // Mostrar diÃ¡logo de carga
+                        // Mostrar diálogo de carga
                         showDialog(
                           context: context,
                           barrierDismissible: false,
@@ -741,11 +738,9 @@ class _ProductDetailScreenContentState
                         );
                         try {
                           if (currentState.product == null) return;
-                          await ProductPdfGenerator.shareProduct(
-                            currentState.product!,
-                            variants: currentState.variants.toList(),
-                            stockByVariant: stockMap,
-                          );
+                          await context
+                              .read<ProductDetailCubit>()
+                              .exportProductPdf();
                         } catch (e) {
                           if (context.mounted) {
                             _showSnack('Error al generar PDF: $e');
@@ -961,7 +956,7 @@ class _ProductDetailScreenContentState
                             mainAxisSize: MainAxisSize.min,
                             children: const [
                               Text(
-                                'MÃ¡s',
+                                'Más',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -1028,10 +1023,7 @@ class _ProductDetailScreenContentState
     }
 
     if (isAdmin) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: content,
-      );
+      return Scaffold(backgroundColor: AppColors.background, body: content);
     }
 
     return Scaffold(
@@ -1111,5 +1103,3 @@ class _ProductDetailScreenContentState
     );
   }
 }
-
-

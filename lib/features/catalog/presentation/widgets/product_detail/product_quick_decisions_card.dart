@@ -1,8 +1,5 @@
-// ─── COMPONENTE: DECISIONES RÁPIDAS ──────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';

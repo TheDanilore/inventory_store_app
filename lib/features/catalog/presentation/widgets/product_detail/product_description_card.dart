@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_card_header.dart';
 
-// ─── DESCRIPTION CARD ────────────────────────────────────────────────────────
-
 class ProductDescriptionCard extends StatelessWidget {
   final String description;
   const ProductDescriptionCard({super.key, required this.description});

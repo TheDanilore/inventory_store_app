@@ -16,7 +16,7 @@ class CategoriesSkeleton extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        mainAxisExtent: 88, // Altura fija que coincide con las tarjetas reales
+        mainAxisExtent: 88,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
@@ -42,12 +42,7 @@ class CategoriesSkeleton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AppShimmer(
-                        width:
-                            100, // Menos ancho porque puede ser de 2 columnas
-                        height: 16,
-                        borderRadius: 4,
-                      ),
+                      AppShimmer(width: 100, height: 16, borderRadius: 4),
                       const SizedBox(height: 8),
                       AppShimmer(
                         width: double.infinity,

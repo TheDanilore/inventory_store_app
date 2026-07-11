@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-// ─── PRODUCT TOP SECTION ─────────────────────────────────────────────────────
-
 class ProductTopSection extends StatelessWidget {
   final String name;
   final String? sku;

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_cubit.dart';
@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/category_en
 
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_form_sheet.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 
@@ -100,12 +100,12 @@ class _CategoriesManagementScreenState
     CategoriesCubit cubit,
   ) async {
     if (!val) {
-      // Si se va a desactivar, pedir confirmaciÃ³n
+      // Si se va a desactivar, pedir confirmación
       final confirm = await AppConfirmDialog.show(
         context,
-        title: 'Desactivar CategorÃ­a',
+        title: 'Desactivar Categoría',
         message:
-            'Â¿EstÃ¡s seguro de desactivar la categorÃ­a "${cat.name}"? Los productos asociados podrÃ­an dejar de ser visibles para los clientes.',
+            '¿Estás seguro de desactivar la categoría "${cat.name}"? Los productos asociados podrían dejar de ser visibles para los clientes.',
         confirmText: 'Desactivar',
         confirmColor: Colors.orange.shade700,
       );
@@ -117,13 +117,12 @@ class _CategoriesManagementScreenState
 
   @override
   Widget build(BuildContext context) {
-    return AdminLayout(
-      title: 'CategorÃ­as',
-      showBackButton: true,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCategoryForm(),
         backgroundColor: AppColors.primary,
-        tooltip: 'Crear nueva categorÃ­a',
+        tooltip: 'Crear nueva categoria',
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: ValueListenableBuilder<bool>(
           valueListenable: _isFabExtended,
@@ -150,16 +149,16 @@ class _CategoriesManagementScreenState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // â”€â”€â”€ BUSCADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // BUSCADOR
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Semantics(
-                  label: 'Buscador de categorÃ­as',
+                  label: 'Buscador de categorías',
                   child: TextField(
                     controller: _searchCtrl,
                     onChanged: cubit.onSearchChanged,
                     decoration: InputDecoration(
-                      hintText: 'Buscar categorÃ­a por nombre...',
+                      hintText: 'Buscar categoría por nombre...',
                       hintStyle: TextStyle(
                         color: Colors.grey.shade400,
                         fontSize: 14,
@@ -213,7 +212,7 @@ class _CategoriesManagementScreenState
                   vertical: 4,
                 ),
                 child: Text(
-                  'Total: ${cubit.state.categories.length} categorÃ­as',
+                  'Total: ${cubit.state.categories.length} categorías',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 13,
@@ -222,7 +221,7 @@ class _CategoriesManagementScreenState
                 ),
               ),
 
-              // â”€â”€â”€ LISTA DE CATEGORÃAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // LISTA DE CATEGORIAS
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => cubit.loadCategories(forceRefresh: true),
@@ -267,7 +266,7 @@ class _CategoriesManagementScreenState
               Text(
                 cubit.state.searchQuery.isNotEmpty
                     ? 'No se encontraron resultados'
-                    : 'AÃºn no tienes categorÃ­as',
+                    : 'Aún no tienes categorías',
                 style: const TextStyle(
                   color: Colors.black87,
                   fontSize: 18,
@@ -277,8 +276,8 @@ class _CategoriesManagementScreenState
               const SizedBox(height: 8),
               Text(
                 cubit.state.searchQuery.isNotEmpty
-                    ? 'Intenta con otro tÃ©rmino de bÃºsqueda'
-                    : 'Organiza tus productos creando la primera categorÃ­a.',
+                    ? 'Intenta con otro término de búsqueda'
+                    : 'Organiza tus productos creando la primera categoría.',
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
@@ -287,7 +286,7 @@ class _CategoriesManagementScreenState
                 ElevatedButton.icon(
                   onPressed: () => _showCategoryForm(),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('Crear CategorÃ­a'),
+                  label: const Text('Crear categoría'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -350,7 +349,7 @@ class _CategoriesManagementScreenState
             ),
             child: Row(
               children: [
-                // â”€â”€â”€ Ãrea de Info (Izquierda) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // Area de Info (Izquierda)
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(
@@ -389,7 +388,7 @@ class _CategoriesManagementScreenState
                               Text(
                                 cat.description?.isNotEmpty == true
                                     ? cat.description!
-                                    : 'Sin descripciÃ³n',
+                                    : 'Sin descripción',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -418,26 +417,26 @@ class _CategoriesManagementScreenState
                   ),
                 ),
 
-                // â”€â”€â”€ Ãrea de Acciones (Derecha) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // Area de Acciones (Derecha)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // BotÃ³n Editar explÃ­cito
+                      // Boton Editar explicito
                       IconButton(
                         icon: Icon(
                           Icons.edit_outlined,
                           color: Colors.grey.shade600,
                           size: 20,
                         ),
-                        tooltip: 'Editar categorÃ­a',
+                        tooltip: 'Editar categoría',
                         onPressed: () => _showCategoryForm(cat),
                       ),
 
                       // Switch de Estado independiente
                       Semantics(
-                        label: 'Estado de la categorÃ­a ${cat.name}',
+                        label: 'Estado de la categoría ${cat.name}',
                         child: Switch(
                           value: cat.isActive,
                           onChanged:

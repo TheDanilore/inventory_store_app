@@ -62,9 +62,9 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppColors.radius),
                 ),
-                title: const Text('Â¡Bienvenido!'),
+                title: const Text('¡Bienvenido!'),
                 content: const Text(
-                  'Inicia sesiÃ³n para disfrutar de mÃ¡s beneficios, guardar tus favoritos y acumular puntos en tus compras.',
+                  'Inicia sesión para disfrutar de más beneficios, guardar tus favoritos y acumular puntos en tus compras.',
                 ),
                 actions: [
                   TextButton(
@@ -83,7 +83,7 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
                       backgroundColor: AppColors.accent,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Iniciar sesiÃ³n'),
+                    child: const Text('Iniciar sesión'),
                   ),
                 ],
               ),
@@ -115,239 +115,240 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-              // --- Banners ---
-              if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
-                SliverToBoxAdapter(
-                  child: CatalogWelcomeBanner(
-                    businessName: widget.businessName,
-                    businessAddress: widget.businessAddress,
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                const SliverToBoxAdapter(child: CatalogPromoBanner()),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              ],
 
-              // --- Search Bar (Sticky) ---
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _StickySearchDelegate(
-                  child: const CatalogSearchBar(),
-                ),
-              ),
+                // --- Banners ---
+                if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: CatalogWelcomeBanner(
+                      businessName: widget.businessName,
+                      businessAddress: widget.businessAddress,
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  const SliverToBoxAdapter(child: CatalogPromoBanner()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                ],
 
-              // --- Categories ---
-              if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Categorías',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                // --- Search Bar (Sticky) ---
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickySearchDelegate(
+                    child: const CatalogSearchBar(),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                const SliverToBoxAdapter(child: CatalogCategoryList()),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                // Titulo de Todos los productos
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Todos los Productos',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              if (state.searchTerm.isNotEmpty || state.isSearchMode) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    child: Text(
-                      state.searchTerm.isEmpty
-                          ? 'Busquedas recientes'
-                          : 'Resultados',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              // --- Historial de BÃºsqueda ---
-              if (state.isSearchMode && state.searchTerm.isEmpty) ...[
-                SliverToBoxAdapter(
-                  child:
-                      state.searchHistory.isEmpty
-                          ? Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Center(
-                              child: Text(
-                                'No hay búsquedas recientes',
-                                style: TextStyle(color: Colors.grey.shade500),
-                              ),
-                            ),
-                          )
-                          : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: state.searchHistory.length,
-                            itemBuilder: (context, index) {
-                              final term = state.searchHistory[index];
-                              return ListTile(
-                                leading: const Icon(
-                                  Icons.history,
-                                  color: Colors.grey,
-                                ),
-                                title: Text(term),
-                                onTap: () {
-                                  cubit.setSearchMode(false);
-                                  cubit.setSearchTerm(term);
-                                },
-                              );
-                            },
-                          ),
-                ),
-                SliverToBoxAdapter(
-                  child:
-                      state.searchHistory.isNotEmpty
-                          ? TextButton(
-                            onPressed: cubit.clearSearchHistory,
-                            child: const Text('Limpiar historial'),
-                          )
-                          : const SizedBox.shrink(),
-                ),
-              ]
-              // --- Product Grid ---
-              else if ((state.viewState == ViewState.loading &&
-                      state.products.isEmpty) &&
-                  (state.viewState == ViewState.loading ||
-                      state.isLoadingMore)) ...[
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 220,
-                          childAspectRatio: 0.58,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                        ),
-                    delegate: SliverChildBuilderDelegate(
-                      (_, _) => const CatalogProductShimmer(),
-                      childCount: 8,
-                    ),
-                  ),
-                ),
-              ] else if (state.errorMessage != null &&
-                  state.products.isEmpty) ...[
-                SliverToBoxAdapter(
-                  child: AppEmptyState(
-                    icon: Icons.error_outline_rounded,
-                    color: Colors.red,
-                    title: 'Ocurrió un error',
-                    message: state.errorMessage!,
-                    action: ElevatedButton.icon(
-                      onPressed: cubit.refreshProducts,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Reintentar'),
-                    ),
-                  ),
-                ),
-              ] else if (state.products.isEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off_rounded,
-                            size: 64,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No se encontraron productos',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Prueba buscando otra cosa o cambiando de categoría.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 220,
-                          childAspectRatio: 0.58,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                        ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final product = state.products[index];
-                      return CatalogProductCard(
-                        product: product,
-                        onAddToCart: widget.onAddToCart ?? (p) async {},
-                      );
-                    }, childCount: state.products.length),
-                  ),
-                ),
-                if ((state.viewState == ViewState.loading ||
-                        state.isLoadingMore) &&
-                    !(state.viewState == ViewState.loading &&
-                        state.products.isEmpty))
+                // --- Categories ---
+                if (!state.isSearchMode && state.searchTerm.isEmpty) ...[
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
                   const SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24.0),
-                      child: Center(child: CircularProgressIndicator()),
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Categorías',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  const SliverToBoxAdapter(child: CatalogCategoryList()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                  // Titulo de Todos los productos
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Todos los Productos',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                if (state.searchTerm.isNotEmpty || state.isSearchMode) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      child: Text(
+                        state.searchTerm.isEmpty
+                            ? 'Busquedas recientes'
+                            : 'Resultados',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // --- Historial de Búsqueda ---
+                if (state.isSearchMode && state.searchTerm.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child:
+                        state.searchHistory.isEmpty
+                            ? Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Center(
+                                child: Text(
+                                  'No hay búsquedas recientes',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                              ),
+                            )
+                            : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: state.searchHistory.length,
+                              itemBuilder: (context, index) {
+                                final term = state.searchHistory[index];
+                                return ListTile(
+                                  leading: const Icon(
+                                    Icons.history,
+                                    color: Colors.grey,
+                                  ),
+                                  title: Text(term),
+                                  onTap: () {
+                                    cubit.setSearchMode(false);
+                                    cubit.setSearchTerm(term);
+                                  },
+                                );
+                              },
+                            ),
+                  ),
+                  SliverToBoxAdapter(
+                    child:
+                        state.searchHistory.isNotEmpty
+                            ? TextButton(
+                              onPressed: cubit.clearSearchHistory,
+                              child: const Text('Limpiar historial'),
+                            )
+                            : const SizedBox.shrink(),
+                  ),
+                ]
+                // --- Product Grid ---
+                else if ((state.viewState == ViewState.loading &&
+                        state.products.isEmpty) &&
+                    (state.viewState == ViewState.loading ||
+                        state.isLoadingMore)) ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            childAspectRatio: 0.58,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                      delegate: SliverChildBuilderDelegate(
+                        (_, _) => const CatalogProductShimmer(),
+                        childCount: 8,
+                      ),
+                    ),
+                  ),
+                ] else if (state.errorMessage != null &&
+                    state.products.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: AppEmptyState(
+                      icon: Icons.error_outline_rounded,
+                      color: Colors.red,
+                      title: 'Ocurrió un error',
+                      message: state.errorMessage!,
+                      action: ElevatedButton.icon(
+                        onPressed: cubit.refreshProducts,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
+                      ),
+                    ),
+                  ),
+                ] else if (state.products.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 64,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No se encontraron productos',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Prueba buscando otra cosa o cambiando de categoría.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            childAspectRatio: 0.58,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final product = state.products[index];
+                        return CatalogProductCard(
+                          product: product,
+                          onAddToCart: widget.onAddToCart ?? (p) async {},
+                        );
+                      }, childCount: state.products.length),
+                    ),
+                  ),
+                  if ((state.viewState == ViewState.loading ||
+                          state.isLoadingMore) &&
+                      !(state.viewState == ViewState.loading &&
+                          state.products.isEmpty))
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
@@ -383,4 +384,3 @@ class _StickySearchDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _StickySearchDelegate old) => old.child != child;
 }
-

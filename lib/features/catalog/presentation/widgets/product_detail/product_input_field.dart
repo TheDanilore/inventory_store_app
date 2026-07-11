@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-// ─── INPUT FIELD HELPER ──────────────────────────────────────────────────────
-
 class ProductInputField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;

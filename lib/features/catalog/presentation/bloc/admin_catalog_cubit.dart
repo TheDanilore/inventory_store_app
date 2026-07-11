@@ -33,7 +33,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     await refreshProducts();
   }
 
-  // â”€â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Categories
 
   Future<void> _fetchCategories() async {
     final result = await getCategoriesUC();
@@ -43,7 +43,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     );
   }
 
-  // â”€â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Filters
 
   void setSearchTerm(String term) {
     if (state.searchTerm == term) return;
@@ -94,7 +94,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
-  // â”€â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Products
 
   Future<void> refreshProducts() async {
     emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
@@ -118,13 +118,13 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
             errStr.contains('clientexception') ||
             errStr.contains('failed host lookup') ||
             errStr.contains('offline') ||
-            errStr.contains('sin conexiÃ³n');
+            errStr.contains('sin conexión');
 
         emit(
           state.copyWith(
             catalogState: ViewState.error,
             errorMessage:
-                isNetworkError ? 'Sin conexiÃ³n a internet.' : failure.message,
+                isNetworkError ? 'Sin conexión a internet.' : failure.message,
           ),
         );
       },
@@ -142,7 +142,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     );
   }
 
-  // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Actions
 
   Future<bool> toggleProductActive(ProductEntity product) async {
     if (state.isLoadingAction) return false;

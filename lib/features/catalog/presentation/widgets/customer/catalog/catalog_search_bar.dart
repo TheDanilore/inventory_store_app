@@ -45,7 +45,6 @@ class _CatalogSearchBarState extends State<CatalogSearchBar> {
   void _onClear(CustomerCatalogCubit cubit) {
     _ctrl.clear();
     cubit.setSearchTerm('');
-    // Optionally keep focus or unfocus
   }
 
   void _onSubmitted(CustomerCatalogCubit cubit, String val) {

@@ -4,8 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:go_router/go_router.dart';
 
-// ─── GALLERY ─────────────────────────────────────────────────────────────────
-
 class ProductGallerySection extends StatelessWidget {
   final List<ProductImageEntity> images;
   final PageController pageController;

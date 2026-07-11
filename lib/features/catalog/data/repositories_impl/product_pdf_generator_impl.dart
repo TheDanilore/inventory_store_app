@@ -32,7 +32,9 @@ class ProductPdfGenerator {
       } else {
         // Buscar la imagen de la variante en las imágenes del producto
         try {
-          final match = product.images.firstWhere((img) => img.variantId == v.id);
+          final match = product.images.firstWhere(
+            (img) => img.variantId == v.id,
+          );
           variantImgUrl = match.imageUrl;
         } catch (_) {}
       }
@@ -200,9 +202,7 @@ class ProductPdfGenerator {
                 // Filas por cada variante
                 ...variants.map((v) {
                   final price = v.salePrice ?? product.salePrice;
-                  final stock =
-                      stockByVariant[v.id] ??
-                      0; // Usamos v.id ?? '' para evitar el nulo
+                  final stock = stockByVariant[v.id] ?? 0;
                   final img = variantImages[v.id] ?? mainImage;
 
                   return pw.TableRow(
@@ -221,7 +221,7 @@ class ProductPdfGenerator {
                                   : pw.SizedBox(width: 36, height: 36),
                         ),
                       ),
-                      // AQUÍ ESTABA EL ERROR: Usamos v.label que es String (no nulo)
+                      
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(
@@ -229,7 +229,6 @@ class ProductPdfGenerator {
                           style: const pw.TextStyle(fontSize: 10),
                         ),
                       ),
-                      // Usamos v.sku ?? '' para asegurar que sea String
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(

@@ -774,7 +774,6 @@ class CatalogRepositoryImpl implements CatalogRepository {
     }
   }
 
-
   @override
   Future<Either<Failure, bool>> toggleWishlist(
     String productId,

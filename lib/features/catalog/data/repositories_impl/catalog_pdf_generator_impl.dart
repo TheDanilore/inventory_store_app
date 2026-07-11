@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:inventory_store_app/features/catalog/data/repositories_impl/product_pdf_generator_impl.dart';
 import 'package:intl/intl.dart';
 
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
@@ -55,6 +56,19 @@ class CatalogPdfGeneratorImpl implements PdfGeneratorRepository {
         variantsByProduct: variantsByProduct,
         stockByVariant: stockByVariant,
       ),
+    );
+  }
+
+  @override
+  Future<void> shareProduct(
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
+    required Map<String, int> stockByVariant,
+  }) async {
+    await ProductPdfGenerator.shareProduct(
+      product,
+      variants: variants,
+      stockByVariant: stockByVariant,
     );
   }
 

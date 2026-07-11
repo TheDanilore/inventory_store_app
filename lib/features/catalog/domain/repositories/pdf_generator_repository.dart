@@ -7,4 +7,10 @@ abstract class PdfGeneratorRepository {
     required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
   });
+
+  Future<void> shareProduct(
+    ProductEntity product, {
+    required List<ProductVariantEntity> variants,
+    required Map<String, int> stockByVariant,
+  });
 }

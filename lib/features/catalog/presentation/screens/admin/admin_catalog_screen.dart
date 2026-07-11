@@ -9,7 +9,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_header.dart';
@@ -89,7 +89,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   List<PopupMenuEntry<String>> _buildMenuItems(AdminCatalogState state) {
     return [
       const PopupMenuItem(value: 'export', child: Text('Exportar')),
-      const PopupMenuItem(value: 'sync', child: Text('Forzar SincronizaciÃ³n')),
+      const PopupMenuItem(value: 'sync', child: Text('Forzar Sincronización')),
     ];
   }
 
@@ -108,7 +108,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         if (ctx.mounted) {
           AppSnackbar.show(
             ctx,
-            message: 'SincronizaciÃ³n completada.',
+            message: 'Sincronización completada.',
             type: SnackbarType.success,
           );
         }
@@ -124,13 +124,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     final allProducts = state.products;
     final max50Products = allProducts.take(50).toList();
     
-    // Convert entities to models temporarily for the dialog if needed by CatalogDialogs
-    // Since CatalogDialogs.showExportOptionsDialog expects ProductModel, we may need a workaround
-    // if the dialog still uses Models. For now we just pass what it expects (this may need fixes).
-    // Actually the dialog might take ProductEntity now, we will see.
     final options = await CatalogDialogs.showExportOptionsDialog(
       context,
-      max50Products, // It might fail if it strictly expects ProductModel
+      max50Products,
       state.products.length,
     );
 
@@ -209,8 +205,31 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const SizedBox(width: 12),
-                              AdminProfileAvatar(
+                              GestureDetector(
                                 onTap: widget.onProfileAvatarTap ?? () {},
+                                child: Tooltip(
+                                  message: 'Perfil',
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 20),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -244,25 +263,37 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               ),
                             ),
                           const SizedBox(width: 8),
-                          AdminSettingsMenuButton(
-                            items: _buildMenuItems(state),
-                            onSelected:
-                                (value) => _handleMenuSelection(
-                                  value,
-                                  cubit,
-                                  state,
-                                  context,
-                                ),
+                          PopupMenuButton<String>(
+                            tooltip: 'Opciones',
+                            offset: const Offset(0, 45),
+                            onSelected: (value) => _handleMenuSelection(value, cubit, state, context),
+                            itemBuilder: (_) => _buildMenuItems(state),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                              ),
+                              child: const Icon(Icons.more_vert_rounded, color: Color(0xFF64748B), size: 20),
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Builder(
-                            builder:
-                                (context) => AdminAppBarIconButton(
-                                  icon: Icons.menu_rounded,
-                                  onTap:
-                                      () =>
-                                          Scaffold.of(context).openEndDrawer(),
+                            builder: (context) => GestureDetector(
+                              onTap: () => Scaffold.of(context).openEndDrawer(),
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                                 ),
+                                child: const Icon(Icons.menu_rounded, color: Color(0xFF64748B), size: 20),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                         ],
@@ -531,13 +562,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
             final bodyContent = buildBody();
 
-            return AdminLayout(
-              title: 'CatÃ¡logo',
-              showSettingsButton: true,
-              settingsActions: _buildMenuItems(state),
-              onSettingsSelected:
-                  (value) => _handleMenuSelection(value, cubit, state, context),
-              showAppBar: false,
+            return Scaffold(
+              backgroundColor: Colors.transparent,
               body: bodyContent,
               floatingActionButton: floatingBtn,
             );

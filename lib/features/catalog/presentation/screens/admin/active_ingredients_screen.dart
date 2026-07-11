@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_state.dart';
@@ -6,7 +6,7 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+
 
 class ActiveIngredientsScreen extends StatefulWidget {
   const ActiveIngredientsScreen({super.key});
@@ -61,16 +61,15 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminLayout(
-      title: 'Componentes QuÃ­micos',
-      showBackButton: true,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
       body: BlocBuilder<IngredientsCubit, IngredientsState>(
         builder: (context, state) {
           final cubit = context.read<IngredientsCubit>();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // â”€â”€â”€ BUSCADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              //BUSCADOR
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: _AnimatedSearchBar(
@@ -99,7 +98,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
                 ),
               ),
 
-              // â”€â”€â”€ LISTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              //LISTA
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => cubit.loadIngredients(),
@@ -199,7 +198,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
   }
 }
 
-// â”€â”€â”€ WIDGETS PRIVADOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// WIDGETS PRIVADOS
 
 class _AnimatedSearchBar extends StatefulWidget {
   final TextEditingController controller;
@@ -249,7 +248,7 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
           controller: widget.controller,
           onChanged: widget.onChanged,
           decoration: InputDecoration(
-            hintText: 'Buscar componente quÃ­mico...',
+            hintText: 'Buscar componente químico...',
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             prefixIcon: Icon(
               Icons.search_rounded,

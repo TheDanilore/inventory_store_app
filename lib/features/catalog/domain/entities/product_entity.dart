@@ -1,10 +1,5 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-// Note: We'll temporarily use dynamic or generic if the inventory module is not yet migrated,
-// or import the entity if it exists.
-// For now, let's assume we map WarehouseStockBatch to its entity counterpart once Inventory is migrated.
-// We'll use dynamic or the old model temporarily if needed, but best is to create a dummy entity or keep it out of core domain for now if it crosses modules.
-// Let's import the model for now to not break the build, but ideally it should be an entity.
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
 
 class ProductEntity {

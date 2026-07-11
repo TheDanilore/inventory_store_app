@@ -1,4 +1,4 @@
-﻿import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 // Secciones modulares
@@ -54,9 +54,9 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Â¿Descartar cambios?'),
+            title: const Text('¿Descartar cambios?'),
             content: const Text(
-              'Si sales ahora, los cambios no guardados se perderÃ¡n. Â¿Deseas salir de todas formas?',
+              'Si sales ahora, los cambios no guardados se perderán. ¿Deseas salir de todas formas?',
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -106,11 +106,8 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           Navigator.pop(context);
         }
       },
-      child: AdminLayout(
-        title: isEdit ? 'Editar Producto' : 'Nuevo Producto',
-        showBackButton: true,
-        showProfileButton: false,
-        showDrawerButton: false,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
         body:
             state.isInitializingData
                 ? const _ProductFormSkeleton()
@@ -138,7 +135,10 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                         const SizedBox(height: 24),
                         AppPrimaryButton(
                           label: 'Reintentar cargar datos',
-                          onPressed: () => context.read<ProductFormCubit>().loadInitialData(cubit.productToEdit),
+                          onPressed:
+                              () => context
+                                  .read<ProductFormCubit>()
+                                  .loadInitialData(cubit.productToEdit),
                         ),
                       ],
                     ),
@@ -201,7 +201,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Text(
-                                      'Sin variantes aÃºn. Agrega una si este producto cambia por color, talla, etc.',
+                                      'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
                                     ),
                                   ),
                               ]),
@@ -231,7 +231,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                             cubit.duplicateVariantDraft(index),
                                     onActiveChanged: (val) {
                                       state.variantDrafts[index].isActive = val;
-                                      // Esto idealmente deberÃ­a notificar al Cubit, pero VariantDraftCard usa su estado local tambiÃ©n.
+                                      // Esto idealmente deberia notificar al Cubit, pero VariantDraftCard usa su estado local tambien.
                                     },
                                     onPickImage:
                                         () => cubit.pickVariantImage(
@@ -374,4 +374,3 @@ class _ProductFormSkeleton extends StatelessWidget {
     );
   }
 }
-

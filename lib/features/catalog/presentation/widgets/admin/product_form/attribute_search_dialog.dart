@@ -33,7 +33,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
   @override
   void initState() {
     super.initState();
-    _search(''); // Ya no necesitamos hacer await _initialLoad()
+    _search('');
   }
 
   void _search(String term) {
@@ -54,7 +54,6 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
           query = query.ilike(fieldName, '%${term.trim()}%');
         }
 
-        // CAMBIO: Usamos directamente el ID que nos pasan
         if (!isAttrMode && widget.parentAttributeId != null) {
           query = query.eq('attribute_id', widget.parentAttributeId!);
         }

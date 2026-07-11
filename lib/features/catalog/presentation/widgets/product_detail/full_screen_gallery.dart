@@ -1,10 +1,8 @@
-// ─── FULL SCREEN GALLERY ─────────────────────────────────────────────────────
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class FullScreenGallery extends StatelessWidget {
-  final List<String> imageUrls; // <-- CAMBIO AQUÍ: Ahora es List<String>
+  final List<String> imageUrls; 
   final int initialIndex;
 
   const FullScreenGallery({
