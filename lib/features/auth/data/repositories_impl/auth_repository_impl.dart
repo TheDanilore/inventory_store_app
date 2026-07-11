@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
@@ -32,6 +33,15 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final model = AuthUserModel.fromMap(data, session.user.email ?? '');
+
+      // Cache local de perfil: responsabilidad de infraestructura, pertenece aquí.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_cache_full_name_', model.fullName);
+        if (model.avatarUrl != null) {
+          await prefs.setString('profile_cache_avatar_url_', model.avatarUrl!);
+        }
+      } catch (_) {}
 
       return right(model.toEntity());
     } catch (e) {
@@ -174,8 +184,9 @@ class AuthRepositoryImpl implements AuthRepository {
     Uint8List? imageBytes,
   }) async {
     try {
-      final authUser = _supabase.auth.currentUser;
-      if (authUser == null) return left(Failure.from('No hay sesión activa.'));
+      // Usamos el ID de la entidad de dominio recibida en lugar de consultar
+      // el estado global de Supabase. El ID ya fue validado por el UseCase.
+      final authUserId = user.id;
 
       String? finalAvatarUrl = user.avatarUrl;
 
@@ -187,14 +198,14 @@ class AuthRepositoryImpl implements AuthRepository {
           fileOptions: const sb.FileOptions(contentType: 'image/jpeg', upsert: true),
         );
         finalAvatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
-        
+
         if (user.avatarUrl != null && user.avatarUrl!.contains('/public/avatars/')) {
-           final oldPath = user.avatarUrl!.split('/public/avatars/').last;
-           if (oldPath.isNotEmpty) {
-             try {
-               await _supabase.storage.from('avatars').remove([oldPath]);
-             } catch (_) {}
-           }
+          final oldPath = user.avatarUrl!.split('/public/avatars/').last;
+          if (oldPath.isNotEmpty) {
+            try {
+              await _supabase.storage.from('avatars').remove([oldPath]);
+            } catch (_) {}
+          }
         }
       }
 
@@ -204,13 +215,13 @@ class AuthRepositoryImpl implements AuthRepository {
         'document_type': user.documentType,
         'document_number': user.documentNumber.trim(),
         if (finalAvatarUrl != null) 'avatar_url': finalAvatarUrl,
-      }).eq('auth_user_id', authUser.id);
+      }).eq('auth_user_id', authUserId);
 
       final updatedUser = AuthUserModel.fromEntity(user).copyWith(
-         avatarUrl: finalAvatarUrl,
-         fullName: user.fullName.trim(),
-         phone: user.phone.trim(),
-         documentNumber: user.documentNumber.trim(),
+        avatarUrl: finalAvatarUrl,
+        fullName: user.fullName.trim(),
+        phone: user.phone.trim(),
+        documentNumber: user.documentNumber.trim(),
       );
 
       return right(updatedUser.toEntity());
