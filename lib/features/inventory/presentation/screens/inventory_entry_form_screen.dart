@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as dart_ui;
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_entry_form_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_state.dart';
+
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
@@ -57,7 +59,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final provider = context.read<InventoryEntryFormProvider>();
+      final cubit = context.read<InventoryEntryFormCubit>();
 
       String? activeShiftId;
       final shiftResp =
@@ -69,9 +71,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       if (shiftResp != null) {
         activeShiftId = shiftResp['id'] as String;
       }
-      provider.setActiveShiftId(activeShiftId);
+      cubit.setActiveShiftId(activeShiftId);
 
-      await provider.init(
+      await cubit.init(
         purchaseOrderId: widget.purchaseOrderId,
         prefillItems: widget.prefillItems,
         prefillSupplierId: widget.prefillSupplierId,
@@ -90,22 +92,22 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   }
 
   Future<void> _pickDocumentDate(BuildContext context) async {
-    final provider = context.read<InventoryEntryFormProvider>();
+    final cubit = context.read<InventoryEntryFormCubit>();
     final picked = await showDatePicker(
       context: context,
-      initialDate: provider.documentDate ?? DateTime.now(),
+      initialDate: cubit.state.documentDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       helpText: 'Fecha del Documento Físico',
     );
     if (picked != null) {
-      provider.setDocumentDate(picked);
+      cubit.setDocumentDate(picked);
     }
   }
 
   Future<void> _showAddProductSheet(BuildContext context) async {
-    final provider = context.read<InventoryEntryFormProvider>();
-    if (provider.selectedWarehouseId == null) {
+    final cubit = context.read<InventoryEntryFormCubit>();
+    if (cubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
         message: 'Seleccione un almacén destino primero',
@@ -119,19 +121,20 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) =>
-              AddEntryProductSheet(warehouseId: provider.selectedWarehouseId),
+          (_) => AddEntryProductSheet(
+            warehouseId: cubit.state.selectedWarehouseId,
+          ),
     );
 
     if (newItem != null && mounted) {
-      provider.addItem(newItem);
+      cubit.addItem(newItem);
     }
   }
 
   Future<void> _handleSave() async {
-    final provider = context.read<InventoryEntryFormProvider>();
+    final cubit = context.read<InventoryEntryFormCubit>();
 
-    provider.setDocumentNumber(_documentNumberCtrl.text.trim());
+    cubit.setDocumentNumber(_documentNumberCtrl.text.trim());
 
     // Obtenemos el shift activo que seteamos en el initState (que ahora está guardado en el provider)
     String activeShiftId = "";
@@ -143,23 +146,23 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             .maybeSingle();
     if (shiftResp != null) {
       activeShiftId = shiftResp['id'] as String;
-      provider.setActiveShiftId(activeShiftId);
+      cubit.setActiveShiftId(activeShiftId);
     }
 
     if (!mounted) return;
-    if (!provider.validate(activeShiftId)) {
+    if (!cubit.validate(activeShiftId)) {
       AppSnackbar.show(
         context,
-        message: provider.errorMessage,
+        message: cubit.state.errorMessage,
         type: SnackbarType.error,
       );
       return;
     }
 
-    final success = await provider.saveEntry(_notesCtrl.text.trim());
+    await cubit.saveEntry(_notesCtrl.text.trim());
     if (!mounted) return;
 
-    if (success) {
+    if (cubit.state.isSuccess) {
       AppSnackbar.show(
         context,
         message:
@@ -169,10 +172,10 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
-    } else if (provider.errorMessage.isNotEmpty) {
+    } else if (cubit.state.errorMessage.isNotEmpty) {
       AppSnackbar.show(
         context,
-        message: provider.errorMessage,
+        message: cubit.state.errorMessage,
         type: SnackbarType.error,
       );
     }
@@ -204,7 +207,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
 
     if (confirm == true && mounted) {
-      context.read<InventoryEntryFormProvider>().clearDraft();
+      context.read<InventoryEntryFormCubit>().clearDraft();
       _documentNumberCtrl.clear();
       _notesCtrl.clear();
       AppSnackbar.show(
@@ -222,12 +225,12 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        final provider = context.read<InventoryEntryFormProvider>();
+        final cubit = context.read<InventoryEntryFormCubit>();
         // Si no hay ítems o está guardando, permitimos salir directamente
-        if (provider.items.isEmpty ||
-            provider.isSaving ||
+        if (cubit.state.items.isEmpty ||
+            cubit.state.isSaving ||
             widget.purchaseOrderId != null) {
-          if (provider.items.isEmpty) provider.clearDraft();
+          if (cubit.state.items.isEmpty) cubit.clearDraft();
           Navigator.pop(context, result);
           return;
         }
@@ -274,15 +277,16 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         if (!context.mounted) return;
 
         if (action == 'discard') {
-          provider.clearDraft();
+          cubit.clearDraft();
           Navigator.pop(context, result);
         } else if (action == 'draft') {
           Navigator.pop(context, result);
         }
       },
-      child: Consumer<InventoryEntryFormProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
+      child: BlocBuilder<InventoryEntryFormCubit, InventoryEntryFormState>(
+        builder: (context, state) {
+          final cubit = context.read<InventoryEntryFormCubit>();
+          if (cubit.state.isLoading) {
             return const AdminLayout(
               title: 'Entrada de Inventario',
               showBackButton: true,
@@ -303,7 +307,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             showProfileButton: false,
             showDrawerButton: false,
             body:
-                provider.isSaving
+                cubit.state.isSaving
                     ? const Center(
                       child: CircularProgressIndicator(
                         color: AppColors.primary,
@@ -315,11 +319,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           builder: (context, constraints) {
                             final isTablet = constraints.maxWidth >= 800;
                             return isTablet
-                                ? _buildTabletLayout(provider)
-                                : _buildMobileLayout(provider);
+                                ? _buildTabletLayout(context, state, cubit)
+                                : _buildMobileLayout(context, state, cubit);
                           },
                         ),
-                        _buildBottomActionButton(provider),
+                        _buildBottomActionButton(context, state, cubit),
                       ],
                     ),
           );
@@ -332,27 +336,35 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   // LAYOUTS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMobileLayout(InventoryEntryFormProvider provider) {
+  Widget _buildMobileLayout(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildMainDataSection(provider),
+          _buildMainDataSection(context, state, cubit),
           const SizedBox(height: 16),
           if (widget.purchaseOrderId == null) ...[
-            _buildFinanceSection(provider),
+            _buildFinanceSection(context, state, cubit),
             const SizedBox(height: 16),
           ],
-          _buildDocumentSection(provider),
+          _buildDocumentSection(context, state, cubit),
           const SizedBox(height: 16),
-          _buildProductsSection(provider),
+          _buildProductsSection(context, state, cubit),
         ],
       ),
     );
   }
 
-  Widget _buildTabletLayout(InventoryEntryFormProvider provider) {
+  Widget _buildTabletLayout(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -364,13 +376,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMainDataSection(provider),
+                _buildMainDataSection(context, state, cubit),
                 const SizedBox(height: 16),
                 if (widget.purchaseOrderId == null) ...[
-                  _buildFinanceSection(provider),
+                  _buildFinanceSection(context, state, cubit),
                   const SizedBox(height: 16),
                 ],
-                _buildDocumentSection(provider),
+                _buildDocumentSection(context, state, cubit),
               ],
             ),
           ),
@@ -380,7 +392,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           flex: 6,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(12, 24, 24, 100),
-            child: _buildProductsSection(provider),
+            child: _buildProductsSection(context, state, cubit),
           ),
         ),
       ],
@@ -391,7 +403,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   // SECTIONS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMainDataSection(InventoryEntryFormProvider provider) {
+  Widget _buildMainDataSection(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,14 +418,14 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.selectedWarehouseId,
+            initialValue: cubit.state.selectedWarehouseId,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
               'Almacén Destino',
               icon: Icons.warehouse_rounded,
             ),
             items:
-                provider.warehouses
+                cubit.state.warehouses
                     .map(
                       (w) => DropdownMenuItem(
                         value: w.id,
@@ -420,11 +436,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       ),
                     )
                     .toList(),
-            onChanged: provider.setWarehouse,
+            onChanged: cubit.setWarehouse,
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.selectedSupplierId,
+            initialValue: cubit.state.selectedSupplierId,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
               'Proveedor (Opcional)',
@@ -435,7 +451,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 value: null,
                 child: Text('Ninguno (Ajuste/Directo)'),
               ),
-              ...provider.suppliers.map(
+              ...cubit.state.suppliers.map(
                 (s) => DropdownMenuItem(
                   value: s['id'] as String,
                   child: Text(
@@ -445,15 +461,19 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 ),
               ),
             ],
-            onChanged: provider.setSupplier,
+            onChanged: cubit.setSupplier,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFinanceSection(InventoryEntryFormProvider provider) {
-    final isCredit = provider.paymentMode == 'CREDITO';
+  Widget _buildFinanceSection(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
+    final isCredit = cubit.state.paymentMode == 'CREDITO';
 
     return _SectionCard(
       highlightColor: isCredit ? Colors.purple.shade50 : null,
@@ -468,7 +488,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.paymentMode,
+            initialValue: cubit.state.paymentMode,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
               'Tipo de Operación',
@@ -504,7 +524,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               ),
             ],
             onChanged: (v) {
-              if (v != null) provider.setPaymentMode(v);
+              if (v != null) cubit.setPaymentMode(v);
             },
           ),
           AnimatedSize(
@@ -512,11 +532,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child:
-                provider.paymentMode == 'CONTADO'
+                cubit.state.paymentMode == 'CONTADO'
                     ? Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: DropdownButtonFormField<String>(
-                        initialValue: provider.selectedAccountId,
+                        initialValue: cubit.state.selectedAccountId,
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more_rounded),
                         decoration: _dropdownDecoration(
@@ -524,7 +544,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           icon: Icons.account_balance_wallet_rounded,
                         ),
                         items:
-                            provider.accounts.map((acc) {
+                            cubit.state.accounts.map((acc) {
                               return DropdownMenuItem(
                                 value: acc.id,
                                 child: Text(
@@ -536,7 +556,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                 ),
                               );
                             }).toList(),
-                        onChanged: provider.setAccount,
+                        onChanged: cubit.setAccount,
                       ),
                     )
                     : const SizedBox.shrink(),
@@ -546,7 +566,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  Widget _buildDocumentSection(InventoryEntryFormProvider provider) {
+  Widget _buildDocumentSection(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,7 +584,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: provider.documentType,
+                  initialValue: cubit.state.documentType,
                   isExpanded: true,
                   icon: const Icon(Icons.expand_more_rounded),
                   decoration: _dropdownDecoration('Tipo Doc.'),
@@ -580,7 +604,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           )
                           .toList(),
                   onChanged: (v) {
-                    if (v != null) provider.setDocumentType(v);
+                    if (v != null) cubit.setDocumentType(v);
                   },
                 ),
               ),
@@ -617,9 +641,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           const SizedBox(height: 16),
           _DatePickerField(
             label: 'Fecha Emisión',
-            value: provider.documentDate,
+            value: cubit.state.documentDate,
             onPick: () => _pickDocumentDate(context),
-            onClear: () => provider.setDocumentDate(null),
+            onClear: () => cubit.setDocumentDate(null),
             icon: Icons.edit_calendar_rounded,
           ),
           const SizedBox(height: 16),
@@ -652,7 +676,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  Widget _buildProductsSection(InventoryEntryFormProvider provider) {
+  Widget _buildProductsSection(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -669,7 +697,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               const SizedBox(width: 8),
               Row(
                 children: [
-                  if (provider.items.isNotEmpty &&
+                  if (cubit.state.items.isNotEmpty &&
                       widget.purchaseOrderId == null)
                     IconButton(
                       icon: const Icon(
@@ -706,7 +734,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
             child:
-                provider.items.isEmpty
+                cubit.state.items.isEmpty
                     ? Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
@@ -740,21 +768,21 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: provider.items.length,
+                      itemCount: cubit.state.items.length,
                       itemBuilder: (context, index) {
                         return POFormItemTile(
-                          item: provider.items[index],
+                          item: cubit.state.items[index],
                           onUpdateQuantity: (newQty) {
-                            provider.updateItemQuantity(index, newQty);
+                            cubit.updateItemQuantity(index, newQty);
                           },
-                          onRemove: () => provider.removeItem(index),
+                          onRemove: () => cubit.removeItem(index),
                         );
                       },
                     ),
           ),
-          if (provider.items.isNotEmpty) ...[
+          if (cubit.state.items.isNotEmpty) ...[
             const SizedBox(height: 16),
-            POFormSummaryCard(items: provider.items),
+            POFormSummaryCard(items: cubit.state.items),
           ],
         ],
       ),
@@ -765,7 +793,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   // FIXED BOTTOM BUTTON
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildBottomActionButton(InventoryEntryFormProvider provider) {
+  Widget _buildBottomActionButton(
+    BuildContext context,
+    InventoryEntryFormState state,
+    InventoryEntryFormCubit cubit,
+  ) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -788,7 +820,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: provider.items.isEmpty ? null : _handleSave,
+                      onPressed: cubit.state.items.isEmpty ? null : _handleSave,
                       icon: const Icon(Icons.check_circle_outline_rounded),
                       label: const Text(
                         'Confirmar Ingreso',
@@ -981,4 +1013,3 @@ class _DatePickerField extends StatelessWidget {
     );
   }
 }
-

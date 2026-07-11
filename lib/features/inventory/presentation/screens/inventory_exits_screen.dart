@@ -3,15 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_exits_provider.dart';
+
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/inventory/data/repositories/inventory_exits_service.dart';
-import 'package:inventory_store_app/features/inventory/data/repositories/inventory_exits_pdf_generator.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_state.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
+import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +28,7 @@ class InventoryExitsScreen extends StatefulWidget {
 }
 
 class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
+  InventoryExitsCubit get cubit => context.read<InventoryExitsCubit>();
   final _searchCtrl = TextEditingController();
 
   bool _hasDraft = false;
@@ -34,9 +38,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<InventoryExitsProvider>();
-      _searchCtrl.text = provider.searchQuery;
-      provider.initLoad();
+      final cubit = context.read<InventoryExitsCubit>();
+      _searchCtrl.text = cubit.state.searchQuery;
+      cubit.initLoad();
     });
     _checkDraft();
   }
@@ -60,8 +64,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   Future<List<InventoryExitItemModel>> _loadItems(
     InventoryExitModel exitData,
   ) async {
-    final service = InventoryExitsService();
-    final itemsList = await service.getExitItems(exitData.id);
+    final getItemsUseCase = sl<GetExitItemsUseCase>();
+    final itemsList = await getItemsUseCase.call(exitData.id);
     return itemsList.map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
       final variant = r['product_variants'] as Map<String, dynamic>?;
@@ -134,13 +138,14 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<InventoryExitsProvider>(
-      builder: (context, provider, _) {
-        if (provider.errorMessage != null && !provider.isLoading) {
+    return BlocBuilder<InventoryExitsCubit, InventoryExitsState>(
+      builder: (context, state) {
+        final cubit = context.read<InventoryExitsCubit>();
+        if (cubit.state.errorMessage != null && !cubit.state.isLoading) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             AppSnackbar.show(
               context,
-              message: provider.errorMessage!,
+              message: cubit.state.errorMessage!,
               type: SnackbarType.error,
             );
           });
@@ -157,10 +162,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
             ),
           ],
           onSettingsSelected: (val) {
-            if (val == 'pdf' && provider.exits.isNotEmpty) {
+            if (val == 'pdf' && cubit.state.exits.isNotEmpty) {
               InventoryExitsPdfGenerator.shareReport(
-                exits: provider.exits,
-                dateRange: provider.dateRange,
+                exits: cubit.state.exits,
+                dateRange: cubit.state.dateRange,
               );
             } else if (val == 'pdf') {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -174,10 +179,10 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
               // Si es tablet pero borramos la búsqueda, limpiamos la selección si ya no existe
               if (isTablet && _selectedExit != null) {
-                final exists = provider.exits.any(
+                final exists = cubit.state.exits.any(
                   (e) => e.id == _selectedExit!.id,
                 );
-                if (!exists && provider.exits.isNotEmpty) {
+                if (!exists && cubit.state.exits.isNotEmpty) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {
                       setState(() => _selectedExit = null);
@@ -189,11 +194,11 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               return Stack(
                 children: [
                   isTablet
-                      ? _buildTabletLayout(provider)
-                      : _buildMobileLayout(provider),
+                      ? _buildTabletLayout(context, state, cubit)
+                      : _buildMobileLayout(context, state, cubit),
 
                   // ── Paginación anclada al fondo ──
-                  if (provider.totalPages > 1 && !provider.isLoading)
+                  if (cubit.state.totalPages > 1 && !cubit.state.isLoading)
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -211,9 +216,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                         child: SafeArea(
                           top: false,
                           child: AdminPageBlocks(
-                            currentPage: provider.currentPage,
-                            totalPages: provider.totalPages,
-                            onPageChanged: provider.changePage,
+                            currentPage: cubit.state.currentPage,
+                            totalPages: cubit.state.totalPages,
+                            onPageChanged: cubit.changePage,
                           ),
                         ),
                       ),
@@ -228,7 +233,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                 '/admin/inventory-exit-form',
               );
               if (result == true) {
-                provider.loadExits(isRefresh: true);
+                cubit.loadExits(isRefresh: true);
               }
             },
             icon: const Icon(Icons.remove_circle_outline_rounded),
@@ -244,15 +249,21 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
   // LAYOUTS
-  // ══════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMobileLayout(InventoryExitsProvider provider) {
-    return _buildListContent(provider, isTablet: false);
+  Widget _buildMobileLayout(
+    BuildContext context,
+    InventoryExitsState state,
+    InventoryExitsCubit cubit,
+  ) {
+    return _buildListContent(cubit, isTablet: false);
   }
 
-  Widget _buildTabletLayout(InventoryExitsProvider provider) {
+  Widget _buildTabletLayout(
+    BuildContext context,
+    InventoryExitsState state,
+    InventoryExitsCubit cubit,
+  ) {
     return Row(
       children: [
         // Panel Izquierdo: Lista
@@ -264,7 +275,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                 right: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
               ),
             ),
-            child: _buildListContent(provider, isTablet: true),
+            child: _buildListContent(cubit, isTablet: true),
           ),
         ),
         // Panel Derecho: Detalles
@@ -311,14 +322,17 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   }
 
   Widget _buildListContent(
-    InventoryExitsProvider provider, {
+    InventoryExitsCubit cubit, {
     required bool isTablet,
   }) {
-    final totalCost = provider.exits.fold<double>(0, (s, e) => s + e.totalCost);
+    final totalCost = cubit.state.exits.fold<double>(
+      0,
+      (s, e) => s + e.totalCost,
+    );
 
     return RefreshIndicator(
       color: AppColors.danger,
-      onRefresh: () => provider.loadExits(isRefresh: true),
+      onRefresh: () => cubit.loadExits(isRefresh: true),
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -360,7 +374,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                         _checkDraft();
                         if (!mounted) return;
                         if (result == true) {
-                          context.read<InventoryExitsProvider>().initLoad();
+                          context.read<InventoryExitsCubit>().initLoad();
                         }
                       },
                       style: FilledButton.styleFrom(
@@ -386,7 +400,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                 children: [
                   _SummaryTile(
                     label: 'Salidas',
-                    value: '${provider.exits.length}',
+                    value: '${cubit.state.exits.length}',
                     icon: Icons.output_rounded,
                     color: AppColors.danger,
                   ),
@@ -415,18 +429,18 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       child: _SearchField(
                         controller: _searchCtrl,
                         hint: 'Buscar motivo o notas...',
-                        onChanged: provider.updateSearch,
+                        onChanged: cubit.updateSearch,
                         onClear: () {
                           _searchCtrl.clear();
-                          provider.updateSearch('');
+                          cubit.updateSearch('');
                         },
                       ),
                     ),
                     const SizedBox(width: 8),
                     DateFilterCalendar(
-                      dateRange: provider.dateRange,
-                      onDateRangeSelected: provider.updateDateRange,
-                      onClear: () => provider.updateDateRange(null),
+                      dateRange: cubit.state.dateRange,
+                      onDateRangeSelected: cubit.updateDateRange,
+                      onClear: () => cubit.updateDateRange(null),
                     ),
                   ],
                 ),
@@ -435,30 +449,32 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           ),
 
           // ── Lista ──
-          if (provider.isLoading && provider.exits.isEmpty)
+          if (cubit.state.isLoading && cubit.state.exits.isEmpty)
             const SliverPadding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(child: KardexSkeleton()),
             )
-          else if (provider.errorMessage != null && provider.exits.isEmpty)
+          else if (cubit.state.errorMessage != null &&
+              cubit.state.exits.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
                 child: Text(
-                  provider.errorMessage!,
+                  cubit.state.errorMessage!,
                   style: const TextStyle(color: AppColors.danger),
                   textAlign: TextAlign.center,
                 ),
               ),
             )
-          else if (provider.exits.isEmpty)
+          else if (cubit.state.exits.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: AppEmptyState(
                 icon: Icons.inventory_2_outlined,
                 title: 'Sin Resultados',
                 message:
-                    provider.searchQuery.isEmpty && provider.dateRange == null
+                    cubit.state.searchQuery.isEmpty &&
+                            cubit.state.dateRange == null
                         ? 'No hay salidas registradas'
                         : 'Sin resultados para los filtros',
               ),
@@ -468,7 +484,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, i) {
-                  final exit = provider.exits[i];
+                  final exit = cubit.state.exits[i];
                   final isSelected = isTablet && _selectedExit?.id == exit.id;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -484,7 +500,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       },
                     ),
                   );
-                }, childCount: provider.exits.length),
+                }, childCount: cubit.state.exits.length),
               ),
             ),
         ],
@@ -785,4 +801,3 @@ class _Pill extends StatelessWidget {
     );
   }
 }
-

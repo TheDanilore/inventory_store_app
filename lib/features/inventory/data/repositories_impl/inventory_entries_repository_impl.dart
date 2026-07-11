@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_entries_repository.dart';
 
-class InventoryEntriesService {
+@LazySingleton(as: InventoryEntriesRepository)
+class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
   final _supabase = Supabase.instance.client;
 
+  @override
   Future<void> createInventoryEntry({
     required List<EntryItemUI> items,
     required String warehouseId,
@@ -274,6 +278,7 @@ class InventoryEntriesService {
     }
   }
 
+  @override
   Future<List<Map<String, dynamic>>> getActiveWarehouses() async {
     return await _supabase
         .from('warehouses')
@@ -281,6 +286,7 @@ class InventoryEntriesService {
         .eq('is_active', true);
   }
 
+  @override
   Future<List<Map<String, dynamic>>> getActiveSuppliers() async {
     return await _supabase
         .from('suppliers')
@@ -289,6 +295,7 @@ class InventoryEntriesService {
         .order('name');
   }
 
+  @override
   Future<List<Map<String, dynamic>>> getActiveAccounts() async {
     return await _supabase
         .from('financial_accounts')
@@ -297,6 +304,7 @@ class InventoryEntriesService {
         .order('name');
   }
 
+  @override
   Future<Map<String, dynamic>> getEntries({
     required int start,
     required int end,
@@ -343,6 +351,7 @@ class InventoryEntriesService {
     return {'data': resp.data as List<dynamic>, 'count': resp.count};
   }
 
+  @override
   Future<List<dynamic>> getEntryItems(String entryId) async {
     final resp = await _supabase
         .from('inventory_entry_items')

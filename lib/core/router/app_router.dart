@@ -56,6 +56,10 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex_
 import 'package:inventory_store_app/features/financial/presentation/screens/financial_accounts_screen.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_entries_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_entry_form_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_exit_form_screen.dart';
@@ -545,32 +549,44 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'inventory-entries',
-                  builder: (context, state) => const InventoryEntriesScreen(),
+                  builder: (context, state) => BlocProvider(
+                    create: (_) => sl<InventoryEntriesCubit>(),
+                    child: const InventoryEntriesScreen(),
+                  ),
                 ),
                 GoRoute(
                   path: 'inventory-entry-form',
                   builder: (context, state) {
                     final args = state.extra as Map<String, dynamic>? ?? {};
-                    return InventoryEntryFormScreen(
-                      purchaseOrderId:
-                          args['purchaseOrderId'] ??
-                          state.uri.queryParameters['purchaseOrderId'],
-                      prefillItems: args['prefillItems'],
-                      prefillSupplierId: args['prefillSupplierId'],
-                      prefillSupplierName: args['prefillSupplierName'],
-                      prefillDocumentType: args['prefillDocumentType'],
-                      prefillDocumentNumber: args['prefillDocumentNumber'],
-                      prefillDocumentDate: args['prefillDocumentDate'],
+                    return BlocProvider(
+                      create: (_) => sl<InventoryEntryFormCubit>(),
+                      child: InventoryEntryFormScreen(
+                        purchaseOrderId:
+                            args['purchaseOrderId'] ??
+                            state.uri.queryParameters['purchaseOrderId'],
+                        prefillItems: args['prefillItems'],
+                        prefillSupplierId: args['prefillSupplierId'],
+                        prefillSupplierName: args['prefillSupplierName'],
+                        prefillDocumentType: args['prefillDocumentType'],
+                        prefillDocumentNumber: args['prefillDocumentNumber'],
+                        prefillDocumentDate: args['prefillDocumentDate'],
+                      ),
                     );
                   },
                 ),
                 GoRoute(
                   path: 'inventory-exit-form',
-                  builder: (context, state) => const InventoryExitFormScreen(),
+                  builder: (context, state) => BlocProvider(
+                    create: (_) => sl<InventoryExitFormCubit>(),
+                    child: const InventoryExitFormScreen(),
+                  ),
                 ),
                 GoRoute(
                   path: 'inventory-exits',
-                  builder: (context, state) => const InventoryExitsScreen(),
+                  builder: (context, state) => BlocProvider(
+                    create: (_) => sl<InventoryExitsCubit>(),
+                    child: const InventoryExitsScreen(),
+                  ),
                 ),
                 GoRoute(
                   path: 'inventory',

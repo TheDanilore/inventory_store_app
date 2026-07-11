@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_exit_form_provider.dart';
-import 'package:inventory_store_app/features/inventory/data/repositories/inventory_exits_service.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form_state.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_batches_for_variant_usecase.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
@@ -24,7 +25,7 @@ class AddExitProductSheet extends StatefulWidget {
 }
 
 class _AddExitProductSheetState extends State<AddExitProductSheet> {
-  final _service = InventoryExitsService();
+  final _getBatchesUseCase = sl<GetBatchesForVariantUseCase>();
 
   ProductModel? _selectedProduct;
   ProductVariantModel? _selectedVariant;
@@ -68,7 +69,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   Future<void> _fetchBatchesForVariant(String variantId) async {
     setState(() => _loadingBatches = true);
     try {
-      final batches = await _service.getBatchesForVariant(
+      final batches = await _getBatchesUseCase.call(
         variantId,
         widget.warehouseId,
       );

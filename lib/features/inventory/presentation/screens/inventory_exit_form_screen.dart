@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as dart_ui;
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_exit_form_provider.dart';
+
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/add_exit_product_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form_state.dart';
 
 class InventoryExitFormScreen extends StatefulWidget {
   const InventoryExitFormScreen({super.key});
@@ -17,13 +19,14 @@ class InventoryExitFormScreen extends StatefulWidget {
 }
 
 class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
+  InventoryExitFormCubit get cubit => context.read<InventoryExitFormCubit>();
   final _notesCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<InventoryExitFormProvider>().loadInitialData();
+      context.read<InventoryExitFormCubit>().loadInitialData();
     });
   }
 
@@ -34,8 +37,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 
   Future<void> _showAddProductSheet() async {
-    final provider = context.read<InventoryExitFormProvider>();
-    if (provider.selectedWarehouseId == null) {
+    final cubit = context.read<InventoryExitFormCubit>();
+    if (cubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
         message: 'Primero selecciona el almacén de origen.',
@@ -50,14 +53,14 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (context) => AddExitProductSheet(
-            allProducts: provider.allProducts,
-            variantsByProduct: provider.variantsByProduct,
-            warehouseId: provider.selectedWarehouseId!,
+            allProducts: cubit.state.allProducts,
+            variantsByProduct: cubit.state.variantsByProduct,
+            warehouseId: cubit.state.selectedWarehouseId!,
           ),
     );
 
     if (newItem != null && mounted) {
-      provider.addItem(newItem);
+      cubit.addItem(newItem);
     }
   }
 
@@ -66,7 +69,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     double cantidadActual,
     double maxAvailable,
   ) async {
-    final provider = context.read<InventoryExitFormProvider>();
+    final cubit = context.read<InventoryExitFormCubit>();
     final qtyCtrl = TextEditingController(
       text: cantidadActual.toStringAsFixed(0),
     );
@@ -111,7 +114,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                   final newQty = double.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty > 0) {
                     final qty = newQty > maxAvailable ? maxAvailable : newQty;
-                    provider.updateQuantity(index, qty);
+                    cubit.updateQuantity(index, qty);
                   }
                   Navigator.pop(dialogContext);
                 },
@@ -127,9 +130,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 
   Future<void> _saveExit() async {
-    final provider = context.read<InventoryExitFormProvider>();
+    final cubit = context.read<InventoryExitFormCubit>();
 
-    if (provider.selectedWarehouseId == null) {
+    if (cubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
         message: 'Seleccione un almacén',
@@ -137,7 +140,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       );
       return;
     }
-    if (provider.items.isEmpty) {
+    if (cubit.state.items.isEmpty) {
       AppSnackbar.show(
         context,
         message: 'Agregue al menos un producto a retirar',
@@ -179,7 +182,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Estás a punto de confirmar una pérdida valorizada de S/ ${provider.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
+                  'Estás a punto de confirmar una pérdida valorizada de S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
@@ -245,23 +248,24 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
     if (!isConfirmed) return;
 
-    final success = await provider.saveExit(_notesCtrl.text.trim());
+    await cubit.saveExit(_notesCtrl.text.trim());
     if (!mounted) return;
 
-    if (success) {
+    if (cubit.state.isSuccess) {
       AppSnackbar.show(
         context,
         message: 'Salida de inventario registrada con éxito.',
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
-    } else if (provider.errorMessage != null) {
+    } else {
       AppSnackbar.show(
-        context,
-        message: provider.errorMessage!,
-        type: SnackbarType.error,
-      );
+      context,
+      message: cubit.state.errorMessage,
+      type: SnackbarType.error,
+    );
     }
+
   }
 
   @override
@@ -271,10 +275,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        final provider = context.read<InventoryExitFormProvider>();
-
-        if (provider.items.isEmpty || provider.isSaving) {
-          if (provider.items.isEmpty) provider.clearDraft();
+    
+        if (cubit.state.items.isEmpty || cubit.state.isSaving) {
+          if (cubit.state.items.isEmpty) cubit.clearDraft();
           Navigator.pop(context, result);
           return;
         }
@@ -321,15 +324,16 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         if (!context.mounted) return;
 
         if (action == 'discard') {
-          provider.clearDraft();
+          cubit.clearDraft();
           Navigator.pop(context, result);
         } else if (action == 'draft') {
           Navigator.pop(context, result);
         }
       },
-      child: Consumer<InventoryExitFormProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
+      child: BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
+        builder: (context, state) {
+        final cubit = context.read<InventoryExitFormCubit>();
+                if (cubit.state.isLoading) {
             return const AdminLayout(
               title: 'Nueva Salida',
               showBackButton: true,
@@ -347,7 +351,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             showProfileButton: false,
             showDrawerButton: false,
             body:
-                provider.isSaving
+                cubit.state.isSaving
                     ? const Center(
                       child: CircularProgressIndicator(color: AppColors.danger),
                     )
@@ -357,11 +361,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                           builder: (context, constraints) {
                             final isTablet = constraints.maxWidth >= 800;
                             return isTablet
-                                ? _buildTabletLayout(provider)
-                                : _buildMobileLayout(provider);
+                                ? _buildTabletLayout(context, state)
+                                : _buildMobileLayout(context, state);
                           },
                         ),
-                        _buildBottomActionButton(provider),
+                        _buildBottomActionButton(cubit),
                       ],
                     ),
           );
@@ -374,21 +378,21 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // LAYOUTS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMobileLayout(InventoryExitFormProvider provider) {
+  Widget _buildMobileLayout(BuildContext context, InventoryExitFormState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildGeneralInfoSection(provider),
+          _buildGeneralInfoSection(cubit),
           const SizedBox(height: 16),
-          _buildProductsSection(provider),
+          _buildProductsSection(cubit),
         ],
       ),
     );
   }
 
-  Widget _buildTabletLayout(InventoryExitFormProvider provider) {
+  Widget _buildTabletLayout(BuildContext context, InventoryExitFormState state) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -397,7 +401,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           flex: 4,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 24, 12, 100),
-            child: _buildGeneralInfoSection(provider),
+            child: _buildGeneralInfoSection(cubit),
           ),
         ),
         // Right Column (Products)
@@ -405,7 +409,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           flex: 6,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(12, 24, 24, 100),
-            child: _buildProductsSection(provider),
+            child: _buildProductsSection(cubit),
           ),
         ),
       ],
@@ -416,7 +420,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // SECTIONS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildGeneralInfoSection(InventoryExitFormProvider provider) {
+  Widget _buildGeneralInfoSection(InventoryExitFormCubit provider) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,14 +432,14 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.selectedWarehouseId,
+            initialValue: cubit.state.selectedWarehouseId,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
               'Almacén de Origen',
               icon: Icons.warehouse_rounded,
             ),
             items:
-                provider.warehouses
+                cubit.state.warehouses
                     .map(
                       (w) => DropdownMenuItem(
                         value: w.id,
@@ -446,11 +450,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                       ),
                     )
                     .toList(),
-            onChanged: provider.selectWarehouse,
+            onChanged: cubit.selectWarehouse,
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.selectedReason,
+            initialValue: cubit.state.selectedReason,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
               'Motivo de Salida',
@@ -476,7 +480,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     )
                     .toList(),
             onChanged: (v) {
-              if (v != null) provider.selectReason(v);
+              if (v != null) cubit.selectReason(v);
             },
           ),
           const SizedBox(height: 16),
@@ -510,7 +514,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  Widget _buildProductsSection(InventoryExitFormProvider provider) {
+  Widget _buildProductsSection(InventoryExitFormCubit provider) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,7 +543,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${provider.items.length}',
+                        '${cubit.state.items.length}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
@@ -573,7 +577,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
             child:
-                provider.items.isEmpty
+                cubit.state.items.isEmpty
                     ? Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(32),
@@ -607,12 +611,12 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     : ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: provider.items.length,
+                      itemCount: cubit.state.items.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder:
                           (context, index) => _buildItemCard(
-                            provider,
-                            provider.items[index],
+                            cubit,
+                            cubit.state.items[index],
                             index,
                           ),
                     ),
@@ -623,7 +627,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 
   Widget _buildItemCard(
-    InventoryExitFormProvider provider,
+    InventoryExitFormCubit cubit,
     ExitItemUI item,
     int index,
   ) {
@@ -779,11 +783,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             value: item.quantity.toInt(),
             onAdd:
                 item.quantity < maxAvailable
-                    ? () => provider.updateQuantity(index, item.quantity + 1)
+                    ? () => cubit.updateQuantity(index, item.quantity + 1)
                     : null,
             onRemove:
                 item.quantity > 1
-                    ? () => provider.updateQuantity(index, item.quantity - 1)
+                    ? () => cubit.updateQuantity(index, item.quantity - 1)
                     : null,
             onTapValue:
                 () => _showQuantityDialog(index, item.quantity, maxAvailable),
@@ -794,7 +798,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               Icons.delete_outline_rounded,
               color: AppColors.danger,
             ),
-            onPressed: () => provider.removeItem(index),
+            onPressed: () => cubit.removeItem(index),
             tooltip: 'Eliminar ítem',
           ),
         ],
@@ -806,7 +810,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // FIXED BOTTOM BUTTON
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildBottomActionButton(InventoryExitFormProvider provider) {
+  Widget _buildBottomActionButton(InventoryExitFormCubit provider) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -843,7 +847,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${provider.items.length} items · ${provider.totalUnits} unidades retiradas',
+                            '${cubit.state.items.length} items · ${cubit.state.totalUnits} unidades retiradas',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -853,7 +857,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                         ],
                       ),
                       Text(
-                        'S/ ${provider.totalLossCost.toStringAsFixed(2)}',
+                        'S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
@@ -868,7 +872,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: provider.items.isNotEmpty ? _saveExit : null,
+                      onPressed:
+                          cubit.state.items.isNotEmpty ? _saveExit : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.danger,
                         disabledBackgroundColor: AppColors.border,
@@ -1069,4 +1074,3 @@ class _VerticalStepper extends StatelessWidget {
     );
   }
 }
-

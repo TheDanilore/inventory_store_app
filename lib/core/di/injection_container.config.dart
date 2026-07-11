@@ -94,13 +94,13 @@ import '../../features/catalog/presentation/bloc/attributes_cubit.dart'
 import '../../features/catalog/presentation/bloc/categories_cubit.dart'
     as _i778;
 import '../../features/catalog/presentation/bloc/customer_catalog_cubit.dart'
-    as _i160;
+    as _i161;
 import '../../features/catalog/presentation/bloc/ingredients_cubit.dart'
     as _i841;
 import '../../features/catalog/presentation/bloc/product_detail_cubit.dart'
     as _i711;
 import '../../features/catalog/presentation/bloc/product_form_cubit.dart'
-    as _i150;
+    as _i151;
 import '../../features/customers/data/repositories_impl/customer_credits_repository_impl.dart'
     as _i922;
 import '../../features/customers/data/repositories_impl/customer_locations_repository_impl.dart'
@@ -146,7 +146,7 @@ import '../../features/customers/presentation/bloc/customer_wishlist_cubit.dart'
 import '../../features/customers/presentation/bloc/customers_cubit.dart'
     as _i482;
 import '../../features/customers/presentation/bloc/customers_stats_cubit.dart'
-    as _i798;
+    as _i799;
 import '../../features/customers/presentation/bloc/top_customers_cubit.dart'
     as _i205;
 import '../../features/dashboard/data/repositories_impl/dashboard_repository_impl.dart'
@@ -183,30 +183,70 @@ import '../../features/financial/presentation/bloc/account_movements_cubit.dart'
     as _i915;
 import '../../features/financial/presentation/bloc/financial_accounts_cubit.dart'
     as _i679;
+import '../../features/inventory/data/repositories_impl/inventory_entries_repository_impl.dart'
+    as _i176;
+import '../../features/inventory/data/repositories_impl/inventory_exits_repository_impl.dart'
+    as _i698;
 import '../../features/inventory/data/repositories_impl/inventory_repository_impl.dart'
     as _i1035;
 import '../../features/inventory/data/repositories_impl/kardex_repository_impl.dart'
     as _i192;
+import '../../features/inventory/domain/repositories/inventory_entries_repository.dart'
+    as _i74;
+import '../../features/inventory/domain/repositories/inventory_exits_repository.dart'
+    as _i92;
 import '../../features/inventory/domain/repositories/inventory_repository.dart'
     as _i422;
 import '../../features/inventory/domain/repositories/kardex_repository.dart'
     as _i269;
+import '../../features/inventory/domain/usecases/create_inventory_entry_usecase.dart'
+    as _i419;
+import '../../features/inventory/domain/usecases/create_inventory_exit_usecase.dart'
+    as _i738;
 import '../../features/inventory/domain/usecases/export_kardex_pdf_usecase.dart'
     as _i876;
+import '../../features/inventory/domain/usecases/get_active_accounts_usecase.dart'
+    as _i798;
+import '../../features/inventory/domain/usecases/get_active_products_and_variants_usecase.dart'
+    as _i64;
+import '../../features/inventory/domain/usecases/get_active_suppliers_usecase.dart'
+    as _i971;
+import '../../features/inventory/domain/usecases/get_active_warehouses_exits_usecase.dart'
+    as _i160;
+import '../../features/inventory/domain/usecases/get_active_warehouses_usecase.dart'
+    as _i945;
 import '../../features/inventory/domain/usecases/get_batch_metrics_usecase.dart'
     as _i581;
+import '../../features/inventory/domain/usecases/get_batches_for_variant_usecase.dart'
+    as _i134;
 import '../../features/inventory/domain/usecases/get_batches_paginated_usecase.dart'
     as _i544;
 import '../../features/inventory/domain/usecases/get_categories_usecase.dart'
     as _i815;
+import '../../features/inventory/domain/usecases/get_entry_items_usecase.dart'
+    as _i150;
+import '../../features/inventory/domain/usecases/get_exit_items_usecase.dart'
+    as _i441;
 import '../../features/inventory/domain/usecases/get_general_stock_metrics_usecase.dart'
     as _i226;
 import '../../features/inventory/domain/usecases/get_general_stock_paginated_usecase.dart'
     as _i285;
+import '../../features/inventory/domain/usecases/get_inventory_entries_usecase.dart'
+    as _i94;
+import '../../features/inventory/domain/usecases/get_inventory_exits_usecase.dart'
+    as _i136;
 import '../../features/inventory/domain/usecases/get_kardex_movements_usecase.dart'
     as _i392;
 import '../../features/inventory/presentation/bloc/inventory_cubit.dart'
     as _i777;
+import '../../features/inventory/presentation/bloc/inventory_entries_cubit.dart'
+    as _i159;
+import '../../features/inventory/presentation/bloc/inventory_entry_form_cubit.dart'
+    as _i1033;
+import '../../features/inventory/presentation/bloc/inventory_exit_form_cubit.dart'
+    as _i962;
+import '../../features/inventory/presentation/bloc/inventory_exits_cubit.dart'
+    as _i5;
 import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i713;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
@@ -245,11 +285,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i422.InventoryRepository>(
       () => _i1035.InventoryRepositoryImpl(),
     );
+    gh.lazySingleton<_i74.InventoryEntriesRepository>(
+      () => _i176.InventoryEntriesRepositoryImpl(),
+    );
     gh.lazySingleton<_i665.DashboardRepository>(
       () => _i583.DashboardRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i561.AccountMovementsRepository>(
       () => _i802.AccountMovementsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i92.InventoryExitsRepository>(
+      () => _i698.InventoryExitsRepositoryImpl(),
     );
     gh.lazySingleton<_i1018.CatalogRepository>(
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
@@ -437,6 +483,33 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i528.GetCustomerTopProductsUseCase(gh<_i875.CustomersRepository>()),
     );
+    gh.factory<_i419.CreateInventoryEntryUseCase>(
+      () => _i419.CreateInventoryEntryUseCase(
+        gh<_i74.InventoryEntriesRepository>(),
+      ),
+    );
+    gh.factory<_i798.GetActiveAccountsUseCase>(
+      () =>
+          _i798.GetActiveAccountsUseCase(gh<_i74.InventoryEntriesRepository>()),
+    );
+    gh.factory<_i971.GetActiveSuppliersUseCase>(
+      () => _i971.GetActiveSuppliersUseCase(
+        gh<_i74.InventoryEntriesRepository>(),
+      ),
+    );
+    gh.factory<_i945.GetActiveWarehousesUseCase>(
+      () => _i945.GetActiveWarehousesUseCase(
+        gh<_i74.InventoryEntriesRepository>(),
+      ),
+    );
+    gh.factory<_i150.GetEntryItemsUseCase>(
+      () => _i150.GetEntryItemsUseCase(gh<_i74.InventoryEntriesRepository>()),
+    );
+    gh.factory<_i94.GetInventoryEntriesUseCase>(
+      () => _i94.GetInventoryEntriesUseCase(
+        gh<_i74.InventoryEntriesRepository>(),
+      ),
+    );
     gh.factory<_i876.ExportKardexPdfUseCase>(
       () => _i876.ExportKardexPdfUseCase(gh<_i269.KardexRepository>()),
     );
@@ -457,6 +530,12 @@ extension GetItInjectableX on _i174.GetIt {
         getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
         getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),
         getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
+      ),
+    );
+    gh.factory<_i159.InventoryEntriesCubit>(
+      () => _i159.InventoryEntriesCubit(
+        getInventoryEntries: gh<_i94.GetInventoryEntriesUseCase>(),
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
       ),
     );
     gh.factory<_i425.GetFinancialAccountsUseCase>(
@@ -596,8 +675,33 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i580.GetCreditMovementsUseCase>(),
       ),
     );
-    gh.factory<_i798.CustomersStatsCubit>(
-      () => _i798.CustomersStatsCubit(gh<_i36.GetGlobalStatsUseCase>()),
+    gh.factory<_i738.CreateInventoryExitUseCase>(
+      () =>
+          _i738.CreateInventoryExitUseCase(gh<_i92.InventoryExitsRepository>()),
+    );
+    gh.factory<_i64.GetActiveProductsAndVariantsUseCase>(
+      () => _i64.GetActiveProductsAndVariantsUseCase(
+        gh<_i92.InventoryExitsRepository>(),
+      ),
+    );
+    gh.factory<_i160.GetActiveWarehousesExitsUseCase>(
+      () => _i160.GetActiveWarehousesExitsUseCase(
+        gh<_i92.InventoryExitsRepository>(),
+      ),
+    );
+    gh.factory<_i134.GetBatchesForVariantUseCase>(
+      () => _i134.GetBatchesForVariantUseCase(
+        gh<_i92.InventoryExitsRepository>(),
+      ),
+    );
+    gh.factory<_i441.GetExitItemsUseCase>(
+      () => _i441.GetExitItemsUseCase(gh<_i92.InventoryExitsRepository>()),
+    );
+    gh.factory<_i136.GetInventoryExitsUseCase>(
+      () => _i136.GetInventoryExitsUseCase(gh<_i92.InventoryExitsRepository>()),
+    );
+    gh.factory<_i799.CustomersStatsCubit>(
+      () => _i799.CustomersStatsCubit(gh<_i36.GetGlobalStatsUseCase>()),
     );
     gh.factory<_i581.GetBatchMetricsUseCase>(
       () => _i581.GetBatchMetricsUseCase(gh<_i422.InventoryRepository>()),
@@ -660,6 +764,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i263.DeleteCustomerLocationUseCase>(),
       ),
     );
+    gh.factory<_i1033.InventoryEntryFormCubit>(
+      () => _i1033.InventoryEntryFormCubit(
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
+        getActiveSuppliers: gh<_i971.GetActiveSuppliersUseCase>(),
+        getActiveAccounts: gh<_i798.GetActiveAccountsUseCase>(),
+        createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
+      ),
+    );
     gh.factory<_i915.AccountMovementsCubit>(
       () => _i915.AccountMovementsCubit(
         getMovements: gh<_i811.GetAccountMovementsUseCase>(),
@@ -674,8 +786,8 @@ extension GetItInjectableX on _i174.GetIt {
         exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),
       ),
     );
-    gh.factory<_i160.CustomerCatalogCubit>(
-      () => _i160.CustomerCatalogCubit(
+    gh.factory<_i161.CustomerCatalogCubit>(
+      () => _i161.CustomerCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         getProductsUC: gh<_i222.GetProductsUC>(),
         getProductStockUC: gh<_i958.GetProductStockUC>(),
@@ -733,6 +845,19 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
     );
+    gh.factory<_i962.InventoryExitFormCubit>(
+      () => _i962.InventoryExitFormCubit(
+        getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
+        getActiveProductsAndVariantsUseCase:
+            gh<_i64.GetActiveProductsAndVariantsUseCase>(),
+        createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
+      ),
+    );
+    gh.factory<_i5.InventoryExitsCubit>(
+      () => _i5.InventoryExitsCubit(
+        getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
+      ),
+    );
     gh.factory<_i777.InventoryCubit>(
       () => _i777.InventoryCubit(
         getGeneralStockMetrics: gh<_i226.GetGeneralStockMetricsUseCase>(),
@@ -759,8 +884,8 @@ extension GetItInjectableX on _i174.GetIt {
         exportProductPdf: gh<_i967.ExportProductPdfUseCase>(),
       ),
     );
-    gh.factory<_i150.ProductFormCubit>(
-      () => _i150.ProductFormCubit(
+    gh.factory<_i151.ProductFormCubit>(
+      () => _i151.ProductFormCubit(
         gh<_i700.GetCategoriesUC>(),
         gh<_i1014.GetProductImagesUC>(),
         gh<_i597.GetProductIngredientsUC>(),

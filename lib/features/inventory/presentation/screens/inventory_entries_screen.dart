@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_entry_items_usecase.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_entries_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/inventory_entry_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/features/inventory/data/repositories/inventory_entries_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
@@ -32,9 +34,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<InventoryEntriesProvider>();
-      _searchCtrl.text = provider.searchQuery;
-      provider.init();
+      context.read<InventoryEntriesCubit>().init();
     });
     _checkDraft();
   }
@@ -62,8 +62,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     String entryId,
     Map<String, dynamic>? productData,
   ) async {
-    final service = InventoryEntriesService();
-    final itemsDynamic = await service.getEntryItems(entryId);
+    final getEntryItems = sl<GetEntryItemsUseCase>();
+    final itemsDynamic = await getEntryItems.call(entryId);
     return itemsDynamic.map((r) {
       final prod = r['products'] as Map<String, dynamic>?;
       final variantData = r['product_variants'] as Map<String, dynamic>?;
@@ -145,18 +145,36 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<InventoryEntriesProvider>(
-      builder: (context, provider, child) {
-        if (provider.errorMessage.isNotEmpty && !provider.isLoading) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            AppSnackbar.show(
-              context,
-              message: provider.errorMessage,
-              type: SnackbarType.error,
-            );
-            provider.clearError();
-          });
+    return BlocConsumer<InventoryEntriesCubit, InventoryEntriesState>(
+      listener: (context, state) {
+        if (state is InventoryEntriesError) {
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
         }
+      },
+      builder: (context, state) {
+        if (state is InventoryEntriesInitial || (state is InventoryEntriesLoading && state is! InventoryEntriesLoaded)) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final loadedState = state is InventoryEntriesLoaded 
+          ? state 
+          : (state is InventoryEntriesLoading 
+              ? context.read<InventoryEntriesCubit>().state as InventoryEntriesLoaded?
+              : null);
+
+        if (loadedState == null && state is InventoryEntriesError) {
+          return Center(child: Text('Error: ${state.message}'));
+        }
+
+        final currentState = loadedState ?? const InventoryEntriesLoaded(
+          entries: [], searchQuery: '', warehouseFilter: 'Todos', availableWarehouses: ['Todos'], currentPage: 0, totalCount: 0, totalPages: 1,
+        );
+
+        final isLoading = state is InventoryEntriesLoading;
 
         return AdminLayout(
           title: 'Historial de Entradas',
@@ -167,11 +185,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               return Stack(
                 children: [
                   if (isTablet)
-                    _buildTabletLayout(context, provider)
+                    _buildTabletLayout(context, currentState, isLoading)
                   else
-                    _buildMobileLayout(context, provider),
+                    _buildMobileLayout(context, currentState, isLoading),
 
-                  _buildFloatingAction(provider),
+                  _buildFloatingAction(context),
                 ],
               );
             },
@@ -181,7 +199,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     );
   }
 
-  Widget _buildFloatingAction(InventoryEntriesProvider provider) {
+  Widget _buildFloatingAction(BuildContext context) {
     return Positioned(
       bottom: 24,
       right: 24,
@@ -190,8 +208,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           final result = await context.push<bool>(
             '/admin/inventory-entry-form',
           );
-          if (result == true) {
-            provider.loadEntries(page: 0);
+          if (result == true && context.mounted) {
+            context.read<InventoryEntriesCubit>().loadEntries(page: 0);
           }
           _checkDraft();
         },
@@ -207,25 +225,27 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   Widget _buildMobileLayout(
     BuildContext context,
-    InventoryEntriesProvider provider,
+    InventoryEntriesLoaded state,
+    bool isLoading,
   ) {
     return Column(
       children: [
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () => provider.loadEntries(page: 0),
-            child: _buildCustomScrollView(context, provider, false),
+            onRefresh: () async => context.read<InventoryEntriesCubit>().loadEntries(page: 0),
+            child: _buildCustomScrollView(context, state, isLoading, false),
           ),
         ),
-        _buildPagination(provider),
+        _buildPagination(context, state, isLoading),
       ],
     );
   }
 
   Widget _buildTabletLayout(
     BuildContext context,
-    InventoryEntriesProvider provider,
+    InventoryEntriesLoaded state,
+    bool isLoading,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,11 +257,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               Expanded(
                 child: RefreshIndicator(
                   color: AppColors.primary,
-                  onRefresh: () => provider.loadEntries(page: 0),
-                  child: _buildCustomScrollView(context, provider, true),
+                  onRefresh: () async => context.read<InventoryEntriesCubit>().loadEntries(page: 0),
+                  child: _buildCustomScrollView(context, state, isLoading, true),
                 ),
               ),
-              _buildPagination(provider),
+              _buildPagination(context, state, isLoading),
             ],
           ),
         ),
@@ -280,10 +300,11 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   Widget _buildCustomScrollView(
     BuildContext context,
-    InventoryEntriesProvider provider,
+    InventoryEntriesLoaded state,
+    bool isLoading,
     bool isTablet,
   ) {
-    final double totalAmount = provider.entries.fold<double>(
+    final double totalAmount = state.entries.fold<double>(
       0,
       (s, e) => s + e.totalAmount,
     );
@@ -325,7 +346,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                       );
                       _checkDraft();
                       if (result == true && context.mounted) {
-                        context.read<InventoryEntriesProvider>().init();
+                        context.read<InventoryEntriesCubit>().init();
                       }
                     },
                     style: FilledButton.styleFrom(
@@ -355,7 +376,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
               children: [
                 _SummaryChip(
                   label: 'Página actual',
-                  value: '${provider.entries.length}',
+                  value: '${state.entries.length}',
                   icon: Icons.move_to_inbox_rounded,
                   color: AppColors.primary,
                 ),
@@ -390,18 +411,18 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                           controller: _searchCtrl,
                           hint: 'Buscar proveedor o comprobante...',
                           onChanged: (v) {},
-                          onSubmitted: (v) => provider.setSearchQuery(v),
+                          onSubmitted: (v) => context.read<InventoryEntriesCubit>().setSearchQuery(v),
                           onClear: () {
                             _searchCtrl.clear();
-                            provider.setSearchQuery('');
+                            context.read<InventoryEntriesCubit>().setSearchQuery('');
                           },
                         ),
                       ),
                       const SizedBox(width: 8),
                       DateFilterCalendar(
-                        dateRange: provider.dateRange,
-                        onDateRangeSelected: provider.setDateRange,
-                        onClear: () => provider.setDateRange(null),
+                        dateRange: state.dateRange,
+                        onDateRangeSelected: context.read<InventoryEntriesCubit>().setDateRange,
+                        onClear: () => context.read<InventoryEntriesCubit>().setDateRange(null),
                       ),
                     ],
                   ),
@@ -410,8 +431,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children:
-                          provider.availableWarehouses.map((w) {
-                            final sel = provider.warehouseFilter == w;
+                          state.availableWarehouses.map((w) {
+                            final sel = state.warehouseFilter == w;
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: AnimatedContainer(
@@ -420,7 +441,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                   label: Text(w),
                                   selected: sel,
                                   onSelected:
-                                      (_) => provider.setWarehouseFilter(w),
+                                      (_) => context.read<InventoryEntriesCubit>().setWarehouseFilter(w),
                                   selectedColor: AppColors.primary.withValues(
                                     alpha: 0.15,
                                   ),
@@ -454,21 +475,21 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         ),
 
         // ── Lista ─────────────────────────────────────────────
-        if (provider.isLoading)
+        if (isLoading)
           const SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverToBoxAdapter(child: _EntriesSkeleton()),
           )
-        else if (provider.entries.isEmpty)
+        else if (state.entries.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
             child: AppEmptyState(
               icon: Icons.inbox_outlined,
               title: 'Sin Resultados',
               message:
-                  provider.searchQuery.isEmpty &&
-                          provider.dateRange == null &&
-                          provider.warehouseFilter == 'Todos'
+                  state.searchQuery.isEmpty &&
+                          state.dateRange == null &&
+                          state.warehouseFilter == 'Todos'
                       ? 'No hay entradas registradas'
                       : 'Sin resultados para los filtros aplicados',
             ),
@@ -483,7 +504,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             ), // Padding inferior por FAB
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
-                final entry = provider.entries[i];
+                final entry = state.entries[i];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _EntryCard(
@@ -492,15 +513,15 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     onTap: () => _onEntryTapped(context, entry, isTablet),
                   ),
                 );
-              }, childCount: provider.entries.length),
+              }, childCount: state.entries.length),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildPagination(InventoryEntriesProvider provider) {
-    if (provider.totalPages <= 1 || provider.isLoading) {
+  Widget _buildPagination(BuildContext context, InventoryEntriesLoaded state, bool isLoading) {
+    if (state.totalPages <= 1 || isLoading) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -518,9 +539,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       child: SafeArea(
         top: false,
         child: AdminPageBlocks(
-          currentPage: provider.currentPage,
-          totalPages: provider.totalPages,
-          onPageChanged: provider.goToPage,
+          currentPage: state.currentPage,
+          totalPages: state.totalPages,
+          onPageChanged: context.read<InventoryEntriesCubit>().goToPage,
         ),
       ),
     );

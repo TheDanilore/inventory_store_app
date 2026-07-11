@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_exits_repository.dart';
 
-class InventoryExitsService {
+@LazySingleton(as: InventoryExitsRepository)
+class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
   final _supabase = Supabase.instance.client;
 
+  @override
   Future<Map<String, dynamic>> getExits({
     required int start,
     required int end,
@@ -38,6 +42,7 @@ class InventoryExitsService {
     return {'data': resp.data as List<dynamic>, 'count': resp.count};
   }
 
+  @override
   Future<List<dynamic>> getExitItems(String exitId) async {
     final resp = await _supabase
         .from('inventory_exit_items')
@@ -60,6 +65,7 @@ class InventoryExitsService {
     return resp as List<dynamic>;
   }
 
+  @override
   Future<List<dynamic>> getActiveWarehouses() async {
     return await _supabase
         .from('warehouses')
@@ -67,6 +73,7 @@ class InventoryExitsService {
         .eq('is_active', true);
   }
 
+  @override
   Future<Map<String, dynamic>> getActiveProductsAndVariants() async {
     final results = await Future.wait([
       _supabase
@@ -95,6 +102,7 @@ class InventoryExitsService {
     };
   }
 
+  @override
   Future<List<dynamic>> getBatchesForVariant(
     String variantId,
     String warehouseId,
@@ -109,6 +117,7 @@ class InventoryExitsService {
         .order('created_at', ascending: true);
   }
 
+  @override
   Future<void> saveExitTransaction({
     required String warehouseId,
     required String reason,
