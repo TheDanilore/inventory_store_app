@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -189,7 +190,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                         title: const Padding(
                           padding: EdgeInsets.only(left: 4),
                           child: Text(
-                            'CatÃ¡logo',
+                            'Catálogo',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -564,6 +565,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
             return Scaffold(
               backgroundColor: Colors.transparent,
+              endDrawer: const AppDrawer(isAdmin: true),
               body: bodyContent,
               floatingActionButton: floatingBtn,
             );

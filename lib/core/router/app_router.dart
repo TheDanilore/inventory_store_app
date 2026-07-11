@@ -163,7 +163,7 @@ class AppRouter {
       final path = uri.path;
       if (path.isNotEmpty && path != '/' && path != '/login') {
         _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
-        debugPrint('AppRouter: deep link capturado Ã¢â€ â€™ $_pendingDeepLink');
+        debugPrint('AppRouter: deep link capturado -> $_pendingDeepLink');
       }
     } catch (_) {
       // En móvil Uri.base no existe; simplemente ignoramos

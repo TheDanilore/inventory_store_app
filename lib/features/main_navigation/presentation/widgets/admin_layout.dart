@@ -134,7 +134,7 @@ class AdminLayout extends StatelessWidget {
                         builder:
                             (context) => AdminAppBarIconButton(
                               icon: Icons.menu_rounded,
-                              tooltip: 'MenÃƒÂº principal',
+                              tooltip: 'Menú principal',
                               onTap: () => Scaffold.of(context).openEndDrawer(),
                             ),
                       ),
