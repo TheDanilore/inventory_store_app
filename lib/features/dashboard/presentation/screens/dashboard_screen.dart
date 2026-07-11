@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/enums/sales_time_filter.dart';
@@ -105,9 +104,11 @@ class _DashboardScreenContent extends StatelessWidget {
     final adminGoalTarget = config.getDouble('admin_goal_target', 2600.0);
     final adminGoalCurrent = config.getDouble('admin_goal_current', 0.0);
 
-    return AdminLayout(
-      title: 'Dashboard Financiero',
-      showBackButton: true,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard Financiero'),
+        centerTitle: true,
+      ),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
