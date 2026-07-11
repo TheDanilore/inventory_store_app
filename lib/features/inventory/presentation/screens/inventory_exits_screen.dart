@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
@@ -76,7 +76,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           attrValues.add(av['value'].toString());
         }
       }
-      final attrsText = attrValues.join(' Â· ');
+      final attrsText = attrValues.join(' · ');
 
       final bool usesBatches = prod?['uses_batches'] == true;
 
@@ -103,8 +103,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         exitId: exitData.id,
         productId: prod?['id'] as String? ?? '',
         variantId: variantId ?? '',
-        productName: prod?['name'] as String? ?? 'â€”',
-        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Ãšnica',
+        productName: prod?['name'] as String? ?? '—',
+        variantAttrs: attrsText.isNotEmpty ? attrsText : 'Única',
         quantity: (r['quantity'] as num).toDouble(),
         unitCost: (r['unit_cost'] as num).toDouble(),
         batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
@@ -172,7 +172,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
             builder: (context, constraints) {
               final isTablet = constraints.maxWidth >= 800;
 
-              // Si es tablet pero borramos la bÃºsqueda, limpiamos la selecciÃ³n si ya no existe
+              // Si es tablet pero borramos la búsqueda, limpiamos la selección si ya no existe
               if (isTablet && _selectedExit != null) {
                 final exists = provider.exits.any(
                   (e) => e.id == _selectedExit!.id,
@@ -192,7 +192,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       ? _buildTabletLayout(provider)
                       : _buildMobileLayout(provider),
 
-                  // â”€â”€ PaginaciÃ³n anclada al fondo â”€â”€
+                  // ── Paginación anclada al fondo ──
                   if (provider.totalPages > 1 && !provider.isLoading)
                     Positioned(
                       bottom: 0,
@@ -244,9 +244,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════════════════════════
   // LAYOUTS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════════════════════════
 
   Widget _buildMobileLayout(InventoryExitsProvider provider) {
     return _buildListContent(provider, isTablet: false);
@@ -322,7 +322,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // â”€â”€ Borrador â”€â”€
+          // ── Borrador ──
           if (_hasDraft)
             SliverToBoxAdapter(
               child: Container(
@@ -378,7 +378,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
               ),
             ),
 
-          // â”€â”€ Resumen â”€â”€
+          // ── Resumen ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -402,7 +402,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
             ),
           ),
 
-          // â”€â”€ Filtros (Sticky) â”€â”€
+          // ── Filtros (Sticky) ──
           SliverPersistentHeader(
             pinned: true,
             delegate: _StickyFiltersDelegate(
@@ -434,7 +434,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
             ),
           ),
 
-          // â”€â”€ Lista â”€â”€
+          // ── Lista ──
           if (provider.isLoading && provider.exits.isEmpty)
             const SliverPadding(
               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -493,9 +493,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 // DELEGATES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 
 class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
@@ -522,9 +522,9 @@ class _StickyFiltersDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 // WIDGETS AUXILIARES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 
 class _ExitCard extends StatelessWidget {
   final InventoryExitModel exitData;
@@ -580,7 +580,7 @@ class _ExitCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 _Pill(
                   icon: Icons.warehouse_rounded,
-                  label: exitData.warehouseName ?? 'AlmacÃ©n Desconocido',
+                  label: exitData.warehouseName ?? 'Almacén Desconocido',
                   color: AppColors.textSecondary,
                 ),
               ],
@@ -607,7 +607,7 @@ class _ExitCard extends StatelessWidget {
                             'dd MMM yyyy - HH:mm',
                             'es',
                           ).format(exitData.createdAt!.toLocal())
-                          : 'â€”',
+                          : '—',
                       style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,
@@ -646,7 +646,7 @@ class _ExitCard extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€ COMPONENTES COMPARTIDOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── COMPONENTES COMPARTIDOS ──────────────────────────────────────────────────
 
 class _SummaryTile extends StatelessWidget {
   final String label;

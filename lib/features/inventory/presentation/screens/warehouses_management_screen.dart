@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/warehouses_provider.dart';
@@ -67,7 +67,7 @@ class _WarehousesManagementScreenState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // â”€â”€â”€ BUSCADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ─── BUSCADOR ───────────────────────────────────────────────────────
               Container(
                 margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -85,7 +85,7 @@ class _WarehousesManagementScreenState
                   controller: _searchCtrl,
                   onChanged: provider.onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Buscar almacÃ©n por nombre o direcciÃ³n...',
+                    hintText: 'Buscar almacén por nombre o dirección...',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 14,
@@ -147,7 +147,7 @@ class _WarehousesManagementScreenState
                 ),
               ),
 
-              // â”€â”€â”€ LISTA DE ALMACENES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ─── LISTA DE ALMACENES ─────────────────────────────────────────────
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => provider.fetchWarehouses(),
@@ -259,7 +259,7 @@ class _WarehousesManagementScreenState
                                                       wh.address?.isNotEmpty ==
                                                               true
                                                           ? wh.address!
-                                                          : 'Sin direcciÃ³n registrada',
+                                                          : 'Sin dirección registrada',
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color:

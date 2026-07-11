@@ -92,7 +92,7 @@ import '../../features/catalog/presentation/bloc/admin_catalog_cubit.dart'
 import '../../features/catalog/presentation/bloc/attributes_cubit.dart'
     as _i919;
 import '../../features/catalog/presentation/bloc/categories_cubit.dart'
-    as _i777;
+    as _i778;
 import '../../features/catalog/presentation/bloc/customer_catalog_cubit.dart'
     as _i160;
 import '../../features/catalog/presentation/bloc/ingredients_cubit.dart'
@@ -183,6 +183,31 @@ import '../../features/financial/presentation/bloc/account_movements_cubit.dart'
     as _i915;
 import '../../features/financial/presentation/bloc/financial_accounts_cubit.dart'
     as _i679;
+import '../../features/inventory/data/repositories_impl/inventory_repository_impl.dart'
+    as _i1035;
+import '../../features/inventory/data/repositories_impl/kardex_repository_impl.dart'
+    as _i192;
+import '../../features/inventory/domain/repositories/inventory_repository.dart'
+    as _i422;
+import '../../features/inventory/domain/repositories/kardex_repository.dart'
+    as _i269;
+import '../../features/inventory/domain/usecases/export_kardex_pdf_usecase.dart'
+    as _i876;
+import '../../features/inventory/domain/usecases/get_batch_metrics_usecase.dart'
+    as _i581;
+import '../../features/inventory/domain/usecases/get_batches_paginated_usecase.dart'
+    as _i544;
+import '../../features/inventory/domain/usecases/get_categories_usecase.dart'
+    as _i815;
+import '../../features/inventory/domain/usecases/get_general_stock_metrics_usecase.dart'
+    as _i226;
+import '../../features/inventory/domain/usecases/get_general_stock_paginated_usecase.dart'
+    as _i285;
+import '../../features/inventory/domain/usecases/get_kardex_movements_usecase.dart'
+    as _i392;
+import '../../features/inventory/presentation/bloc/inventory_cubit.dart'
+    as _i777;
+import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i713;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -208,11 +233,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i728.WishlistRepository>(
       () => _i243.WishlistRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.lazySingleton<_i269.KardexRepository>(
+      () => _i192.KardexRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i787.AuthRepository>(
       () => _i710.AuthRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i662.FinancialAccountsRepository>(
       () => _i599.FinancialAccountsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i422.InventoryRepository>(
+      () => _i1035.InventoryRepositoryImpl(),
     );
     gh.lazySingleton<_i665.DashboardRepository>(
       () => _i583.DashboardRepositoryImpl(gh<_i454.SupabaseClient>()),
@@ -406,6 +437,12 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i528.GetCustomerTopProductsUseCase(gh<_i875.CustomersRepository>()),
     );
+    gh.factory<_i876.ExportKardexPdfUseCase>(
+      () => _i876.ExportKardexPdfUseCase(gh<_i269.KardexRepository>()),
+    );
+    gh.factory<_i392.GetKardexMovementsUseCase>(
+      () => _i392.GetKardexMovementsUseCase(gh<_i269.KardexRepository>()),
+    );
     gh.factory<_i205.TopCustomersCubit>(
       () => _i205.TopCustomersCubit(gh<_i36.GetTopCustomersUseCase>()),
     );
@@ -562,6 +599,24 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i798.CustomersStatsCubit>(
       () => _i798.CustomersStatsCubit(gh<_i36.GetGlobalStatsUseCase>()),
     );
+    gh.factory<_i581.GetBatchMetricsUseCase>(
+      () => _i581.GetBatchMetricsUseCase(gh<_i422.InventoryRepository>()),
+    );
+    gh.factory<_i544.GetBatchesPaginatedUseCase>(
+      () => _i544.GetBatchesPaginatedUseCase(gh<_i422.InventoryRepository>()),
+    );
+    gh.factory<_i815.GetCategoriesUseCase>(
+      () => _i815.GetCategoriesUseCase(gh<_i422.InventoryRepository>()),
+    );
+    gh.factory<_i226.GetGeneralStockMetricsUseCase>(
+      () =>
+          _i226.GetGeneralStockMetricsUseCase(gh<_i422.InventoryRepository>()),
+    );
+    gh.factory<_i285.GetGeneralStockPaginatedUseCase>(
+      () => _i285.GetGeneralStockPaginatedUseCase(
+        gh<_i422.InventoryRepository>(),
+      ),
+    );
     gh.factory<_i1001.CustomerCreditsCubit>(
       () => _i1001.CustomerCreditsCubit(
         gh<_i580.GetCreditAccountByCustomerUseCase>(),
@@ -611,6 +666,12 @@ extension GetItInjectableX on _i174.GetIt {
         saveMovement: gh<_i625.SaveAccountMovementUseCase>(),
         transferFunds: gh<_i862.TransferFundsUseCase>(),
         getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
+      ),
+    );
+    gh.factory<_i713.KardexCubit>(
+      () => _i713.KardexCubit(
+        getKardexMovements: gh<_i392.GetKardexMovementsUseCase>(),
+        exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),
       ),
     );
     gh.factory<_i160.CustomerCatalogCubit>(
@@ -672,6 +733,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
     );
+    gh.factory<_i777.InventoryCubit>(
+      () => _i777.InventoryCubit(
+        getGeneralStockMetrics: gh<_i226.GetGeneralStockMetricsUseCase>(),
+        getCategories: gh<_i815.GetCategoriesUseCase>(),
+        getGeneralStockPaginated: gh<_i285.GetGeneralStockPaginatedUseCase>(),
+        getBatchMetrics: gh<_i581.GetBatchMetricsUseCase>(),
+        getBatchesPaginated: gh<_i544.GetBatchesPaginatedUseCase>(),
+      ),
+    );
     gh.factory<_i17.CustomerWishlistCubit>(
       () => _i17.CustomerWishlistCubit(
         gh<_i927.GetCurrentProfileIdUseCase>(),
@@ -726,8 +796,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i777.CategoriesCubit>(
-      () => _i777.CategoriesCubit(
+    gh.factory<_i778.CategoriesCubit>(
+      () => _i778.CategoriesCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         createCategoryUC: gh<_i110.CreateCategoryUC>(),
         updateCategoryUC: gh<_i110.UpdateCategoryUC>(),

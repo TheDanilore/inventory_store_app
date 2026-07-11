@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'dart:ui' as dart_ui;
 import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_entry_form_provider.dart';
@@ -96,7 +96,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       initialDate: provider.documentDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      helpText: 'Fecha del Documento FÃ­sico',
+      helpText: 'Fecha del Documento Físico',
     );
     if (picked != null) {
       provider.setDocumentDate(picked);
@@ -108,7 +108,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Seleccione un almacÃ©n destino primero',
+        message: 'Seleccione un almacén destino primero',
         type: SnackbarType.warning,
       );
       return;
@@ -133,7 +133,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     provider.setDocumentNumber(_documentNumberCtrl.text.trim());
 
-    // Obtenemos el shift activo que seteamos en el initState (que ahora estÃ¡ guardado en el provider)
+    // Obtenemos el shift activo que seteamos en el initState (que ahora está guardado en el provider)
     String activeShiftId = "";
     final shiftResp =
         await Supabase.instance.client
@@ -164,7 +164,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         context,
         message:
             widget.purchaseOrderId != null
-                ? 'RecepciÃ³n registrada. Kardex y Orden actualizados.'
+                ? 'Recepción registrada. Kardex y Orden actualizados.'
                 : 'Ingreso manual registrado correctamente.',
         type: SnackbarType.success,
       );
@@ -185,7 +185,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           (_) => AlertDialog(
             title: const Text('Descartar Borrador'),
             content: const Text(
-              'Â¿EstÃ¡s seguro de que quieres limpiar los productos ingresados?',
+              '¿Estás seguro de que quieres limpiar los productos ingresados?',
             ),
             actions: [
               TextButton(
@@ -223,7 +223,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         if (didPop) return;
 
         final provider = context.read<InventoryEntryFormProvider>();
-        // Si no hay Ã­tems o estÃ¡ guardando, permitimos salir directamente
+        // Si no hay ítems o está guardando, permitimos salir directamente
         if (provider.items.isEmpty ||
             provider.isSaving ||
             widget.purchaseOrderId != null) {
@@ -238,7 +238,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               (ctx) => AlertDialog(
                 title: const Text('Cambios sin guardar'),
                 content: const Text(
-                  'Tienes un registro en curso. Â¿QuÃ© deseas hacer al salir?',
+                  'Tienes un registro en curso. ¿Qué deseas hacer al salir?',
                 ),
                 actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 actions: [
@@ -297,7 +297,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           return AdminLayout(
             title:
                 widget.purchaseOrderId != null
-                    ? 'RecepciÃ³n de Orden'
+                    ? 'Recepción de Orden'
                     : 'Nueva Entrada Manual',
             showBackButton: true,
             showProfileButton: false,
@@ -328,9 +328,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
   // LAYOUTS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
 
   Widget _buildMobileLayout(InventoryEntryFormProvider provider) {
     return SingleChildScrollView(
@@ -387,9 +387,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
   // SECTIONS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
 
   Widget _buildMainDataSection(InventoryEntryFormProvider provider) {
     return _SectionCard(
@@ -405,7 +405,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             initialValue: provider.selectedWarehouseId,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
-              'AlmacÃ©n Destino',
+              'Almacén Destino',
               icon: Icons.warehouse_rounded,
             ),
             items:
@@ -471,7 +471,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             initialValue: provider.paymentMode,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
-              'Tipo de OperaciÃ³n',
+              'Tipo de Operación',
               icon: Icons.money_rounded,
             ),
             items: const [
@@ -485,7 +485,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               DropdownMenuItem(
                 value: 'CREDITO',
                 child: Text(
-                  'Compra al CrÃ©dito',
+                  'Compra al Crédito',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -553,7 +553,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         children: [
           const _SectionTitle(
             icon: Icons.receipt_long_rounded,
-            title: 'Documento FÃ­sico',
+            title: 'Documento Físico',
           ),
           const SizedBox(height: 16),
           Row(
@@ -591,7 +591,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                   controller: _documentNumberCtrl,
                   textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
-                    labelText: 'NÃºmero / Serie',
+                    labelText: 'Número / Serie',
                     filled: true,
                     fillColor: AppColors.surface,
                     border: OutlineInputBorder(
@@ -616,7 +616,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           ),
           const SizedBox(height: 16),
           _DatePickerField(
-            label: 'Fecha EmisiÃ³n',
+            label: 'Fecha Emisión',
             value: provider.documentDate,
             onPick: () => _pickDocumentDate(context),
             onClear: () => provider.setDocumentDate(null),
@@ -727,7 +727,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                           ),
                           SizedBox(height: 12),
                           Text(
-                            'Agrega productos al almacÃ©n.',
+                            'Agrega productos al almacén.',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontWeight: FontWeight.w500,
@@ -761,9 +761,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
   // FIXED BOTTOM BUTTON
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
 
   Widget _buildBottomActionButton(InventoryEntryFormProvider provider) {
     return Positioned(
@@ -817,9 +817,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
   // UTILS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════════════════════════════════════════════════════════════
 
   InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
     return InputDecoration(
@@ -845,7 +845,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   }
 }
 
-// â”€â”€ WIDGETS AUXILIARES â”€â”€
+// ── WIDGETS AUXILIARES ──
 class _SectionCard extends StatelessWidget {
   final Widget child;
   final Color? highlightColor;

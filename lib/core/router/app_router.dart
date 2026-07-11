@@ -51,6 +51,8 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'package:inventory_store_app/features/customers/presentation/screens/customers_screen.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/top_customers_screen.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/screens/financial_accounts_screen.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
@@ -572,11 +574,37 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'inventory',
-                  builder: (context, state) => const InventoryScreen(),
+                  builder: (context, state) => BlocProvider(
+                    create: (_) => sl<InventoryCubit>(),
+                    child: const AdminLayout(
+                      title: 'Inventario',
+                      showBackButton: true,
+                      body: InventoryScreen(),
+                    ),
+                  ),
                 ),
                 GoRoute(
                   path: 'kardex',
-                  builder: (context, state) => const KardexScreen(),
+                  builder: (context, state) => BlocProvider(
+                    create: (_) => sl<KardexCubit>(),
+                    child: Builder(
+                      builder: (innerContext) => AdminLayout(
+                        title: 'Kardex',
+                        showBackButton: true,
+                        showSettingsButton: true,
+                        settingsActions: const [
+                          PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
+                        ],
+                        onSettingsSelected: (value) {
+                          if (value == 'export') {
+                            final cubit = innerContext.read<KardexCubit>();
+                            cubit.exportToPdf();
+                          }
+                        },
+                        body: const KardexScreen(),
+                      ),
+                    ),
+                  ),
                 ),
                 GoRoute(
                   path: 'orders',

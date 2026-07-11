@@ -1,7 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_stock_models.dart';
+import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_repository.dart';
 
-class InventoryService {
+@LazySingleton(as: InventoryRepository)
+class InventoryRepositoryImpl implements InventoryRepository {
   final _supabase = Supabase.instance.client;
 
   /// Retorna las métricas globales para Stock (Stock total, Variantes, Low stock)
@@ -10,6 +13,7 @@ class InventoryService {
   /// podríamos hacer una query a variants + batches.
   /// Para no sobrecargar, usaremos un enfoque mixto o rpc si existiera.
   /// Por ahora traemos la suma si es posible, o mantenemos un query ligero.
+  @override
   Future<Map<String, dynamic>> getGeneralStockMetrics() async {
     // Esto podría optimizarse en un Edge Function o RPC en el futuro.
     // Traeremos solo lo esencial para calcular.
@@ -62,6 +66,7 @@ class InventoryService {
   }
 
   /// Retorna las categorías activas para el filtro
+  @override
   Future<List<String>> getCategories() async {
     final response = await _supabase.from('categories').select('name');
     final cats = (response as List).map((e) => e['name'].toString()).toList();
@@ -70,6 +75,7 @@ class InventoryService {
   }
 
   /// Pagina las variantes de producto aplicando filtros en la DB.
+  @override
   Future<List<InventoryStockItem>> getGeneralStockPaginated({
     required int page,
     required int pageSize,
@@ -268,6 +274,7 @@ class InventoryService {
   }
 
   /// Pagina lotes aplicando filtros desde Supabase
+  @override
   Future<List<InventoryBatchItem>> getBatchesPaginated({
     required int page,
     required int pageSize,
@@ -397,6 +404,7 @@ class InventoryService {
   }
 
   /// Retorna conteos globales para los estados de lotes, respetando la búsqueda actual.
+  @override
   Future<Map<String, int>> getBatchMetrics({String search = ''}) async {
     var query = _supabase
         .from('warehouse_stock_batches')
@@ -460,6 +468,7 @@ class InventoryService {
     };
   }
 
+  @override
   Future<int> getTotalGeneralStockCount({
     String search = '',
     String categoryName = 'Todos',
@@ -505,6 +514,7 @@ class InventoryService {
     return (response as List).length;
   }
 
+  @override
   Future<int> getTotalBatchesCount({
     String search = '',
     String statusFilter = 'Todos',

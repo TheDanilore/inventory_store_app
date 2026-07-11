@@ -1,37 +1,25 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/kardex_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'dart:async';
 
-class KardexScreen extends StatelessWidget {
+class KardexScreen extends StatefulWidget {
   const KardexScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => KardexProvider(),
-      child: const _KardexView(),
-    );
-  }
+  State<KardexScreen> createState() => _KardexScreenState();
 }
 
-class _KardexView extends StatefulWidget {
-  const _KardexView();
-
-  @override
-  State<_KardexView> createState() => _KardexViewState();
-}
-
-class _KardexViewState extends State<_KardexView> {
+class _KardexScreenState extends State<KardexScreen> {
   final _searchCtrl = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
@@ -41,7 +29,7 @@ class _KardexViewState extends State<_KardexView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<KardexProvider>().addListener(_onProviderError);
+      context.read<KardexCubit>().loadMovements();
     });
     _scrollController.addListener(() {
       if (_scrollController.offset > 10 && _isFabExtended.value) {
@@ -64,32 +52,21 @@ class _KardexViewState extends State<_KardexView> {
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      context.read<KardexProvider>().setSearchText(value);
+      context.read<KardexCubit>().setSearchText(value);
     });
   }
 
-  void _onProviderError() {
-    if (!mounted) return;
-    final error = context.read<KardexProvider>().errorMessage;
-    if (error != null) {
-      AppSnackbar.show(context, message: error, type: SnackbarType.error);
-      context.read<KardexProvider>().clearError();
-    }
-  }
-
   Future<void> _openExitScreen(BuildContext context) async {
-    final provider = context.read<KardexProvider>();
     final result = await context.push('/admin/inventory-exit-form');
-    if (result == true) {
-      provider.refresh();
+    if (result == true && mounted) {
+      context.read<KardexCubit>().loadMovements();
     }
   }
 
   Future<void> _openEntryScreen(BuildContext context) async {
-    final provider = context.read<KardexProvider>();
     final result = await context.push('/admin/inventory-entry-form');
-    if (result == true) {
-      provider.refresh();
+    if (result == true && mounted) {
+      context.read<KardexCubit>().loadMovements();
     }
   }
 
@@ -171,8 +148,8 @@ class _KardexViewState extends State<_KardexView> {
     );
   }
 
-  Widget _buildFilterChip(KardexProvider provider, String label, String value) {
-    final isSelected = provider.typeFilter == value;
+  Widget _buildFilterChip(KardexLoaded state, String label, String value) {
+    final isSelected = state.typeFilter == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: AnimatedContainer(
@@ -180,7 +157,7 @@ class _KardexViewState extends State<_KardexView> {
         child: FilterChip(
           label: Text(label),
           selected: isSelected,
-          onSelected: (_) => provider.setTypeFilter(value),
+          onSelected: (_) => context.read<KardexCubit>().setTypeFilter(value),
           selectedColor: AppColors.primary.withValues(alpha: 0.15),
           checkmarkColor: AppColors.primary,
           backgroundColor: AppColors.surface,
@@ -199,84 +176,85 @@ class _KardexViewState extends State<_KardexView> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<KardexProvider>(
-      builder: (context, provider, _) {
+    return BlocConsumer<KardexCubit, KardexState>(
+      listener: (context, state) {
+        if (state is KardexError) {
+          AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+        }
+      },
+      builder: (context, state) {
+        if (state is KardexInitial || state is KardexLoading && state is! KardexLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final loadedState = state is KardexLoaded 
+          ? state 
+          : (state is KardexLoading 
+              ? context.read<KardexCubit>().state as KardexLoaded?
+              : null);
+
+        if (loadedState == null && state is KardexError) {
+          return Center(child: Text('Error: ${state.message}'));
+        }
+
+        final currentState = loadedState ?? const KardexLoaded(
+          movements: [], typeFilter: 'ALL', searchText: '', currentPage: 0, totalCount: 0, totalPages: 1, isExporting: false,
+        );
+
+        final isLoading = state is KardexLoading;
+
         return LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 800;
 
-            return AdminLayout(
-              title: 'Kardex',
-              showBackButton: true,
-              showSettingsButton: true,
-              settingsActions: const [
-                PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
-              ],
-              onSettingsSelected: (value) {
-                if (value == 'export') {
-                  if (!provider.isExporting) provider.exportToPdf();
-                }
-              },
-              actions:
-                  isTablet
-                      ? [
-                        ElevatedButton.icon(
-                          onPressed: () => _openEntryScreen(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade50,
-                            foregroundColor: Colors.green.shade700,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          icon: const Icon(Icons.add_shopping_cart, size: 18),
-                          label: const Text(
-                            'Ingreso',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _openExitScreen(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade50,
-                            foregroundColor: Colors.red.shade700,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          icon: const Icon(
-                            Icons.remove_circle_outline,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'Salida',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ]
-                      : null,
+            return Scaffold(
+              backgroundColor: AppColors.background,
               body: Column(
                 children: [
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh: provider.refresh,
-                      child: CustomScrollView(
+                      // Acciones principales en Tablet
+                      if (isTablet)
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () => _openEntryScreen(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade50,
+                                  foregroundColor: Colors.green.shade700,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.add_shopping_cart, size: 18),
+                                label: const Text('Ingreso', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                onPressed: () => _openExitScreen(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade50,
+                                  foregroundColor: Colors.red.shade700,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.remove_circle_outline, size: 18),
+                                label: const Text('Salida', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Expanded(
+                        child: RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: () async => context.read<KardexCubit>().loadMovements(page: 0),
+                          child: CustomScrollView(
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
-                          // --- STICKY HEADER (FILTROS Y BÃšSQUEDA) ---
+                          // --- STICKY HEADER (FILTROS Y BÚSQUEDA) ---
                           SliverPersistentHeader(
                             pinned: true,
                             delegate: _StickyKardexFiltersDelegate(
@@ -298,18 +276,18 @@ class _KardexViewState extends State<_KardexView> {
                                             onChanged: _onSearchChanged,
                                             onClear: () {
                                               _searchCtrl.clear();
-                                              provider.setSearchText('');
+                                              context.read<KardexCubit>().setSearchText('');
                                             },
                                           ),
                                         ),
                                         const SizedBox(width: 12),
                                         DateFilterCalendar(
-                                          dateRange: provider.dateRange,
+                                          dateRange: currentState.dateRange,
                                           onDateRangeSelected: (picked) {
-                                            provider.setDateRange(picked);
+                                            context.read<KardexCubit>().setDateRange(picked);
                                           },
                                           onClear: () {
-                                            provider.setDateRange(null);
+                                            context.read<KardexCubit>().setDateRange(null);
                                           },
                                         ),
                                       ],
@@ -319,31 +297,11 @@ class _KardexViewState extends State<_KardexView> {
                                       scrollDirection: Axis.horizontal,
                                       child: Row(
                                         children: [
-                                          _buildFilterChip(
-                                            provider,
-                                            'Todos',
-                                            'ALL',
-                                          ),
-                                          _buildFilterChip(
-                                            provider,
-                                            'Ingresos',
-                                            'ENTRY',
-                                          ),
-                                          _buildFilterChip(
-                                            provider,
-                                            'Salidas',
-                                            'EXIT',
-                                          ),
-                                          _buildFilterChip(
-                                            provider,
-                                            'Ventas',
-                                            'SALE',
-                                          ),
-                                          _buildFilterChip(
-                                            provider,
-                                            'Devoluciones',
-                                            'RETURN',
-                                          ),
+                                          _buildFilterChip(currentState, 'Todos', 'ALL'),
+                                          _buildFilterChip(currentState, 'Ingresos', 'ENTRY'),
+                                          _buildFilterChip(currentState, 'Salidas', 'EXIT'),
+                                          _buildFilterChip(currentState, 'Ventas', 'SALE'),
+                                          _buildFilterChip(currentState, 'Devoluciones', 'RETURN'),
                                         ],
                                       ),
                                     ),
@@ -354,20 +312,14 @@ class _KardexViewState extends State<_KardexView> {
                           ),
 
                           // --- CONTEO ---
-                          if (!provider.isLoading &&
-                              provider.movements.isNotEmpty)
+                          if (!isLoading && currentState.movements.isNotEmpty)
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  12,
-                                ),
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                                 child: Align(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    '${provider.totalCount} movimientos encontrados',
+                                    '${currentState.totalCount} movimientos encontrados',
                                     style: TextStyle(
                                       color: Colors.grey.shade700,
                                       fontSize: 13,
@@ -379,36 +331,28 @@ class _KardexViewState extends State<_KardexView> {
                             ),
 
                           // --- LISTADO ---
-                          if (provider.isLoading && provider.movements.isEmpty)
+                          if (isLoading && currentState.movements.isEmpty)
                             const SliverFillRemaining(child: KardexSkeleton())
-                          else if (provider.movements.isEmpty)
+                          else if (currentState.movements.isEmpty)
                             const SliverFillRemaining(
                               child: AppEmptyState(
                                 icon: Icons.history,
                                 title: 'No hay movimientos',
-                                message:
-                                    'AÃºn no se han registrado ingresos o salidas de inventario con estos filtros.',
+                                message: 'Aún no se han registrado ingresos o salidas de inventario con estos filtros.',
                               ),
                             )
                           else
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  16,
-                                ),
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 child: ListView.builder(
                                   physics: const NeverScrollableScrollPhysics(),
                                   shrinkWrap: true,
-                                  itemCount: provider.movements.length,
+                                  itemCount: currentState.movements.length,
                                   itemBuilder: (context, index) {
                                     return KardexCard(
-                                      item: provider.movements[index],
-                                      isLast:
-                                          index ==
-                                          provider.movements.length - 1,
+                                      item: currentState.movements[index],
+                                      isLast: index == currentState.movements.length - 1,
                                     );
                                   },
                                 ),
@@ -419,8 +363,8 @@ class _KardexViewState extends State<_KardexView> {
                     ),
                   ),
 
-                  // --- PAGINACIÃ“N ANCLADA ---
-                  if (provider.totalPages > 1 && !provider.isLoading)
+                  // --- PAGINACIÓN ANCLADA ---
+                  if (currentState.totalPages > 1 && !isLoading)
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                       decoration: BoxDecoration(
@@ -436,40 +380,33 @@ class _KardexViewState extends State<_KardexView> {
                       child: SafeArea(
                         top: false,
                         child: AdminPageBlocks(
-                          currentPage: provider.currentPage,
-                          totalPages: provider.totalPages,
-                          onPageChanged: (page) => provider.changePage(page),
+                          currentPage: currentState.currentPage,
+                          totalPages: currentState.totalPages,
+                          onPageChanged: (page) => context.read<KardexCubit>().changePage(page),
                         ),
                       ),
                     ),
                 ],
               ),
-              floatingActionButton:
-                  !isTablet
-                      ? FloatingActionButton.extended(
-                        onPressed: () => _showActionOptionsMobile(context),
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        icon: const Icon(Icons.add),
-                        label: ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, isExtended, _) {
-                            return AnimatedSize(
-                          duration: const Duration(milliseconds: 200),
-                          child:
-                              isExtended
-                                  ? const Text(
-                                    'Movimiento',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                  : const SizedBox.shrink(),
-                        );
-                          },
-                        ),
-                      )
-                      : null,
+              floatingActionButton: !isTablet
+                  ? FloatingActionButton.extended(
+                      onPressed: () => _showActionOptionsMobile(context),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.add),
+                      label: ValueListenableBuilder<bool>(
+                        valueListenable: _isFabExtended,
+                        builder: (context, isExtended, _) {
+                          return AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            child: isExtended
+                                ? const Text('Movimiento', style: TextStyle(fontWeight: FontWeight.bold))
+                                : const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                    )
+                  : null,
             );
           },
         );
@@ -478,9 +415,9 @@ class _KardexViewState extends State<_KardexView> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 // DELEGATES Y WIDGETS AUXILIARES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 
 class _StickyKardexFiltersDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;

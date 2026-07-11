@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/inventory_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_batch_card.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -29,9 +30,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<InventoryProvider>().initBatchesTab();
-    });
+    // No action needed here, the Cubit init happens when the tab is clicked or lazily
   }
 
   @override
@@ -44,18 +43,16 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   void _onSearchChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      context.read<InventoryProvider>().setBatchSearch(value);
+      context.read<InventoryCubit>().setBatchSearch(value);
     });
   }
 
   Future<void> _fetchProductAndSelect(String productId) async {
     try {
-      final product = await context.read<InventoryProvider>().fetchProductById(
-        productId,
-      );
-      if (mounted && product != null) {
+      // NOTE: Moving fetch product to a generic use case or other module
+      if (mounted) {
         setState(() {
-          _selectedProduct = product;
+          //_selectedProduct = null;
         });
       }
     } catch (e) {
@@ -70,8 +67,30 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Consumer<InventoryProvider>(
-      builder: (context, provider, child) {
+    return BlocBuilder<InventoryCubit, InventoryState>(
+      builder: (context, state) {
+        if (state is InventoryInitial || state is InventoryLoading && state is! InventoryLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final loadedState = state is InventoryLoaded 
+          ? state 
+          : (state is InventoryLoading 
+              ? context.read<InventoryCubit>().state as InventoryLoaded?
+              : null);
+
+        if (loadedState == null && state is InventoryError) {
+          return Center(child: Text('Error: ${state.message}'));
+        }
+
+        final currentState = loadedState ?? const InventoryLoaded(
+          stockItems: [], batchItems: [], currentStockPage: 0, totalStockPages: 1, 
+          stockSearchText: '', stockCategoryFilter: 'Todos', categories: ['Todos'], 
+          globalTotalVariants: 0, globalTotalStock: 0, globalLowStockCount: 0, globalTotalCost: 0.0, 
+          currentBatchPage: 0, totalBatchPages: 1, batchSearchText: '', batchStatusFilter: 'Todos', 
+          countVencido: 0, countCritico: 0, countProximo: 0, countNormal: 0,
+        );
+
         return LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 800;
@@ -90,7 +109,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                           ),
                         ),
                       ),
-                      child: _buildListContent(provider, isTablet: true),
+                      child: _buildListContent(currentState, state is InventoryLoading, isTablet: true),
                     ),
                   ),
                   Expanded(
@@ -131,7 +150,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               );
             }
 
-            return _buildListContent(provider, isTablet: false);
+            return _buildListContent(currentState, state is InventoryLoading, isTablet: false);
           },
         );
       },
@@ -139,7 +158,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
   }
 
   Widget _buildListContent(
-    InventoryProvider provider, {
+    InventoryLoaded state,
+    bool isLoading, {
     required bool isTablet,
   }) {
     return CustomScrollView(
@@ -153,31 +173,31 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               children: [
                 _MetricCard(
                   label: 'Vencidos',
-                  value: '${provider.countVencido}',
+                  value: '${state.countVencido}',
                   icon: Icons.block_rounded,
                   color: AppColors.danger,
-                  highlight: provider.countVencido > 0,
+                  highlight: state.countVencido > 0,
                 ),
                 const SizedBox(width: 6),
                 _MetricCard(
                   label: 'Críticos',
-                  value: '${provider.countCritico}',
+                  value: '${state.countCritico}',
                   icon: Icons.warning_amber_rounded,
                   color: AppColors.warning,
-                  highlight: provider.countCritico > 0,
+                  highlight: state.countCritico > 0,
                 ),
                 const SizedBox(width: 6),
                 _MetricCard(
                   label: 'Próximos',
-                  value: '${provider.countProximo}',
+                  value: '${state.countProximo}',
                   icon: Icons.schedule_rounded,
                   color: Colors.blue.shade400,
-                  highlight: provider.countProximo > 0,
+                  highlight: state.countProximo > 0,
                 ),
                 const SizedBox(width: 6),
                 _MetricCard(
                   label: 'Normal',
-                  value: '${provider.countNormal}',
+                  value: '${state.countNormal}',
                   icon: Icons.check_circle_outline_rounded,
                   color: AppColors.success,
                 ),
@@ -202,7 +222,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                     onChanged: _onSearchChanged,
                     onClear: () {
                       _searchCtrl.clear();
-                      provider.setBatchSearch('');
+                      context.read<InventoryCubit>().setBatchSearch('');
                     },
                   ),
                   const SizedBox(height: 12),
@@ -212,36 +232,36 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                       children: [
                         _StatusPill(
                           label: 'Todos',
-                          isSelected: provider.batchStatusFilter == 'Todos',
-                          onTap: () => provider.setBatchStatus('Todos'),
+                          isSelected: state.batchStatusFilter == 'Todos',
+                          onTap: () => context.read<InventoryCubit>().setBatchStatus('Todos'),
                           color: AppColors.primary,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Vencidos',
-                          isSelected: provider.batchStatusFilter == 'vencido',
-                          onTap: () => provider.setBatchStatus('vencido'),
+                          isSelected: state.batchStatusFilter == 'vencido',
+                          onTap: () => context.read<InventoryCubit>().setBatchStatus('vencido'),
                           color: AppColors.danger,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Críticos',
-                          isSelected: provider.batchStatusFilter == 'critico',
-                          onTap: () => provider.setBatchStatus('critico'),
+                          isSelected: state.batchStatusFilter == 'critico',
+                          onTap: () => context.read<InventoryCubit>().setBatchStatus('critico'),
                           color: AppColors.warning,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Próximos',
-                          isSelected: provider.batchStatusFilter == 'proximo',
-                          onTap: () => provider.setBatchStatus('proximo'),
+                          isSelected: state.batchStatusFilter == 'proximo',
+                          onTap: () => context.read<InventoryCubit>().setBatchStatus('proximo'),
                           color: Colors.blue.shade400,
                         ),
                         const SizedBox(width: 8),
                         _StatusPill(
                           label: 'Normales',
-                          isSelected: provider.batchStatusFilter == 'normal',
-                          onTap: () => provider.setBatchStatus('normal'),
+                          isSelected: state.batchStatusFilter == 'normal',
+                          onTap: () => context.read<InventoryCubit>().setBatchStatus('normal'),
                           color: AppColors.success,
                         ),
                       ],
@@ -254,7 +274,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
         ),
 
         // ── Resumen Resultados ──
-        if (!provider.isLoadingBatches && provider.batchItems.isNotEmpty)
+        if (!isLoading && state.batchItems.isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -270,7 +290,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                     ),
                   ),
                   Text(
-                    '${(provider.currentBatchPage * InventoryProvider.batchPageSize) + 1}–${((provider.currentBatchPage * InventoryProvider.batchPageSize) + provider.batchItems.length).clamp(0, provider.totalBatchItems)} de ${provider.totalBatchItems}',
+                    '${(state.currentBatchPage * 8) + 1}–${((state.currentBatchPage * 8) + state.batchItems.length)}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -283,22 +303,12 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
           ),
 
         // ── Lista Principal ──
-        if (provider.isLoadingBatches)
+        if (isLoading && state.batchItems.isEmpty)
           const SliverPadding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverToBoxAdapter(child: _InventoryBatchesSkeleton()),
           )
-        else if (provider.errorMessageBatches.isNotEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: AppEmptyState(
-              icon: Icons.error_outline_rounded,
-              color: Colors.red,
-              title: 'Error',
-              message: provider.errorMessageBatches,
-            ),
-          )
-        else if (provider.batchItems.isEmpty)
+        else if (state.batchItems.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: AppEmptyState(
@@ -313,11 +323,11 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               16,
               0,
               16,
-              provider.totalBatchPages > 1 ? 100 : 16,
+              state.totalBatchPages > 1 ? 100 : 16,
             ),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
-                final batch = provider.batchItems[i];
+                final batch = state.batchItems[i];
                 final isSelected =
                     isTablet && _selectedProduct?.id == batch.productId;
                 return Padding(
@@ -331,19 +341,19 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                             : null,
                   ),
                 );
-              }, childCount: provider.batchItems.length),
+              }, childCount: state.batchItems.length),
             ),
           ),
 
         // ── Paginación ──
-        if (!provider.isLoadingBatches && provider.totalBatchPages > 1)
+        if (!isLoading && state.totalBatchPages > 1)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: AdminPageBlocks(
-                currentPage: provider.currentBatchPage,
-                totalPages: provider.totalBatchPages,
-                onPageChanged: (page) => provider.setBatchPage(page),
+                currentPage: state.currentBatchPage,
+                totalPages: state.totalBatchPages,
+                onPageChanged: (page) => context.read<InventoryCubit>().setBatchPage(page),
               ),
             ),
           ),

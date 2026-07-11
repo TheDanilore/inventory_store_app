@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_stock_models.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 
