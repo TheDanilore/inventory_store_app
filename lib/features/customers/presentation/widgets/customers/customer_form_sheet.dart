@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -58,7 +57,6 @@ class _CustomerFormSheetContent extends StatefulWidget {
 }
 
 class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
-  final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
   // Controladores
@@ -118,36 +116,7 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
     _isActive = c.isActive;
     _currentWalletBalance = c.walletBalance;
 
-    _loadCredit();
-  }
-
-  Future<void> _loadCredit() async {
-    if (!_isEditing) return;
-    setState(() => _isLoadingCredit = true);
-
-    try {
-      final resp =
-          await _supabase
-              .from('customer_credits')
-              .select('id, credit_limit, current_debt, is_active')
-              .eq('profile_id', widget.customer!.id)
-              .maybeSingle();
-
-      if (resp != null && mounted) {
-        final limit = (resp['credit_limit'] as num).toDouble();
-        final isActive = resp['is_active'] as bool;
-        setState(() {
-          _creditExistsInDb = true;
-          _creditId = resp['id'] as String;
-          _creditIsActive = isActive;
-          _hasCredit = isActive;
-          _currentDebt = (resp['current_debt'] as num).toDouble();
-          _creditLimitCtrl.text = limit.toStringAsFixed(2);
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _isLoadingCredit = false);
-    }
+    context.read<CustomerFormCubit>().loadCredit(c.id);
   }
 
   // GUARDAR
@@ -200,6 +169,23 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
               Navigator.pop(context, true);
             } else if (state is CustomerFormError) {
               _showError(state.message);
+            } else if (state is CustomerFormCreditLoaded) {
+              final account = state.creditAccount;
+              if (account != null && mounted) {
+                setState(() {
+                  _creditExistsInDb = true;
+                  _creditId = account.id;
+                  _creditIsActive = account.isActive;
+                  _hasCredit = account.isActive;
+                  _currentDebt = account.currentDebt;
+                  _creditLimitCtrl.text = account.creditLimit.toStringAsFixed(2);
+                  _isLoadingCredit = false;
+                });
+              } else if (mounted) {
+                 setState(() => _isLoadingCredit = false);
+              }
+            } else if (state is CustomerFormCreditLoading && mounted) {
+              setState(() => _isLoadingCredit = true);
             }
           },
           builder: (context, state) {

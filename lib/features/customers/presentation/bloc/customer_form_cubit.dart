@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_ucs.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 
 abstract class CustomerFormState {}
 
@@ -15,11 +17,32 @@ class CustomerFormError extends CustomerFormState {
   CustomerFormError(this.message);
 }
 
+class CustomerFormCreditLoading extends CustomerFormState {}
+
+class CustomerFormCreditLoaded extends CustomerFormState {
+  final CustomerCreditEntity? creditAccount;
+  CustomerFormCreditLoaded(this.creditAccount);
+}
+
 @injectable
 class CustomerFormCubit extends Cubit<CustomerFormState> {
   final SaveCustomerFullProfileUseCase _saveCustomerFullProfileUseCase;
+  final GetCreditAccountByCustomerUseCase _getCreditAccountByCustomerUseCase;
 
-  CustomerFormCubit(this._saveCustomerFullProfileUseCase) : super(CustomerFormInitial());
+  CustomerFormCubit(
+    this._saveCustomerFullProfileUseCase,
+    this._getCreditAccountByCustomerUseCase,
+  ) : super(CustomerFormInitial());
+
+  Future<void> loadCredit(String customerId) async {
+    emit(CustomerFormCreditLoading());
+    try {
+      final account = await _getCreditAccountByCustomerUseCase(customerId);
+      emit(CustomerFormCreditLoaded(account));
+    } catch (e) {
+      emit(CustomerFormError(e.toString()));
+    }
+  }
 
   Future<void> save({
     String? customerId,

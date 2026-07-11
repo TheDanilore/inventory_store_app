@@ -1,20 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-
-class WishlistEntryModel extends Equatable {
-  final String wishlistId;
-  final DateTime? createdAt;
-  final ProductModel product;
-
-  const WishlistEntryModel({
-    required this.wishlistId,
-    required this.createdAt,
-    required this.product,
-  });
-
-  @override
-  List<Object?> get props => [wishlistId, createdAt, product];
-}
+import 'package:inventory_store_app/features/customers/domain/entities/wishlist_entry_entity.dart';
 
 abstract class CustomerWishlistState extends Equatable {
   const CustomerWishlistState();
@@ -28,7 +13,7 @@ class CustomerWishlistInitial extends CustomerWishlistState {}
 class CustomerWishlistLoading extends CustomerWishlistState {}
 
 class CustomerWishlistLoaded extends CustomerWishlistState {
-  final List<WishlistEntryModel> items;
+  final List<WishlistEntryEntity> items;
   final bool hasReachedMax;
 
   const CustomerWishlistLoaded({
@@ -37,7 +22,7 @@ class CustomerWishlistLoaded extends CustomerWishlistState {
   });
 
   CustomerWishlistLoaded copyWith({
-    List<WishlistEntryModel>? items,
+    List<WishlistEntryEntity>? items,
     bool? hasReachedMax,
   }) {
     return CustomerWishlistLoaded(

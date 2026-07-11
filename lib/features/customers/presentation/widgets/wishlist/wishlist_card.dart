@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_state.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/wishlist_entry_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class WishlistCard extends StatelessWidget {
-  final WishlistEntryModel entry;
+  final WishlistEntryEntity entry;
   final bool isProcessing;
   final VoidCallback onAddToCart;
   final VoidCallback onRemove;

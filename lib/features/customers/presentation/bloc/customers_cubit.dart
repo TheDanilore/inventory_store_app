@@ -3,15 +3,20 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers_state.dart';
-import 'package:inventory_store_app/features/customers/data/utils/customer_pdf_generator.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/export_customers_pdf_usecase.dart';
 
 @injectable
 class CustomersCubit extends Cubit<CustomersState> {
   final GetCustomersUseCase _getCustomersUseCase;
 
+  final ExportCustomersPdfUseCase _exportPdfUseCase;
+
   static const int _limit = 20;
 
-  CustomersCubit(this._getCustomersUseCase) : super(CustomersInitial());
+  CustomersCubit(
+    this._getCustomersUseCase,
+    this._exportPdfUseCase,
+  ) : super(CustomersInitial());
 
   Future<void> fetchCustomers({
     bool reset = false,
@@ -63,9 +68,9 @@ class CustomersCubit extends Cubit<CustomersState> {
     }
   }
 
-  void exportPdf() {
+  Future<void> exportPdf() async {
     if (state is CustomersLoaded) {
-      CustomerPdfGenerator.shareOrPrintPdf((state as CustomersLoaded).customers);
+      await _exportPdfUseCase((state as CustomersLoaded).customers);
     }
   }
 

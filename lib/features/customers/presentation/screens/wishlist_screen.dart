@@ -1,17 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_wishlist_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/wishlist/wishlist_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/wishlist_entry_entity.dart';
 
 class WishlistScreen extends StatelessWidget {
   final void Function(BuildContext context, ProductEntity product)? onAddToCart;
@@ -38,15 +37,12 @@ class _WishlistScreenContent extends StatefulWidget {
 
 class _WishlistScreenContentState extends State<_WishlistScreenContent> {
   final ScrollController _scrollController = ScrollController();
-  final String? profileId = Supabase.instance.client.auth.currentUser?.id; // Should get from a user session service ideally
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (profileId != null) {
-        context.read<CustomerWishlistCubit>().fetchWishlist(profileId: profileId!, reset: true);
-      }
+      context.read<CustomerWishlistCubit>().fetchWishlist(reset: true);
     });
     _scrollController.addListener(_onScroll);
   }
@@ -63,22 +59,20 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
         _scrollController.position.maxScrollExtent - 200) {
       final state = context.read<CustomerWishlistCubit>().state;
       if (state is CustomerWishlistLoaded && !state.hasReachedMax) {
-        if (profileId != null) {
-          context.read<CustomerWishlistCubit>().fetchWishlist(profileId: profileId!, reset: false);
-        }
+        context.read<CustomerWishlistCubit>().fetchWishlist(reset: false);
       }
     }
   }
 
-  void _handleAddToCart(WishlistEntryModel entry) {
+  void _handleAddToCart(WishlistEntryEntity entry) {
     if (widget.onAddToCart != null) {
-      widget.onAddToCart!(context, entry.product.toEntity());
+      widget.onAddToCart!(context, entry.product);
     } else {
       AppSnackbar.show(context, message: 'Función añadir al carrito no disponible.');
     }
   }
 
-  Future<void> _confirmRemove(WishlistEntryModel entry) async {
+  Future<void> _confirmRemove(WishlistEntryEntity entry) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder:
@@ -129,26 +123,25 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
 
     if (confirm == true) {
       if (!mounted) return;
-      if (profileId != null) {
-        context.read<CustomerWishlistCubit>().removeFromWishlist(profileId!, entry);
-        AppSnackbar.show(context, message: 'Eliminado de tu lista de deseos');
-      }
+      context.read<CustomerWishlistCubit>().removeFromWishlist(entry);
+      AppSnackbar.show(context, message: 'Eliminado de tu lista de deseos');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomerLayout(
-      title: 'Mis Deseos',
-      showBackButton: true,
-      showBottomNav: false,
-      showCartIcon: true,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Mis Deseos'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          if (profileId != null) {
-            await context.read<CustomerWishlistCubit>().fetchWishlist(profileId: profileId!, reset: true);
-          }
+          await context.read<CustomerWishlistCubit>().fetchWishlist(reset: true);
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -203,7 +196,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
     );
   }
 
-  Widget _buildHeaderBanner(List<WishlistEntryModel> items) {
+  Widget _buildHeaderBanner(List<WishlistEntryEntity> items) {
     final availableCount = items.where((e) => e.product.totalStock > 0 && e.product.isActive).length;
 
     return Container(
@@ -281,19 +274,6 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
             ),
           ),
           childCount: 5,
-        ),
-      );
-    }
-
-    if (profileId == null) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 40),
-          child: AppEmptyState(
-            icon: Icons.favorite_border_rounded,
-            title: 'Necesitas iniciar sesión',
-            message: 'Inicia sesión para ver tu lista de deseos.',
-          ),
         ),
       );
     }

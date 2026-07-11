@@ -107,21 +107,28 @@ import '../../features/customers/data/repositories_impl/customer_locations_repos
     as _i429;
 import '../../features/customers/data/repositories_impl/customers_repository_impl.dart'
     as _i365;
+import '../../features/customers/data/repositories_impl/wishlist_repository_impl.dart'
+    as _i243;
 import '../../features/customers/domain/repositories/customer_credits_repository.dart'
     as _i4;
 import '../../features/customers/domain/repositories/customer_locations_repository.dart'
     as _i557;
 import '../../features/customers/domain/repositories/customers_repository.dart'
     as _i875;
+import '../../features/customers/domain/repositories/wishlist_repository.dart'
+    as _i728;
 import '../../features/customers/domain/usecases/customer_credit_ucs.dart'
     as _i580;
 import '../../features/customers/domain/usecases/customer_location_ucs.dart'
     as _i263;
 import '../../features/customers/domain/usecases/customer_ucs.dart' as _i36;
+import '../../features/customers/domain/usecases/export_customers_pdf_usecase.dart'
+    as _i1021;
 import '../../features/customers/domain/usecases/get_customer_recent_orders_usecase.dart'
     as _i690;
 import '../../features/customers/domain/usecases/get_customer_top_products_usecase.dart'
     as _i528;
+import '../../features/customers/domain/usecases/wishlist_ucs.dart' as _i600;
 import '../../features/customers/presentation/bloc/customer_credit_list_cubit.dart'
     as _i315;
 import '../../features/customers/presentation/bloc/customer_credit_movements_cubit.dart'
@@ -171,9 +178,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i967.ExportProductPdfUseCase>(
       () => _i967.ExportProductPdfUseCase(),
     );
-    gh.factory<_i17.CustomerWishlistCubit>(() => _i17.CustomerWishlistCubit());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
+    gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
+      () => _i1021.ExportCustomersPdfUseCase(),
+    );
+    gh.lazySingleton<_i728.WishlistRepository>(
+      () => _i243.WishlistRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i787.AuthRepository>(
       () => _i710.AuthRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -366,11 +378,14 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i528.GetCustomerTopProductsUseCase(gh<_i875.CustomersRepository>()),
     );
-    gh.factory<_i482.CustomersCubit>(
-      () => _i482.CustomersCubit(gh<_i36.GetCustomersUseCase>()),
-    );
     gh.factory<_i205.TopCustomersCubit>(
       () => _i205.TopCustomersCubit(gh<_i36.GetTopCustomersUseCase>()),
+    );
+    gh.lazySingleton<_i600.GetWishlistUseCase>(
+      () => _i600.GetWishlistUseCase(gh<_i728.WishlistRepository>()),
+    );
+    gh.lazySingleton<_i600.RemoveFromWishlistUseCase>(
+      () => _i600.RemoveFromWishlistUseCase(gh<_i728.WishlistRepository>()),
     );
     gh.factory<_i58.DashboardCubit>(
       () => _i58.DashboardCubit(
@@ -462,6 +477,12 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i37.RestoreDefaultConnectionUseCase(gh<_i257.AppConfigRepository>()),
     );
+    gh.factory<_i303.CustomerFormCubit>(
+      () => _i303.CustomerFormCubit(
+        gh<_i36.SaveCustomerFullProfileUseCase>(),
+        gh<_i580.GetCreditAccountByCustomerUseCase>(),
+      ),
+    );
     gh.factory<_i332.AdminCatalogCubit>(
       () => _i332.AdminCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
@@ -522,9 +543,6 @@ extension GetItInjectableX on _i174.GetIt {
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
       ),
     );
-    gh.factory<_i303.CustomerFormCubit>(
-      () => _i303.CustomerFormCubit(gh<_i36.SaveCustomerFullProfileUseCase>()),
-    );
     gh.factory<_i685.CustomerDetailCubit>(
       () => _i685.CustomerDetailCubit(
         gh<_i36.GetCustomerDetailUseCase>(),
@@ -568,6 +586,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i315.CustomerCreditListCubit>(
       () => _i315.CustomerCreditListCubit(gh<_i580.GetCreditAccountsUseCase>()),
     );
+    gh.factory<_i482.CustomersCubit>(
+      () => _i482.CustomersCubit(
+        gh<_i36.GetCustomersUseCase>(),
+        gh<_i1021.ExportCustomersPdfUseCase>(),
+      ),
+    );
     gh.factory<_i52.AuthCubit>(
       () => _i52.AuthCubit(
         getCurrentUserUseCase: gh<_i813.GetCurrentUserUseCase>(),
@@ -582,6 +606,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
+    );
+    gh.factory<_i17.CustomerWishlistCubit>(
+      () => _i17.CustomerWishlistCubit(
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+        gh<_i600.GetWishlistUseCase>(),
+        gh<_i600.RemoveFromWishlistUseCase>(),
+      ),
     );
     gh.factory<_i711.ProductDetailCubit>(
       () => _i711.ProductDetailCubit(
