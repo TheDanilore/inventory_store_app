@@ -13,6 +13,9 @@ abstract class FinancialAccountsRepository {
   /// Retorna el total de cuentas para calcular la paginación.
   Future<int> getAccountsCount();
 
+  /// Retorna una cuenta financiera por su ID.
+  Future<FinancialAccountEntity?> getAccountById(String accountId);
+
   /// Crea o actualiza una cuenta financiera.
   /// Si [accountId] es null, se crea una nueva cuenta.
   Future<void> saveAccount({

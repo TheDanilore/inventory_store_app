@@ -191,6 +191,8 @@ import '../../features/inventory/data/repositories_impl/inventory_repository_imp
     as _i1035;
 import '../../features/inventory/data/repositories_impl/kardex_repository_impl.dart'
     as _i192;
+import '../../features/inventory/data/repositories_impl/warehouses_repository_impl.dart'
+    as _i237;
 import '../../features/inventory/domain/repositories/inventory_entries_repository.dart'
     as _i74;
 import '../../features/inventory/domain/repositories/inventory_exits_repository.dart'
@@ -199,6 +201,8 @@ import '../../features/inventory/domain/repositories/inventory_repository.dart'
     as _i422;
 import '../../features/inventory/domain/repositories/kardex_repository.dart'
     as _i269;
+import '../../features/inventory/domain/repositories/warehouses_repository.dart'
+    as _i317;
 import '../../features/inventory/domain/usecases/create_inventory_entry_usecase.dart'
     as _i419;
 import '../../features/inventory/domain/usecases/create_inventory_exit_usecase.dart'
@@ -237,6 +241,12 @@ import '../../features/inventory/domain/usecases/get_inventory_exits_usecase.dar
     as _i136;
 import '../../features/inventory/domain/usecases/get_kardex_movements_usecase.dart'
     as _i392;
+import '../../features/inventory/domain/usecases/get_warehouses_usecase.dart'
+    as _i71;
+import '../../features/inventory/domain/usecases/save_warehouse_usecase.dart'
+    as _i656;
+import '../../features/inventory/domain/usecases/toggle_warehouse_status_usecase.dart'
+    as _i275;
 import '../../features/inventory/presentation/bloc/inventory_cubit.dart'
     as _i777;
 import '../../features/inventory/presentation/bloc/inventory_entries_cubit.dart'
@@ -248,6 +258,8 @@ import '../../features/inventory/presentation/bloc/inventory_exit_form_cubit.dar
 import '../../features/inventory/presentation/bloc/inventory_exits_cubit.dart'
     as _i5;
 import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i713;
+import '../../features/inventory/presentation/bloc/warehouses_cubit.dart'
+    as _i926;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -294,11 +306,30 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i561.AccountMovementsRepository>(
       () => _i802.AccountMovementsRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.factory<_i862.TransferFundsUseCase>(
+      () => _i862.TransferFundsUseCase(
+        gh<_i561.AccountMovementsRepository>(),
+        gh<_i662.FinancialAccountsRepository>(),
+      ),
+    );
     gh.lazySingleton<_i92.InventoryExitsRepository>(
       () => _i698.InventoryExitsRepositoryImpl(),
     );
+    gh.lazySingleton<_i317.WarehousesRepository>(
+      () => _i237.WarehousesRepositoryImpl(),
+    );
     gh.lazySingleton<_i1018.CatalogRepository>(
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i71.GetWarehousesUseCase>(
+      () => _i71.GetWarehousesUseCase(gh<_i317.WarehousesRepository>()),
+    );
+    gh.factory<_i656.SaveWarehouseUseCase>(
+      () => _i656.SaveWarehouseUseCase(gh<_i317.WarehousesRepository>()),
+    );
+    gh.factory<_i275.ToggleWarehouseStatusUseCase>(
+      () =>
+          _i275.ToggleWarehouseStatusUseCase(gh<_i317.WarehousesRepository>()),
     );
     gh.lazySingleton<_i557.CustomerLocationsRepository>(
       () => _i429.CustomerLocationsRepositoryImpl(),
@@ -311,6 +342,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i257.AppConfigRepository>(
       () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i926.WarehousesCubit>(
+      () => _i926.WarehousesCubit(
+        getWarehousesUseCase: gh<_i71.GetWarehousesUseCase>(),
+        saveWarehouseUseCase: gh<_i656.SaveWarehouseUseCase>(),
+        toggleWarehouseStatusUseCase: gh<_i275.ToggleWarehouseStatusUseCase>(),
+      ),
     );
     gh.lazySingleton<_i622.GetCriticalBatchesUseCase>(
       () => _i622.GetCriticalBatchesUseCase(gh<_i665.DashboardRepository>()),
@@ -749,9 +787,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i625.SaveAccountMovementUseCase(
         gh<_i561.AccountMovementsRepository>(),
       ),
-    );
-    gh.factory<_i862.TransferFundsUseCase>(
-      () => _i862.TransferFundsUseCase(gh<_i561.AccountMovementsRepository>()),
     );
     gh.factory<_i685.CustomerDetailCubit>(
       () => _i685.CustomerDetailCubit(

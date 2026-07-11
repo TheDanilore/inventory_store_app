@@ -36,6 +36,17 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
   }
 
   @override
+  Future<FinancialAccountEntity?> getAccountById(String accountId) async {
+    final response = await _supabase
+        .from('financial_accounts')
+        .select('id, name, type, balance, is_active, created_at')
+        .eq('id', accountId)
+        .maybeSingle();
+    if (response == null) return null;
+    return FinancialAccountModel.fromJson(response).toEntity();
+  }
+
+  @override
   Future<int> getAccountsCount() async {
     final response = await _supabase
         .from('financial_accounts')
