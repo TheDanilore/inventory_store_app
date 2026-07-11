@@ -61,16 +61,22 @@ class CatalogRepositoryImpl implements CatalogRepository {
     String? searchQuery,
     String? categoryId,
     bool? isActive,
+    bool searchByIngredient = false,
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,
   }) async {
     try {
+      String selectString =
+          'id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name)';
+
+      if (searchByIngredient && searchQuery != null && searchQuery.trim().isNotEmpty) {
+        selectString += ', product_active_ingredients!inner(active_ingredients!inner(name))';
+      }
+
       var query = _supabase
           .from('products')
-          .select(
-            'id, name, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, description, category_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name)',
-          );
+          .select(selectString);
 
       if (isActive != null) {
         query = query.eq('is_active', isActive);
@@ -79,7 +85,13 @@ class CatalogRepositoryImpl implements CatalogRepository {
         query = query.eq('category_id', categoryId);
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-        query = query.ilike('name', '%${searchQuery.trim()}%');
+        if (searchByIngredient) {
+          query = query.ilike(
+              'product_active_ingredients.active_ingredients.name',
+              '%${searchQuery.trim()}%');
+        } else {
+          query = query.ilike('name', '%${searchQuery.trim()}%');
+        }
       }
 
       var transformQuery = query.order('name');

@@ -672,15 +672,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i580.GetCreditAccountByCustomerUseCase>(),
       ),
     );
-    gh.factory<_i332.AdminCatalogCubit>(
-      () => _i332.AdminCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
-        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
-        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
-      ),
-    );
     gh.factory<_i832.ChangePasswordUseCase>(
       () => _i832.ChangePasswordUseCase(gh<_i787.AuthRepository>()),
     );
@@ -842,6 +833,16 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i315.CustomerCreditListCubit>(
       () => _i315.CustomerCreditListCubit(gh<_i580.GetCreditAccountsUseCase>()),
+    );
+    gh.factory<_i332.AdminCatalogCubit>(
+      () => _i332.AdminCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        setProductActiveUC: gh<_i1067.SetProductActiveUC>(),
+        clearCatalogCacheUC: gh<_i1067.ClearCatalogCacheUC>(),
+        exportCatalogPdfUC: gh<_i961.ExportCatalogPdfUseCase>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
+      ),
     );
     gh.factory<_i482.CustomersCubit>(
       () => _i482.CustomersCubit(

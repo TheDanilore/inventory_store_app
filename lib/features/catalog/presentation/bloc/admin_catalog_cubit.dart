@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_form_mutations_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/export_catalog_pdf_usecase.dart';
 import 'admin_catalog_state.dart';
 
@@ -17,6 +18,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final SetProductActiveUC setProductActiveUC;
   final ClearCatalogCacheUC clearCatalogCacheUC;
   final ExportCatalogPdfUseCase exportCatalogPdfUC;
+  final GetProductStockUC getProductStockUC;
 
   Timer? _debounce;
 
@@ -26,6 +28,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     required this.setProductActiveUC,
     required this.clearCatalogCacheUC,
     required this.exportCatalogPdfUC,
+    required this.getProductStockUC,
   }) : super(const AdminCatalogState());
 
   Future<void> loadInitialData() async {
@@ -105,6 +108,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       searchQuery: state.searchTerm,
       categoryId: state.selectedCategoryId,
       isActive: state.filterIsActive,
+      searchByIngredient: state.searchByIngredient,
       limit: AdminCatalogState.pageSize,
       offset: offset,
       sortByPriceAsc: true,
@@ -128,12 +132,23 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           ),
         );
       },
-      (data) {
+      (data) async {
+        final ids = data.products.map((p) => p.id).toList();
+        Map<String, int> stock = {};
+        if (ids.isNotEmpty) {
+          final stockResult = await getProductStockUC(productIds: ids);
+          stockResult.fold((_) {}, (s) => stock = s);
+        }
+
+        final enriched = data.products
+            .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
+            .toList();
+
         emit(
           state.copyWith(
             catalogState:
-                data.products.isEmpty ? ViewState.empty : ViewState.success,
-            products: data.products,
+                enriched.isEmpty ? ViewState.empty : ViewState.success,
+            products: enriched,
             totalCount: data.totalCount,
             clearError: true,
           ),

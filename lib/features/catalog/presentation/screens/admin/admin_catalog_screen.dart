@@ -20,6 +20,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_fab_buttons.dart';
+import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_add_to_cart_sheet.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
   final Widget? floatingActionButton;
@@ -473,7 +474,26 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           pageSize: 20,
                           currentPage: state.currentPage,
                           onPageChanged: cubit.setPage,
-                          onSale: widget.onAddToCart ?? (_) {},
+                          onSale: widget.onAddToCart ??
+                              (product) {
+                                showDialog(
+                                  context: context,
+                                  builder:
+                                      (_) => Dialog(
+                                        backgroundColor: Colors.transparent,
+                                        insetPadding: const EdgeInsets.all(24),
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 500,
+                                            maxHeight: 750,
+                                          ),
+                                          child: PosAddToCartSheet(
+                                            productEntity: product,
+                                          ),
+                                        ),
+                                      ),
+                                );
+                              },
                           onToggleActive:
                               (p) => _toggleProductoActivo(p, cubit),
                           searchByIngredient: state.searchByIngredient,

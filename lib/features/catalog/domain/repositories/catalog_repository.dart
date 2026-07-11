@@ -34,6 +34,7 @@ abstract class CatalogRepository {
     String? searchQuery,
     String? categoryId,
     bool? isActive,
+    bool searchByIngredient = false,
     int limit = 20,
     int offset = 0,
     bool sortByPriceAsc = true,

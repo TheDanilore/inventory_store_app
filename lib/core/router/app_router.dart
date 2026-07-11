@@ -777,10 +777,13 @@ class AppRouter {
                   builder: (context, state) {
                     final productId = state.pathParameters['id'];
                     final variantId = state.uri.queryParameters['variantId'];
-                    final product = state.extra as ProductModel?;
+                    final extra = state.extra;
+                    final ProductEntity? product = extra is ProductEntity 
+                        ? extra 
+                        : (extra as ProductModel?)?.toEntity();
                     if (product != null) {
                       return ProductDetailScreen(
-                        product: product.toEntity(),
+                        product: product,
                         isAdmin: true,
                         initialVariantId: variantId,
                       );
@@ -827,10 +830,13 @@ class AppRouter {
                         final productId = state.pathParameters['id'];
                         final variantId =
                             state.uri.queryParameters['variantId'];
-                        final product = state.extra as ProductModel?;
+                        final extra = state.extra;
+                        final ProductEntity? product = extra is ProductEntity 
+                            ? extra 
+                            : (extra as ProductModel?)?.toEntity();
                         if (product != null) {
                           return ProductDetailScreen(
-                            product: product.toEntity(),
+                            product: product,
                             isAdmin: false,
                             initialVariantId: variantId,
                           );
@@ -964,7 +970,10 @@ class AppRouter {
           builder: (context, state) {
             final productId = state.pathParameters['id'];
             final variantId = state.uri.queryParameters['variantId'];
-            final product = state.extra as ProductModel?;
+            final extra = state.extra;
+            final ProductEntity? product = extra is ProductEntity 
+                ? extra 
+                : (extra as ProductModel?)?.toEntity();
             // Usamos el authProvider capturado en el closure (no context.read)
             // para evitar dependencia del contexto en rutas compartidas.
             final role = authCubit.state.currentUser?.role;
@@ -972,7 +981,7 @@ class AppRouter {
 
             if (product != null) {
               return ProductDetailScreen(
-                product: product.toEntity(),
+                product: product,
                 isAdmin: isAdmin,
                 initialVariantId: variantId,
               );
