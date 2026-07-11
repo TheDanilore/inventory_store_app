@@ -1,6 +1,8 @@
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
 
+@injectable
 class GetAccountMovementsUseCase {
   final AccountMovementsRepository _repository;
 

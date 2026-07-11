@@ -47,6 +47,7 @@ abstract class AccountMovementsRepository {
 
   /// Registra un movimiento de cuenta manual (ingreso o egreso) y actualiza el saldo de la cuenta.
   Future<void> registerManualMovement({
+    required String profileId,
     required String accountId,
     required String movementType,
     required double amount,
@@ -55,6 +56,7 @@ abstract class AccountMovementsRepository {
 
   /// Realiza una transferencia de fondos entre dos cuentas, actualizando saldos y registrando ambos movimientos.
   Future<void> transferFunds({
+    required String profileId,
     required String sourceAccountId,
     required String destAccountId,
     required double amount,

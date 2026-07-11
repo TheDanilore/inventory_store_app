@@ -4,7 +4,6 @@ import 'package:inventory_store_app/features/financial/presentation/widgets/acco
 import 'package:inventory_store_app/features/financial/presentation/widgets/movements_tab.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/shifts_tab.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -54,23 +53,19 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AdminLayout(
-      title: 'Finanzas',
-      showBackButton: true,
-      body: Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth >= 720) {
-                  return _buildTabletLayout();
-                }
-                return _buildMobileLayout();
-              },
-            ),
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 720) {
+                return _buildTabletLayout();
+              }
+              return _buildMobileLayout();
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

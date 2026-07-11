@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/data/models/account_movement_model.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
 
+@LazySingleton(as: AccountMovementsRepository)
 class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
   final SupabaseClient _supabase;
 
@@ -92,22 +94,15 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
     return res?['id'] as String?;
   }
 
-  Future<String> _getProfileId() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) throw Exception('No hay sesión activa');
-    final profileRes = await _supabase.from('profiles').select('id').eq('auth_user_id', user.id).maybeSingle();
-    return profileRes?['id'] as String? ?? user.id;
-  }
-
   @override
   Future<void> registerManualMovement({
+    required String profileId,
     required String accountId,
     required String movementType,
     required double amount,
     required String description,
   }) async {
     try {
-      final profileId = await _getProfileId();
       final sourceAccRes = await _supabase.from('financial_accounts').select('balance').eq('id', accountId).single();
       final currentBalance = (sourceAccRes['balance'] as num).toDouble();
       final shiftId = await _getActiveShift(accountId);
@@ -134,13 +129,13 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
 
   @override
   Future<void> transferFunds({
+    required String profileId,
     required String sourceAccountId,
     required String destAccountId,
     required double amount,
     required String description,
   }) async {
     try {
-      final profileId = await _getProfileId();
       
       final sourceAccRes = await _supabase.from('financial_accounts').select('balance, name').eq('id', sourceAccountId).single();
       final currentSourceBalance = (sourceAccRes['balance'] as num).toDouble();

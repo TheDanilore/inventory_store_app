@@ -1,6 +1,8 @@
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/financial_accounts_repository.dart';
 
+@injectable
 class GetFinancialAccountsUseCase {
   final FinancialAccountsRepository _repository;
 

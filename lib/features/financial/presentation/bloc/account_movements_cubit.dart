@@ -1,14 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/auth/domain/usecases/get_current_user_uc.dart';
+import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_account_movements_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/save_account_movement_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/transfer_funds_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_state.dart';
 
+@injectable
 class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   final GetAccountMovementsUseCase _getMovements;
   final SaveAccountMovementUseCase _saveMovement;
   final TransferFundsUseCase _transferFunds;
+  final GetCurrentUserUseCase _getCurrentUser;
 
   static const int _pageSize = 15;
   int _currentPage = 0;
@@ -19,9 +24,11 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
     required GetAccountMovementsUseCase getMovements,
     required SaveAccountMovementUseCase saveMovement,
     required TransferFundsUseCase transferFunds,
+    required GetCurrentUserUseCase getCurrentUser,
   })  : _getMovements = getMovements,
         _saveMovement = saveMovement,
         _transferFunds = transferFunds,
+        _getCurrentUser = getCurrentUser,
         super(const AccountMovementsInitial());
 
   MovementFilters get filters => _filters;
@@ -128,7 +135,14 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   }) async {
     emit(const AccountMovementSaving());
     try {
+      final userResult = await _getCurrentUser(NoParams());
+      final profileId = userResult.fold(
+        (failure) => throw Exception(failure.message),
+        (user) => user.id,
+      );
+
       await _saveMovement(
+        profileId: profileId,
         accountId: accountId,
         movementType: movementType,
         amount: amount,
@@ -149,7 +163,14 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   }) async {
     emit(const AccountMovementSaving());
     try {
+      final userResult = await _getCurrentUser(NoParams());
+      final profileId = userResult.fold(
+        (failure) => throw Exception(failure.message),
+        (user) => user.id,
+      );
+
       await _transferFunds(
+        profileId: profileId,
         sourceAccountId: sourceAccountId,
         destAccountId: destAccountId,
         amount: amount,

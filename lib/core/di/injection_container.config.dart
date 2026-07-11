@@ -161,6 +161,28 @@ import '../../features/dashboard/domain/usecases/get_sales_metrics_usecase.dart'
     as _i407;
 import '../../features/dashboard/presentation/bloc/dashboard_cubit.dart'
     as _i58;
+import '../../features/financial/data/repositories_impl/account_movements_repository_impl.dart'
+    as _i802;
+import '../../features/financial/data/repositories_impl/financial_accounts_repository_impl.dart'
+    as _i599;
+import '../../features/financial/domain/repositories/account_movements_repository.dart'
+    as _i561;
+import '../../features/financial/domain/repositories/financial_accounts_repository.dart'
+    as _i662;
+import '../../features/financial/domain/usecases/get_account_movements_usecase.dart'
+    as _i811;
+import '../../features/financial/domain/usecases/get_financial_accounts_usecase.dart'
+    as _i425;
+import '../../features/financial/domain/usecases/save_account_movement_usecase.dart'
+    as _i625;
+import '../../features/financial/domain/usecases/save_financial_account_usecase.dart'
+    as _i57;
+import '../../features/financial/domain/usecases/transfer_funds_usecase.dart'
+    as _i862;
+import '../../features/financial/presentation/bloc/account_movements_cubit.dart'
+    as _i915;
+import '../../features/financial/presentation/bloc/financial_accounts_cubit.dart'
+    as _i679;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -189,8 +211,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i787.AuthRepository>(
       () => _i710.AuthRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.lazySingleton<_i662.FinancialAccountsRepository>(
+      () => _i599.FinancialAccountsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i665.DashboardRepository>(
       () => _i583.DashboardRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i561.AccountMovementsRepository>(
+      () => _i802.AccountMovementsRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i1018.CatalogRepository>(
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
@@ -394,6 +422,16 @@ extension GetItInjectableX on _i174.GetIt {
         getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
       ),
     );
+    gh.factory<_i425.GetFinancialAccountsUseCase>(
+      () => _i425.GetFinancialAccountsUseCase(
+        gh<_i662.FinancialAccountsRepository>(),
+      ),
+    );
+    gh.factory<_i57.SaveFinancialAccountUseCase>(
+      () => _i57.SaveFinancialAccountUseCase(
+        gh<_i662.FinancialAccountsRepository>(),
+      ),
+    );
     gh.lazySingleton<_i580.GetCreditAccountsUseCase>(
       () => _i580.GetCreditAccountsUseCase(gh<_i4.CustomerCreditsRepository>()),
     );
@@ -543,6 +581,19 @@ extension GetItInjectableX on _i174.GetIt {
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
       ),
     );
+    gh.factory<_i811.GetAccountMovementsUseCase>(
+      () => _i811.GetAccountMovementsUseCase(
+        gh<_i561.AccountMovementsRepository>(),
+      ),
+    );
+    gh.factory<_i625.SaveAccountMovementUseCase>(
+      () => _i625.SaveAccountMovementUseCase(
+        gh<_i561.AccountMovementsRepository>(),
+      ),
+    );
+    gh.factory<_i862.TransferFundsUseCase>(
+      () => _i862.TransferFundsUseCase(gh<_i561.AccountMovementsRepository>()),
+    );
     gh.factory<_i685.CustomerDetailCubit>(
       () => _i685.CustomerDetailCubit(
         gh<_i36.GetCustomerDetailUseCase>(),
@@ -552,6 +603,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i263.AddCustomerLocationUseCase>(),
         gh<_i263.UpdateCustomerLocationUseCase>(),
         gh<_i263.DeleteCustomerLocationUseCase>(),
+      ),
+    );
+    gh.factory<_i915.AccountMovementsCubit>(
+      () => _i915.AccountMovementsCubit(
+        getMovements: gh<_i811.GetAccountMovementsUseCase>(),
+        saveMovement: gh<_i625.SaveAccountMovementUseCase>(),
+        transferFunds: gh<_i862.TransferFundsUseCase>(),
+        getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
       ),
     );
     gh.factory<_i160.CustomerCatalogCubit>(
@@ -572,6 +631,12 @@ extension GetItInjectableX on _i174.GetIt {
         restoreDefaultConnectionUseCase:
             gh<_i37.RestoreDefaultConnectionUseCase>(),
         getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
+      ),
+    );
+    gh.factory<_i679.FinancialAccountsCubit>(
+      () => _i679.FinancialAccountsCubit(
+        getAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
+        saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),
       ),
     );
     gh.factory<_i38.CustomerLocationsCubit>(

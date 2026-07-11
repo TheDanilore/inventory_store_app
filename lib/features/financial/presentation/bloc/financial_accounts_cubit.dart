@@ -1,8 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/save_financial_account_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_state.dart';
 
+@injectable
 class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
   final GetFinancialAccountsUseCase _getAccounts;
   final SaveFinancialAccountUseCase _saveAccount;

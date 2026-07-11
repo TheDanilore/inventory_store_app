@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/financial_accounts_repository.dart';
 
+@LazySingleton(as: FinancialAccountsRepository)
 class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
   final SupabaseClient _supabase;
 
