@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/stock_batch_entity.dart';
 class WarehouseStockBatchModel {
   final String id;
   final String variantId;
@@ -99,6 +100,22 @@ class WarehouseStockBatchModel {
       createdBy: createdBy ?? this.createdBy,
       updatedBy: updatedBy ?? this.updatedBy,
       productId: productId ?? this.productId,
+    );
+  }
+
+  StockBatchEntity toEntity() {
+    return StockBatchEntity(
+      id: id,
+      variantId: variantId,
+      warehouseId: warehouseId,
+      batchNumber: batchNumber,
+      expiryDate: expiryDate,
+      availableQuantity: availableQuantity,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      createdBy: createdBy,
+      updatedBy: updatedBy,
+      productId: productId,
     );
   }
 }

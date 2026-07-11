@@ -43,11 +43,11 @@ class WarehousesCubit extends Cubit<WarehousesState> {
         searchQuery: state.searchQuery,
       );
 
-      final dataList = response['data'] as List;
+      final dataList = response.data as List;
       final warehouses = dataList
-          .map((e) => WarehouseModel.fromJson(e as Map<String, dynamic>))
+          .map((e) => WarehouseEntity.fromJson(e as Map<String, dynamic>))
           .toList();
-      final totalRecords = response['count'] as int;
+      final totalRecords = response.count as int;
 
       emit(state.copyWith(
         warehouses: warehouses,
@@ -80,7 +80,7 @@ class WarehousesCubit extends Cubit<WarehousesState> {
   }
 
   Future<bool> saveWarehouse({
-    WarehouseModel? existingWarehouse,
+    WarehouseEntity? existingWarehouse,
     required String name,
     required String address,
     required bool isActive,
@@ -129,7 +129,7 @@ class WarehousesCubit extends Cubit<WarehousesState> {
     }
   }
 
-  Future<void> toggleWarehouseStatus(WarehouseModel wh, bool isActive) async {
+  Future<void> toggleWarehouseStatus(WarehouseEntity wh, bool isActive) async {
     try {
       await toggleWarehouseStatusUseCase.call(wh, isActive);
       

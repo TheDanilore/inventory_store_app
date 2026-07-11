@@ -2,7 +2,6 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 
 abstract class InventoryRepository {
   Future<Map<String, dynamic>> getGeneralStockMetrics();
-  Future<List<String>> getCategories();
   
   Future<int> getTotalGeneralStockCount({
     String search = '',

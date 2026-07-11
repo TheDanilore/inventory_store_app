@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_general_stock_metrics_usecase.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_categories_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_general_stock_paginated_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_batch_metrics_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_batches_paginated_usecase.dart';
@@ -11,7 +11,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 @injectable
 class InventoryCubit extends Cubit<InventoryState> {
   final GetGeneralStockMetricsUseCase _getGeneralStockMetrics;
-  final GetCategoriesUseCase _getCategories;
+  final GetCategoriesUC _getCategories;
   final GetGeneralStockPaginatedUseCase _getGeneralStockPaginated;
   final GetBatchMetricsUseCase _getBatchMetrics;
   final GetBatchesPaginatedUseCase _getBatchesPaginated;
@@ -21,7 +21,7 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   InventoryCubit({
     required GetGeneralStockMetricsUseCase getGeneralStockMetrics,
-    required GetCategoriesUseCase getCategories,
+    required GetCategoriesUC getCategories,
     required GetGeneralStockPaginatedUseCase getGeneralStockPaginated,
     required GetBatchMetricsUseCase getBatchMetrics,
     required GetBatchesPaginatedUseCase getBatchesPaginated,

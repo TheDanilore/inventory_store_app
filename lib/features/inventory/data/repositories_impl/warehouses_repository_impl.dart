@@ -1,6 +1,7 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
 
 @LazySingleton(as: WarehousesRepository)
@@ -9,8 +10,22 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
 
   WarehousesRepositoryImpl() : _supabase = Supabase.instance.client;
 
+  
   @override
-  Future<Map<String, dynamic>> getWarehouses({
+  Future<List<WarehouseEntity>> getActiveWarehouses() async {
+    final response = await _supabase
+        .from('warehouses')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+        
+    return (response as List<dynamic>)
+        .map((e) => WarehouseModel.fromJson(e).toEntity())
+        .toList();
+  }
+
+  @override
+  Future<({List<WarehouseEntity> data, int count})> getWarehouses({
     required int start,
     required int end,
     String searchQuery = '',
@@ -38,7 +53,7 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
 
   @override
   Future<void> saveWarehouse({
-    WarehouseModel? existingWarehouse,
+    WarehouseEntity? existingWarehouse,
     required String name,
     required String address,
     required bool isActive,
@@ -73,7 +88,7 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
   }
 
   @override
-  Future<void> toggleWarehouseStatus(WarehouseModel wh, bool isActive) async {
+  Future<void> toggleWarehouseStatus(WarehouseEntity wh, bool isActive) async {
     final authUserId = _supabase.auth.currentUser?.id;
     String? profileId;
     if (authUserId != null) {

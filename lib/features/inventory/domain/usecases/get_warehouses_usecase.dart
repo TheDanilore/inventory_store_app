@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 @injectable
 class GetWarehousesUseCase {
@@ -7,7 +8,7 @@ class GetWarehousesUseCase {
 
   GetWarehousesUseCase(this.repository);
 
-  Future<Map<String, dynamic>> call({
+  Future<({List<WarehouseEntity> data, int count})> call({
     required int start,
     required int end,
     String searchQuery = '',

@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_movement_model.dart';
 
 class KardexMovementModel {
@@ -104,6 +105,22 @@ class KardexMovementModel {
       batchNumber: batchNumber,
       usesBatches: usesBatches,
       imageUrl: finalImageUrl,
+    );
+  }
+
+  KardexMovementEntity toEntity() {
+    return KardexMovementEntity(
+      id: movement.id,
+      date: movement.createdAt ?? DateTime.now(),
+      type: movementType,
+      reference: referenceId ?? '',
+      description: productName,
+      quantity: movement.quantity,
+      balance: movement.newStock,
+      unitCost: movement.unitCost ?? 0.0,
+      totalCost: movement.totalCost ?? 0.0,
+      variantId: movement.variantId,
+      warehouseId: movement.warehouseId,
     );
   }
 }

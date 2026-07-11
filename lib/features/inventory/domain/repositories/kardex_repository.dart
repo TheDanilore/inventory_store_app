@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/kardex_movement_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 
 abstract class KardexRepository {
-  Future<List<KardexMovementModel>> getKardexMovements({
+  Future<List<KardexMovementEntity>> getKardexMovements({
     DateTimeRange? dateRange,
     String typeFilter = 'ALL',
     String searchText = '',
@@ -16,7 +16,7 @@ abstract class KardexRepository {
     String searchText = '',
   });
 
-  Future<List<KardexMovementModel>> getAllKardexMovements({
+  Future<List<KardexMovementEntity>> getAllKardexMovements({
     DateTimeRange? dateRange,
     String typeFilter = 'ALL',
     String searchText = '',

@@ -21,7 +21,7 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
     List<String> warehouses = ['Todos'];
     try {
       final whList = await getActiveWarehouses.call();
-      warehouses.addAll(whList.map((w) => w['name'] as String).toList());
+      warehouses.addAll(whList.map((w) => w.name as String).toList());
     } catch (e) {
       debugPrint('Error cargando almacenes: $e');
     }
@@ -69,11 +69,11 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         dateRange: currentDateRange,
       );
 
-      final dataList = response['data'] as List;
+      final dataList = response.data as List;
       final entries = dataList
           .map((e) => InventoryEntryModel.fromJson(e as Map<String, dynamic>))
           .toList();
-      final totalRecords = response['count'] as int;
+      final totalRecords = response.count as int;
       final totalPages = (totalRecords / pageSize).ceil();
 
       emit(currentState.copyWith(

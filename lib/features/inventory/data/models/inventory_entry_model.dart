@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 class InventoryEntryModel {
   final String id;
   final String warehouseId;
@@ -113,6 +114,25 @@ class InventoryEntryModel {
       warehouseName: warehouseName ?? this.warehouseName,
       supplierName: supplierName ?? this.supplierName,
       itemCount: itemCount ?? this.itemCount,
+    );
+  }
+
+  InventoryEntryEntity toEntity() {
+    return InventoryEntryEntity(
+      id: id,
+      warehouseId: warehouseId,
+      supplierId: supplierId,
+      purchaseOrderId: purchaseOrderId,
+      notes: notes,
+      totalAmount: totalAmount,
+      documentType: documentType,
+      documentNumber: documentNumber,
+      documentDate: documentDate,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      warehouseName: warehouseName,
+      supplierName: supplierName,
+      itemCount: itemCount,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 class InventoryExitModel {
   final String id;
   final String warehouseId;
@@ -91,6 +92,20 @@ class InventoryExitModel {
       warehouseName: warehouseName ?? this.warehouseName,
       totalCost: totalCost ?? this.totalCost,
       itemCount: itemCount ?? this.itemCount,
+    );
+  }
+
+  InventoryExitEntity toEntity() {
+    return InventoryExitEntity(
+      id: id,
+      warehouseId: warehouseId,
+      reason: reason,
+      notes: notes,
+      createdBy: createdBy,
+      createdAt: createdAt,
+      warehouseName: warehouseName,
+      totalCost: totalCost,
+      itemCount: itemCount,
     );
   }
 }

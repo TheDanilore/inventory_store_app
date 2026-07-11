@@ -1,5 +1,5 @@
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
 
 @injectable
@@ -9,7 +9,7 @@ class SaveWarehouseUseCase {
   SaveWarehouseUseCase(this.repository);
 
   Future<void> call({
-    WarehouseModel? existingWarehouse,
+    WarehouseEntity? existingWarehouse,
     required String name,
     required String address,
     required bool isActive,

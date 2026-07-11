@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
 import 'package:provider/provider.dart';
 
-// FINANCIAL ACCOUNTS SCREEN - Cuentas Movimientos Turnos de Caja
+// FINANCIAL ACCOUNTS SCREEN
 
 class FinancialAccountsScreen extends StatefulWidget {
   const FinancialAccountsScreen({super.key});

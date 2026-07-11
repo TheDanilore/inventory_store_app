@@ -25,21 +25,18 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
     emit(state.copyWith(isLoading: true, clearErrorMessage: true));
 
     try {
-      final start = state.currentPage * state.pageSize;
-      final end = start + state.pageSize - 1;
-
       final response = await getExitsUseCase.call(
-        start: start,
-        end: end,
+        start: (state.currentPage - 1) * state.pageSize,
+        end: (state.currentPage * state.pageSize) - 1,
         searchQuery: state.searchQuery,
         dateRange: state.dateRange,
       );
 
-      final dataList = response['data'] as List;
+      final dataList = response.data as List;
       final exits = dataList
           .map((e) => InventoryExitModel.fromJson(e as Map<String, dynamic>))
           .toList();
-      final totalRecords = response['count'] as int;
+      final totalRecords = response.count as int;
 
       emit(state.copyWith(
         exits: exits,

@@ -1,18 +1,20 @@
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 abstract class WarehousesRepository {
-  Future<Map<String, dynamic>> getWarehouses({
+  Future<List<WarehouseEntity>> getActiveWarehouses();
+
+  Future<({List<WarehouseEntity> data, int count})> getWarehouses({
     required int start,
     required int end,
     String searchQuery = '',
   });
 
   Future<void> saveWarehouse({
-    WarehouseModel? existingWarehouse,
+    WarehouseEntity? existingWarehouse,
     required String name,
     required String address,
     required bool isActive,
   });
 
-  Future<void> toggleWarehouseStatus(WarehouseModel wh, bool isActive);
+  Future<void> toggleWarehouseStatus(WarehouseEntity wh, bool isActive);
 }

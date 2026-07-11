@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
+import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_model.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
@@ -8,7 +10,7 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
   final _supabase = Supabase.instance.client;
 
   @override
-  Future<Map<String, dynamic>> getExits({
+  Future<({List<InventoryExitEntity> data, int count})> getExits({
     required int start,
     required int end,
     String? searchQuery,
@@ -39,7 +41,8 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
         .range(start, end)
         .count(CountOption.exact);
 
-    return {'data': resp.data as List<dynamic>, 'count': resp.count};
+    final data = (resp.data as List<dynamic>).map((e) => InventoryExitModel.fromJson(e).toEntity()).toList();
+    return (data: data, count: resp.count);
   }
 
   @override
@@ -73,7 +76,6 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
         .eq('is_active', true);
   }
 
-  @override
   Future<Map<String, dynamic>> getActiveProductsAndVariants() async {
     final results = await Future.wait([
       _supabase

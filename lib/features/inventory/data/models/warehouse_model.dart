@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 class WarehouseModel {
   final String? id;
   final String name;
@@ -43,5 +44,17 @@ class WarehouseModel {
       if (createdBy != null) 'created_by': createdBy,
       if (updatedBy != null) 'updated_by': updatedBy,
     };
+  }
+
+  WarehouseEntity toEntity() {
+    return WarehouseEntity(
+      id: id ?? '',
+      name: name,
+      address: address,
+      isActive: isActive,
+      createdAt: createdAt,
+      createdBy: createdBy,
+      updatedBy: updatedBy,
+    );
   }
 }

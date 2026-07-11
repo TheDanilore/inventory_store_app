@@ -1,7 +1,8 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
 import 'package:flutter/material.dart';
 
 abstract class InventoryExitsRepository {
-  Future<Map<String, dynamic>> getExits({
+  Future<({List<InventoryExitEntity> data, int count})> getExits({
     required int start,
     required int end,
     String? searchQuery,
@@ -9,10 +10,6 @@ abstract class InventoryExitsRepository {
   });
 
   Future<List<dynamic>> getExitItems(String exitId);
-
-  Future<List<dynamic>> getActiveWarehouses();
-
-  Future<Map<String, dynamic>> getActiveProductsAndVariants();
 
   Future<List<dynamic>> getBatchesForVariant(
     String variantId,

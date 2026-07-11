@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/inventory/data/models/kardex_movement_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/kardex_repository.dart';
 
 @injectable
@@ -9,7 +9,7 @@ class GetKardexMovementsUseCase {
 
   GetKardexMovementsUseCase(this.repository);
 
-  Future<List<KardexMovementModel>> call({
+  Future<List<KardexMovementEntity>> call({
     DateTimeRange? dateRange,
     String typeFilter = 'ALL',
     String searchText = '',

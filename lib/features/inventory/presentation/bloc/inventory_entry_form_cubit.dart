@@ -9,8 +9,8 @@ import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_suppliers_usecase.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_accounts_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_suppliers_uc.dart';
+import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_entry_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form_state.dart';
 
@@ -18,7 +18,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   final GetActiveWarehousesUseCase getActiveWarehouses;
   final GetActiveSuppliersUseCase getActiveSuppliers;
-  final GetActiveAccountsUseCase getActiveAccounts;
+  final GetFinancialAccountsUseCase getActiveAccounts;
   final CreateInventoryEntryUseCase createInventoryEntry;
 
   static const _draftKey = 'inventory_entry_draft';
@@ -55,9 +55,8 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         getActiveAccounts.call(),
       ]);
 
-      final warehouses = (results[0] as List)
-          .map((w) => WarehouseModel(id: w['id'], name: w['name']))
-          .toList();
+      final warehousesList = results[0] as List;
+      final warehouses = warehousesList.map((w) => WarehouseModel(id: w.id, name: w.name)).toList();
       final suppliers = List<Map<String, dynamic>>.from(results[1]);
       final accounts = (results[2] as List)
           .map((a) => FinancialAccountModel.fromJson(Map<String, dynamic>.from(a)))

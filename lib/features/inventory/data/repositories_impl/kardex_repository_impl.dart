@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,7 +45,7 @@ class KardexRepositoryImpl implements KardexRepository {
   }
 
   @override
-  Future<List<KardexMovementModel>> getKardexMovements({
+  Future<List<KardexMovementEntity>> getKardexMovements({
     DateTimeRange? dateRange,
     String typeFilter = 'ALL',
     String searchText = '',
@@ -107,7 +108,7 @@ class KardexRepositoryImpl implements KardexRepository {
   }
 
   @override
-  Future<List<KardexMovementModel>> getAllKardexMovements({
+  Future<List<KardexMovementEntity>> getAllKardexMovements({
     DateTimeRange? dateRange,
     String typeFilter = 'ALL',
     String searchText = '',

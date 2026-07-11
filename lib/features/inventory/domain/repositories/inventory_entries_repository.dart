@@ -1,3 +1,4 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
 
@@ -16,13 +17,7 @@ abstract class InventoryEntriesRepository {
     required String notes,
   });
 
-  Future<List<Map<String, dynamic>>> getActiveWarehouses();
-
-  Future<List<Map<String, dynamic>>> getActiveSuppliers();
-
-  Future<List<Map<String, dynamic>>> getActiveAccounts();
-
-  Future<Map<String, dynamic>> getEntries({
+  Future<({List<InventoryEntryEntity> data, int count})> getEntries({
     required int start,
     required int end,
     String? searchQuery,

@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
+import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_model.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
@@ -278,7 +280,6 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     }
   }
 
-  @override
   Future<List<Map<String, dynamic>>> getActiveWarehouses() async {
     return await _supabase
         .from('warehouses')
@@ -286,7 +287,6 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         .eq('is_active', true);
   }
 
-  @override
   Future<List<Map<String, dynamic>>> getActiveSuppliers() async {
     return await _supabase
         .from('suppliers')
@@ -295,7 +295,6 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         .order('name');
   }
 
-  @override
   Future<List<Map<String, dynamic>>> getActiveAccounts() async {
     return await _supabase
         .from('financial_accounts')
@@ -305,7 +304,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> getEntries({
+  Future<({List<InventoryEntryEntity> data, int count})> getEntries({
     required int start,
     required int end,
     String? searchQuery,
@@ -348,7 +347,8 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         .range(start, end)
         .count(CountOption.exact);
 
-    return {'data': resp.data as List<dynamic>, 'count': resp.count};
+    final data = (resp.data as List<dynamic>).map((e) => InventoryEntryModel.fromJson(e).toEntity()).toList();
+    return (data: data, count: resp.count);
   }
 
   @override

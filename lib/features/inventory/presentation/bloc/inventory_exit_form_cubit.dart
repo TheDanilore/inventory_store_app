@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/catalog/data/models/product_model.d
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_exits_usecase.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_products_and_variants_usecase.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_active_products_and_variants_uc.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_exit_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form_state.dart';
 
@@ -34,7 +34,7 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
       final productsData = await getActiveProductsAndVariantsUseCase.call();
 
       final warehouses = warehousesData
-          .map((w) => WarehouseModel.fromJson(Map<String, dynamic>.from(w)))
+          .map((w) => WarehouseModel(id: w.id, name: w.name))
           .toList();
       String? initialWarehouseId = warehouses.isNotEmpty ? warehouses.first.id : null;
 
