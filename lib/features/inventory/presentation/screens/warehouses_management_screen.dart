@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_state.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/warehouses_provider.dart';
+
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_skeleton.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_form_sheet.dart';
@@ -33,7 +37,7 @@ class _WarehousesManagementScreenState
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final query = context.read<WarehousesProvider>().searchQuery;
+      final query = context.read<WarehousesCubit>().state.searchQuery;
       if (query.isNotEmpty) {
         _searchCtrl.text = query;
       }
@@ -48,23 +52,52 @@ class _WarehousesManagementScreenState
     super.dispose();
   }
 
-  void _showWarehouseForm([WarehouseModel? warehouse]) {
+  void _showWarehouseForm(BuildContext context, WarehousesCubit cubit, [WarehouseModel? warehouse]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => WarehouseFormSheet(warehouse: warehouse),
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: WarehouseFormSheet(warehouse: warehouse),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<WarehousesCubit>()..initLoad(),
+      child: BlocConsumer<WarehousesCubit, WarehousesState>(
+        listener: (context, state) {
+          if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
+          }
+          if (state.successMessage != null && state.successMessage!.isNotEmpty) {
+            AppSnackbar.show(
+              context,
+              message: state.successMessage!,
+              type: SnackbarType.success,
+            );
+          }
+        },
+        builder: (context, state) {
+          final cubit = context.read<WarehousesCubit>();
+          return _buildContent(context, cubit, state);
+        },
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WarehousesCubit cubit, WarehousesState state) {
     return AdminLayout(
       title: 'Almacenes',
       showBackButton: true,
-      body: Consumer<WarehousesProvider>(
-        builder: (context, provider, child) {
-          return Column(
+      body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ─── BUSCADOR ───────────────────────────────────────────────────────
@@ -83,7 +116,7 @@ class _WarehousesManagementScreenState
                 ),
                 child: TextField(
                   controller: _searchCtrl,
-                  onChanged: provider.onSearchChanged,
+                  onChanged: cubit.updateSearch,
                   decoration: InputDecoration(
                     hintText: 'Buscar almacén por nombre o dirección...',
                     hintStyle: TextStyle(
@@ -95,7 +128,7 @@ class _WarehousesManagementScreenState
                       color: Colors.grey.shade400,
                     ),
                     suffixIcon:
-                        provider.searchQuery.isNotEmpty
+                        state.searchQuery.isNotEmpty
                             ? IconButton(
                               icon: const Icon(
                                 Icons.clear_rounded,
@@ -103,7 +136,7 @@ class _WarehousesManagementScreenState
                               ),
                               onPressed: () {
                                 _searchCtrl.clear();
-                                provider.clearSearch();
+                                cubit.clearSearch();
                               },
                             )
                             : null,
@@ -138,7 +171,7 @@ class _WarehousesManagementScreenState
                   vertical: 4,
                 ),
                 child: Text(
-                  'Total: ${provider.totalWarehouses} almacenes',
+                  'Total: ${state.totalRecords} almacenes',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 12,
@@ -150,12 +183,12 @@ class _WarehousesManagementScreenState
               // ─── LISTA DE ALMACENES ─────────────────────────────────────────────
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () => provider.fetchWarehouses(),
+                  onRefresh: () => cubit.loadWarehouses(),
                   color: AppColors.primary,
                   child:
-                      provider.isLoading
+                      state.isLoading
                           ? const WarehousesSkeleton(itemCount: 5)
-                          : provider.warehouses.isEmpty
+                          : state.warehouses.isEmpty
                           ? ListView(
                               controller: _scrollController,
                               children: [
@@ -174,7 +207,7 @@ class _WarehousesManagementScreenState
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      provider.searchQuery.isNotEmpty
+                                      state.searchQuery.isNotEmpty
                                           ? 'No se encontraron almacenes'
                                           : 'No hay almacenes registrados',
                                       style: TextStyle(
@@ -195,9 +228,9 @@ class _WarehousesManagementScreenState
                               horizontal: 16,
                               vertical: 8,
                             ),
-                            itemCount: provider.warehouses.length,
+                            itemCount: state.warehouses.length,
                             itemBuilder: (context, index) {
-                              final wh = provider.warehouses[index];
+                              final wh = state.warehouses[index];
                               return Card(
                                 elevation: 4,
                                 shadowColor: Colors.black.withValues(
@@ -210,7 +243,7 @@ class _WarehousesManagementScreenState
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(16),
-                                  onTap: () => _showWarehouseForm(wh),
+                                  onTap: () => _showWarehouseForm(context, cubit, wh),
                                   child: Padding(
                                     padding: const EdgeInsets.all(16),
                                     child: Row(
@@ -324,8 +357,7 @@ class _WarehousesManagementScreenState
                                             Switch(
                                               value: wh.isActive,
                                               onChanged: (val) {
-                                                provider.toggleWarehouseStatus(
-                                                  context,
+                                                cubit.toggleWarehouseStatus(
                                                   wh,
                                                   val,
                                                 );
@@ -348,21 +380,19 @@ class _WarehousesManagementScreenState
                 ),
               ),
 
-              if (provider.warehouses.isNotEmpty && provider.totalPages > 1)
+              if (state.warehouses.isNotEmpty && state.totalPages > 1)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   child: AdminPageBlocks(
-                    currentPage: provider.currentPage,
-                    totalPages: provider.totalPages,
-                    onPageChanged: (page) => provider.setPage(page),
+                    currentPage: state.currentPage,
+                    totalPages: state.totalPages,
+                    onPageChanged: (page) => cubit.changePage(page),
                   ),
                 ),
             ],
-          );
-        },
-      ),
+          ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showWarehouseForm(),
+        onPressed: () => _showWarehouseForm(context, cubit),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: ValueListenableBuilder<bool>(

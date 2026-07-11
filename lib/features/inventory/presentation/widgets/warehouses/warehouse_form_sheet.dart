@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses_state.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
-import 'package:inventory_store_app/features/inventory/presentation/providers/warehouses_provider.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class WarehouseFormSheet extends StatefulWidget {
@@ -37,17 +40,29 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final provider = context.read<WarehousesProvider>();
-    final success = await provider.saveWarehouse(
-      context,
+    final cubit = context.read<WarehousesCubit>();
+    final success = await cubit.saveWarehouse(
       existingWarehouse: widget.warehouse,
       name: _nameCtrl.text,
       address: _addressCtrl.text,
       isActive: _isActive,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
+      AppSnackbar.show(
+        context,
+        message: cubit.state.successMessage ?? 'Almacén guardado',
+        type: SnackbarType.success,
+      );
       Navigator.pop(context);
+    } else if (cubit.state.errorMessage != null) {
+      AppSnackbar.show(
+        context,
+        message: cubit.state.errorMessage!,
+        type: SnackbarType.error,
+      );
     }
   }
 
@@ -55,9 +70,10 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isEditing = widget.warehouse != null;
-    final provider = context.watch<WarehousesProvider>();
 
-    return Material(
+    return BlocBuilder<WarehousesCubit, WarehousesState>(
+      builder: (context, state) {
+        return Material(
       color: Colors.white,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: Padding(
@@ -157,7 +173,7 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
                 value: _isActive,
                 activeThumbColor: AppColors.primary,
                 contentPadding: EdgeInsets.zero,
-                onChanged: provider.isSaving
+                onChanged: state.isSaving
                     ? null
                     : (val) => setState(() => _isActive = val),
               ),
@@ -166,7 +182,7 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: provider.isSaving ? null : _save,
+                  onPressed: state.isSaving ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -175,7 +191,7 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: provider.isSaving
+                  child: state.isSaving
                       ? const SizedBox(
                           width: 20,
                           height: 20,
@@ -198,5 +214,7 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
         ),
       ),
     );
+  },
+);
   }
 }
