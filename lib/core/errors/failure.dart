@@ -29,6 +29,7 @@ sealed class Failure {
         available: error.available,
       );
     }
+    if (error is CacheException) return CacheFailure(message: error.message, code: error.code);
     if (error is AppException) return ServerFailure(message: error.message, code: error.code);
     return UnexpectedFailure(message: error.toString());
   }
@@ -92,4 +93,9 @@ final class StockFailure extends Failure {
 /// Fallo inesperado no categorizado.
 final class UnexpectedFailure extends Failure {
   const UnexpectedFailure({required super.message, super.code = 'UNEXPECTED'});
+}
+
+/// Fallo de caché local.
+final class CacheFailure extends Failure {
+  const CacheFailure({required super.message, super.code = 'CACHE_ERROR'});
 }

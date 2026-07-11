@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:inventory_store_app/core/errors/app_exception.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
@@ -53,8 +54,8 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
         }
       }
       return values;
-    } catch (_) {
-      return null;
+    } catch (e) {
+      throw CacheException(originalError: e);
     }
   }
 
@@ -63,7 +64,9 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_settingsCacheKey, jsonEncode(rawData));
-    } catch (_) {}
+    } catch (e) {
+      throw CacheException(originalError: e);
+    }
   }
   
   @override
@@ -108,8 +111,10 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       if (cached != null) {
         return BusinessInfoModel.fromMap(cached).toEntity();
       }
-    } catch (_) {}
-    return null;
+      return null;
+    } catch (e) {
+      throw CacheException(originalError: e);
+    }
   }
 
   @override
@@ -121,7 +126,9 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
         payload['id'] = info.id; // Asegurar que el ID se guarde en caché
       }
       await prefs.setString(_businessInfoCacheKey, jsonEncode(payload));
-    } catch (_) {}
+    } catch (e) {
+      throw CacheException(originalError: e);
+    }
   }
 
   @override

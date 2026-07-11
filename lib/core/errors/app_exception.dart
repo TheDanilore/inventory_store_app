@@ -84,3 +84,12 @@ class InsufficientStockException extends AppException {
              'solicitado $requested, disponible $available.',
        );
 }
+
+/// Error de caché local (SharedPreferences, Hive, SQLite).
+class CacheException extends AppException {
+  const CacheException({
+    super.message = 'Error de lectura o escritura en el almacenamiento local.',
+    super.code = 'CACHE_ERROR',
+    super.originalError,
+  });
+}
