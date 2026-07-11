@@ -30,7 +30,7 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
-                    'Sin pedidos aÃºn',
+                    'Sin pedidos aún',
                     style: TextStyle(color: AppColors.textMuted),
                   ),
                 ),
@@ -66,7 +66,7 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                         foregroundColor: AppColors.primary,
                         textStyle: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      child: const Text('Ver todos los pedidos â†’'),
+                      child: const Text('Ver todos los pedidos →'),
                     ),
                   ),
                 ],
