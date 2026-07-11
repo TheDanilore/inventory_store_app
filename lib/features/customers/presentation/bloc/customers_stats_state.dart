@@ -13,8 +13,6 @@ class CustomersStatsLoading extends CustomersStatsState {}
 
 class CustomersStatsLoaded extends CustomersStatsState {
   final Map<String, dynamic> stats;
-  // stats = { 'totalCustomersCount': 100, 'activeCustomersCount': 90, 'totalRevenue': 15000.5, 'totalDebt': 4500.0 }
-
   const CustomersStatsLoaded(this.stats);
 
   int get totalCustomersCount => stats['totalCustomersCount'] ?? 0;

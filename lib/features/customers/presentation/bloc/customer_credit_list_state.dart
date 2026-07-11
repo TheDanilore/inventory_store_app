@@ -45,12 +45,12 @@ class CustomerCreditListLoaded extends CustomerCreditListState {
 
   @override
   List<Object?> get props => [
-        accounts,
-        currentPage,
-        totalPages,
-        query,
-        showOnlyWithDebt,
-      ];
+    accounts,
+    currentPage,
+    totalPages,
+    query,
+    showOnlyWithDebt,
+  ];
 }
 
 class CustomerCreditListError extends CustomerCreditListState {

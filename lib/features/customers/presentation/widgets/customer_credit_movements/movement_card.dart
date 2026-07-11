@@ -87,7 +87,7 @@ class _MovementCardState extends State<MovementCard> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Ãcono
+                // Icono
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -181,7 +181,7 @@ class _MovementCardState extends State<MovementCard> {
                         ],
                       ),
 
-                      // AcciÃ³n sugerida al expandir (opcional)
+                      // Acción sugerida al expandir (opcional)
                       if (_expanded && movement.orderNumber != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
@@ -210,7 +210,7 @@ class _MovementCardState extends State<MovementCard> {
                   ),
                 ),
 
-                // Monto y hora (ahora monto es mÃ¡s jerÃ¡rquico)
+                // Monto y hora (ahora monto es más jerárquico)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [

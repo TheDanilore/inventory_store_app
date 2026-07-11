@@ -18,7 +18,7 @@ class CustomersCubit extends Cubit<CustomersState> {
     bool? showOnlyWithDebt,
   }) async {
     final currentState = state;
-    
+
     List<CustomerEntity> currentCustomers = [];
     String currentQuery = '';
     bool currentDebtFilter = false;
@@ -48,12 +48,15 @@ class CustomersCubit extends Cubit<CustomersState> {
         showOnlyWithDebt: currentDebtFilter,
       );
 
-      emit(CustomersLoaded(
-        customers: reset ? newCustomers : [...currentCustomers, ...newCustomers],
-        hasReachedMax: newCustomers.length < _limit,
-        query: currentQuery,
-        showOnlyWithDebt: currentDebtFilter,
-      ));
+      emit(
+        CustomersLoaded(
+          customers:
+              reset ? newCustomers : [...currentCustomers, ...newCustomers],
+          hasReachedMax: newCustomers.length < _limit,
+          query: currentQuery,
+          showOnlyWithDebt: currentDebtFilter,
+        ),
+      );
     } catch (e) {
       emit(CustomersError(e.toString()));
     }

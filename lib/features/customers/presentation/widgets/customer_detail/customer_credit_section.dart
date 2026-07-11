@@ -45,7 +45,7 @@ class CustomerCreditSection extends StatelessWidget {
     final isRisk = pct >= 0.8;
 
     return CustomerSectionCard(
-      title: 'LÃ­nea de CrÃ©dito',
+      title: 'Línea de Crédito',
       icon: Icons.credit_card_rounded,
       trailing:
           !isActive
@@ -86,7 +86,7 @@ class CustomerCreditSection extends StatelessWidget {
               ),
               Expanded(
                 child: _CreditStat(
-                  label: 'LÃ­mite',
+                  label: 'Límite',
                   value: 'S/ ${limit.toStringAsFixed(2)}',
                   color: AppColors.textSecondary,
                 ),
@@ -107,7 +107,7 @@ class CustomerCreditSection extends StatelessWidget {
               );
 
               return Semantics(
-                label: 'CrÃ©dito usado: ${(value * 100).toStringAsFixed(0)}%',
+                label: 'Crédito usado: ${(value * 100).toStringAsFixed(0)}%',
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(

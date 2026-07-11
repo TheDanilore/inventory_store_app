@@ -103,7 +103,7 @@ class CreditAccountCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'LÃ­mite: S/ ${account.creditLimit.toStringAsFixed(2)}',
+                      'Límite: S/ ${account.creditLimit.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                     ),
                   ],

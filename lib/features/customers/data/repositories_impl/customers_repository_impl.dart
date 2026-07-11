@@ -18,7 +18,9 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? query,
     bool showOnlyWithDebt = false,
   }) async {
-    dynamic queryBuilder = _supabase.from('profiles').select(
+    dynamic queryBuilder = _supabase
+        .from('profiles')
+        .select(
           'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at${showOnlyWithDebt ? ', customer_credits!inner(current_debt, credit_limit)' : ''}',
         );
 
@@ -26,7 +28,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
     if (query != null && query.isNotEmpty) {
       queryBuilder = queryBuilder.or(
-          'full_name.ilike.%$query%,document_number.ilike.%$query%,phone.ilike.%$query%');
+        'full_name.ilike.%$query%,document_number.ilike.%$query%,phone.ilike.%$query%',
+      );
     }
 
     if (showOnlyWithDebt) {
@@ -63,7 +66,6 @@ class CustomersRepositoryImpl implements CustomersRepository {
       double creditLimit = 0.0;
 
       if (showOnlyWithDebt && json['customer_credits'] != null) {
-        // Viene del inner join si showOnlyWithDebt = true
         final creditObj = (json['customer_credits'] as List).firstOrNull;
         if (creditObj != null) {
           currentDebt = (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
@@ -72,7 +74,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
       } else {
         // Viene del query separado
         final creditRowMatch = creditsRes.where((c) => c['profile_id'] == id);
-        final creditRow = creditRowMatch.isNotEmpty ? creditRowMatch.first : null;
+        final creditRow =
+            creditRowMatch.isNotEmpty ? creditRowMatch.first : null;
         if (creditRow != null) {
           currentDebt = (creditRow['current_debt'] as num?)?.toDouble() ?? 0.0;
           creditLimit = (creditRow['credit_limit'] as num?)?.toDouble() ?? 0.0;
@@ -95,9 +98,10 @@ class CustomersRepositoryImpl implements CustomersRepository {
         avatarUrl: json['avatar_url'] as String?,
         walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
         isActive: json['is_active'] as bool? ?? true,
-        createdAt: json['created_at'] != null
-            ? DateTime.parse(json['created_at'])
-            : null,
+        createdAt:
+            json['created_at'] != null
+                ? DateTime.parse(json['created_at'])
+                : null,
         currentDebt: currentDebt,
         creditLimit: creditLimit,
         totalRevenue: totalSpent,
@@ -107,11 +111,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
   @override
   Future<CustomerEntity> getCustomerDetail(String customerId) async {
-    final res = await _supabase
-        .from('profiles')
-        .select()
-        .eq('id', customerId)
-        .single();
+    final res =
+        await _supabase.from('profiles').select().eq('id', customerId).single();
     return CustomerEntity(
       id: res['id'] as String,
       fullName: res['full_name'] as String? ?? 'Cliente',
@@ -121,9 +122,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
       avatarUrl: res['avatar_url'] as String?,
       walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
       isActive: res['is_active'] as bool? ?? true,
-      createdAt: res['created_at'] != null
-          ? DateTime.parse(res['created_at'])
-          : null,
+      createdAt:
+          res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
     );
   }
 
@@ -155,9 +155,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
       avatarUrl: res['avatar_url'] as String?,
       walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
       isActive: res['is_active'] as bool? ?? true,
-      createdAt: res['created_at'] != null
-          ? DateTime.parse(res['created_at'])
-          : null,
+      createdAt:
+          res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
     );
   }
 
@@ -170,9 +169,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? documentType,
     bool? isActive,
   }) async {
-    final Map<String, dynamic> data = {
-      'full_name': fullName,
-    };
+    final Map<String, dynamic> data = {'full_name': fullName};
     if (phone != null) data['phone'] = phone.isEmpty ? null : phone;
     if (documentNumber != null) {
       data['document_number'] = documentNumber.isEmpty ? null : documentNumber;
@@ -180,12 +177,13 @@ class CustomersRepositoryImpl implements CustomersRepository {
     if (documentType != null) data['document_type'] = documentType;
     if (isActive != null) data['is_active'] = isActive;
 
-    final res = await _supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', customerId)
-        .select()
-        .single();
+    final res =
+        await _supabase
+            .from('profiles')
+            .update(data)
+            .eq('id', customerId)
+            .select()
+            .single();
     return CustomerEntity(
       id: res['id'] as String,
       fullName: res['full_name'] as String? ?? 'Cliente',
@@ -195,9 +193,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
       avatarUrl: res['avatar_url'] as String?,
       walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
       isActive: res['is_active'] as bool? ?? true,
-      createdAt: res['created_at'] != null
-          ? DateTime.parse(res['created_at'])
-          : null,
+      createdAt:
+          res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
     );
   }
 
@@ -216,8 +213,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         .select('id, is_active')
         .eq('role', 'customer');
 
-    final activeCount =
-        profilesRes.where((p) => p['is_active'] == true).length;
+    final activeCount = profilesRes.where((p) => p['is_active'] == true).length;
     final inactiveCount =
         profilesRes.where((p) => p['is_active'] == false).length;
     final totalCount = profilesRes.length;
@@ -261,12 +257,13 @@ class CustomersRepositoryImpl implements CustomersRepository {
       final cid = row['customer_id'] as String?;
       if (cid != null) {
         revMap[cid] =
-            (revMap[cid] ?? 0.0) + ((row['total_amount'] as num?)?.toDouble() ?? 0.0);
+            (revMap[cid] ?? 0.0) +
+            ((row['total_amount'] as num?)?.toDouble() ?? 0.0);
       }
     }
 
-    var sortedEntries = revMap.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    var sortedEntries =
+        revMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
 
     if (topIds.isEmpty) return [];
@@ -286,21 +283,26 @@ class CustomersRepositoryImpl implements CustomersRepository {
         avatarUrl: json['avatar_url'] as String?,
         walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
         isActive: json['is_active'] as bool? ?? true,
-        createdAt: json['created_at'] != null
-            ? DateTime.parse(json['created_at'])
-            : null,
+        createdAt:
+            json['created_at'] != null
+                ? DateTime.parse(json['created_at'])
+                : null,
         totalRevenue: revMap[json['id'] as String] ?? 0.0,
       );
     }).toList();
   }
+
   @override
-  Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId) async {
+  Future<List<RecentOrderEntity>> getCustomerRecentOrders(
+    String customerId,
+  ) async {
     return [];
   }
 
   @override
-  Future<List<TopProductEntity>> getCustomerTopProducts(String customerId) async {
+  Future<List<TopProductEntity>> getCustomerTopProducts(
+    String customerId,
+  ) async {
     return [];
   }
 }
-

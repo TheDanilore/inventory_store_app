@@ -74,7 +74,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
     if (widget.onAddToCart != null) {
       widget.onAddToCart!(context, entry.product.toEntity());
     } else {
-      AppSnackbar.show(context, message: 'FunciÃ³n aÃ±adir al carrito no disponible.');
+      AppSnackbar.show(context, message: 'Función añadir al carrito no disponible.');
     }
   }
 
@@ -91,7 +91,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             content: Text(
-              'Â¿Quitar "${entry.product.name}" de tu lista?',
+              '¿Quitar "${entry.product.name}" de tu lista?',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -240,7 +240,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${items.length} guardado${items.length == 1 ? '' : 's'}  â€¢  $availableCount disponibles',
+                  '${items.length} guardado${items.length == 1 ? '' : 's'}  •  $availableCount disponibles',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
@@ -291,8 +291,8 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.favorite_border_rounded,
-            title: 'Necesitas iniciar sesiÃ³n',
-            message: 'Inicia sesiÃ³n para ver tu lista de deseos.',
+            title: 'Necesitas iniciar sesión',
+            message: 'Inicia sesión para ver tu lista de deseos.',
           ),
         ),
       );
@@ -304,7 +304,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.error_outline,
-            title: 'Algo saliÃ³ mal',
+            title: 'Algo salió mal',
             message: state.message,
           ),
         ),
@@ -318,9 +318,9 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
             padding: const EdgeInsets.only(top: 24),
             child: AppEmptyState(
               icon: Icons.favorite_border_rounded,
-              title: 'Tu lista estÃ¡ vacÃ­a',
+              title: 'Tu lista está vacía',
               message:
-                  'Toca el corazÃ³n en cualquier producto para guardarlo aquÃ­.',
+                  'Toca el corazón en cualquier producto para guardarlo aquí.',
               action: SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -337,7 +337,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                   ),
                   icon: const Icon(Icons.storefront_rounded, size: 18),
                   label: const Text(
-                    'Explorar catÃ¡logo',
+                    'Explorar catálogo',
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                   ),
                 ),

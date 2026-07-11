@@ -9,9 +9,14 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
   final GetCreditAccountsUseCase _getCreditAccountsUseCase;
   static const int _limit = 20;
 
-  CustomerCreditListCubit(this._getCreditAccountsUseCase) : super(CustomerCreditListInitial());
+  CustomerCreditListCubit(this._getCreditAccountsUseCase)
+    : super(CustomerCreditListInitial());
 
-  Future<void> loadAccounts({String? query, bool showOnlyWithDebt = false, int page = 1}) async {
+  Future<void> loadAccounts({
+    String? query,
+    bool showOnlyWithDebt = false,
+    int page = 1,
+  }) async {
     emit(CustomerCreditListLoading());
     try {
       final offset = (page - 1) * _limit;
@@ -22,13 +27,18 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
         showOnlyWithDebt: showOnlyWithDebt,
       );
       // Asumimos que totalPages es 1 por ahora o se calcula con un count que no tenemos
-      emit(CustomerCreditListLoaded(
-        accounts: accounts,
-        currentPage: page,
-        totalPages: accounts.length == _limit ? page + 1 : page, // simple pagination logic
-        query: query,
-        showOnlyWithDebt: showOnlyWithDebt,
-      ));
+      emit(
+        CustomerCreditListLoaded(
+          accounts: accounts,
+          currentPage: page,
+          totalPages:
+              accounts.length == _limit
+                  ? page + 1
+                  : page, // simple pagination logic
+          query: query,
+          showOnlyWithDebt: showOnlyWithDebt,
+        ),
+      );
     } catch (e) {
       emit(CustomerCreditListError(e.toString()));
     }
@@ -37,7 +47,11 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
   void setPage(int page) {
     if (state is CustomerCreditListLoaded) {
       final s = state as CustomerCreditListLoaded;
-      loadAccounts(query: s.query, showOnlyWithDebt: s.showOnlyWithDebt, page: page);
+      loadAccounts(
+        query: s.query,
+        showOnlyWithDebt: s.showOnlyWithDebt,
+        page: page,
+      );
     }
   }
 
@@ -62,4 +76,3 @@ class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
     }
   }
 }
-

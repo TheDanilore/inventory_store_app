@@ -183,7 +183,7 @@ class MovementsSummaryHeader extends StatelessWidget {
                   color:
                       isAtRisk
                           ? Colors.white
-                          : Colors.orange.shade100, // Mejor contraste
+                          : Colors.orange.shade100, 
                 ),
               ),
               const SizedBox(width: 12),
@@ -195,7 +195,7 @@ class MovementsSummaryHeader extends StatelessWidget {
                   color:
                       isAtRisk
                           ? Colors.white
-                          : Colors.green.shade100, // Mejor contraste
+                          : Colors.green.shade100,
                 ),
               ),
             ],
@@ -226,7 +226,7 @@ class _StatChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(
           alpha: 0.15,
-        ), // Fondo oscuro para mejor contraste
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -241,7 +241,7 @@ class _StatChip extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9), // Más opaco
+                    color: Colors.white.withValues(alpha: 0.9), 
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

@@ -23,7 +23,8 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
 
     if (query != null && query.isNotEmpty) {
       queryBuilder = queryBuilder.or(
-          'partner_name.ilike.%$query%,partner_document.ilike.%$query%,partner_phone.ilike.%$query%');
+        'partner_name.ilike.%$query%,partner_document.ilike.%$query%,partner_phone.ilike.%$query%',
+      );
     }
 
     if (showOnlyWithDebt) {
@@ -39,12 +40,14 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
 
   @override
   Future<CustomerCreditEntity?> getCreditAccountByCustomer(
-      String customerId) async {
-    final resp = await _supabase
-        .from('customer_credits_summary')
-        .select()
-        .eq('profile_id', customerId)
-        .maybeSingle();
+    String customerId,
+  ) async {
+    final resp =
+        await _supabase
+            .from('customer_credits_summary')
+            .select()
+            .eq('profile_id', customerId)
+            .maybeSingle();
 
     if (resp != null) {
       return CreditAccountModel.fromView(resp).toEntity();
@@ -58,11 +61,12 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     required double creditLimit,
   }) async {
     // Check if exists
-    final exist = await _supabase
-        .from('customer_credits')
-        .select('id')
-        .eq('profile_id', customerId)
-        .maybeSingle();
+    final exist =
+        await _supabase
+            .from('customer_credits')
+            .select('id')
+            .eq('profile_id', customerId)
+            .maybeSingle();
 
     if (exist != null) {
       // Activar y actualizar
@@ -77,11 +81,12 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
       });
     }
 
-    final resp = await _supabase
-        .from('customer_credits_summary')
-        .select()
-        .eq('profile_id', customerId)
-        .single();
+    final resp =
+        await _supabase
+            .from('customer_credits_summary')
+            .select()
+            .eq('profile_id', customerId)
+            .single();
     return CreditAccountModel.fromView(resp).toEntity();
   }
 
@@ -95,11 +100,12 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         .update({'credit_limit': newLimit})
         .eq('id', creditId);
 
-    final resp = await _supabase
-        .from('customer_credits_summary')
-        .select()
-        .eq('credit_id', creditId)
-        .single();
+    final resp =
+        await _supabase
+            .from('customer_credits_summary')
+            .select()
+            .eq('credit_id', creditId)
+            .single();
     return CreditAccountModel.fromView(resp).toEntity();
   }
 
@@ -136,32 +142,40 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     String? paymentMethod,
     String? notes,
   }) async {
-    // Este mtodo simple abstrae el registro de pago. 
-    // Dado que el sistema original tiene 'registerPayment' que actualiza mltiples tablas de Orders y Finanzas, 
+    // Este mtodo simple abstrae el registro de pago.
+    // Dado que el sistema original tiene 'registerPayment' que actualiza mltiples tablas de Orders y Finanzas,
     // lo simplificaremos o usaremos el servicio existente que el CU puede orquestar.
-    
+
     // Por ahora, registramos solo el movimiento y deducimos la deuda
-    final credit = await _supabase
-        .from('customer_credits')
-        .select('current_debt')
-        .eq('id', creditId)
-        .single();
-        
-    final newDebt = ((credit['current_debt'] as num).toDouble() - amount)
-        .clamp(0.0, double.infinity);
+    final credit =
+        await _supabase
+            .from('customer_credits')
+            .select('current_debt')
+            .eq('id', creditId)
+            .single();
+
+    final newDebt = ((credit['current_debt'] as num).toDouble() - amount).clamp(
+      0.0,
+      double.infinity,
+    );
 
     await _supabase
         .from('customer_credits')
         .update({'current_debt': newDebt})
         .eq('id', creditId);
 
-    final res = await _supabase.from('customer_credit_movements').insert({
-      'customer_credit_id': creditId,
-      'movement_type': 'PAYMENT',
-      'amount': amount,
-      'payment_method': paymentMethod,
-      'notes': notes,
-    }).select().single();
+    final res =
+        await _supabase
+            .from('customer_credit_movements')
+            .insert({
+              'customer_credit_id': creditId,
+              'movement_type': 'PAYMENT',
+              'amount': amount,
+              'payment_method': paymentMethod,
+              'notes': notes,
+            })
+            .select()
+            .single();
 
     return CreditMovementEntity(
       id: res['id'],
@@ -173,4 +187,3 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     );
   }
 }
-

@@ -5,10 +5,8 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_movements_state.dart';
 
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import '../widgets/customer_credit_movements/movements_summary_header.dart';
-import '../widgets/customer_credit_movements/movement_card.dart';
-
-
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credit_movements/movements_summary_header.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credit_movements/movement_card.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CustomerCreditMovementsScreen extends StatelessWidget {
@@ -117,7 +115,7 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
                       padding: const EdgeInsets.all(16),
                       itemCount: movements.length + (state.hasReachedMax ? 0 : 1),
                       separatorBuilder: (context, index) {
-                        return const SizedBox(height: 12); // Puedes usar DateDivider si quieres
+                        return const SizedBox(height: 12); 
                       },
                       itemBuilder: (context, index) {
                         if (index >= movements.length) {

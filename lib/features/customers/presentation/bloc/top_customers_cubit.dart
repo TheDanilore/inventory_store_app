@@ -7,7 +7,8 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/top_cus
 class TopCustomersCubit extends Cubit<TopCustomersState> {
   final GetTopCustomersUseCase _getTopCustomersUseCase;
 
-  TopCustomersCubit(this._getTopCustomersUseCase) : super(TopCustomersInitial());
+  TopCustomersCubit(this._getTopCustomersUseCase)
+    : super(TopCustomersInitial());
 
   Future<void> loadTopCustomers([int limit = 5]) async {
     emit(TopCustomersLoading());

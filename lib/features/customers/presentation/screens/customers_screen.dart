@@ -155,7 +155,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
           child: TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
-              hintText: 'Buscar por nombre, documento o telÃ©fono...',
+              hintText: 'Buscar por nombre, documento o teléfono...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: isLoading
                   ? const Padding(
@@ -283,7 +283,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent> with S
                     padding: const EdgeInsets.all(16.0),
                     child: !state.hasReachedMax
                         ? const CircularProgressIndicator()
-                        : const Text('No hay mÃ¡s clientes', style: TextStyle(color: Colors.grey)),
+                        : const Text('No hay más clientes', style: TextStyle(color: Colors.grey)),
                   ),
                 );
               }

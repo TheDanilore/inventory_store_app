@@ -7,7 +7,6 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
 
 class CustomerCreditsScreen extends StatefulWidget {
@@ -44,14 +43,20 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen> {
             ],
             body: Column(
               children: [
-                // BÃƒÂºsqueda
+                // Búsqueda
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: TextField(
                     controller: _searchCtrl,
                     decoration: InputDecoration(
                       hintText: 'Buscar cliente...',
-                      prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.textMuted,
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -79,16 +84,21 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen> {
                     },
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
 
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(16),
-                    child: BlocBuilder<CustomerCreditListCubit, CustomerCreditListState>(
+                    child: BlocBuilder<
+                      CustomerCreditListCubit,
+                      CustomerCreditListState
+                    >(
                       builder: (context, state) {
                         if (state is CustomerCreditListLoading) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         } else if (state is CustomerCreditListError) {
                           return Center(
                             child: Text(
@@ -100,20 +110,23 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen> {
                           final credits = state.accounts;
                           if (credits.isEmpty) {
                             return AppEmptyState(
-                              title: 'Sin crÃƒÂ©ditos',
+                              title: 'Sin créditos',
                               message: 'No hay cuentas por cobrar.',
                               icon: Icons.account_balance_wallet,
                             );
                           }
                           return ListView.separated(
                             itemCount: credits.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 12),
+                            separatorBuilder:
+                                (context, index) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final account = credits[index];
                               return CreditAccountCard(
                                 account: account,
                                 onTap: () {
-                                  context.push('/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}');
+                                  context.push(
+                                    '/customer-credit-movements/${account.id}?name=${Uri.encodeComponent(account.customerName ?? '')}',
+                                  );
                                 },
                               );
                             },
@@ -132,5 +145,3 @@ class _CustomerCreditsScreenState extends State<CustomerCreditsScreen> {
     );
   }
 }
-
-

@@ -11,13 +11,15 @@ class CustomerLocationsRepositoryImpl implements CustomerLocationsRepository {
   CustomerLocationsRepositoryImpl() : _supabase = Supabase.instance.client;
 
   @override
-  Future<List<CustomerLocationEntity>> getCustomerLocations(String customerId) async {
+  Future<List<CustomerLocationEntity>> getCustomerLocations(
+    String customerId,
+  ) async {
     final response = await _supabase
         .from('customer_locations')
         .select()
         .eq('profile_id', customerId)
         .order('is_default', ascending: false);
-        
+
     return (response as List)
         .map((e) => CustomerLocationModel.fromMap(e).toEntity())
         .toList();
@@ -41,7 +43,7 @@ class CustomerLocationsRepositoryImpl implements CustomerLocationsRepository {
           .update({'is_default': false})
           .eq('profile_id', customerId);
     }
-    
+
     final map = {
       'profile_id': customerId,
       'name': name,
@@ -53,13 +55,14 @@ class CustomerLocationsRepositoryImpl implements CustomerLocationsRepository {
       'notes': notes,
       'is_default': isDefault,
     };
-    
-    final response = await _supabase
-        .from('customer_locations')
-        .insert(map)
-        .select()
-        .single();
-        
+
+    final response =
+        await _supabase
+            .from('customer_locations')
+            .insert(map)
+            .select()
+            .single();
+
     return CustomerLocationModel.fromMap(response).toEntity();
   }
 
@@ -83,31 +86,33 @@ class CustomerLocationsRepositoryImpl implements CustomerLocationsRepository {
     if (addressLine != null) map['address_line'] = addressLine;
     if (reference != null) map['reference'] = reference;
     if (notes != null) map['notes'] = notes;
-    
+
     if (isDefault != null) {
       map['is_default'] = isDefault;
       if (isDefault) {
         // Necesitamos el profileId
-        final current = await _supabase
-            .from('customer_locations')
-            .select('profile_id')
-            .eq('id', locationId)
-            .single();
-            
+        final current =
+            await _supabase
+                .from('customer_locations')
+                .select('profile_id')
+                .eq('id', locationId)
+                .single();
+
         await _supabase
             .from('customer_locations')
             .update({'is_default': false})
             .eq('profile_id', current['profile_id']);
       }
     }
-    
-    final response = await _supabase
-        .from('customer_locations')
-        .update(map)
-        .eq('id', locationId)
-        .select()
-        .single();
-        
+
+    final response =
+        await _supabase
+            .from('customer_locations')
+            .update(map)
+            .eq('id', locationId)
+            .select()
+            .single();
+
     return CustomerLocationModel.fromMap(response).toEntity();
   }
 
@@ -117,16 +122,18 @@ class CustomerLocationsRepositoryImpl implements CustomerLocationsRepository {
   }
 
   @override
-  Future<void> setLocationAsDefault(String customerId, String locationId) async {
+  Future<void> setLocationAsDefault(
+    String customerId,
+    String locationId,
+  ) async {
     await _supabase
         .from('customer_locations')
         .update({'is_default': false})
         .eq('profile_id', customerId);
-        
+
     await _supabase
         .from('customer_locations')
         .update({'is_default': true})
         .eq('id', locationId);
   }
 }
-

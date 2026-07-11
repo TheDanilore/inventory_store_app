@@ -10,10 +10,13 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
   static const int _limit = 15;
 
   CustomerWishlistCubit()
-      : _supabase = Supabase.instance.client,
-        super(CustomerWishlistInitial());
+    : _supabase = Supabase.instance.client,
+      super(CustomerWishlistInitial());
 
-  Future<void> fetchWishlist({required String profileId, bool reset = false}) async {
+  Future<void> fetchWishlist({
+    required String profileId,
+    bool reset = false,
+  }) async {
     final currentState = state;
     List<WishlistEntryModel> currentItems = [];
 
@@ -25,7 +28,8 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
       currentItems = [];
       emit(CustomerWishlistLoading());
     } else {
-      if (currentState is CustomerWishlistLoaded && currentState.hasReachedMax) {
+      if (currentState is CustomerWishlistLoaded &&
+          currentState.hasReachedMax) {
         return;
       }
     }
@@ -45,10 +49,14 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
 
       final rows = List<Map<String, dynamic>>.from(response);
 
-      final productIds = rows
-          .map((r) => (r['products'] as Map<String, dynamic>?)?['id'] as String?)
-          .whereType<String>()
-          .toList();
+      final productIds =
+          rows
+              .map(
+                (r) =>
+                    (r['products'] as Map<String, dynamic>?)?['id'] as String?,
+              )
+              .whereType<String>()
+              .toList();
 
       Map<String, int> stockByProduct = {};
       if (productIds.isNotEmpty) {
@@ -60,33 +68,44 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
 
         for (final row in List<Map<String, dynamic>>.from(stockResponse)) {
           final pid = row['product_id'] as String;
-          stockByProduct[pid] = (stockByProduct[pid] ?? 0) +
+          stockByProduct[pid] =
+              (stockByProduct[pid] ?? 0) +
               ((row['available_quantity'] as num?)?.toInt() ?? 0);
         }
       }
 
-      final fetchedEntries = rows.map((row) {
-        final productJson = Map<String, dynamic>.from(row['products'] as Map);
-        final pid = productJson['id'] as String?;
-        final stock = pid == null ? 0 : (stockByProduct[pid] ?? 0);
+      final fetchedEntries =
+          rows.map((row) {
+            final productJson = Map<String, dynamic>.from(
+              row['products'] as Map,
+            );
+            final pid = productJson['id'] as String?;
+            final stock = pid == null ? 0 : (stockByProduct[pid] ?? 0);
 
-        return WishlistEntryModel(
-          wishlistId: row['id'] as String,
-          createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
-          product: ProductModel.fromJson(productJson).copyWith(totalStock: stock),
-        );
-      }).toList();
+            return WishlistEntryModel(
+              wishlistId: row['id'] as String,
+              createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
+              product: ProductModel.fromJson(
+                productJson,
+              ).copyWith(totalStock: stock),
+            );
+          }).toList();
 
-      emit(CustomerWishlistLoaded(
-        items: reset ? fetchedEntries : [...currentItems, ...fetchedEntries],
-        hasReachedMax: fetchedEntries.length < _limit,
-      ));
+      emit(
+        CustomerWishlistLoaded(
+          items: reset ? fetchedEntries : [...currentItems, ...fetchedEntries],
+          hasReachedMax: fetchedEntries.length < _limit,
+        ),
+      );
     } catch (e) {
       emit(CustomerWishlistError('No se pudo cargar la lista de deseos: $e'));
     }
   }
 
-  Future<void> removeFromWishlist(String profileId, WishlistEntryModel entry) async {
+  Future<void> removeFromWishlist(
+    String profileId,
+    WishlistEntryModel entry,
+  ) async {
     final currentState = state;
     if (currentState is CustomerWishlistLoaded) {
       try {
@@ -96,9 +115,10 @@ class CustomerWishlistCubit extends Cubit<CustomerWishlistState> {
             .eq('profile_id', profileId)
             .eq('product_id', entry.product.id);
 
-        final updatedItems = currentState.items
-            .where((i) => i.wishlistId != entry.wishlistId)
-            .toList();
+        final updatedItems =
+            currentState.items
+                .where((i) => i.wishlistId != entry.wishlistId)
+                .toList();
 
         emit(currentState.copyWith(items: updatedItems));
       } catch (e) {

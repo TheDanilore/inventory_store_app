@@ -30,14 +30,18 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
           limit: _movementsLimit,
           offset: 0,
         );
-        emit(CustomerCreditsLoaded(
-          creditAccount: account,
-          movements: movements,
-          hasReachedMaxMovements: movements.length < _movementsLimit,
-        ));
+        emit(
+          CustomerCreditsLoaded(
+            creditAccount: account,
+            movements: movements,
+            hasReachedMaxMovements: movements.length < _movementsLimit,
+          ),
+        );
       } else {
         // No account
-        emit(const CustomerCreditsError("El cliente no tiene lÃ­nea de crÃ©dito."));
+        emit(
+          const CustomerCreditsError("El cliente no tiene línea de crédito."),
+        );
       }
     } catch (e) {
       emit(CustomerCreditsError(e.toString()));
@@ -46,17 +50,20 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
 
   Future<void> loadMoreMovements() async {
     final currentState = state;
-    if (currentState is CustomerCreditsLoaded && !currentState.hasReachedMaxMovements) {
+    if (currentState is CustomerCreditsLoaded &&
+        !currentState.hasReachedMaxMovements) {
       try {
         final newMovements = await _getCreditMovementsUseCase(
           creditId: currentState.creditAccount.id,
           limit: _movementsLimit,
           offset: currentState.movements.length,
         );
-        emit(currentState.copyWith(
-          movements: [...currentState.movements, ...newMovements],
-          hasReachedMaxMovements: newMovements.length < _movementsLimit,
-        ));
+        emit(
+          currentState.copyWith(
+            movements: [...currentState.movements, ...newMovements],
+            hasReachedMaxMovements: newMovements.length < _movementsLimit,
+          ),
+        );
       } catch (e) {
         // Ignore error or show snackbar
       }
@@ -70,11 +77,13 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
         customerId: customerId,
         creditLimit: limit,
       );
-      emit(CustomerCreditsLoaded(
-        creditAccount: account,
-        movements: const [],
-        hasReachedMaxMovements: true,
-      ));
+      emit(
+        CustomerCreditsLoaded(
+          creditAccount: account,
+          movements: const [],
+          hasReachedMaxMovements: true,
+        ),
+      );
     } catch (e) {
       emit(CustomerCreditsError(e.toString()));
     }
