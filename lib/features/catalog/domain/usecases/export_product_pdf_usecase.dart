@@ -3,13 +3,11 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/pdf_generator_repository.dart';
+import 'package:inventory_store_app/features/catalog/data/utils/catalog_pdf_generator.dart';
 
 @injectable
 class ExportProductPdfUseCase {
-  final PdfGeneratorRepository _pdfRepository;
-
-  ExportProductPdfUseCase(this._pdfRepository);
+  ExportProductPdfUseCase();
 
   Future<Either<Failure, void>> call({
     required ProductEntity product,
@@ -17,7 +15,7 @@ class ExportProductPdfUseCase {
     required Map<String, int> stockByVariant,
   }) async {
     try {
-      await _pdfRepository.shareProduct(
+      await CatalogPdfGenerator.shareProduct(
         product,
         variants: variants,
         stockByVariant: stockByVariant,

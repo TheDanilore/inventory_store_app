@@ -23,6 +23,8 @@ import '../../features/app_config/domain/usecases/get_app_settings_uc.dart'
     as _i506;
 import '../../features/app_config/domain/usecases/get_business_info_uc.dart'
     as _i868;
+import '../../features/app_config/domain/usecases/get_connection_url_uc.dart'
+    as _i653;
 import '../../features/app_config/domain/usecases/restore_default_connection_uc.dart'
     as _i37;
 import '../../features/app_config/domain/usecases/save_business_info_uc.dart'
@@ -42,14 +44,10 @@ import '../../features/auth/domain/usecases/register_uc.dart' as _i182;
 import '../../features/auth/domain/usecases/reset_password_uc.dart' as _i878;
 import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
-import '../../features/catalog/data/repositories_impl/catalog_pdf_generator_impl.dart'
-    as _i508;
 import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
     as _i524;
 import '../../features/catalog/domain/repositories/catalog_repository.dart'
     as _i1018;
-import '../../features/catalog/domain/repositories/pdf_generator_repository.dart'
-    as _i737;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_category_mutations_uc.dart'
@@ -167,6 +165,12 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
+    gh.factory<_i961.ExportCatalogPdfUseCase>(
+      () => _i961.ExportCatalogPdfUseCase(),
+    );
+    gh.factory<_i967.ExportProductPdfUseCase>(
+      () => _i967.ExportProductPdfUseCase(),
+    );
     gh.factory<_i17.CustomerWishlistCubit>(() => _i17.CustomerWishlistCubit());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
@@ -178,15 +182,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i1018.CatalogRepository>(
       () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
-    );
-    gh.factory<_i737.PdfGeneratorRepository>(
-      () => _i508.CatalogPdfGeneratorImpl(),
-    );
-    gh.factory<_i961.ExportCatalogPdfUseCase>(
-      () => _i961.ExportCatalogPdfUseCase(gh<_i737.PdfGeneratorRepository>()),
-    );
-    gh.factory<_i967.ExportProductPdfUseCase>(
-      () => _i967.ExportProductPdfUseCase(gh<_i737.PdfGeneratorRepository>()),
     );
     gh.lazySingleton<_i557.CustomerLocationsRepository>(
       () => _i429.CustomerLocationsRepositoryImpl(),
@@ -458,6 +453,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i868.GetBusinessInfoUseCase>(
       () => _i868.GetBusinessInfoUseCase(gh<_i257.AppConfigRepository>()),
     );
+    gh.lazySingleton<_i653.GetConnectionUrlUseCase>(
+      () => _i653.GetConnectionUrlUseCase(gh<_i257.AppConfigRepository>()),
+    );
     gh.lazySingleton<_i702.SaveBusinessInfoUseCase>(
       () => _i702.SaveBusinessInfoUseCase(gh<_i257.AppConfigRepository>()),
     );
@@ -545,6 +543,18 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i263.DeleteCustomerLocationUseCase>(),
       ),
     );
+    gh.factory<_i556.AppConfigCubit>(
+      () => _i556.AppConfigCubit(
+        getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
+        getBusinessInfoUseCase: gh<_i868.GetBusinessInfoUseCase>(),
+        saveBusinessInfoUseCase: gh<_i702.SaveBusinessInfoUseCase>(),
+        uploadLogoUseCase: gh<_i217.UploadLogoUseCase>(),
+        changeConnectionUseCase: gh<_i286.ChangeConnectionUseCase>(),
+        restoreDefaultConnectionUseCase:
+            gh<_i37.RestoreDefaultConnectionUseCase>(),
+        getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
+      ),
+    );
     gh.factory<_i38.CustomerLocationsCubit>(
       () => _i38.CustomerLocationsCubit(
         gh<_i263.GetCustomerLocationsUseCase>(),
@@ -571,17 +581,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
-    );
-    gh.factory<_i556.AppConfigCubit>(
-      () => _i556.AppConfigCubit(
-        getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
-        getBusinessInfoUseCase: gh<_i868.GetBusinessInfoUseCase>(),
-        saveBusinessInfoUseCase: gh<_i702.SaveBusinessInfoUseCase>(),
-        uploadLogoUseCase: gh<_i217.UploadLogoUseCase>(),
-        changeConnectionUseCase: gh<_i286.ChangeConnectionUseCase>(),
-        restoreDefaultConnectionUseCase:
-            gh<_i37.RestoreDefaultConnectionUseCase>(),
-      ),
     );
     gh.factory<_i711.ProductDetailCubit>(
       () => _i711.ProductDetailCubit(

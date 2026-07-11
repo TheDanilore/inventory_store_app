@@ -34,6 +34,9 @@ abstract class AppConfigRepository {
   /// Valida y guarda la nueva conexión a Supabase.
   Future<void> changeConnection(String url, String key);
 
+  /// Obtiene la URL de la conexión actual.
+  Future<String?> getConnectionUrl();
+
   /// Restaura la conexión por defecto.
   Future<void> restoreDefaultConnection();
 }

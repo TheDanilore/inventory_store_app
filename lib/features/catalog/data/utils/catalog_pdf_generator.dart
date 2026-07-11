@@ -1,6 +1,6 @@
 import 'package:http/http.dart' as http;
-import 'package:inventory_store_app/features/catalog/data/repositories_impl/product_pdf_generator_impl.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/features/catalog/data/utils/product_pdf_generator.dart';
 
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:pdf/pdf.dart';
@@ -9,8 +9,6 @@ import 'package:printing/printing.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/pdf_generator_repository.dart';
 
 class _PdfIsolateArgs {
   final List<ProductEntity> products;
@@ -25,15 +23,14 @@ class _PdfIsolateArgs {
 }
 
 Future<Uint8List> _generatePdfInIsolate(_PdfIsolateArgs args) async {
-  return await CatalogPdfGeneratorImpl._buildPdfInternal(
+  return await CatalogPdfGenerator._buildPdfInternal(
     products: args.products,
     variantsByProduct: args.variantsByProduct,
     stockByVariant: args.stockByVariant,
   );
 }
 
-@Injectable(as: PdfGeneratorRepository)
-class CatalogPdfGeneratorImpl implements PdfGeneratorRepository {
+class CatalogPdfGenerator {
   // Formato de moneda idéntico al que usaba el screen
   static final _currencyFormat = NumberFormat.currency(
     locale: 'es_PE',
@@ -59,8 +56,7 @@ class CatalogPdfGeneratorImpl implements PdfGeneratorRepository {
     );
   }
 
-  @override
-  Future<void> shareProduct(
+  static Future<void> shareProduct(
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
@@ -303,8 +299,7 @@ class CatalogPdfGeneratorImpl implements PdfGeneratorRepository {
   // ── Métodos públicos (misma convención que OrderPdfGenerator) ────────────
 
   /// Abre el diálogo de impresión / vista previa del sistema.
-  @override
-  Future<void> shareCatalog({
+  static Future<void> shareCatalog({
     required List<ProductEntity> products,
     required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,

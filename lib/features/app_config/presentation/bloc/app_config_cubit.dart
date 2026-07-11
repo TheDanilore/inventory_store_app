@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/app_config/domain/usecases/save_bus
 import 'package:inventory_store_app/features/app_config/domain/usecases/upload_logo_uc.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/change_connection_uc.dart';
 import 'package:inventory_store_app/features/app_config/domain/usecases/restore_default_connection_uc.dart';
+import 'package:inventory_store_app/features/app_config/domain/usecases/get_connection_url_uc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
@@ -20,6 +21,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   final UploadLogoUseCase uploadLogoUseCase;
   final ChangeConnectionUseCase changeConnectionUseCase;
   final RestoreDefaultConnectionUseCase restoreDefaultConnectionUseCase;
+  final GetConnectionUrlUseCase getConnectionUrlUseCase;
 
   AppConfigCubit({
     required this.getAppSettingsUseCase,
@@ -28,6 +30,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required this.uploadLogoUseCase,
     required this.changeConnectionUseCase,
     required this.restoreDefaultConnectionUseCase,
+    required this.getConnectionUrlUseCase,
   }) : super(const AppConfigState());
 
   // --- Helpers para compatibilidad ---
@@ -79,6 +82,14 @@ class AppConfigCubit extends Cubit<AppConfigState> {
         status: ViewState.success,
         values: settings,
       )),
+    );
+  }
+
+  Future<void> loadConnectionUrl() async {
+    final result = await getConnectionUrlUseCase(const NoParams());
+    result.fold(
+      (failure) => emit(state.copyWith(errorMessage: failure.message)),
+      (url) => emit(state.copyWith(connectionUrl: url)),
     );
   }
 

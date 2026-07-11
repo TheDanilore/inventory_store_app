@@ -1,16 +1,15 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
 
 class BusinessInfoScreen extends StatefulWidget {
@@ -40,16 +39,16 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   String _previewName = '';
   String _previewAddress = '';
-  String _previewLogoUrl = '';
-  String _supabaseUrl = 'Cargando...';
+  String? _logoUrl;
 
   @override
   void initState() {
     super.initState();
-    _loadConnectionInfo();
+    context.read<AppConfigCubit>().loadBusinessInfo();
+    context.read<AppConfigCubit>().loadConnectionUrl();
     _logoUrlFocus.addListener(() {
       if (!_logoUrlFocus.hasFocus) {
-        setState(() => _previewLogoUrl = _logoUrlCtrl.text);
+        setState(() => _logoUrl = _logoUrlCtrl.text);
       }
     });
 
@@ -67,21 +66,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
       _previewName = _businessNameCtrl.text;
       _previewAddress = _addressCtrl.text;
-      _previewLogoUrl = _logoUrlCtrl.text;
-    }
-  }
-
-  Future<void> _resetConnection() async {
-    final changed = await ChangeConnectionDialog.show(context, _supabaseUrl);
-    if (changed == true) {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message:
-              'Conexión actualizada. Por favor cierra la app completamente y vuelve a abrirla para aplicar los cambios.',
-          type: SnackbarType.success,
-        );
-      }
+      _logoUrl = _logoUrlCtrl.text;
     }
   }
 
@@ -97,15 +82,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     _phoneFocus.dispose();
     _logoUrlFocus.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadConnectionInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _supabaseUrl = prefs.getString('SUPABASE_URL') ?? 'Desconocida';
-      });
-    }
   }
 
   void _markChanged() {
@@ -132,7 +108,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     if (url != null) {
       setState(() {
         _logoUrlCtrl.text = url;
-        _previewLogoUrl = url;
+        _logoUrl = url;
         _markChanged();
       });
       if (mounted) {
@@ -198,9 +174,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
             state.status == ViewState.loading;
         final hasError = state.status == ViewState.error;
 
-        return AdminLayout(
-          title: 'Información del Negocio',
-          showBackButton: true,
+        final supabaseUrl = state.connectionUrl ?? 'Desconocida';
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Información del Negocio'),
+          ),
           bottomNavigationBar:
               (!isLoading && !hasError)
                   ? SafeArea(
@@ -233,8 +212,8 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                   : hasError
                   ? _buildErrorState(context.read<AppConfigCubit>())
                   : isTablet
-                  ? _buildTabletLayout(isSaving)
-                  : _buildMobileLayout(isSaving),
+                  ? _buildTabletLayout(isSaving, supabaseUrl)
+                  : _buildMobileLayout(isSaving, supabaseUrl),
         );
       },
     );
@@ -258,7 +237,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     );
   }
 
-  Widget _buildMobileLayout(bool isSaving) {
+  Widget _buildMobileLayout(bool isSaving, String supabaseUrl) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Column(
@@ -266,7 +245,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
         children: [
           _buildPreviewCard(),
           const SizedBox(height: 16),
-          _buildFormCard(isSaving),
+          _buildFormCard(isSaving, supabaseUrl),
           const SizedBox(height: 12),
           const _InfoNote(),
           const SizedBox(height: 8),
@@ -275,7 +254,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     );
   }
 
-  Widget _buildTabletLayout(bool isSaving) {
+  Widget _buildTabletLayout(bool isSaving, String supabaseUrl) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -293,7 +272,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               ),
             ),
             const SizedBox(width: 20),
-            Expanded(flex: 6, child: _buildFormCard(isSaving)),
+            Expanded(flex: 6, child: _buildFormCard(isSaving, supabaseUrl)),
           ],
         ),
       ),
@@ -303,13 +282,13 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
   Widget _buildPreviewCard() {
     return _BusinessPreviewCard(
       businessName: _previewName.isEmpty ? 'Nombre del negocio' : _previewName,
-      businessLogoUrl: _previewLogoUrl,
+      businessLogoUrl: _logoUrl ?? '',
       businessAddress:
           _previewAddress.isEmpty ? 'Dirección principal' : _previewAddress,
     );
   }
 
-  Widget _buildFormCard(bool isSaving) {
+  Widget _buildFormCard(bool isSaving, String supabaseUrl) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -473,8 +452,24 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               const Divider(),
               const SizedBox(height: 16),
               _ConnectionSection(
-                supabaseUrl: _supabaseUrl,
-                onResetPressed: _resetConnection,
+                supabaseUrl: supabaseUrl,
+                onResetPressed: () async {
+                  final updated = await ChangeConnectionDialog.show(
+                    context,
+                    supabaseUrl,
+                  );
+                  if (updated == true && mounted) {
+                    context.read<AppConfigCubit>().loadConnectionUrl();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Conexión actualizada. Reinicia la app para aplicar los cambios.',
+                        ),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  }
+                },
               ),
             ],
           ),

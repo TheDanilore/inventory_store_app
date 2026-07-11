@@ -184,12 +184,19 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('SUPABASE_URL', url);
     await prefs.setString('SUPABASE_KEY', key);
+    await prefs.setString('SUPABASE_ANON_KEY', key);
   }
 
   @override
   Future<void> restoreDefaultConnection() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('SUPABASE_URL');
-    await prefs.remove('SUPABASE_KEY');
+    await prefs.remove('SUPABASE_ANON_KEY');
+  }
+
+  @override
+  Future<String?> getConnectionUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('SUPABASE_URL');
   }
 }

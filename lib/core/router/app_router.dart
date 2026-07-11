@@ -334,7 +334,12 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'business-info',
-                  builder: (context, state) => const BusinessInfoScreen(),
+                  builder:
+                      (context, state) => const AdminLayout(
+                        title: 'Información del Negocio',
+                        showBackButton: true,
+                        body: BusinessInfoScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'categories',
