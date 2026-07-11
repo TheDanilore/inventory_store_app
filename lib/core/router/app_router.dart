@@ -514,7 +514,12 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'dashboard',
-                  builder: (context, state) => const DashboardScreen(),
+                  builder:
+                      (context, state) => const AdminLayout(
+                        title: 'Dashboard Financiero',
+                        showBackButton: true,
+                        body: DashboardScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'financial-accounts',

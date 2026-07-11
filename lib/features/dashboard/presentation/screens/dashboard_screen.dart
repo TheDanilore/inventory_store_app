@@ -104,12 +104,7 @@ class _DashboardScreenContent extends StatelessWidget {
     final adminGoalTarget = config.getDouble('admin_goal_target', 2600.0);
     final adminGoalCurrent = config.getDouble('admin_goal_current', 0.0);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard Financiero'),
-        centerTitle: true,
-      ),
-      body: RefreshIndicator(
+    return RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
           if (!kIsWeb) {
@@ -164,8 +159,7 @@ class _DashboardScreenContent extends StatelessWidget {
             return const SizedBox.shrink();
           },
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildTabletLayout(BuildContext context, double goalCurrent, double goalTarget, DashboardLoaded state) {
