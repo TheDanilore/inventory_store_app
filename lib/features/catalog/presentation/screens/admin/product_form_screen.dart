@@ -298,6 +298,8 @@ class _ProductFormScreenContentState
                                               },
                                               onPickImage: () =>
                                                   cubit.pickVariantImage(index),
+                                              onUpdate: (newDraft) =>
+                                                  cubit.updateVariantDraft(index, newDraft),
                                             );
                                           },
                                           childCount: state.variantDrafts.length,

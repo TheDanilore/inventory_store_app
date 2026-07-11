@@ -13,6 +13,7 @@ class VariantDraftCard extends StatefulWidget {
   final VoidCallback onDuplicate;
   final VoidCallback onPickImage;
   final ValueChanged<bool> onActiveChanged;
+  final ValueChanged<VariantDraftFormModel> onUpdate;
 
   const VariantDraftCard({
     super.key,
@@ -22,6 +23,7 @@ class VariantDraftCard extends StatefulWidget {
     required this.onDuplicate,
     required this.onPickImage,
     required this.onActiveChanged,
+    required this.onUpdate,
   });
 
   @override
@@ -57,27 +59,25 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     unitCostCtrl = TextEditingController(text: widget.draft.unitCost);
 
     skuCtrl.addListener(() {
-      widget.draft.sku = skuCtrl.text;
-      setState(() {});
+      widget.onUpdate(widget.draft.copyWith(sku: skuCtrl.text));
     });
     barcodeCtrl.addListener(() {
-      widget.draft.barcode = barcodeCtrl.text;
+      widget.onUpdate(widget.draft.copyWith(barcode: barcodeCtrl.text));
     });
     priceCtrl.addListener(() {
-      widget.draft.price = priceCtrl.text;
-      setState(() {});
+      widget.onUpdate(widget.draft.copyWith(price: priceCtrl.text));
     });
     wholesalePriceCtrl.addListener(() {
-      widget.draft.wholesalePrice = wholesalePriceCtrl.text;
+      widget.onUpdate(widget.draft.copyWith(wholesalePrice: wholesalePriceCtrl.text));
     });
     wholesaleMinQuantityCtrl.addListener(() {
-      widget.draft.wholesaleMinQuantity = wholesaleMinQuantityCtrl.text;
+      widget.onUpdate(widget.draft.copyWith(wholesaleMinQuantity: wholesaleMinQuantityCtrl.text));
     });
     reorderPointCtrl.addListener(() {
-      widget.draft.reorderPoint = reorderPointCtrl.text;
+      widget.onUpdate(widget.draft.copyWith(reorderPoint: reorderPointCtrl.text));
     });
     unitCostCtrl.addListener(() {
-      widget.draft.unitCost = unitCostCtrl.text;
+      widget.onUpdate(widget.draft.copyWith(unitCost: unitCostCtrl.text));
     });
   }
 
@@ -127,7 +127,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         });
       }
     }
-    widget.draft.selectedAttributes = finalAttributes;
+    widget.onUpdate(widget.draft.copyWith(selectedAttributes: finalAttributes));
   }
 
   void _removeAttributeRow(int index) {
@@ -556,7 +556,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     ),
                                     onDelete: () {
                                       setState(() {
-                                        widget.draft.urlsExistentes.clear();
+                                        widget.onUpdate(widget.draft.copyWith(urlsExistentes: []));
                                       });
                                     },
                                   ),
@@ -568,7 +568,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     ),
                                     onDelete: () {
                                       setState(() {
-                                        widget.draft.nuevasImagenes.clear();
+                                        widget.onUpdate(widget.draft.copyWith(nuevasImagenes: []));
                                       });
                                     },
                                   ),

@@ -5,24 +5,24 @@ class VariantDraftFormModel {
   final String? id;
 
   // Campos básicos como primitivos (no controllers)
-  String sku;
-  String barcode;
-  String price;
-  String wholesalePrice;
-  String wholesaleMinQuantity;
-  String reorderPoint;
-  String unitCost;
+  final String sku;
+  final String barcode;
+  final String price;
+  final String wholesalePrice;
+  final String wholesaleMinQuantity;
+  final String reorderPoint;
+  final String unitCost;
 
   // Atributos
-  List<Map<String, dynamic>> selectedAttributes;
+  final List<Map<String, dynamic>> selectedAttributes;
 
-  bool isActive;
+  final bool isActive;
 
   // Imágenes
-  List<Uint8List> nuevasImagenes;
-  List<String> urlsExistentes;
+  final List<Uint8List> nuevasImagenes;
+  final List<String> urlsExistentes;
 
-  VariantDraftFormModel({
+  const VariantDraftFormModel({
     this.id,
     String? sku,
     String? barcode,
@@ -42,9 +42,9 @@ class VariantDraftFormModel {
         wholesaleMinQuantity = wholesaleMinQuantity ?? '',
         reorderPoint = reorderPoint ?? '3',
         unitCost = unitCost ?? '',
-        selectedAttributes = selectedAttributes ?? [],
-        urlsExistentes = urlsExistentes ?? [],
-        nuevasImagenes = nuevasImagenes ?? [];
+        selectedAttributes = selectedAttributes ?? const [],
+        urlsExistentes = urlsExistentes ?? const [],
+        nuevasImagenes = nuevasImagenes ?? const [];
 
   factory VariantDraftFormModel.fromEntity(VariantDraftEntity variant) {
     return VariantDraftFormModel(
