@@ -69,30 +69,8 @@ CREATE TYPE "public"."user_role" AS ENUM (
 ALTER TYPE "public"."user_role" OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."auth_profile_id"() RETURNS "uuid"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT id FROM public.profiles WHERE auth_user_id = auth.uid() LIMIT 1;
-$$;
-
-
-ALTER FUNCTION "public"."auth_profile_id"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."auth_user_role"() RETURNS "public"."user_role"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT role FROM public.profiles WHERE auth_user_id = auth.uid() LIMIT 1;
-$$;
-
-
-ALTER FUNCTION "public"."auth_user_role"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") RETURNS TABLE("id" "text")
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql"
     SET "search_path" TO 'public', 'extensions'
     AS $$
 begin
@@ -108,7 +86,7 @@ ALTER FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") OWNE
 
 
 CREATE OR REPLACE FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql"
     SET "search_path" TO 'public', 'extensions'
     AS $$
 BEGIN
@@ -1114,6 +1092,58 @@ ALTER TABLE ONLY "public"."wishlist"
 
 
 
+CREATE INDEX "account_movements_account_id_idx" ON "public"."account_movements" USING "btree" ("account_id");
+
+
+
+CREATE INDEX "account_movements_created_by_idx" ON "public"."account_movements" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "account_movements_shift_id_idx" ON "public"."account_movements" USING "btree" ("shift_id");
+
+
+
+CREATE INDEX "cart_items_cart_id_idx" ON "public"."cart_items" USING "btree" ("cart_id");
+
+
+
+CREATE INDEX "cart_items_product_id_idx" ON "public"."cart_items" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "cart_items_variant_id_idx" ON "public"."cart_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "cash_shifts_account_id_idx" ON "public"."cash_shifts" USING "btree" ("account_id");
+
+
+
+CREATE INDEX "cash_shifts_closed_by_idx" ON "public"."cash_shifts" USING "btree" ("closed_by");
+
+
+
+CREATE INDEX "cash_shifts_opened_by_idx" ON "public"."cash_shifts" USING "btree" ("opened_by");
+
+
+
+CREATE INDEX "categories_created_by_idx" ON "public"."categories" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "categories_updated_by_idx" ON "public"."categories" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "customer_credits_created_by_idx" ON "public"."customer_credits" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "daily_checkins_profile_id_idx" ON "public"."daily_checkins" USING "btree" ("profile_id");
+
+
+
 CREATE INDEX "idx_customer_credit_movements_created_by" ON "public"."customer_credit_movements" USING "btree" ("created_by");
 
 
@@ -1195,6 +1225,210 @@ CREATE INDEX "idx_supplier_credit_movements_credit_id" ON "public"."supplier_cre
 
 
 CREATE INDEX "idx_supplier_credit_movements_po_id" ON "public"."supplier_credit_movements" USING "btree" ("purchase_order_id");
+
+
+
+CREATE INDEX "iei_entry_id__idx" ON "public"."inventory_entry_items" USING "btree" ("entry_id");
+
+
+
+CREATE INDEX "iei_product_id_idx" ON "public"."inventory_entry_items" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "iei_variant_id_idx" ON "public"."inventory_entry_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "iexi_exit_id_idx" ON "public"."inventory_exit_items" USING "btree" ("exit_id");
+
+
+
+CREATE INDEX "iexi_product_id_idx" ON "public"."inventory_exit_items" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "iexi_variant_id_idx" ON "public"."inventory_exit_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "im_entry_id_idx" ON "public"."inventory_movements" USING "btree" ("inventory_entry_id");
+
+
+
+CREATE INDEX "im_exit_id_idx" ON "public"."inventory_movements" USING "btree" ("inventory_exit_id");
+
+
+
+CREATE INDEX "im_order_id_idx" ON "public"."inventory_movements" USING "btree" ("order_id");
+
+
+
+CREATE INDEX "im_physical_inv_id_idx" ON "public"."inventory_movements" USING "btree" ("physical_inventory_id");
+
+
+
+CREATE INDEX "im_stock_batch_id_idx" ON "public"."inventory_movements" USING "btree" ("stock_batch_id");
+
+
+
+CREATE INDEX "inventory_entries_created_by_idx" ON "public"."inventory_entries" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "inventory_entries_purchase_order_id_idx" ON "public"."inventory_entries" USING "btree" ("purchase_order_id");
+
+
+
+CREATE INDEX "inventory_entries_supplier_id_idx" ON "public"."inventory_entries" USING "btree" ("supplier_id");
+
+
+
+CREATE INDEX "inventory_entries_warehouse_id_idx" ON "public"."inventory_entries" USING "btree" ("warehouse_id");
+
+
+
+CREATE INDEX "inventory_exits_created_by_idx" ON "public"."inventory_exits" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "inventory_exits_store_id_idx" ON "public"."inventory_exits" USING "btree" ("warehouse_id");
+
+
+
+CREATE INDEX "order_items_variant_id_idx" ON "public"."order_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "orders_updated_by_idx" ON "public"."orders" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "p_variants_created_by_idx" ON "public"."product_variants" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "pai_ingredient_id_idx" ON "public"."product_active_ingredients" USING "btree" ("ingredient_id");
+
+
+
+CREATE INDEX "pi_created_by_idx" ON "public"."physical_inventories" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "pi_warehouse_id_idx" ON "public"."physical_inventories" USING "btree" ("warehouse_id");
+
+
+
+CREATE INDEX "pii_counted_by_idx" ON "public"."physical_inventory_items" USING "btree" ("counted_by");
+
+
+
+CREATE INDEX "pii_inventory_id_idx" ON "public"."physical_inventory_items" USING "btree" ("physical_inventory_id");
+
+
+
+CREATE INDEX "pii_variant_id_idx" ON "public"."physical_inventory_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "po_items_product_id_idx" ON "public"."purchase_order_items" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "po_items_variant_id_idx" ON "public"."purchase_order_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "product_images_variant_id_idx" ON "public"."product_images" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "product_reviews_product_id_idx" ON "public"."product_reviews" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "product_reviews_profile_id_idx" ON "public"."product_reviews" USING "btree" ("profile_id");
+
+
+
+CREATE INDEX "product_updated_by_idx" ON "public"."products" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "product_variants_updated_by_idx" ON "public"."product_variants" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "products_created_by_idx" ON "public"."products" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "purchase_orders_created_by_idx" ON "public"."purchase_orders" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "purchase_orders_updated_by_idx" ON "public"."purchase_orders" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "purchase_orders_warehouse_id_idx" ON "public"."purchase_orders" USING "btree" ("warehouse_id");
+
+
+
+CREATE INDEX "supplier_credits_created_by_fidx" ON "public"."supplier_credits" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "vav_attribute_value_id_fidx" ON "public"."variant_attribute_values" USING "btree" ("attribute_value_id");
+
+
+
+CREATE INDEX "wallet_movements_order_id_idx" ON "public"."wallet_movements" USING "btree" ("order_id");
+
+
+
+CREATE INDEX "wallet_movements_profile_id_idx" ON "public"."wallet_movements" USING "btree" ("profile_id");
+
+
+
+CREATE INDEX "warehouse_stock_batches_supplier_id_idx" ON "public"."warehouse_stock_batches" USING "btree" ("supplier_id");
+
+
+
+CREATE INDEX "warehouses_created_by_idx" ON "public"."warehouses" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "warehouses_updated_by_idx" ON "public"."warehouses" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "wishlist_product_id_idx" ON "public"."wishlist" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "wishlist_profile_id_idx" ON "public"."wishlist" USING "btree" ("profile_id");
+
+
+
+CREATE INDEX "wsb_created_by_idx" ON "public"."warehouse_stock_batches" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "wsb_product_id_idx" ON "public"."warehouse_stock_batches" USING "btree" ("product_id");
+
+
+
+CREATE INDEX "wsb_updated_by_idx" ON "public"."warehouse_stock_batches" USING "btree" ("updated_by");
+
+
+
+CREATE INDEX "wsb_variant_id_idx" ON "public"."warehouse_stock_batches" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "wsb_warehouse_id_idx" ON "public"."warehouse_stock_batches" USING "btree" ("warehouse_id");
 
 
 
@@ -1655,59 +1889,59 @@ ALTER TABLE ONLY "public"."warehouse_stock_batches"
 
 CREATE POLICY "Acceso a cart_items propios" ON "public"."cart_items" USING ((("cart_id" IN ( SELECT "shopping_carts"."id"
    FROM "public"."shopping_carts"
-  WHERE ("shopping_carts"."profile_id" = "public"."auth_profile_id"()))) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+  WHERE ("shopping_carts"."profile_id" = "extensions"."auth_profile_id"()))) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Acceso propio CRUD" ON "public"."shopping_carts" USING ((("profile_id" = "public"."auth_profile_id"()) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Acceso propio CRUD" ON "public"."shopping_carts" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Acceso propio CRUD" ON "public"."wishlist" USING ((("profile_id" = "public"."auth_profile_id"()) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Acceso propio CRUD" ON "public"."wishlist" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Acceso selectivo a créditos por rol o propietario" ON "public"."customer_credits" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR ((( SELECT "auth"."jwt"() AS "jwt") ->> 'email'::"text") = 'admin@gmail.com'::"text")));
+CREATE POLICY "Acceso selectivo a créditos por rol o propietario" ON "public"."customer_credits" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."account_movements" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."account_movements" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."financial_accounts" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."financial_accounts" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventories" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventories" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventory_items" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventory_items" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."supplier_credits" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."supplier_credits" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."suppliers" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."suppliers" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouse_stock_batches" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouse_stock_batches" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouses" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouses" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Actualizacion de reviews" ON "public"."product_reviews" FOR UPDATE USING ((("profile_id" = "public"."auth_profile_id"()) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Actualizacion de reviews" ON "public"."product_reviews" FOR UPDATE USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Actualizacion de turno" ON "public"."cash_shifts" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Actualizacion de turno" ON "public"."cash_shifts" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
@@ -1715,235 +1949,197 @@ CREATE POLICY "Actualización del propio perfil" ON "public"."profiles" FOR UPDA
 
 
 
-CREATE POLICY "Borrado admin checkins" ON "public"."daily_checkins" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin checkins" ON "public"."daily_checkins" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."active_ingredients" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."active_ingredients" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."app_settings" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."app_settings" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."attribute_values" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."attribute_values" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."attributes" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."attributes" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."categories" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."categories" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."product_active_ingredients" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."product_active_ingredients" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."product_images" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."product_images" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."product_variants" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."product_variants" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."products" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."products" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."variant_attribute_values" FOR DELETE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Borrado admin/empleado" ON "public"."variant_attribute_values" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Borrado de reviews" ON "public"."product_reviews" FOR DELETE USING ((("profile_id" = "public"."auth_profile_id"()) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Borrado de reviews" ON "public"."product_reviews" FOR DELETE USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Borrado selectivo de ubicaciones por rol o propietario" ON "public"."customer_locations" FOR DELETE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "public"."auth_user_role"() AS "auth_user_role") = 'admin'::"public"."user_role")));
+CREATE POLICY "Gestión selectiva de ubicaciones por rol o propietario" ON "public"."customer_locations" FOR DELETE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Gestión selectiva de ubicaciones por rol o propietario" ON "public"."customer_locations" FOR DELETE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "public"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."active_ingredients" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."active_ingredients" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."app_settings" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."app_settings" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attribute_values" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attribute_values" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attributes" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attributes" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."categories" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."categories" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_active_ingredients" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_active_ingredients" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_images" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_images" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_variants" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_variants" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."products" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."products" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."variant_attribute_values" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."variant_attribute_values" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Insercion de reviews" ON "public"."product_reviews" FOR INSERT WITH CHECK (("profile_id" = "extensions"."auth_profile_id"()));
 
 
 
-CREATE POLICY "Insercion cliente" ON "public"."orders" FOR INSERT TO "authenticated" WITH CHECK ((("public"."auth_user_role"() = 'customer'::"public"."user_role") AND ("customer_id" = "public"."auth_profile_id"())));
+CREATE POLICY "Insercion propia de checkins" ON "public"."daily_checkins" FOR INSERT WITH CHECK (("profile_id" = "extensions"."auth_profile_id"()));
 
 
 
-CREATE POLICY "Insercion cliente en items" ON "public"."order_items" FOR INSERT TO "authenticated" WITH CHECK ((("public"."auth_user_role"() = 'customer'::"public"."user_role") AND (EXISTS ( SELECT 1
+CREATE POLICY "Insercion validada e inmutable" ON "public"."cash_shifts" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("opened_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."customer_credit_movements" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_entries" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_entry_items" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_exit_items" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_exits" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_movements" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."purchase_order_items" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."purchase_orders" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Insercion validada e inmutable" ON "public"."supplier_credit_movements" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
+
+
+
+CREATE POLICY "Inserción unificada de artículos de orden" ON "public"."order_items" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (EXISTS ( SELECT 1
    FROM "public"."orders" "o"
-  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = "public"."auth_profile_id"()))))));
+  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = ( SELECT "auth"."uid"() AS "uid")))))));
 
 
 
-CREATE POLICY "Insercion de reviews" ON "public"."product_reviews" FOR INSERT WITH CHECK (("profile_id" = "public"."auth_profile_id"()));
+CREATE POLICY "Inserción unificada de órdenes" ON "public"."orders" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (( SELECT "auth"."uid"() AS "uid") = "customer_id")));
 
 
 
-CREATE POLICY "Insercion propia de checkins" ON "public"."daily_checkins" FOR INSERT WITH CHECK (("profile_id" = "public"."auth_profile_id"()));
+CREATE POLICY "Lectura admin/empleado" ON "public"."cash_shifts" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."cash_shifts" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("opened_by" = "public"."auth_profile_id"())));
+CREATE POLICY "Lectura admin/empleado" ON "public"."customer_credit_movements" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."customer_credit_movements" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
+CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_entries" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_entries" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
+CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_entry_items" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_entry_items" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_exit_items" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_exit_items" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_exits" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_exits" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
+CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_movements" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_movements" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
+CREATE POLICY "Lectura admin/empleado" ON "public"."purchase_order_items" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."order_items" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura admin/empleado" ON "public"."purchase_orders" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."orders" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
+CREATE POLICY "Lectura admin/empleado" ON "public"."supplier_credit_movements" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."purchase_order_items" FOR INSERT WITH CHECK (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."purchase_orders" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."supplier_credit_movements" FOR INSERT WITH CHECK ((("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "public"."auth_profile_id"())));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."cash_shifts" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."customer_credit_movements" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_entries" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_entry_items" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_exit_items" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_exits" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_movements" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."order_items" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."orders" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."purchase_order_items" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."purchase_orders" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura admin/empleado" ON "public"."supplier_credit_movements" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Lectura cliente" ON "public"."orders" FOR SELECT TO "authenticated" USING ((("public"."auth_user_role"() = 'customer'::"public"."user_role") AND ("customer_id" = "public"."auth_profile_id"())));
-
-
-
-CREATE POLICY "Lectura cliente en items" ON "public"."order_items" FOR SELECT TO "authenticated" USING ((("public"."auth_user_role"() = 'customer'::"public"."user_role") AND (EXISTS ( SELECT 1
-   FROM "public"."orders" "o"
-  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = "public"."auth_profile_id"()))))));
-
-
-
-CREATE POLICY "Lectura del propio perfil" ON "public"."profiles" FOR SELECT USING ((( SELECT "auth"."uid"() AS "uid") = "id"));
-
-
-
-CREATE POLICY "Lectura propia" ON "public"."wallet_movements" FOR SELECT USING ((("profile_id" = "public"."auth_profile_id"()) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
-
-
-
-CREATE POLICY "Lectura propia de checkins" ON "public"."daily_checkins" FOR SELECT USING ((("profile_id" = "public"."auth_profile_id"()) OR ("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Lectura propia de checkins" ON "public"."daily_checkins" FOR SELECT USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
@@ -1995,59 +2191,69 @@ CREATE POLICY "Lectura publica de reviews" ON "public"."product_reviews" FOR SEL
 
 
 
-CREATE POLICY "Lectura total para administradores y empleados" ON "public"."profiles" FOR SELECT USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura selectiva de movimientos de billetera por rol o propiet" ON "public"."wallet_movements" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Modificacion admin" ON "public"."wallet_movements" USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura selectiva de perfiles por rol o propietario" ON "public"."profiles" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
-CREATE POLICY "Modificacion admin business_info" ON "public"."business_info" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura unificada de artículos de orden" ON "public"."order_items" FOR SELECT TO "authenticated" USING (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (EXISTS ( SELECT 1
+   FROM "public"."orders" "o"
+  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = ( SELECT "auth"."uid"() AS "uid")))))));
 
 
 
-CREATE POLICY "Modificacion admin checkins" ON "public"."daily_checkins" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Lectura unificada de órdenes" ON "public"."orders" FOR SELECT TO "authenticated" USING (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (( SELECT "auth"."uid"() AS "uid") = "customer_id")));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."active_ingredients" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin business_info" ON "public"."business_info" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."app_settings" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin checkins" ON "public"."daily_checkins" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."attribute_values" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."active_ingredients" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."attributes" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."app_settings" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."categories" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."attribute_values" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."product_active_ingredients" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."attributes" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."product_images" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."categories" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."product_variants" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."product_active_ingredients" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."products" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."product_images" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."variant_attribute_values" FOR UPDATE USING (("public"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Modificacion admin/empleado" ON "public"."product_variants" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Modificacion admin/empleado" ON "public"."products" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Modificacion admin/empleado" ON "public"."variant_attribute_values" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
@@ -2370,25 +2576,13 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."auth_profile_id"() TO "anon";
-GRANT ALL ON FUNCTION "public"."auth_profile_id"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."auth_profile_id"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."auth_user_role"() TO "anon";
-GRANT ALL ON FUNCTION "public"."auth_user_role"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."auth_user_role"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") TO "anon";
+REVOKE ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_ingredients_unaccent"("search_term" "text") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") TO "anon";
+REVOKE ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."set_default_location"("p_profile_id" "uuid", "p_location_id" "uuid") TO "service_role";
 
