@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -6,6 +6,8 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form_cubit.dart';
 
 // â”€â”€â”€ PUNTO DE ENTRADA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
@@ -17,8 +19,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 //
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class CustomerFormSheet extends StatefulWidget {
-  final CustomerEntity? customer; // null = modo crear
+class CustomerFormSheet extends StatelessWidget {
+  final CustomerEntity? customer;
 
   const CustomerFormSheet({super.key, this.customer});
 
@@ -38,10 +40,24 @@ class CustomerFormSheet extends StatefulWidget {
   }
 
   @override
-  State<CustomerFormSheet> createState() => _CustomerFormSheetState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<CustomerFormCubit>(),
+      child: _CustomerFormSheetContent(customer: customer),
+    );
+  }
 }
 
-class _CustomerFormSheetState extends State<CustomerFormSheet> {
+class _CustomerFormSheetContent extends StatefulWidget {
+  final CustomerEntity? customer; // null = modo crear
+
+  const _CustomerFormSheetContent({this.customer});
+
+  @override
+  State<_CustomerFormSheetContent> createState() => _CustomerFormSheetContentState();
+}
+
+class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
   final _supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
 
@@ -70,7 +86,6 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
   // UI
   bool _isLoadingCredit = false;
-  bool _isSaving = false;
 
   bool get _isEditing => widget.customer != null;
 
@@ -137,129 +152,27 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
   // GUARDAR
 
-  Future<void> _save() async {
+  void _save() {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
+    
+    final delta = int.tryParse(_walletAdjustCtrl.text.trim()) ?? 0;
+    final newLimit = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
 
-    try {
-      // 1. Obtener el profile_id del Administrador
-      String? adminProfileId;
-      final authUserId = _supabase.auth.currentUser?.id;
-      if (authUserId != null) {
-        final adminResp =
-            await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
-        if (adminResp != null) adminProfileId = adminResp['id'] as String;
-      }
-
-      final profileData = {
-        'full_name': _nameCtrl.text.trim(),
-        'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        'document_type': _docType,
-        'document_number':
-            _docNumberCtrl.text.trim().isEmpty
-                ? null
-                : _docNumberCtrl.text.trim(),
-        'is_active': _isActive,
-      };
-
-      String profileId;
-
-      if (_isEditing) {
-        await _supabase
-            .from('profiles')
-            .update(profileData)
-            .eq('id', widget.customer!.id);
-        profileId = widget.customer!.id;
-
-        // Ajuste de billetera: solo si el delta â‰  0
-        final delta = int.tryParse(_walletAdjustCtrl.text.trim()) ?? 0;
-        if (delta != 0) {
-          // 1. Actualizar saldo
-          await _supabase
-              .from('profiles')
-              .update({'wallet_balance': _currentWalletBalance + delta})
-              .eq('id', profileId);
-
-          // 2. Registrar movimiento en wallet_movements
-          await _supabase.from('wallet_movements').insert({
-            'profile_id': profileId,
-            'points': delta,
-            'movement_type': delta > 0 ? 'ADMIN_ADD' : 'ADMIN_SUBTRACT',
-            'description':
-                delta > 0
-                    ? 'Ajuste manual (+$delta monedas)'
-                    : 'Ajuste manual ($delta monedas)',
-          });
-        }
-      } else {
-        // Insertar perfil nuevo (sin auth_user_id â†’ cliente manual)
-        final inserted =
-            await _supabase
-                .from('profiles')
-                .insert({...profileData, 'role': 'customer'})
-                .select('id')
-                .single();
-        profileId = inserted['id'] as String;
-      }
-
-      // Crédito
-      final newLimit = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
-
-      if (_hasCredit) {
-        if (_creditExistsInDb && _creditId != null) {
-          // Actualizar
-          await _supabase
-              .from('customer_credits')
-              .update({
-                'credit_limit': newLimit,
-                'is_active': true,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', _creditId!);
-        } else {
-          // Crear crédito nuevo
-          await _supabase.from('customer_credits').insert({
-            'profile_id': profileId,
-            'credit_limit': newLimit,
-            'current_debt': 0.0,
-            'is_active': true,
-            'created_by': adminProfileId,
-          });
-        }
-      } else if (_creditExistsInDb && _creditId != null && _creditIsActive) {
-        // El crédito existía activo y el usuario lo desactivó
-        await _supabase
-            .from('customer_credits')
-            .update({
-              'is_active': false,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', _creditId!);
-      }
-
-      if (mounted) Navigator.pop(context, true);
-    } on PostgrestException catch (e) {
-      _showError(_pgError(e));
-    } catch (e) {
-      _showError('Error inesperado: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  String _pgError(PostgrestException e) {
-    final msg = e.message.toLowerCase();
-    if (msg.contains('profiles_auth_user_id_key')) {
-      return 'Este usuario ya tiene un perfil registrado.';
-    }
-    if (msg.contains('unique') && msg.contains('document')) {
-      return 'Ya existe un cliente con ese nÃºmero de documento.';
-    }
-    return 'Error al guardar: ${e.message}';
+    context.read<CustomerFormCubit>().save(
+      customerId: widget.customer?.id,
+      fullName: _nameCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+      documentNumber: _docNumberCtrl.text.trim().isEmpty ? null : _docNumberCtrl.text.trim(),
+      documentType: _docType,
+      isActive: _isActive,
+      walletAdjustDelta: delta,
+      currentWalletBalance: _currentWalletBalance,
+      hasCredit: _hasCredit,
+      creditExistsInDb: _creditExistsInDb,
+      creditId: _creditId,
+      creditIsActive: _creditIsActive,
+      newCreditLimit: newLimit,
+    );
   }
 
   void _showError(String msg) {
@@ -281,11 +194,21 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
       maxChildSize: 0.97,
       expand: false,
       builder: (_, scrollCtrl) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        return BlocConsumer<CustomerFormCubit, CustomerFormState>(
+          listener: (context, state) {
+            if (state is CustomerFormSuccess) {
+              Navigator.pop(context, true);
+            } else if (state is CustomerFormError) {
+              _showError(state.message);
+            }
+          },
+          builder: (context, state) {
+            final isSaving = state is CustomerFormSaving;
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
           child: Column(
             children: [
               // Handle
@@ -672,7 +595,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _isSaving ? null : _save,
+                    onPressed: isSaving ? null : _save,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -685,7 +608,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
                       elevation: 0,
                     ),
                     child:
-                        _isSaving
+                        isSaving
                             ? const SizedBox(
                               width: 22,
                               height: 22,
@@ -720,6 +643,8 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
               ),
             ],
           ),
+        );
+          },
         );
       },
     );

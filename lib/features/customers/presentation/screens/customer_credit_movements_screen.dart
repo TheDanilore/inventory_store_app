@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_movements_cubit.dart';
@@ -14,6 +14,7 @@ class CustomerCreditMovementsScreen extends StatelessWidget {
   final String customerName;
   final double currentDebt;
   final double creditLimit;
+  final Function(String orderId) onOpenOrder;
 
   const CustomerCreditMovementsScreen({
     super.key,
@@ -21,17 +22,20 @@ class CustomerCreditMovementsScreen extends StatelessWidget {
     required this.customerName,
     this.currentDebt = 0.0,
     this.creditLimit = 0.0,
+    required this.onOpenOrder,
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<CustomerCreditMovementsCubit>()..loadMovements(creditId),
+      create:
+          (_) => sl<CustomerCreditMovementsCubit>()..loadMovements(creditId),
       child: _CustomerCreditMovementsScreenContent(
         creditId: creditId,
         customerName: customerName,
         currentDebt: currentDebt,
         creditLimit: creditLimit,
+        onOpenOrder: onOpenOrder,
       ),
     );
   }
@@ -42,19 +46,23 @@ class _CustomerCreditMovementsScreenContent extends StatefulWidget {
   final String customerName;
   final double currentDebt;
   final double creditLimit;
+  final Function(String orderId) onOpenOrder;
 
   const _CustomerCreditMovementsScreenContent({
     required this.creditId,
     required this.customerName,
     required this.currentDebt,
     required this.creditLimit,
+    required this.onOpenOrder,
   });
 
   @override
-  State<_CustomerCreditMovementsScreenContent> createState() => _CustomerCreditMovementsScreenContentState();
+  State<_CustomerCreditMovementsScreenContent> createState() =>
+      _CustomerCreditMovementsScreenContentState();
 }
 
-class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMovementsScreenContent> {
+class _CustomerCreditMovementsScreenContentState
+    extends State<_CustomerCreditMovementsScreenContent> {
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -64,7 +72,8 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       context.read<CustomerCreditMovementsCubit>().loadMore(widget.creditId);
     }
   }
@@ -77,9 +86,10 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
 
   @override
   Widget build(BuildContext context) {
-    final debtPercent = widget.creditLimit > 0
-        ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
-        : 0.0;
+    final debtPercent =
+        widget.creditLimit > 0
+            ? (widget.currentDebt / widget.creditLimit).clamp(0.0, 1.0)
+            : 0.0;
 
     return AdminLayout(
       title: 'Movimientos de Crédito',
@@ -97,25 +107,35 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
           Expanded(
             child: Container(
               padding: EdgeInsets.zero,
-              child: BlocBuilder<CustomerCreditMovementsCubit, CustomerCreditMovementsState>(
+              child: BlocBuilder<
+                CustomerCreditMovementsCubit,
+                CustomerCreditMovementsState
+              >(
                 builder: (context, state) {
-                  if (state is CustomerCreditMovementsLoading || state is CustomerCreditMovementsInitial) {
+                  if (state is CustomerCreditMovementsLoading ||
+                      state is CustomerCreditMovementsInitial) {
                     return const Center(child: CircularProgressIndicator());
                   } else if (state is CustomerCreditMovementsError) {
                     return Center(
-                      child: Text(state.message, style: const TextStyle(color: AppColors.error)),
+                      child: Text(
+                        state.message,
+                        style: const TextStyle(color: AppColors.error),
+                      ),
                     );
                   } else if (state is CustomerCreditMovementsLoaded) {
                     final movements = state.movements;
                     if (movements.isEmpty) {
-                      return const Center(child: Text('No hay movimientos registrados'));
+                      return const Center(
+                        child: Text('No hay movimientos registrados'),
+                      );
                     }
                     return ListView.separated(
                       controller: _scrollController,
                       padding: const EdgeInsets.all(16),
-                      itemCount: movements.length + (state.hasReachedMax ? 0 : 1),
+                      itemCount:
+                          movements.length + (state.hasReachedMax ? 0 : 1),
                       separatorBuilder: (context, index) {
-                        return const SizedBox(height: 12); 
+                        return const SizedBox(height: 12);
                       },
                       itemBuilder: (context, index) {
                         if (index >= movements.length) {
@@ -127,7 +147,10 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
                           );
                         }
                         final movement = movements[index];
-                        return MovementCard(movement: movement);
+                        return MovementCard(
+                          movement: movement,
+                          onOpenOrder: widget.onOpenOrder,
+                        );
                       },
                     );
                   }
@@ -141,5 +164,3 @@ class _CustomerCreditMovementsScreenContentState extends State<_CustomerCreditMo
     );
   }
 }
-
-

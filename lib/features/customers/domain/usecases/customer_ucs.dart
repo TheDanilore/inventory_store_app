@@ -1,4 +1,4 @@
-﻿import 'package:injectable/injectable.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
@@ -110,6 +110,45 @@ class ToggleCustomerStatusUseCase {
 
   Future<void> call(String customerId, bool isActive) {
     return repository.toggleCustomerStatus(customerId, isActive);
+  }
+}
+
+@lazySingleton
+class SaveCustomerFullProfileUseCase {
+  final CustomersRepository repository;
+
+  SaveCustomerFullProfileUseCase(this.repository);
+
+  Future<void> call({
+    String? customerId,
+    required String fullName,
+    String? phone,
+    String? documentNumber,
+    String? documentType,
+    required bool isActive,
+    required int walletAdjustDelta,
+    required double currentWalletBalance,
+    required bool hasCredit,
+    required bool creditExistsInDb,
+    String? creditId,
+    required bool creditIsActive,
+    required double newCreditLimit,
+  }) {
+    return repository.saveCustomerFullProfile(
+      customerId: customerId,
+      fullName: fullName,
+      phone: phone,
+      documentNumber: documentNumber,
+      documentType: documentType,
+      isActive: isActive,
+      walletAdjustDelta: walletAdjustDelta,
+      currentWalletBalance: currentWalletBalance,
+      hasCredit: hasCredit,
+      creditExistsInDb: creditExistsInDb,
+      creditId: creditId,
+      creditIsActive: creditIsActive,
+      newCreditLimit: newCreditLimit,
+    );
   }
 }
 

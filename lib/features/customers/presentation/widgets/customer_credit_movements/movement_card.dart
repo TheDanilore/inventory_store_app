@@ -1,15 +1,16 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/orders/data/repositories/orders_service.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/admin/widgets/orders/order_detail_sheet.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-
 class MovementCard extends StatefulWidget {
   final CreditMovementEntity movement;
+  final Function(String orderId) onOpenOrder;
 
-  const MovementCard({super.key, required this.movement});
+  const MovementCard({
+    super.key,
+    required this.movement,
+    required this.onOpenOrder,
+  });
 
   @override
   State<MovementCard> createState() => _MovementCardState();
@@ -17,34 +18,6 @@ class MovementCard extends StatefulWidget {
 
 class _MovementCardState extends State<MovementCard> {
   bool _expanded = false;
-  bool _isLoadingOrder = false;
-
-  void _openOrder() async {
-    final orderId = widget.movement.orderId;
-    if (orderId == null) return;
-    
-    setState(() => _isLoadingOrder = true);
-    final order = await OrdersService().getOrderById(orderId);
-    if (!mounted) return;
-    setState(() => _isLoadingOrder = false);
-
-    if (order == null) {
-      AppSnackbar.show(
-        context,
-        message: 'No se pudo cargar el pedido. Es posible que haya sido eliminado.',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => OrderDetailSheet(order: order),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -182,27 +155,22 @@ class _MovementCardState extends State<MovementCard> {
                       ),
 
                       // Acción sugerida al expandir (opcional)
-                      if (_expanded && movement.orderNumber != null)
+                      if (_expanded && movement.orderId != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
-                          child: OutlinedButton.icon(
-                            onPressed: _isLoadingOrder ? null : _openOrder,
-                            icon: _isLoadingOrder
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.receipt_long_outlined,
-                                    size: 16,
-                                  ),
-                            label: Text(_isLoadingOrder ? 'Cargando...' : 'Ver pedido'),
+                          child: OutlinedButton(
+                            onPressed:
+                                () => widget.onOpenOrder(movement.orderId!),
                             style: OutlinedButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               foregroundColor: AppColors.primary,
+                            ),
+                            child: const Text(
+                              'Ver pedido',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),

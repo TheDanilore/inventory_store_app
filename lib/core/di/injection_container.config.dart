@@ -132,6 +132,8 @@ import '../../features/customers/presentation/bloc/customer_credits_cubit.dart'
     as _i1001;
 import '../../features/customers/presentation/bloc/customer_detail_cubit.dart'
     as _i685;
+import '../../features/customers/presentation/bloc/customer_form_cubit.dart'
+    as _i303;
 import '../../features/customers/presentation/bloc/customer_locations_cubit.dart'
     as _i38;
 import '../../features/customers/presentation/bloc/customer_wishlist_cubit.dart'
@@ -364,6 +366,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i36.ToggleCustomerStatusUseCase>(
       () => _i36.ToggleCustomerStatusUseCase(gh<_i875.CustomersRepository>()),
     );
+    gh.lazySingleton<_i36.SaveCustomerFullProfileUseCase>(
+      () =>
+          _i36.SaveCustomerFullProfileUseCase(gh<_i875.CustomersRepository>()),
+    );
     gh.lazySingleton<_i690.GetCustomerRecentOrdersUseCase>(
       () =>
           _i690.GetCustomerRecentOrdersUseCase(gh<_i875.CustomersRepository>()),
@@ -525,13 +531,18 @@ extension GetItInjectableX on _i174.GetIt {
         deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
       ),
     );
+    gh.factory<_i303.CustomerFormCubit>(
+      () => _i303.CustomerFormCubit(gh<_i36.SaveCustomerFullProfileUseCase>()),
+    );
     gh.factory<_i685.CustomerDetailCubit>(
       () => _i685.CustomerDetailCubit(
         gh<_i36.GetCustomerDetailUseCase>(),
         gh<_i36.UpdateCustomerUseCase>(),
         gh<_i690.GetCustomerRecentOrdersUseCase>(),
         gh<_i528.GetCustomerTopProductsUseCase>(),
-        gh<_i557.CustomerLocationsRepository>(),
+        gh<_i263.AddCustomerLocationUseCase>(),
+        gh<_i263.UpdateCustomerLocationUseCase>(),
+        gh<_i263.DeleteCustomerLocationUseCase>(),
       ),
     );
     gh.factory<_i38.CustomerLocationsCubit>(

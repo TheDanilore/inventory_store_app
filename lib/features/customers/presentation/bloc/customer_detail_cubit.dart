@@ -1,9 +1,9 @@
-﻿import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_recent_orders_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_top_products_usecase.dart';
-import 'package:inventory_store_app/features/customers/domain/repositories/customer_locations_repository.dart';
+import 'package:inventory_store_app/features/customers/domain/usecases/customer_location_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_state.dart';
 
@@ -13,14 +13,18 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
   final UpdateCustomerUseCase _updateCustomerUseCase;
   final GetCustomerRecentOrdersUseCase _getRecentOrdersUseCase;
   final GetCustomerTopProductsUseCase _getTopProductsUseCase;
-  final CustomerLocationsRepository _locationsRepository;
+  final AddCustomerLocationUseCase _addLocationUseCase;
+  final UpdateCustomerLocationUseCase _updateLocationUseCase;
+  final DeleteCustomerLocationUseCase _deleteLocationUseCase;
 
   CustomerDetailCubit(
     this._getCustomerDetailUseCase,
     this._updateCustomerUseCase,
     this._getRecentOrdersUseCase,
     this._getTopProductsUseCase,
-    this._locationsRepository,
+    this._addLocationUseCase,
+    this._updateLocationUseCase,
+    this._deleteLocationUseCase,
   ) : super(CustomerDetailInitial());
 
   Future<void> loadCustomer(String customerId) async {
@@ -77,7 +81,7 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     final previousState = state;
     if (previousState is CustomerDetailLoaded) {
       try {
-        await _locationsRepository.addLocation(
+        await _addLocationUseCase(
           customerId: previousState.customer.id,
           name: location.name,
           locationType: location.locationType,
@@ -100,7 +104,7 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     final previousState = state;
     if (previousState is CustomerDetailLoaded) {
       try {
-        await _locationsRepository.updateLocation(
+        await _updateLocationUseCase(
           locationId: locationId,
           name: location.name,
           locationType: location.locationType,
@@ -123,7 +127,7 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     final previousState = state;
     if (previousState is CustomerDetailLoaded) {
       try {
-        await _locationsRepository.deleteLocation(locationId);
+        await _deleteLocationUseCase(locationId);
         await loadCustomer(previousState.customer.id);
       } catch (e) {
         emit(CustomerDetailError(e.toString()));

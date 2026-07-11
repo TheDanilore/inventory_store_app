@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -22,7 +22,13 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class CustomerDetailScreen extends StatelessWidget {
   final CustomerEntity customer;
-  const CustomerDetailScreen({super.key, required this.customer});
+  final VoidCallback onViewAllOrders;
+
+  const CustomerDetailScreen({
+    super.key,
+    required this.customer,
+    required this.onViewAllOrders,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,13 +46,15 @@ class CustomerDetailScreen extends StatelessWidget {
               (_) => sl<CustomerCreditsCubit>()..loadCreditData(customer.id),
         ),
       ],
-      child: const _CustomerDetailContent(),
+      child: _CustomerDetailContent(onViewAllOrders: onViewAllOrders),
     );
   }
 }
 
 class _CustomerDetailContent extends StatelessWidget {
-  const _CustomerDetailContent();
+  final VoidCallback onViewAllOrders;
+
+  const _CustomerDetailContent({required this.onViewAllOrders});
 
   void _openEditCustomer(BuildContext context) async {
     final state = context.read<CustomerDetailCubit>().state;
@@ -196,7 +204,12 @@ class _CustomerDetailContent extends StatelessWidget {
               ),
               if (state.topProducts.isNotEmpty)
                 CustomerTopProductsSection(products: state.topProducts),
-              CustomerRecentOrdersSection(orders: state.recentOrders, customerId: state.customer.id, customerName: state.customer.fullName),
+              CustomerRecentOrdersSection(
+                orders: state.recentOrders,
+                customerId: state.customer.id,
+                customerName: state.customer.fullName,
+                onViewAllOrders: onViewAllOrders,
+              ),
               const SizedBox(height: 40),
             ]),
           ),
@@ -310,7 +323,12 @@ class _CustomerDetailContent extends StatelessWidget {
                       ),
                       if (state.topProducts.isNotEmpty)
                         CustomerTopProductsSection(products: state.topProducts),
-                      CustomerRecentOrdersSection(orders: state.recentOrders, customerId: state.customer.id, customerName: state.customer.fullName),
+                      CustomerRecentOrdersSection(
+                        orders: state.recentOrders,
+                        customerId: state.customer.id,
+                        customerName: state.customer.fullName,
+                        onViewAllOrders: onViewAllOrders,
+                      ),
                       const SizedBox(height: 40),
                     ]),
                   ),

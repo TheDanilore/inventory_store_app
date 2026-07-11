@@ -1,9 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/orders_provider.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'customer_section_card.dart';
 
@@ -11,12 +8,14 @@ class CustomerRecentOrdersSection extends StatelessWidget {
   final List<RecentOrderEntity> orders;
   final String customerId;
   final String customerName;
+  final VoidCallback onViewAllOrders;
 
   const CustomerRecentOrdersSection({
     super.key,
     required this.orders,
     required this.customerId,
     required this.customerName,
+    required this.onViewAllOrders,
   });
 
   @override
@@ -49,19 +48,7 @@ class CustomerRecentOrdersSection extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChangeNotifierProvider(
-                              create: (_) => OrdersProvider(customerIdFilter: customerId),
-                              child: OrdersScreen(
-                                customTitle: 'Pedidos de $customerName',
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: onViewAllOrders,
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         textStyle: const TextStyle(fontWeight: FontWeight.w600),

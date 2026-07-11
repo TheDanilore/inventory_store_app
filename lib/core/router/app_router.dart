@@ -56,6 +56,10 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/inve
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/kardex_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
+import 'package:inventory_store_app/features/orders/presentation/providers/orders_provider.dart';
+import 'package:inventory_store_app/features/orders/data/repositories/orders_service.dart';
+import 'package:inventory_store_app/features/orders/presentation/screens/admin/widgets/orders/order_detail_sheet.dart';
+import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/admin/points_settings_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/pos_checkout_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/product_form_screen.dart';
@@ -360,6 +364,30 @@ class AppRouter {
                             state.uri.queryParameters['limit'] ?? '0',
                           ) ??
                           0.0,
+                      onOpenOrder: (orderId) async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                        );
+                        final order = await OrdersService().getOrderById(orderId);
+                        if (context.mounted) {
+                          Navigator.pop(context); // Cerrar loading dialog
+                          if (order != null) {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              useRootNavigator: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (ctx) => OrderDetailSheet(order: order),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('No se pudo cargar el pedido. Es posible que haya sido eliminado.')),
+                            );
+                          }
+                        }
+                      },
                     );
                   },
                 ),
@@ -380,7 +408,23 @@ class AppRouter {
                         ),
                       );
                     }
-                    return CustomerDetailScreen(customer: customer as dynamic);
+                    return CustomerDetailScreen(
+                      customer: customer as dynamic,
+                      onViewAllOrders: () {
+                        // Delegado al router global para evitar acoplamiento en features/customers
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChangeNotifierProvider(
+                              create: (_) => OrdersProvider(customerIdFilter: customerId),
+                              child: OrdersScreen(
+                                customTitle: 'Pedidos de ${customer?.fullName ?? ''}',
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
                   },
                 ),
                 GoRoute(

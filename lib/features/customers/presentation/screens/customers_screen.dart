@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -14,7 +14,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/customers/data/utils/pdf/customer_pdf_generator.dart';
+import 'package:inventory_store_app/features/customers/data/repositories_impl/customer_pdf_generator_impl.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});

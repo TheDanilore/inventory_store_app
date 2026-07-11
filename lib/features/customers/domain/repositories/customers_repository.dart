@@ -1,4 +1,4 @@
-﻿import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/recent_order_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 
@@ -26,6 +26,22 @@ abstract class CustomersRepository {
     String? documentNumber,
     String? documentType,
     bool? isActive,
+  });
+
+  Future<void> saveCustomerFullProfile({
+    String? customerId,
+    required String fullName,
+    String? phone,
+    String? documentNumber,
+    String? documentType,
+    required bool isActive,
+    required int walletAdjustDelta,
+    required double currentWalletBalance,
+    required bool hasCredit,
+    required bool creditExistsInDb,
+    String? creditId,
+    required bool creditIsActive,
+    required double newCreditLimit,
   });
 
   Future<void> toggleCustomerStatus(String customerId, bool isActive);
