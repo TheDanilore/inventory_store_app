@@ -1,149 +1,154 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/points/points_design_tokens.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
 
 class PointsMovementsSection extends StatelessWidget {
   const PointsMovementsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PointsProvider>();
-    final movements = provider.movements;
+    return BlocBuilder<PointsCubit, PointsState>(
+      builder: (context, state) {
+        final movements = state.movements;
 
-    if (movements.isEmpty && !provider.isLoading) {
-      return Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: PointsDS.surface,
-          borderRadius: BorderRadius.circular(PointsDS.radiusXl),
-          boxShadow: PointsDS.cardShadow(),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.history_rounded,
-                size: 28,
-                color: PointsDS.textMuted,
-              ),
+        if (movements.isEmpty && !state.isLoading) {
+          return Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: PointsDS.surface,
+              borderRadius: BorderRadius.circular(PointsDS.radiusXl),
+              boxShadow: PointsDS.cardShadow(),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Sin movimientos',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: PointsDS.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Tu historial de monedas aparecerá aquí',
-              style: TextStyle(fontSize: 12, color: PointsDS.textSecondary),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: PointsDS.surface,
-        borderRadius: BorderRadius.circular(PointsDS.radiusXl),
-        boxShadow: PointsDS.cardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: PointsDS.goldLight,
-                  borderRadius: BorderRadius.circular(10),
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.history_rounded,
+                    size: 28,
+                    color: PointsDS.textMuted,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.receipt_long_rounded,
-                  size: 18,
-                  color: PointsDS.gold,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Historial de movimientos',
+                const SizedBox(height: 12),
+                const Text(
+                  'Sin movimientos',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                     color: PointsDS.textPrimary,
                   ),
                 ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Tu historial de monedas aparecerá aquí',
+                  style: TextStyle(fontSize: 12, color: PointsDS.textSecondary),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: PointsDS.surface,
+            borderRadius: BorderRadius.circular(PointsDS.radiusXl),
+            boxShadow: PointsDS.cardShadow(),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: PointsDS.goldLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      size: 18,
+                      color: PointsDS.gold,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Historial de movimientos',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: PointsDS.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: movements.length,
-            itemBuilder: (context, i) => _MovementRow(movement: movements[i]),
-          ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: movements.length,
+                itemBuilder:
+                    (context, i) => _MovementRow(movement: movements[i]),
+              ),
 
-          if (provider.hasMoreMovements) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed:
-                    provider.isLoadingMore
-                        ? null
-                        : () =>
-                            context.read<PointsProvider>().loadMoreMovements(),
-                style: TextButton.styleFrom(
-                  backgroundColor: PointsDS.bg,
-                  padding: const EdgeInsets.all(13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: PointsDS.border),
+              if (state.hasMoreMovements) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed:
+                        state.isLoadingMore
+                            ? null
+                            : () =>
+                                context.read<PointsCubit>().loadMoreMovements(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: PointsDS.bg,
+                      padding: const EdgeInsets.all(13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: PointsDS.border),
+                      ),
+                    ),
+                    child:
+                        state.isLoadingMore
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                            : const Text(
+                              'Cargar más movimientos',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
                   ),
                 ),
-                child:
-                    provider.isLoadingMore
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primary,
-                          ),
-                        )
-                        : const Text(
-                          'Cargar más movimientos',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-              ),
-            ),
-          ],
-        ],
-      ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

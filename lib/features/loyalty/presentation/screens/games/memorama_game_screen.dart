@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -210,11 +210,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: _score,
-          movementType: 'MINI_GAME_MEMORY',
-          description: 'Recompensa por Memorama: Ganó $_score monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_MEMORY', _score, 'Recompensa por Memorama: Ganó $_score monedas');
         if (mounted) Navigator.pop(context, _score);
       } catch (e) {
         if (mounted) {
@@ -239,15 +235,15 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: _score,
-          movementType: 'MINI_GAME_MEMORY',
-          description: 'Recompensa por Memorama: Ganó $_score monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_MEMORY', _score, 'Recompensa por Memorama: Ganó $_score monedas');
         if (mounted) _startGame();
       } catch (e) {
         if (mounted) {
-          AppSnackbar.show(context, message: 'Error al procesar tu premio.', type: SnackbarType.error);
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu premio.',
+            type: SnackbarType.error,
+          );
           setState(() => _isSaving = false);
         }
       }
@@ -256,11 +252,11 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final canTapBoard = _isPlaying && !_isResolving;
-    final matchReward = _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
+    final matchReward =
+        _config.getDouble(_matchRewardKey, _defaultMatchReward).round();
     final matchedPairs = matchReward <= 0 ? 0 : (_score ~/ matchReward);
 
     return Scaffold(
@@ -315,37 +311,52 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                         child: GridView.builder(
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _cards.length,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.85,
-                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.85,
+                              ),
                           itemBuilder: (context, index) {
                             final card = _cards[index];
-                            final isRevealedOrMatched = card.state != _CardMatchState.hidden;
-                            final isMatched = card.state == _CardMatchState.matched;
+                            final isRevealedOrMatched =
+                                card.state != _CardMatchState.hidden;
+                            final isMatched =
+                                card.state == _CardMatchState.matched;
 
                             return GestureDetector(
-                              onTap: canTapBoard ? () => _handleTap(index) : null,
+                              onTap:
+                                  canTapBoard ? () => _handleTap(index) : null,
                               child: TweenAnimationBuilder(
-                                tween: Tween<double>(begin: 0, end: isRevealedOrMatched ? pi : 0),
+                                tween: Tween<double>(
+                                  begin: 0,
+                                  end: isRevealedOrMatched ? pi : 0,
+                                ),
                                 duration: const Duration(milliseconds: 300),
                                 builder: (context, val, child) {
                                   final isFlippedUnder = val >= (pi / 2);
-                                  
+
                                   return Transform(
                                     alignment: Alignment.center,
-                                    transform: Matrix4.identity()
-                                      ..setEntry(3, 2, 0.001)
-                                      ..rotateY(val),
-                                    child: isFlippedUnder 
-                                        ? Transform( // Reverse so child isn't mirrored
-                                            alignment: Alignment.center,
-                                            transform: Matrix4.identity()..rotateY(pi),
-                                            child: _buildCardFront(card, isMatched),
-                                          )
-                                        : _buildCardBack(),
+                                    transform:
+                                        Matrix4.identity()
+                                          ..setEntry(3, 2, 0.001)
+                                          ..rotateY(val),
+                                    child:
+                                        isFlippedUnder
+                                            ? Transform(
+                                              // Reverse so child isn't mirrored
+                                              alignment: Alignment.center,
+                                              transform:
+                                                  Matrix4.identity()
+                                                    ..rotateY(pi),
+                                              child: _buildCardFront(
+                                                card,
+                                                isMatched,
+                                              ),
+                                            )
+                                            : _buildCardBack(),
                                   );
                                 },
                               ),
@@ -386,7 +397,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: isMatched ? const Color(0xFF0F9D8F).withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.2),
+              color:
+                  isMatched
+                      ? const Color(0xFF0F9D8F).withValues(alpha: 0.5)
+                      : Colors.black.withValues(alpha: 0.2),
               blurRadius: isMatched ? 15 : 8,
               spreadRadius: isMatched ? 2 : 0,
               offset: const Offset(0, 4),
@@ -394,10 +408,7 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
           ],
         ),
         child: Center(
-          child: Text(
-            card.symbol,
-            style: const TextStyle(fontSize: 32),
-          ),
+          child: Text(card.symbol, style: const TextStyle(fontSize: 32)),
         ),
       ),
     );
@@ -443,15 +454,26 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.grid_view_rounded, size: 80, color: Colors.amber),
+                const Icon(
+                  Icons.grid_view_rounded,
+                  size: 80,
+                  color: Colors.amber,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Memorama',
@@ -466,15 +488,28 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                 const Text(
                   'Encuentra las 8 parejas en 30 segundos. ¡Sé veloz y gana monedas!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, height: 1.5, color: Colors.white70, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 32),
-                AppPrimaryButton(label: 'JUGAR AHORA', backgroundColor: Colors.amber, foregroundColor: AppColors.primaryDark, onPressed: _startGame),
+                AppPrimaryButton(
+                  label: 'JUGAR AHORA',
+                  backgroundColor: Colors.amber,
+                  foregroundColor: AppColors.primaryDark,
+                  onPressed: _startGame,
+                ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   style: TextButton.styleFrom(foregroundColor: Colors.white54),
-                  child: const Text('Volver', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Volver',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -497,25 +532,46 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(completed ? '🏆' : '⏳', style: const TextStyle(fontSize: 80)),
+                Text(
+                  completed ? '🏆' : '⏳',
+                  style: const TextStyle(fontSize: 80),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   completed ? '¡Victoria!' : '¡Tiempo Agotado!',
-                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (_score > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.amber.shade300)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.amber.shade300),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -523,22 +579,40 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                         const SizedBox(width: 8),
                         Text(
                           '+$_score obtenidas',
-                          style: const TextStyle(color: Colors.amber, fontSize: 20, fontWeight: FontWeight.w900),
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ],
                     ),
                   )
                 else
-                  const Text('No ganaste monedas esta vez 😢', style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'No ganaste monedas esta vez 😢',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 const SizedBox(height: 32),
                 if (_isSaving)
                   const AppLoading()
                 else
                   Builder(
                     builder: (context) {
-                      final limit = context.read<AppConfigCubit>().getDouble('memorama_daily_limit', 1).round();
-                      final played = context.read<PointsProvider>().memoramaPlaysToday;
-                      final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
+                      final limit =
+                          context
+                              .read<AppConfigCubit>()
+                              .getDouble('memorama_daily_limit', 1)
+                              .round();
+                      final played =
+                          context.read<PointsCubit>().state.memoramaPlaysToday;
+                      final canPlayAgain =
+                          widget.profileId == 'offline' ||
+                          (limit - (played + 1) > 0);
 
                       return Column(
                         mainAxisSize: MainAxisSize.min,
@@ -557,11 +631,25 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                                 child: OutlinedButton(
                                   onPressed: _claimRewardAndExit,
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    side: const BorderSide(color: Colors.white, width: 2),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    side: const BorderSide(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
                                   ),
-                                  child: const Text('Reclamar y Salir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                  child: const Text(
+                                    'Reclamar y Salir',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ] else ...[
@@ -587,14 +675,28 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
                               child: OutlinedButton(
                                 onPressed: () => Navigator.pop(context, 0),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  side: const BorderSide(color: Colors.white54, width: 2),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  side: const BorderSide(
+                                    color: Colors.white54,
+                                    width: 2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
-                                child: const Text('Salir', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 16)),
+                                child: const Text(
+                                  'Salir',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
                             ),
-                          ]
+                          ],
                         ],
                       );
                     },
@@ -622,7 +724,10 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
           ),
           child: Row(
             children: [
@@ -656,3 +761,4 @@ class _MemoramaGameScreenState extends State<MemoramaGameScreen> {
     );
   }
 }
+

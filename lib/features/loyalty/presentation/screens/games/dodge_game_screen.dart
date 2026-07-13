@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
 import 'package:vibration/vibration.dart';
 
 // --- ENUMS Y MODELOS ---
@@ -258,11 +258,7 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: _score,
-          movementType: 'MINI_GAME_DODGE',
-          description: 'Esquiva y Atrapa: Ganó $_score monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_DODGE', _score, 'Esquiva y Atrapa: Ganó $_score monedas');
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -613,3 +609,4 @@ class _DodgeGameScreenState extends State<DodgeGameScreen> {
     );
   }
 }
+

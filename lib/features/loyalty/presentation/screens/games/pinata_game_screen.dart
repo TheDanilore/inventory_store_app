@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
 import 'package:vibration/vibration.dart';
 
 class PinataGameScreen extends StatefulWidget {
@@ -127,12 +127,7 @@ class _PinataGameScreenState extends State<PinataGameScreen>
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: _pointsEarned,
-          movementType: 'MINI_GAME_PINATA',
-          description:
-              'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_PINATA', _pointsEarned, 'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas');
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -420,3 +415,4 @@ class _PinataGameScreenState extends State<PinataGameScreen>
     );
   }
 }
+

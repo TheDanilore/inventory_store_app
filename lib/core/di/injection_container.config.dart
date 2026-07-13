@@ -266,6 +266,32 @@ import '../../features/inventory/presentation/bloc/inventory_exits_cubit.dart'
 import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i712;
 import '../../features/inventory/presentation/bloc/warehouses_cubit.dart'
     as _i926;
+import '../../features/loyalty/data/repositories_impl/loyalty_repository_impl.dart'
+    as _i643;
+import '../../features/loyalty/domain/repositories/loyalty_repository.dart'
+    as _i747;
+import '../../features/loyalty/domain/usecases/claim_daily_checkin_uc.dart'
+    as _i380;
+import '../../features/loyalty/domain/usecases/get_latest_checkin_uc.dart'
+    as _i696;
+import '../../features/loyalty/domain/usecases/get_loyalty_profile_uc.dart'
+    as _i589;
+import '../../features/loyalty/domain/usecases/get_today_checkin_uc.dart'
+    as _i893;
+import '../../features/loyalty/domain/usecases/get_today_mini_games_uc.dart'
+    as _i231;
+import '../../features/loyalty/domain/usecases/get_top_customers_uc.dart'
+    as _i34;
+import '../../features/loyalty/domain/usecases/get_wallet_balance_uc.dart'
+    as _i631;
+import '../../features/loyalty/domain/usecases/get_wallet_movements_uc.dart'
+    as _i829;
+import '../../features/loyalty/domain/usecases/record_mini_game_uc.dart'
+    as _i626;
+import '../../features/loyalty/presentation/bloc/points_cubit.dart' as _i742;
+import '../../features/loyalty/presentation/bloc/top_customers_cubit.dart'
+    as _i478;
+import '../../features/loyalty/presentation/bloc/wallet_cubit.dart' as _i1028;
 import '../../features/purchases/domain/usecases/get_active_suppliers_uc.dart'
     as _i664;
 import '../network/network_cubit.dart' as _i11;
@@ -347,6 +373,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i664.GetActiveSuppliersUseCase>(
       () => _i664.GetActiveSuppliersUseCase(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i747.LoyaltyRepository>(
+      () => _i643.LoyaltyRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.factory<_i160.GetActiveWarehousesExitsUseCase>(
       () => _i160.GetActiveWarehousesExitsUseCase(
@@ -665,6 +694,33 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i422.InventoryRepository>(),
       ),
     );
+    gh.lazySingleton<_i380.ClaimDailyCheckinUC>(
+      () => _i380.ClaimDailyCheckinUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i696.GetLatestCheckinUC>(
+      () => _i696.GetLatestCheckinUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i589.GetLoyaltyProfileUC>(
+      () => _i589.GetLoyaltyProfileUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i893.GetTodayCheckinUC>(
+      () => _i893.GetTodayCheckinUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i231.GetTodayMiniGamesUC>(
+      () => _i231.GetTodayMiniGamesUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i34.GetTopCustomersUC>(
+      () => _i34.GetTopCustomersUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i631.GetWalletBalanceUC>(
+      () => _i631.GetWalletBalanceUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i829.GetWalletMovementsUC>(
+      () => _i829.GetWalletMovementsUC(gh<_i747.LoyaltyRepository>()),
+    );
+    gh.lazySingleton<_i626.RecordMiniGameUC>(
+      () => _i626.RecordMiniGameUC(gh<_i747.LoyaltyRepository>()),
+    );
     gh.factory<_i1001.CustomerCreditsCubit>(
       () => _i1001.CustomerCreditsCubit(
         gh<_i580.GetCreditAccountByCustomerUseCase>(),
@@ -867,6 +923,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
     );
+    gh.factory<_i478.TopCustomersCubit>(
+      () => _i478.TopCustomersCubit(
+        getTopCustomersUC: gh<_i34.GetTopCustomersUC>(),
+      ),
+    );
+    gh.factory<_i1028.WalletCubit>(
+      () => _i1028.WalletCubit(
+        getWalletBalanceUC: gh<_i631.GetWalletBalanceUC>(),
+        supabase: gh<_i454.SupabaseClient>(),
+      ),
+    );
     gh.factory<_i1033.InventoryEntryFormCubit>(
       () => _i1033.InventoryEntryFormCubit(
         getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
@@ -894,6 +961,18 @@ extension GetItInjectableX on _i174.GetIt {
         getGeneralStockPaginated: gh<_i285.GetGeneralStockPaginatedUseCase>(),
         getBatchMetrics: gh<_i581.GetBatchMetricsUseCase>(),
         getBatchesPaginated: gh<_i544.GetBatchesPaginatedUseCase>(),
+      ),
+    );
+    gh.factory<_i742.PointsCubit>(
+      () => _i742.PointsCubit(
+        getLoyaltyProfileUC: gh<_i589.GetLoyaltyProfileUC>(),
+        getTodayCheckinUC: gh<_i893.GetTodayCheckinUC>(),
+        getLatestCheckinUC: gh<_i696.GetLatestCheckinUC>(),
+        getTodayMiniGamesUC: gh<_i231.GetTodayMiniGamesUC>(),
+        getWalletMovementsUC: gh<_i829.GetWalletMovementsUC>(),
+        claimDailyCheckinUC: gh<_i380.ClaimDailyCheckinUC>(),
+        recordMiniGameUC: gh<_i626.RecordMiniGameUC>(),
+        supabase: gh<_i454.SupabaseClient>(),
       ),
     );
     gh.factory<_i5.InventoryExitsCubit>(

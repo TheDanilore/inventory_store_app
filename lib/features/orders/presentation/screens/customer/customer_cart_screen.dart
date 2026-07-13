@@ -1,8 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_action_header.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_address_card.dart';
@@ -85,15 +85,15 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     }
   }
 
-  void _handleCheckout() async {
+  Future<void> _processCheckout(BuildContext context) async {
     final cart = context.read<CartProvider>();
-    final wallet = context.read<WalletProvider>();
-    final config = context.read<AppConfigCubit>();
+    final walletState = context.read<WalletCubit>().state;
     final checkout = context.read<CartCheckoutProvider>();
+    final config = context.read<AppConfigCubit>();
 
     final result = await checkout.processCheckout(
       cart: cart,
-      wallet: wallet,
+      walletState: walletState,
       config: config,
     );
 
@@ -142,10 +142,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
         result['puntosUsados'] as int,
       );
 
-      // Refresh wallet balance
-      if (mounted) {
-        await context.read<WalletProvider>().refresh();
-      }
+      // Saldo es reactivo en el background
 
       if (mounted) {
         AppSnackbar.show(
@@ -160,11 +157,11 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
-    final wallet = context.watch<WalletProvider>();
+    final walletState = context.watch<WalletCubit>().state;
     final checkout = context.watch<CartCheckoutProvider>();
     final config = context.watch<AppConfigCubit>();
 
-    final saldoPuntos = wallet.balance ?? 0;
+    final saldoPuntos = walletState.balance ?? 0;
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
     final sortedCartItems =
@@ -254,7 +251,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                         cart: cart,
                         saldoPuntos: saldoPuntos,
                         pointsToSolesRatio: pointsToSolesRatio,
-                        onProcessCheckout: _handleCheckout,
+                        onProcessCheckout: () => _processCheckout(context),
                       ),
                     ],
                   ),

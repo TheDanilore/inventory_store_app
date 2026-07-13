@@ -2,40 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/points/points_design_tokens.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PointsGameActionsSection extends StatelessWidget {
   const PointsGameActionsSection({super.key});
 
-  Future<void> _playGame(BuildContext context, String path, {bool forFun = false}) async {
-    final provider = context.read<PointsProvider>();
-    final wallet = context.read<WalletProvider>();
-
-    final pId = forFun ? 'offline' : (provider.profileId ?? 'offline');
+  Future<void> _playGame(
+    BuildContext context, 
+    String path, 
+    PointsState state,
+    {required bool forFun, required String movementType, required String description}
+  ) async {
+    final pId = forFun ? 'offline' : (state.profileId ?? 'offline');
 
     final r = await context.push<int>('$path/$pId');
     if (r != null && context.mounted) {
-      if (!forFun && r > 0 && provider.profileId != null) {
-        final newBalance = (wallet.balance ?? 0) + r;
-        try {
-          await Supabase.instance.client
-              .from('profiles')
-              .update({'wallet_balance': newBalance})
-              .eq('id', provider.profileId!);
-          wallet.addLocalBalance(r);
-        } catch (e) {
-          debugPrint('Error actualizando balance tras juego: $e');
-        }
+      if (!forFun && r > 0 && state.profileId != null) {
+        await context.read<PointsCubit>().recordMiniGameResult(movementType, r, description);
       }
 
       // Refresh points data after playing
-      if (context.mounted && provider.profileId != null) {
-        await context.read<PointsProvider>().fetchPointsData(
+      if (context.mounted && state.profileId != null) {
+        await context.read<PointsCubit>().fetchPointsData(
           context.read<AppConfigCubit>(),
         );
       }
@@ -44,12 +35,15 @@ class PointsGameActionsSection extends StatelessWidget {
 
   Widget _buildGameTile({
     required BuildContext context,
+    required PointsState state,
     required String title,
     required String emoji,
     required int plays,
     required int limit,
     required Color color,
     required String path,
+    required String movementType,
+    required String description,
   }) {
     final active = plays < limit;
     return _GameTile(
@@ -59,139 +53,171 @@ class PointsGameActionsSection extends StatelessWidget {
       limit: limit,
       color: color,
       active: active,
-      onPlay: () => _playGame(context, path, forFun: !active),
+      onPlay: () => _playGame(
+        context, 
+        path, 
+        state,
+        forFun: !active,
+        movementType: movementType,
+        description: description,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PointsProvider>();
-    final config = context.watch<AppConfigCubit>();
+    return BlocBuilder<PointsCubit, PointsState>(
+      builder: (context, state) {
+        final config = context.watch<AppConfigCubit>();
 
-    final memoramaLimit = config.getDouble('memorama_daily_limit', 1).round();
-    final catcherLimit = config.getDouble('catcher_daily_limit', 1).round();
-    final pinataLimit = config.getDouble('pinata_daily_limit', 1).round();
-    final clawLimit = config.getDouble('claw_daily_limit', 1).round();
-    final stackLimit = config.getDouble('stack_daily_limit', 1).round();
-    final dodgeLimit = config.getDouble('dodge_daily_limit', 1).round();
-    final superSaltoLimit = config.getDouble('jump_daily_limit', 1).round();
+        final memoramaLimit = config.getDouble('memorama_daily_limit', 1).round();
+        final catcherLimit = config.getDouble('catcher_daily_limit', 1).round();
+        final pinataLimit = config.getDouble('pinata_daily_limit', 1).round();
+        final clawLimit = config.getDouble('claw_daily_limit', 1).round();
+        final stackLimit = config.getDouble('stack_daily_limit', 1).round();
+        final dodgeLimit = config.getDouble('dodge_daily_limit', 1).round();
+        final superSaltoLimit = config.getDouble('jump_daily_limit', 1).round();
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: PointsDS.surface,
-        borderRadius: BorderRadius.circular(PointsDS.radiusXl),
-        boxShadow: PointsDS.cardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: PointsDS.surface,
+            borderRadius: BorderRadius.circular(PointsDS.radiusXl),
+            boxShadow: PointsDS.cardShadow(),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.sports_esports_rounded,
-                  color: AppColors.primary,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Juegos Diarios',
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.sports_esports_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Más Mini Juegos',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: PointsDS.textPrimary,
                       ),
                     ),
-                    Text(
-                      'Diviértete y gana monedas extra',
-                      style: TextStyle(fontSize: 11, color: PointsDS.textMuted),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Grid de juegos
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.85,
+                children: [
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'Memorama',
+                    emoji: '🃏',
+                    plays: state.memoramaPlaysToday,
+                    limit: memoramaLimit,
+                    color: const Color(0xFF0D9488),
+                    path: '/loyalty/games/memorama',
+                    movementType: 'MINI_GAME_MEMORY',
+                    description: 'Memorama completado',
+                  ),
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'Súper Salto',
+                    emoji: '🏃‍♂️',
+                    plays: state.superSaltoPlaysToday,
+                    limit: superSaltoLimit,
+                    color: const Color(0xFF6366F1),
+                    path: '/loyalty/games/super-salto',
+                    movementType: 'MINI_GAME_JUMP',
+                    description: 'Súper salto completado',
+                  ),
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'Atrapa Monedas',
+                    emoji: '🌧️',
+                    plays: state.catcherPlaysToday,
+                    limit: catcherLimit,
+                    color: const Color(0xFFE5A93C),
+                    path: '/loyalty/games/catcher',
+                    movementType: 'MINI_GAME_CATCHER',
+                    description: 'Atrapa monedas jugado',
+                  ),
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'La Piñata',
+                    emoji: '🪅',
+                    plays: state.pinataPlaysToday,
+                    limit: pinataLimit,
+                    color: const Color(0xFFE05C41),
+                    path: '/loyalty/games/pinata',
+                    movementType: 'MINI_GAME_PINATA',
+                    description: 'Piñata golpeada',
+                  ),
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'Máquina Garra',
+                    emoji: '🕹️',
+                    plays: state.clawPlaysToday,
+                    limit: clawLimit,
+                    color: const Color(0xFF8B5CF6),
+                    path: '/loyalty/games/claw',
+                    movementType: 'MINI_GAME_CLAW',
+                    description: 'Máquina de garra',
+                  ),
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'Torre Perfecta',
+                    emoji: '🏗️',
+                    plays: state.stackPlaysToday,
+                    limit: stackLimit,
+                    color: const Color(0xFF3B82F6),
+                    path: '/loyalty/games/stack',
+                    movementType: 'MINI_GAME_STACK',
+                    description: 'Torre perfecta jugada',
+                  ),
+                  _buildGameTile(
+                    context: context,
+                    state: state,
+                    title: 'Esquiva Bloques',
+                    emoji: '🚀',
+                    plays: state.dodgePlaysToday,
+                    limit: dodgeLimit,
+                    color: const Color(0xFFEF4444),
+                    path: '/loyalty/games/dodge',
+                    movementType: 'MINI_GAME_DODGE',
+                    description: 'Esquiva bloques jugado',
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Game tiles grid
-          _buildGameTile(
-            context: context,
-            title: 'Memorama',
-            emoji: '🃏',
-            plays: provider.memoramaPlaysToday,
-            limit: memoramaLimit,
-            color: PointsDS.teal,
-            path: '/customer/games/memorama',
-          ),
-          _buildGameTile(
-            context: context,
-            title: 'Lluvia de Monedas',
-            emoji: '🌧️',
-            plays: provider.catcherPlaysToday,
-            limit: catcherLimit,
-            color: const Color(0xFFE5A93C),
-            path: '/customer/games/coin-catcher',
-          ),
-          _buildGameTile(
-            context: context,
-            title: 'Piñata',
-            emoji: '🪅',
-            plays: provider.pinataPlaysToday,
-            limit: pinataLimit,
-            color: const Color(0xFFE05C41),
-            path: '/customer/games/pinata',
-          ),
-          _buildGameTile(
-            context: context,
-            title: 'Máquina de Garra',
-            emoji: '🕹️',
-            plays: provider.clawPlaysToday,
-            limit: clawLimit,
-            color: const Color(0xFFB26CFF),
-            path: '/customer/games/claw-machine',
-          ),
-          _buildGameTile(
-            context: context,
-            title: 'Torre de Cajas',
-            emoji: '📦',
-            plays: provider.stackPlaysToday,
-            limit: stackLimit,
-            color: const Color(0xFF4E79FF),
-            path: '/customer/games/stack',
-          ),
-          _buildGameTile(
-            context: context,
-            title: 'Esquiva y Atrapa',
-            emoji: '🏃',
-            plays: provider.dodgePlaysToday,
-            limit: dodgeLimit,
-            color: const Color(0xFF3E7DD1),
-            path: '/customer/games/dodge',
-          ),
-          _buildGameTile(
-            context: context,
-            title: 'Super Salto',
-            emoji: '👟',
-            plays: provider.superSaltoPlaysToday,
-            limit: superSaltoLimit,
-            color: const Color(0xFF6A5AE0),
-            path: '/customer/games/super-salto',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -203,7 +229,7 @@ class _GameTile extends StatelessWidget {
   final int limit;
   final Color color;
   final bool active;
-  final VoidCallback? onPlay;
+  final VoidCallback onPlay;
 
   const _GameTile({
     required this.title,
@@ -217,131 +243,81 @@ class _GameTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: active ? color.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(PointsDS.radius),
-        border: Border.all(
-          color: active ? color.withValues(alpha: 0.2) : PointsDS.border,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPlay,
-          borderRadius: BorderRadius.circular(PointsDS.radius),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                // Emoji icon
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color:
-                        active
-                            ? color.withValues(alpha: 0.12)
-                            : const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 20)),
-                  ),
-                ),
-                const SizedBox(width: 12),
+    final bgColor = color.withValues(alpha: 0.1);
 
-                // Title + attempts
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          color:
-                              active
-                                  ? PointsDS.textPrimary
-                                  : PointsDS.textMuted,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            active
-                                ? Icons.play_arrow_rounded
-                                : Icons.info_outline_rounded,
-                            size: 14,
-                            color: active ? color : PointsDS.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            active 
-                                ? '$plays / $limit jugadas hoy' 
-                                : 'Límite alcanzado',
-                            style: TextStyle(
-                              color:
-                                  active
-                                      ? PointsDS.textSecondary
-                                      : PointsDS.textMuted,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Button / Status
-                if (active)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Jugar',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: PointsDS.textMuted.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Por diversión',
-                      style: TextStyle(
-                        color: PointsDS.textMuted,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: onPlay,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: PointsDS.bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active ? color.withValues(alpha: 0.3) : PointsDS.border,
+            width: active ? 2 : 1,
           ),
+          boxShadow:
+              active
+                  ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: active ? bgColor : const Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  emoji,
+                  style: TextStyle(
+                    fontSize: 24,
+                    color: active ? null : PointsDS.textMuted,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: active ? PointsDS.textPrimary : PointsDS.textMuted,
+                height: 1.2,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: active ? bgColor : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                active ? '$plays/$limit jugados' : 'Diversión',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: active ? color : PointsDS.textSecondary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+

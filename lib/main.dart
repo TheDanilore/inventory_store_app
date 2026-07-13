@@ -3,7 +3,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
@@ -19,6 +18,10 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers_cubit.dart';
 
 // ─── Singletons protegidos contra múltiples llamadas a main() ────────────────
 // En Flutter Web (desarrollo con hot restart), el módulo Dart puede inicializar
@@ -86,13 +89,15 @@ class MyApp extends StatelessWidget {
             ..fetchSettings()
             ..loadBusinessInfo(),
         ),
+        BlocProvider(create: (_) => sl<PointsCubit>()),
+        BlocProvider(create: (_) => sl<WalletCubit>()),
+        BlocProvider(create: (_) => sl<TopCustomersCubit>()),
       ],
       child: MultiProvider(
         providers: [
           // Inyectamos la instancia global con .value (no crea una nueva).
           
           ChangeNotifierProvider(create: (_) => UsersProvider(role: '')),
-          ChangeNotifierProvider(create: (_) => PointsProvider()),
           ChangeNotifierProvider(create: (_) => PosProvider()),
           ChangeNotifierProvider(create: (_) => CartCheckoutProvider()),
           ChangeNotifierProvider(create: (_) => CartProvider()),

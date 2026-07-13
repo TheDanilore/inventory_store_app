@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/top_customers_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
@@ -21,10 +22,7 @@ class TopCustomersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TopCustomersProvider(),
-      child: const _TopCustomersContent(),
-    );
+    return const _TopCustomersContent();
   }
 }
 
@@ -37,8 +35,8 @@ class _TopCustomersContent extends StatefulWidget {
 
 class _TopCustomersContentState extends State<_TopCustomersContent> {
   void _openRoulette() {
-    final provider = context.read<TopCustomersProvider>();
-    if (provider.participants.length < 2) {
+    final state = context.read<TopCustomersCubit>().state;
+    if (state.participants.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Se necesitan al menos 2 clientes para el sorteo.'),
@@ -55,10 +53,7 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
       barrierColor: Colors.black.withValues(alpha: 0.4),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
-        return ChangeNotifierProvider.value(
-          value: provider,
-          child: const _GlassRouletteDialog(),
-        );
+        return const _GlassRouletteDialog();
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
@@ -80,14 +75,15 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TopCustomersProvider>();
+    final state = context.watch<TopCustomersCubit>().state;
+    final cubit = context.read<TopCustomersCubit>();
     final theme = Theme.of(context);
 
     return AdminLayout(
       title: 'Top Clientes',
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: provider.isLoading ? null : _openRoulette,
+        onPressed: state.isLoading ? null : _openRoulette,
         icon: const Icon(Icons.casino_rounded, color: Colors.white),
         label: const Text(
           'Ruleta de Sorteo',
@@ -98,7 +94,9 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900), // Ampliado un poco para dar aire al grid
+          constraints: const BoxConstraints(
+            maxWidth: 900,
+          ), // Ampliado un poco para dar aire al grid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -119,37 +117,49 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: [5, 10, 15, 20, 30, 50, 100].map((val) {
-                          final isSelected = provider.limit == val;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: ChoiceChip(
-                              label: Text(
-                                'Top $val',
-                                style: TextStyle(
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? Colors.white : theme.colorScheme.onSurfaceVariant,
+                        children:
+                            [5, 10, 15, 20, 30, 50, 100].map((val) {
+                              final isSelected = state.limit == val;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    'Top $val',
+                                    style: TextStyle(
+                                      fontWeight:
+                                          isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                      color:
+                                          isSelected
+                                              ? Colors.white
+                                              : theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected:
+                                      state.isLoading
+                                          ? null
+                                          : (selected) {
+                                            if (selected) cubit.setLimit(val);
+                                          },
+                                  selectedColor: AppColors.primary,
+                                  backgroundColor: theme.colorScheme.surface,
+                                  side: BorderSide(
+                                    color:
+                                        isSelected
+                                            ? AppColors.primary
+                                            : theme.colorScheme.outlineVariant
+                                                .withValues(alpha: 0.3),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
-                              ),
-                              selected: isSelected,
-                              onSelected: provider.isLoading
-                                  ? null
-                                  : (selected) {
-                                      if (selected) provider.setLimit(val);
-                                    },
-                              selectedColor: AppColors.primary,
-                              backgroundColor: theme.colorScheme.surface,
-                              side: BorderSide(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                              );
+                            }).toList(),
                       ),
                     ),
                   ],
@@ -158,71 +168,81 @@ class _TopCustomersContentState extends State<_TopCustomersContent> {
 
               // Contenido Principal (Shimmer o Listado)
               Expanded(
-                child: provider.isLoading
-                    ? const _ShimmerList()
-                    : provider.participants.isEmpty
+                child:
+                    state.isLoading
+                        ? const _ShimmerList()
+                        : state.participants.isEmpty
                         ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.group_off_rounded,
-                                  size: 64,
-                                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.group_off_rounded,
+                                size: 64,
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No hay clientes con compras.',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No hay clientes con compras.',
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : LayoutBuilder(
-                            builder: (context, constraints) {
-                              final isWide = constraints.maxWidth > 700;
-
-                              if (isWide) {
-                                return GridView.builder(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8).copyWith(bottom: 100),
-                                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 450,
-                                    mainAxisExtent: 96, // Ajustado para contener la altura de la tarjeta + margen
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 0,
-                                  ),
-                                  itemCount: provider.participants.length,
-                                  itemBuilder: (context, index) {
-                                    final c = provider.participants[index];
-                                    return _AnimatedEntrance(
-                                      index: index,
-                                      child: _PremiumCustomerCard(
-                                        customer: c,
-                                        position: index + 1,
-                                      ),
-                                    );
-                                  },
-                                );
-                              } else {
-                                return ListView.builder(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8).copyWith(bottom: 100),
-                                  itemCount: provider.participants.length,
-                                  itemBuilder: (context, index) {
-                                    final c = provider.participants[index];
-                                    return _AnimatedEntrance(
-                                      index: index,
-                                      child: _PremiumCustomerCard(
-                                        customer: c,
-                                        position: index + 1,
-                                      ),
-                                    );
-                                  },
-                                );
-                              }
-                            },
+                              ),
+                            ],
                           ),
+                        )
+                        : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth > 700;
+
+                            if (isWide) {
+                              return GridView.builder(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 8,
+                                ).copyWith(bottom: 100),
+                                gridDelegate:
+                                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 450,
+                                      mainAxisExtent:
+                                          96, // Ajustado para contener la altura de la tarjeta + margen
+                                      crossAxisSpacing: 16,
+                                      mainAxisSpacing: 0,
+                                    ),
+                                itemCount: state.participants.length,
+                                itemBuilder: (context, index) {
+                                  final c = state.participants[index];
+                                  return _AnimatedEntrance(
+                                    index: index,
+                                    child: _PremiumCustomerCard(
+                                      customer: c,
+                                      position: index + 1,
+                                    ),
+                                  );
+                                },
+                              );
+                            } else {
+                              return ListView.builder(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 8,
+                                ).copyWith(bottom: 100),
+                                itemCount: state.participants.length,
+                                itemBuilder: (context, index) {
+                                  final c = state.participants[index];
+                                  return _AnimatedEntrance(
+                                    index: index,
+                                    child: _PremiumCustomerCard(
+                                      customer: c,
+                                      position: index + 1,
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+                          },
+                        ),
               ),
             ],
           ),
@@ -240,7 +260,8 @@ class _AnimatedEntrance extends StatefulWidget {
   State<_AnimatedEntrance> createState() => _AnimatedEntranceState();
 }
 
-class _AnimatedEntranceState extends State<_AnimatedEntrance> with SingleTickerProviderStateMixin {
+class _AnimatedEntranceState extends State<_AnimatedEntrance>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacity;
   late Animation<Offset> _slide;
@@ -248,9 +269,18 @@ class _AnimatedEntranceState extends State<_AnimatedEntrance> with SingleTickerP
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _slide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _opacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     // Staggered delay (cap max delay to avoid too long waiting for large lists)
     final delay = (widget.index * 50).clamp(0, 500);
@@ -269,10 +299,7 @@ class _AnimatedEntranceState extends State<_AnimatedEntrance> with SingleTickerP
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _opacity,
-      child: SlideTransition(
-        position: _slide,
-        child: widget.child,
-      ),
+      child: SlideTransition(position: _slide, child: widget.child),
     );
   }
 }
@@ -305,16 +332,25 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
 
     if (widget.position == 1) {
       borderColor = const Color(0xFFFFD700); // Oro
-      gradientColors = [const Color(0xFFFFD700).withValues(alpha: 0.15), const Color(0xFFFFD700).withValues(alpha: 0.02)];
-      medalIcon = const Text('ðŸ¥‡', style: TextStyle(fontSize: 24));
+      gradientColors = [
+        const Color(0xFFFFD700).withValues(alpha: 0.15),
+        const Color(0xFFFFD700).withValues(alpha: 0.02),
+      ];
+      medalIcon = const Text('🥇', style: TextStyle(fontSize: 24));
     } else if (widget.position == 2) {
       borderColor = const Color(0xFFC0C0C0); // Plata
-      gradientColors = [const Color(0xFFC0C0C0).withValues(alpha: 0.15), const Color(0xFFC0C0C0).withValues(alpha: 0.02)];
-      medalIcon = const Text('ðŸ¥ˆ', style: TextStyle(fontSize: 24));
+      gradientColors = [
+        const Color(0xFFC0C0C0).withValues(alpha: 0.15),
+        const Color(0xFFC0C0C0).withValues(alpha: 0.02),
+      ];
+      medalIcon = const Text('🥈', style: TextStyle(fontSize: 24));
     } else if (widget.position == 3) {
       borderColor = const Color(0xFFCD7F32); // Bronce
-      gradientColors = [const Color(0xFFCD7F32).withValues(alpha: 0.15), const Color(0xFFCD7F32).withValues(alpha: 0.02)];
-      medalIcon = const Text('ðŸ¥‰', style: TextStyle(fontSize: 24));
+      gradientColors = [
+        const Color(0xFFCD7F32).withValues(alpha: 0.15),
+        const Color(0xFFCD7F32).withValues(alpha: 0.02),
+      ];
+      medalIcon = const Text('🥉', style: TextStyle(fontSize: 24));
     }
 
     return MouseRegion(
@@ -328,17 +364,28 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
         transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          gradient: isTop3
-              ? LinearGradient(colors: gradientColors!, begin: Alignment.topLeft, end: Alignment.bottomRight)
-              : null,
+          gradient:
+              isTop3
+                  ? LinearGradient(
+                    colors: gradientColors!,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                  : null,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: borderColor ?? theme.colorScheme.outlineVariant.withValues(alpha: _isHovered ? 0.8 : 0.3),
+            color:
+                borderColor ??
+                theme.colorScheme.outlineVariant.withValues(
+                  alpha: _isHovered ? 0.8 : 0.3,
+                ),
             width: isTop3 ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: (borderColor ?? theme.colorScheme.shadow).withValues(alpha: _isHovered ? 0.15 : 0.03),
+              color: (borderColor ?? theme.colorScheme.shadow).withValues(
+                alpha: _isHovered ? 0.15 : 0.03,
+              ),
               blurRadius: _isHovered ? 20 : 12,
               offset: Offset(0, _isHovered ? 8 : 4),
             ),
@@ -349,17 +396,21 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              context.push('/admin/customer-detail/${widget.customer.id}', extra: widget.customer);
+              context.push(
+                '/admin/customer-detail/${widget.customer.id}',
+                extra: widget.customer,
+              );
             },
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // PosiciÃ³n / Medalla
+                  // Posición / Medalla
                   SizedBox(
                     width: 40,
                     child: Center(
-                      child: medalIcon ??
+                      child:
+                          medalIcon ??
                           Text(
                             '#${widget.position}',
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -375,19 +426,23 @@ class _PremiumCustomerCardState extends State<_PremiumCustomerCard> {
                   CircleAvatar(
                     radius: 24,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    backgroundImage: widget.customer.avatarUrl != null
-                        ? CachedNetworkImageProvider(widget.customer.avatarUrl!)
-                        : null,
-                    child: widget.customer.avatarUrl == null
-                        ? Text(
-                            widget.customer.fullName[0].toUpperCase(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                              fontSize: 18,
-                            ),
-                          )
-                        : null,
+                    backgroundImage:
+                        widget.customer.avatarUrl != null
+                            ? CachedNetworkImageProvider(
+                              widget.customer.avatarUrl!,
+                            )
+                            : null,
+                    child:
+                        widget.customer.avatarUrl == null
+                            ? Text(
+                              widget.customer.fullName[0].toUpperCase(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                                fontSize: 18,
+                              ),
+                            )
+                            : null,
                   ),
                   const SizedBox(width: 16),
 
@@ -551,18 +606,21 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
     super.dispose();
   }
 
-  void _spinWheel(TopCustomersProvider provider) {
-    if (provider.participants.isEmpty || provider.isSpinning) return;
+  void _spinWheel() {
+    final cubit = context.read<TopCustomersCubit>();
+    final state = cubit.state;
+    if (state.participants.isEmpty || state.isSpinning) return;
 
-    final winnerIndex = _random.nextInt(provider.participants.length);
-    final winner = provider.participants[winnerIndex];
+    final winnerIndex = _random.nextInt(state.participants.length);
+    final winner = state.participants[winnerIndex];
 
-    provider.startSpinning(winner);
+    cubit.startSpinning(winner);
     _selectedController.add(winnerIndex);
   }
 
-  void _onAnimationEnd(TopCustomersProvider provider) async {
-    provider.stopSpinning();
+  void _onAnimationEnd() async {
+    final cubit = context.read<TopCustomersCubit>();
+    cubit.stopSpinning();
 
     if (!kIsWeb) {
       if (await Vibration.hasVibrator()) {
@@ -572,7 +630,8 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
 
     if (!mounted) return;
 
-    final winner = provider.winner;
+    final state = cubit.state;
+    final winner = state.winner;
     if (winner != null) {
       Navigator.of(context).pop(); // Cerrar ruleta
       showDialog(
@@ -584,7 +643,7 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TopCustomersProvider>();
+    final state = context.watch<TopCustomersCubit>().state;
     final theme = Theme.of(context);
 
     return Dialog(
@@ -629,7 +688,7 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
                           theme.colorScheme.surfaceContainerHighest,
                     ),
                     onPressed:
-                        provider.isSpinning
+                        state.isSpinning
                             ? null
                             : () => Navigator.of(context).pop(),
                   ),
@@ -647,10 +706,10 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
                     curve: Curves.decelerate,
                   ),
                   onFling: () {
-                    _spinWheel(provider);
+                    _spinWheel();
                   },
                   items: [
-                    for (var p in provider.participants)
+                    for (var p in state.participants)
                       FortuneItem(
                         child: Text(
                           p.fullName.split(' ').first,
@@ -669,18 +728,18 @@ class _GlassRouletteDialogState extends State<_GlassRouletteDialog> {
                         ),
                       ),
                   ],
-                  onAnimationEnd: () => _onAnimationEnd(provider),
+                  onAnimationEnd: () => _onAnimationEnd(),
                 ),
               ),
               const SizedBox(height: 32),
 
-              // BotÃ³n de Girar
+              // Botón de Girar
               SizedBox(
                 width: double.infinity,
                 height: 60,
                 child: FilledButton.icon(
                   onPressed:
-                      provider.isSpinning ? null : () => _spinWheel(provider),
+                      state.isSpinning ? null : () => _spinWheel(),
                   icon: const Icon(Icons.play_arrow_rounded, size: 28),
                   label: const Text(
                     'GIRAR RULETA',
@@ -730,18 +789,18 @@ class _WinnerDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icono de celebraciÃ³n
+              // Icono de celebración
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Text('ðŸŽ‰', style: TextStyle(fontSize: 48)),
+                child: const Text('🎉', style: TextStyle(fontSize: 48)),
               ),
               const SizedBox(height: 24),
               Text(
-                'Â¡TENEMOS UN GANADOR!',
+                '¡TENEMOS UN GANADOR!',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
@@ -807,7 +866,7 @@ class _WinnerDialog extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // BotÃ³n aceptar
+              // Botón aceptar
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -831,5 +890,3 @@ class _WinnerDialog extends StatelessWidget {
     );
   }
 }
-
-

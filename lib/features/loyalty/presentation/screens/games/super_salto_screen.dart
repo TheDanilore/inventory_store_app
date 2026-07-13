@@ -9,8 +9,8 @@ import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/points_provider.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
 import 'package:vibration/vibration.dart';
 
 class SuperSaltoScreen extends StatefulWidget {
@@ -38,7 +38,7 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
   double _obstacleX = 1.5;
 
   double _coinX = 2.0;
-  double _coinY = 0.0; 
+  double _coinY = 0.0;
 
   // --- PARALLAX NUBES ---
   double _cloud1X = -0.5;
@@ -111,7 +111,7 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
       // 2. MOVIMIENTO (PARALLAX Y OBJETOS)
       _obstacleX -= _gameSpeed;
       _coinX -= _gameSpeed;
-      
+
       _cloud1X -= _gameSpeed * 0.2;
       _cloud2X -= _gameSpeed * 0.3;
       _cloud3X -= _gameSpeed * 0.15;
@@ -137,7 +137,8 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
       if (_showPlusOne) {
         _plusOneY -= 0.02; // Sube lentamente
         _plusOneTimer++;
-        if (_plusOneTimer > 25) { // Medio segundo aprox
+        if (_plusOneTimer > 25) {
+          // Medio segundo aprox
           _showPlusOne = false;
         }
       }
@@ -167,14 +168,14 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
       if ((_charY - _coinY).abs() < 0.2) {
         if (!kIsWeb) Vibration.vibrate(duration: 30, amplitude: 128);
         _score++;
-        
+
         // Trigger +1 particle
         _showPlusOne = true;
         _plusOneX = charX;
         _plusOneY = _charY;
         _plusOneTimer = 0;
 
-        _coinX = 2.0; 
+        _coinX = 2.0;
         _randomizeCoinY();
       }
     }
@@ -193,21 +194,25 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
     if (_score > 0) {
       if (widget.profileId == 'offline') {
         if (mounted) {
-          AppSnackbar.show(context, message: 'Modo sin conexión. Juegas por diversión.', type: SnackbarType.info);
+          AppSnackbar.show(
+            context,
+            message: 'Modo sin conexión. Juegas por diversión.',
+            type: SnackbarType.info,
+          );
           Navigator.pop(context, _score);
         }
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: _score,
-          movementType: 'MINI_GAME_JUMP',
-          description: 'Super Salto: Ganó $_score monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_JUMP', _score, 'Super Salto: Ganó $_score monedas');
         if (mounted) Navigator.pop(context, _score);
       } catch (e) {
         if (mounted) {
-          AppSnackbar.show(context, message: 'Error al procesar tu recompensa. Intenta de nuevo.', type: SnackbarType.error);
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu recompensa. Intenta de nuevo.',
+            type: SnackbarType.error,
+          );
           setState(() => _isSaving = false);
         }
       }
@@ -224,15 +229,15 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: _score,
-          movementType: 'MINI_GAME_JUMP',
-          description: 'Super Salto: Ganó $_score monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_JUMP', _score, 'Super Salto: Ganó $_score monedas');
         if (mounted) _startGame();
       } catch (e) {
         if (mounted) {
-          AppSnackbar.show(context, message: 'Error al procesar tu recompensa.', type: SnackbarType.error);
+          AppSnackbar.show(
+            context,
+            message: 'Error al procesar tu recompensa.',
+            type: SnackbarType.error,
+          );
           setState(() => _isSaving = false);
         }
       }
@@ -264,9 +269,18 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
             child: Stack(
               children: [
                 // --- PARALLAX NUBES ---
-                Align(alignment: Alignment(_cloud1X, -0.8), child: const Text('☁️', style: TextStyle(fontSize: 80))),
-                Align(alignment: Alignment(_cloud2X, -0.6), child: const Text('⛅', style: TextStyle(fontSize: 60))),
-                Align(alignment: Alignment(_cloud3X, -0.4), child: const Text('☁️', style: TextStyle(fontSize: 50))),
+                Align(
+                  alignment: Alignment(_cloud1X, -0.8),
+                  child: const Text('☁️', style: TextStyle(fontSize: 80)),
+                ),
+                Align(
+                  alignment: Alignment(_cloud2X, -0.6),
+                  child: const Text('⛅', style: TextStyle(fontSize: 60)),
+                ),
+                Align(
+                  alignment: Alignment(_cloud3X, -0.4),
+                  child: const Text('☁️', style: TextStyle(fontSize: 50)),
+                ),
 
                 // --- EL SUELO ---
                 Align(
@@ -280,15 +294,37 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                         end: Alignment.bottomCenter,
                         colors: [Colors.green.shade400, Colors.green.shade700],
                       ),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
                     ),
                     child: Stack(
                       children: const [
                         // Pasto decorativo estático
-                        Positioned(top: -10, left: 20, child: Text('🌱', style: TextStyle(fontSize: 24))),
-                        Positioned(top: -5, left: 100, child: Text('🌿', style: TextStyle(fontSize: 20))),
-                        Positioned(top: -12, right: 50, child: Text('🌱', style: TextStyle(fontSize: 28))),
-                        Positioned(top: 5, right: 150, child: Text('🍄', style: TextStyle(fontSize: 18))),
+                        Positioned(
+                          top: -10,
+                          left: 20,
+                          child: Text('🌱', style: TextStyle(fontSize: 24)),
+                        ),
+                        Positioned(
+                          top: -5,
+                          left: 100,
+                          child: Text('🌿', style: TextStyle(fontSize: 20)),
+                        ),
+                        Positioned(
+                          top: -12,
+                          right: 50,
+                          child: Text('🌱', style: TextStyle(fontSize: 28)),
+                        ),
+                        Positioned(
+                          top: 5,
+                          right: 150,
+                          child: Text('🍄', style: TextStyle(fontSize: 18)),
+                        ),
                       ],
                     ),
                   ),
@@ -315,7 +351,13 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                             color: Colors.amber,
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
-                            shadows: [Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                            shadows: [
+                              Shadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -338,13 +380,13 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                             color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
-                          )
+                          ),
                         ],
                       ),
                       child: const Text('🛒', style: TextStyle(fontSize: 46)),
                     ),
                   ),
-                  
+
                   // MARCADOR DE PUNTAJE (Glassmorphism)
                   Positioned(
                     top: 20,
@@ -354,11 +396,17 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.4),
+                              width: 1.5,
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -407,7 +455,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
               borderRadius: BorderRadius.circular(32),
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: 5),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
               ],
             ),
             child: Column(
@@ -428,15 +480,25 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                 const Text(
                   'Toca la pantalla para saltar.\nAtrapa monedas 🪙 y esquiva cajas 📦.\n¡Cuidado, la velocidad aumenta!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, height: 1.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 AppPrimaryButton(label: 'JUGAR AHORA', onPressed: _startGame),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-                  child: const Text('Volver', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                  ),
+                  child: const Text(
+                    'Volver',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -460,7 +522,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
               borderRadius: BorderRadius.circular(32),
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: 5),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
               ],
             ),
             child: Column(
@@ -470,13 +536,24 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                 const SizedBox(height: 16),
                 const Text(
                   '¡Auch! Chocaste',
-                  style: TextStyle(color: AppColors.primaryDark, fontSize: 28, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: AppColors.primaryDark,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (_score > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.amber.shade300)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.amber.shade300),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -484,13 +561,24 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                         const SizedBox(width: 8),
                         Text(
                           '+$_score obtenidas',
-                          style: const TextStyle(color: Colors.amber, fontSize: 20, fontWeight: FontWeight.w900),
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ],
                     ),
                   )
                 else
-                  const Text('No atrapaste ninguna moneda 😢', style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'No atrapaste ninguna moneda 😢',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 const SizedBox(height: 32),
                 if (_isSaving)
                   const Padding(
@@ -500,9 +588,19 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                 else
                   Builder(
                     builder: (context) {
-                      final limit = context.read<AppConfigCubit>().getDouble('jump_daily_limit', 1).round();
-                      final played = context.read<PointsProvider>().superSaltoPlaysToday;
-                      final canPlayAgain = widget.profileId == 'offline' || (limit - (played + 1) > 0);
+                      final limit =
+                          context
+                              .read<AppConfigCubit>()
+                              .getDouble('jump_daily_limit', 1)
+                              .round();
+                      final played =
+                          context
+                              .read<PointsCubit>()
+                              .state
+                              .superSaltoPlaysToday;
+                      final canPlayAgain =
+                          widget.profileId == 'offline' ||
+                          (limit - (played + 1) > 0);
 
                       return Column(
                         mainAxisSize: MainAxisSize.min,
@@ -519,11 +617,25 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                                 child: OutlinedButton(
                                   onPressed: _claimRewardAndExit,
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    side: const BorderSide(color: AppColors.primary, width: 2),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    side: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
                                   ),
-                                  child: const Text('Reclamar y Salir', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+                                  child: const Text(
+                                    'Reclamar y Salir',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ] else ...[
@@ -545,14 +657,28 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
                               child: OutlinedButton(
                                 onPressed: () => Navigator.pop(context, 0),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  side: const BorderSide(color: AppColors.textSecondary, width: 2),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AppColors.textSecondary,
+                                    width: 2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
-                                child: const Text('Salir', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold, fontSize: 16)),
+                                child: const Text(
+                                  'Salir',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
                             ),
-                          ]
+                          ],
                         ],
                       );
                     },
@@ -565,3 +691,4 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
     );
   }
 }
+

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/cart_checkout_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -162,7 +162,7 @@ class CartCheckoutProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> processCheckout({
     required CartProvider cart,
-    required WalletProvider wallet,
+    required WalletState walletState,
     required AppConfigCubit config,
   }) async {
     final user = _supabase.auth.currentUser;
@@ -197,7 +197,7 @@ class CartCheckoutProvider extends ChangeNotifier {
               .maybeSingle();
       final customerId = profileResp?['id'];
 
-      final saldoPuntos = wallet.balance ?? 0;
+      final saldoPuntos = walletState.balance ?? 0;
       final earningRate = config.getDouble('points_earning_rate', 0.03);
       final pointsToSolesRatio = config.getDouble(
         'points_to_soles_ratio',

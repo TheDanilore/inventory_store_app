@@ -1,9 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,76 +46,80 @@ class CustomerLayout extends StatelessWidget {
   // WALLET CHIP
 
   Widget _buildWalletChip(BuildContext context) {
-    // Usamos Consumer2 para reaccionar a cambios en configuración y saldo
-    return Consumer2<AppConfigCubit, WalletProvider>(
-      builder: (context, config, wallet, child) {
-        if (!config.loyaltyGlobalEnabled || !config.loyaltyCustomerVisible) {
-          return const SizedBox.shrink();
-        }
+    return BlocBuilder<AppConfigCubit, AppConfigState>(
+      builder: (context, config) {
+        return BlocBuilder<WalletCubit, WalletState>(
+          builder: (context, walletState) {
+            final globalEnabled = config.businessInfo?.loyaltyGlobalEnabled ?? true;
+            final customerVisible = config.businessInfo?.loyaltyCustomerVisible ?? true;
+            if (!globalEnabled || !customerVisible) {
+              return const SizedBox.shrink();
+            }
 
-        // Si no hay saldo y tampoco está cargando, ocultamos
-        if (!wallet.hasBalance && !wallet.isLoading) {
-          return const SizedBox.shrink();
-        }
+            if (!walletState.hasBalance && !walletState.isLoading) {
+              return const SizedBox.shrink();
+            }
 
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => context.go('/customer/points'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.goldLight,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.gold.withValues(alpha: 0.4),
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => context.go('/customer/points'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldLight,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.stars_rounded,
+                        size: 16,
+                        color: AppColors.gold,
+                      ),
+                      const SizedBox(width: 4),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (
+                          Widget child,
+                          Animation<double> animation,
+                        ) {
+                          return SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.0, 0.5),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: FadeTransition(opacity: animation, child: child),
+                          );
+                        },
+                        child:
+                            walletState.isLoading
+                                ? const AppShimmer(
+                                  key: ValueKey('shimmer'),
+                                  width: 30,
+                                  height: 12,
+                                  borderRadius: 6,
+                                )
+                                : Text(
+                                  '${walletState.balance}',
+                                  key: ValueKey(walletState.balance),
+                                  style: const TextStyle(
+                                    color: Color(0xFF8A6300),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.stars_rounded,
-                    size: 16,
-                    color: AppColors.gold,
-                  ),
-                  const SizedBox(width: 4),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (
-                      Widget child,
-                      Animation<double> animation,
-                    ) {
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.0, 0.5),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: FadeTransition(opacity: animation, child: child),
-                      );
-                    },
-                    child:
-                        wallet.isLoading
-                            ? const AppShimmer(
-                              key: ValueKey('shimmer'),
-                              width: 30,
-                              height: 12,
-                              borderRadius: 6,
-                            )
-                            : Text(
-                              '${wallet.balance ?? 0}',
-                              key: ValueKey(wallet.balance ?? 0),
-                              style: const TextStyle(
-                                color: Color(0xFF8A6300),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

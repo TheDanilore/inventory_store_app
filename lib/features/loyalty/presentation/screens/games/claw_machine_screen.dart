@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/loyalty/presentation/providers/wallet_provider.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
 import 'package:vibration/vibration.dart';
 
 // Clase auxiliar para definir los premios en el fondo de la máquina
@@ -212,11 +212,7 @@ class _ClawMachineScreenState extends State<ClawMachineScreen> {
         return;
       }
       try {
-        await context.read<WalletProvider>().processGameReward(
-          points: pointsEarned,
-          movementType: 'MINI_GAME_CLAW',
-          description: 'Máquina de Garra: Ganó $pointsEarned monedas',
-        );
+        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_CLAW', pointsEarned, 'Máquina de Garra: Ganó $pointsEarned monedas');
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -487,3 +483,4 @@ class _ClawMachineScreenState extends State<ClawMachineScreen> {
     );
   }
 }
+
