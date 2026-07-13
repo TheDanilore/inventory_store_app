@@ -3,7 +3,8 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/ingredients_repository.dart';
 
 class SaveProductPayload {
   final ProductEntity product;
@@ -83,9 +84,10 @@ class IngredientPayload {
 
 @lazySingleton
 class SaveProductUseCase {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
+  final IngredientsRepository ingredientsRepository;
 
-  SaveProductUseCase(this.repository);
+  SaveProductUseCase(this.repository, this.ingredientsRepository);
 
   Future<T> _unwrap<T>(Future<Either<Failure, T>> future) async {
     final res = await future;
@@ -221,7 +223,7 @@ class SaveProductUseCase {
 
       // Ingredientes
       if (payload.ingredientsEnabled) {
-        await _unwrap(repository.clearProductIngredients(productId));
+        await _unwrap(ingredientsRepository.clearProductIngredients(productId));
 
         for (final ing in payload.ingredients) {
           final ingPayload = {
@@ -230,10 +232,10 @@ class SaveProductUseCase {
             'concentration': ing.concentration,
             'unit': ing.unit,
           };
-          await _unwrap(repository.insertProductIngredient(ingPayload));
+          await _unwrap(ingredientsRepository.insertProductIngredient(ingPayload));
         }
       } else {
-        await _unwrap(repository.clearProductIngredients(productId));
+        await _unwrap(ingredientsRepository.clearProductIngredients(productId));
       }
 
       return right(null);

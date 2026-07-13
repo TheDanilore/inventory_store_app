@@ -1,33 +1,12 @@
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 
-abstract class CatalogRepository {
-  // Categorías
-  Future<Either<Failure, CategoryEntity>> createCategory({
-    required String name,
-    String? description,
-    required bool isActive,
-    String? profileId,
-  });
-  Future<Either<Failure, void>> updateCategory({
-    required String id,
-    required String name,
-    String? description,
-    required bool isActive,
-    String? profileId,
-  });
-  Future<Either<Failure, void>> deleteCategory(String id);
-  Future<Either<Failure, List<CategoryEntity>>> getCategories({
-    bool activeOnly = false,
-  });
-
+abstract class ProductsRepository {
   // Productos (Lectura)
   Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>>
   getProducts({
@@ -57,7 +36,7 @@ abstract class CatalogRepository {
     String productId,
   );
 
-  // Atributos y Componentes Activos
+  // Atributos
   Future<Either<Failure, Map<String, dynamic>>> createAttribute(String name);
   Future<Either<Failure, void>> updateAttribute(String id, String name);
   Future<Either<Failure, void>> deleteAttribute(String id);
@@ -71,20 +50,6 @@ abstract class CatalogRepository {
   );
   Future<Either<Failure, void>> deleteAttributeValue(String valueId);
   Future<Either<Failure, List<Map<String, dynamic>>>> getAttributes();
-  Future<Either<Failure, List<Map<String, dynamic>>>> getProductIngredients(
-    String productId,
-  );
-  Future<Either<Failure, List<ActiveIngredientEntity>>> searchIngredients(
-    String term,
-  );
-  Future<Either<Failure, ActiveIngredientEntity>> createIngredient(String name);
-  Future<Either<Failure, void>> updateIngredient(String id, String name);
-  Future<Either<Failure, void>> deleteIngredient(String id);
-  Future<Either<Failure, List<ActiveIngredientEntity>>> getIngredients({
-    String? searchQuery,
-    int limit = 20,
-    int offset = 0,
-  });
 
   // Imágenes
   Future<Either<Failure, List<ProductImageEntity>>> getProductImages(
@@ -104,10 +69,6 @@ abstract class CatalogRepository {
   Future<Either<Failure, void>> deactivateVariant(String variantId);
   Future<Either<Failure, bool>> hasVariantSales(String variantId);
   Future<Either<Failure, void>> clearVariantImages(String variantId);
-  Future<Either<Failure, void>> clearProductIngredients(String productId);
-  Future<Either<Failure, void>> insertProductIngredient(
-    Map<String, dynamic> payload,
-  );
 
   // Mutaciones complejas
   Future<Either<Failure, String>> saveProductMaster(
@@ -167,9 +128,4 @@ abstract class CatalogRepository {
     String profileId,
   );
   Future<Either<Failure, void>> clearCache();
-
-  // Historial de búsqueda (capa de datos — SharedPreferences en repositorio)
-  Future<List<String>> getSearchHistory();
-  Future<void> saveSearchHistory(List<String> history);
-  Future<void> clearSearchHistory();
 }

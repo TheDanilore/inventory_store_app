@@ -1,11 +1,11 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
 @lazySingleton
 class CreateAttributeUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   CreateAttributeUC(this.repository);
   Future<Either<Failure, Map<String, dynamic>>> call(String name) async {
     return await repository.createAttribute(name);
@@ -14,7 +14,7 @@ class CreateAttributeUC {
 
 @lazySingleton
 class UpdateAttributeUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   UpdateAttributeUC(this.repository);
   Future<Either<Failure, void>> call(String id, String name) async {
     return await repository.updateAttribute(id, name);
@@ -23,7 +23,7 @@ class UpdateAttributeUC {
 
 @lazySingleton
 class DeleteAttributeUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   DeleteAttributeUC(this.repository);
   Future<Either<Failure, void>> call(String id) async {
     return await repository.deleteAttribute(id);
@@ -32,7 +32,7 @@ class DeleteAttributeUC {
 
 @lazySingleton
 class CreateAttributeValueUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   CreateAttributeValueUC(this.repository);
   Future<Either<Failure, Map<String, dynamic>>> call(
     String attributeId,
@@ -44,7 +44,7 @@ class CreateAttributeValueUC {
 
 @lazySingleton
 class UpdateAttributeValueUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   UpdateAttributeValueUC(this.repository);
   Future<Either<Failure, void>> call(String valueId, String value) async {
     return await repository.updateAttributeValue(valueId, value);
@@ -53,7 +53,7 @@ class UpdateAttributeValueUC {
 
 @lazySingleton
 class DeleteAttributeValueUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   DeleteAttributeValueUC(this.repository);
   Future<Either<Failure, void>> call(String valueId) async {
     return await repository.deleteAttributeValue(valueId);

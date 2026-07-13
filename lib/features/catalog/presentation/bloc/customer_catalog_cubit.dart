@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_search_repository.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_products_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_stock_uc.dart';
@@ -17,7 +17,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
 
   /// Repositorio inyectado únicamente para las operaciones de historial de búsqueda.
   /// SharedPreferences permanece en la capa de datos — no en el Cubit.
-  final CatalogRepository _catalogRepository;
+  final CatalogSearchRepository _catalogRepository;
 
   static const int _pageSize = 24;
 
@@ -25,7 +25,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
     required this.getCategoriesUC,
     required this.getProductsUC,
     required this.getProductStockUC,
-    required CatalogRepository catalogRepository,
+    required CatalogSearchRepository catalogRepository,
   })  : _catalogRepository = catalogRepository,
         super(const CustomerCatalogState());
 

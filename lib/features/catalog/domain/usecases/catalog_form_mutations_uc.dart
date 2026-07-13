@@ -2,12 +2,12 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 
 @lazySingleton
 class SaveProductMasterUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   SaveProductMasterUC(this.repository);
 
   Future<Either<Failure, String>> call(
@@ -20,7 +20,7 @@ class SaveProductMasterUC {
 
 @lazySingleton
 class CatalogFormMutationsUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   final GetCurrentProfileIdUseCase getProfileId;
 
   CatalogFormMutationsUC(this.repository, this.getProfileId);
@@ -44,7 +44,7 @@ class CatalogFormMutationsUC {
 
 @lazySingleton
 class SaveVariantUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   final GetCurrentProfileIdUseCase getProfileId;
   SaveVariantUC(this.repository, this.getProfileId);
 
@@ -67,7 +67,7 @@ class SaveVariantUC {
 
 @lazySingleton
 class SaveVariantAttributesUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   SaveVariantAttributesUC(this.repository);
 
   Future<Either<Failure, void>> call(
@@ -80,7 +80,7 @@ class SaveVariantAttributesUC {
 
 @lazySingleton
 class GetFirstVariantIdUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   GetFirstVariantIdUC(this.repository);
 
   Future<Either<Failure, String?>> call(String productId) {
@@ -90,7 +90,7 @@ class GetFirstVariantIdUC {
 
 @lazySingleton
 class SetProductActiveUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   SetProductActiveUC(this.repository);
 
   Future<Either<Failure, void>> call(String productId, bool isActive) {
@@ -103,7 +103,7 @@ class SetProductActiveUC {
 
 @lazySingleton
 class ClearCatalogCacheUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
   ClearCatalogCacheUC(this.repository);
 
   Future<void> call() {

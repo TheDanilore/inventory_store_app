@@ -10,7 +10,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CartVariantPickerSheet extends StatefulWidget {
@@ -36,7 +36,7 @@ class CartVariantPickerSheet extends StatefulWidget {
 }
 
 class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
-  final _service = sl<CatalogRepository>();
+  final _service = sl<ProductsRepository>();
   bool _isLoading = true;
   List<ProductVariantEntity> _variants = [];
   Map<String, int> _stockByVariant = {};

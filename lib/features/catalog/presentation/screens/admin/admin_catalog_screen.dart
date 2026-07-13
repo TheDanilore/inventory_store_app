@@ -476,20 +476,17 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           onPageChanged: cubit.setPage,
                           onSale: widget.onAddToCart ??
                               (product) {
-                                showDialog(
+                                showModalBottomSheet(
                                   context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
                                   builder:
-                                      (_) => Dialog(
-                                        backgroundColor: Colors.transparent,
-                                        insetPadding: const EdgeInsets.all(24),
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                            maxWidth: 500,
-                                            maxHeight: 750,
-                                          ),
-                                          child: PosAddToCartSheet(
-                                            productEntity: product,
-                                          ),
+                                      (_) => Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: MediaQuery.of(context).viewInsets.bottom,
+                                        ),
+                                        child: PosAddToCartSheet(
+                                          productEntity: product,
                                         ),
                                       ),
                                 );

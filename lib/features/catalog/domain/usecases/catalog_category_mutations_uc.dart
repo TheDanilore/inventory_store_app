@@ -2,12 +2,12 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/categories_repository.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 
 @lazySingleton
 class CreateCategoryUC {
-  final CatalogRepository repository;
+  final CategoriesRepository repository;
   final GetCurrentProfileIdUseCase getProfileId;
   CreateCategoryUC(this.repository, this.getProfileId);
   Future<Either<Failure, CategoryEntity>> call({
@@ -29,7 +29,7 @@ class CreateCategoryUC {
 
 @lazySingleton
 class UpdateCategoryUC {
-  final CatalogRepository repository;
+  final CategoriesRepository repository;
   final GetCurrentProfileIdUseCase getProfileId;
   UpdateCategoryUC(this.repository, this.getProfileId);
   Future<Either<Failure, void>> call({
@@ -53,7 +53,7 @@ class UpdateCategoryUC {
 
 @lazySingleton
 class DeleteCategoryUC {
-  final CatalogRepository repository;
+  final CategoriesRepository repository;
   DeleteCategoryUC(this.repository);
   Future<Either<Failure, void>> call(String id) async {
     return await repository.deleteCategory(id);

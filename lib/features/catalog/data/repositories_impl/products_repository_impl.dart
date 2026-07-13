@@ -1,58 +1,28 @@
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
-import 'package:inventory_store_app/features/catalog/data/models/category_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/active_ingredient_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
-@LazySingleton(as: CatalogRepository)
-class CatalogRepositoryImpl implements CatalogRepository {
+@LazySingleton(as: ProductsRepository)
+class ProductsRepositoryImpl implements ProductsRepository {
   final SupabaseClient _supabase;
 
-  CatalogRepositoryImpl(this._supabase);
+  ProductsRepositoryImpl(this._supabase);
 
-  // Helper para manejar excepciones repetitivas
   Either<Failure, T> _handleError<T>(Object e) {
     if (e is PostgrestException) {
       return left(Failure.from('Error de BD: '));
     }
     return left(Failure.from('Ocurrió un error inesperado: '));
-  }
-
-  @override
-  Future<Either<Failure, List<CategoryEntity>>> getCategories({
-    bool activeOnly = false,
-  }) async {
-    try {
-      var query = _supabase
-          .from('categories')
-          .select(
-            'id, name, description, is_active, created_at, products:products(count)',
-          );
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
-      final response = await query.order('name');
-      final models =
-          List<Map<String, dynamic>>.from(
-            response,
-          ).map(CategoryModel.fromJson).toList();
-      return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
-    }
   }
 
   @override
@@ -243,6 +213,90 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
+  Future<Either<Failure, Map<String, dynamic>>> createAttribute(
+    String name,
+  ) async {
+    try {
+      final res =
+          await _supabase
+              .from('attributes')
+              .insert({'name': name.trim()})
+              .select()
+              .single();
+      return right(res);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateAttribute(String id, String name) async {
+    try {
+      await _supabase
+          .from('attributes')
+          .update({'name': name.trim()})
+          .eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteAttribute(String id) async {
+    try {
+      await _supabase.from('attributes').delete().eq('id', id);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(
+    String attributeId,
+    String value,
+  ) async {
+    try {
+      final res =
+          await _supabase
+              .from('attribute_values')
+              .insert({'attribute_id': attributeId, 'value': value.trim()})
+              .select()
+              .single();
+      return right(res);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateAttributeValue(
+    String valueId,
+    String value,
+  ) async {
+    try {
+      await _supabase
+          .from('attribute_values')
+          .update({'value': value.trim()})
+          .eq('id', valueId);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteAttributeValue(String valueId) async {
+    try {
+      await _supabase.from('attribute_values').delete().eq('id', valueId);
+      return right(null);
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  @override
   Future<Either<Failure, List<Map<String, dynamic>>>> getAttributes() async {
     try {
       final response = await _supabase
@@ -250,59 +304,6 @@ class CatalogRepositoryImpl implements CatalogRepository {
           .select('id, name, attribute_values(id, value)')
           .order('name');
       return right(List<Map<String, dynamic>>.from(response));
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getProductIngredients(
-    String productId,
-  ) async {
-    try {
-      final response = await _supabase
-          .from('product_active_ingredients')
-          .select(
-            'ingredient_id, concentration, unit, active_ingredients(name)',
-          )
-          .eq('product_id', productId);
-      return right(List<Map<String, dynamic>>.from(response));
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<ActiveIngredientEntity>>> searchIngredients(
-    String term,
-  ) async {
-    try {
-      final response = await _supabase.rpc(
-        'search_ingredients_unaccent',
-        params: {'search_term': term},
-      );
-      final models =
-          List<Map<String, dynamic>>.from(
-            response,
-          ).map(ActiveIngredientModel.fromJson).toList();
-      return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, ActiveIngredientEntity>> createIngredient(
-    String name,
-  ) async {
-    try {
-      final response =
-          await _supabase
-              .from('active_ingredients')
-              .insert({'name': name.trim()})
-              .select()
-              .single();
-      return right(ActiveIngredientModel.fromJson(response).toEntity());
     } catch (e) {
       return _handleError(e);
     }
@@ -422,243 +423,6 @@ class CatalogRepositoryImpl implements CatalogRepository {
           .update({'variant_id': null})
           .eq('variant_id', variantId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> clearProductIngredients(
-    String productId,
-  ) async {
-    try {
-      await _supabase
-          .from('product_active_ingredients')
-          .delete()
-          .eq('product_id', productId);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> insertProductIngredient(
-    Map<String, dynamic> payload,
-  ) async {
-    try {
-      await _supabase.from('product_active_ingredients').insert(payload);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, bool>> checkWishlistState(
-    String productId,
-    String profileId,
-  ) async {
-    try {
-      final res =
-          await _supabase
-              .from('wishlist_items')
-              .select('id')
-              .eq('profile_id', profileId)
-              .eq('product_id', productId)
-              .maybeSingle();
-      return right(res != null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, CategoryEntity>> createCategory({
-    required String name,
-    String? description,
-    required bool isActive,
-    String? profileId,
-  }) async {
-    try {
-      final response =
-          await _supabase
-              .from('categories')
-              .insert({
-                'name': name.trim(),
-                'description': description?.trim(),
-                'is_active': isActive,
-                if (profileId != null) 'created_by': profileId,
-              })
-              .select()
-              .single();
-      final model = CategoryModel.fromJson(response);
-      return right(model.toEntity());
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> updateCategory({
-    required String id,
-    required String name,
-    String? description,
-    required bool isActive,
-    String? profileId,
-  }) async {
-    try {
-      await _supabase
-          .from('categories')
-          .update({
-            'name': name.trim(),
-            'description': description?.trim(),
-            'is_active': isActive,
-            if (profileId != null) 'updated_by': profileId,
-          })
-          .eq('id', id);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteCategory(String id) async {
-    try {
-      await _supabase.from('categories').delete().eq('id', id);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, Map<String, dynamic>>> createAttribute(
-    String name,
-  ) async {
-    try {
-      final res =
-          await _supabase
-              .from('attributes')
-              .insert({'name': name.trim()})
-              .select()
-              .single();
-      return right(res);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> updateAttribute(String id, String name) async {
-    try {
-      await _supabase
-          .from('attributes')
-          .update({'name': name.trim()})
-          .eq('id', id);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteAttribute(String id) async {
-    try {
-      await _supabase.from('attributes').delete().eq('id', id);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, Map<String, dynamic>>> createAttributeValue(
-    String attributeId,
-    String value,
-  ) async {
-    try {
-      final res =
-          await _supabase
-              .from('attribute_values')
-              .insert({'attribute_id': attributeId, 'value': value.trim()})
-              .select()
-              .single();
-      return right(res);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> updateAttributeValue(
-    String valueId,
-    String value,
-  ) async {
-    try {
-      await _supabase
-          .from('attribute_values')
-          .update({'value': value.trim()})
-          .eq('id', valueId);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteAttributeValue(String valueId) async {
-    try {
-      await _supabase.from('attribute_values').delete().eq('id', valueId);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> updateIngredient(String id, String name) async {
-    try {
-      await _supabase
-          .from('active_ingredients')
-          .update({'name': name.trim()})
-          .eq('id', id);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteIngredient(String id) async {
-    try {
-      await _supabase.from('active_ingredients').delete().eq('id', id);
-      return right(null);
-    } catch (e) {
-      return _handleError(e);
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<ActiveIngredientEntity>>> getIngredients({
-    String? searchQuery,
-    int limit = 20,
-    int offset = 0,
-  }) async {
-    try {
-      var query = _supabase.from('active_ingredients').select();
-      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-        query = query.ilike('name', '%%');
-      }
-      final response = await query
-          .order('name')
-          .range(offset, offset + limit - 1);
-      final models =
-          List<Map<String, dynamic>>.from(
-            response,
-          ).map(ActiveIngredientModel.fromJson).toList();
-      return right(models.map((m) => m.toEntity()).toList());
     } catch (e) {
       return _handleError(e);
     }
@@ -943,7 +707,6 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
-  @override
   Future<Either<Failure, Map<String, int>>> loadStockByVariant(
     String productId,
   ) async {
@@ -1033,37 +796,26 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }
 
   @override
-  Future<Either<Failure, void>> clearCache() async {
-    return right(null);
-  }
-
-  // ── Historial de búsqueda (SharedPreferences — infraestructura correcta) ─────
-
-  static const String _searchHistoryKey = 'catalog_search_history';
-
-  @override
-  Future<List<String>> getSearchHistory() async {
+  Future<Either<Failure, bool>> checkWishlistState(
+    String productId,
+    String profileId,
+  ) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getStringList(_searchHistoryKey) ?? [];
-    } catch (_) {
-      return [];
+      final res =
+          await _supabase
+              .from('wishlist_items')
+              .select('id')
+              .eq('profile_id', profileId)
+              .eq('product_id', productId)
+              .maybeSingle();
+      return right(res != null);
+    } catch (e) {
+      return _handleError(e);
     }
   }
 
   @override
-  Future<void> saveSearchHistory(List<String> history) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_searchHistoryKey, history);
-    } catch (_) {}
-  }
-
-  @override
-  Future<void> clearSearchHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_searchHistoryKey);
-    } catch (_) {}
+  Future<Either<Failure, void>> clearCache() async {
+    return right(null);
   }
 }

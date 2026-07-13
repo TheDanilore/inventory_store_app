@@ -44,10 +44,22 @@ import '../../features/auth/domain/usecases/register_uc.dart' as _i182;
 import '../../features/auth/domain/usecases/reset_password_uc.dart' as _i878;
 import '../../features/auth/domain/usecases/update_profile_uc.dart' as _i282;
 import '../../features/auth/presentation/bloc/auth_cubit.dart' as _i52;
-import '../../features/catalog/data/repositories_impl/catalog_repository_impl.dart'
-    as _i524;
-import '../../features/catalog/domain/repositories/catalog_repository.dart'
+import '../../features/catalog/data/repositories_impl/catalog_search_repository_impl.dart'
+    as _i930;
+import '../../features/catalog/data/repositories_impl/categories_repository_impl.dart'
+    as _i208;
+import '../../features/catalog/data/repositories_impl/ingredients_repository_impl.dart'
+    as _i475;
+import '../../features/catalog/data/repositories_impl/products_repository_impl.dart'
+    as _i215;
+import '../../features/catalog/domain/repositories/catalog_search_repository.dart'
+    as _i540;
+import '../../features/catalog/domain/repositories/categories_repository.dart'
     as _i1018;
+import '../../features/catalog/domain/repositories/ingredients_repository.dart'
+    as _i850;
+import '../../features/catalog/domain/repositories/products_repository.dart'
+    as _i570;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_category_mutations_uc.dart'
@@ -73,7 +85,7 @@ import '../../features/catalog/domain/usecases/export_product_pdf_usecase.dart'
 import '../../features/catalog/domain/usecases/get_active_products_and_variants_uc.dart'
     as _i753;
 import '../../features/catalog/domain/usecases/get_admin_financial_data_usecase.dart'
-    as _i712;
+    as _i713;
 import '../../features/catalog/domain/usecases/get_attributes_uc.dart' as _i487;
 import '../../features/catalog/domain/usecases/get_categories_uc.dart' as _i700;
 import '../../features/catalog/domain/usecases/get_current_profile_id_usecase.dart'
@@ -251,7 +263,7 @@ import '../../features/inventory/presentation/bloc/inventory_exit_form_cubit.dar
     as _i962;
 import '../../features/inventory/presentation/bloc/inventory_exits_cubit.dart'
     as _i5;
-import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i713;
+import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i712;
 import '../../features/inventory/presentation/bloc/warehouses_cubit.dart'
     as _i926;
 import '../../features/purchases/domain/usecases/get_active_suppliers_uc.dart'
@@ -290,8 +302,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i662.FinancialAccountsRepository>(
       () => _i599.FinancialAccountsRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
+    gh.lazySingleton<_i850.IngredientsRepository>(
+      () => _i475.IngredientsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i422.InventoryRepository>(
       () => _i1035.InventoryRepositoryImpl(),
+    );
+    gh.lazySingleton<_i540.CatalogSearchRepository>(
+      () => _i930.CatalogSearchRepositoryImpl(),
     );
     gh.lazySingleton<_i74.InventoryEntriesRepository>(
       () => _i176.InventoryEntriesRepositoryImpl(),
@@ -314,8 +332,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i317.WarehousesRepository>(
       () => _i237.WarehousesRepositoryImpl(),
     );
-    gh.lazySingleton<_i1018.CatalogRepository>(
-      () => _i524.CatalogRepositoryImpl(gh<_i454.SupabaseClient>()),
+    gh.lazySingleton<_i1018.CategoriesRepository>(
+      () => _i208.CategoriesRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i110.DeleteCategoryUC>(
+      () => _i110.DeleteCategoryUC(gh<_i1018.CategoriesRepository>()),
+    );
+    gh.lazySingleton<_i700.GetCategoriesUC>(
+      () => _i700.GetCategoriesUC(gh<_i1018.CategoriesRepository>()),
     );
     gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
       () =>
@@ -345,6 +369,36 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i557.CustomerLocationsRepository>(
       () => _i429.CustomerLocationsRepositoryImpl(),
     );
+    gh.lazySingleton<_i538.UpdateIngredientUC>(
+      () => _i538.UpdateIngredientUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i538.DeleteIngredientUC>(
+      () => _i538.DeleteIngredientUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i538.GetIngredientsUC>(
+      () => _i538.GetIngredientsUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i597.GetProductIngredientsUC>(
+      () => _i597.GetProductIngredientsUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i597.SearchIngredientsUC>(
+      () => _i597.SearchIngredientsUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i597.CreateIngredientUC>(
+      () => _i597.CreateIngredientUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i597.ClearProductIngredientsUC>(
+      () => _i597.ClearProductIngredientsUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i597.InsertProductIngredientUC>(
+      () => _i597.InsertProductIngredientUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i498.CreateIngredientUC>(
+      () => _i498.CreateIngredientUC(gh<_i850.IngredientsRepository>()),
+    );
+    gh.lazySingleton<_i570.ProductsRepository>(
+      () => _i215.ProductsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i4.CustomerCreditsRepository>(
       () => _i922.CustomerCreditsRepositoryImpl(),
     );
@@ -369,135 +423,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i407.GetSalesMetricsUseCase>(
       () => _i407.GetSalesMetricsUseCase(gh<_i665.DashboardRepository>()),
-    );
-    gh.lazySingleton<_i382.CreateAttributeUC>(
-      () => _i382.CreateAttributeUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i382.UpdateAttributeUC>(
-      () => _i382.UpdateAttributeUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i382.DeleteAttributeUC>(
-      () => _i382.DeleteAttributeUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i382.CreateAttributeValueUC>(
-      () => _i382.CreateAttributeValueUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i382.UpdateAttributeValueUC>(
-      () => _i382.UpdateAttributeValueUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i382.DeleteAttributeValueUC>(
-      () => _i382.DeleteAttributeValueUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i110.DeleteCategoryUC>(
-      () => _i110.DeleteCategoryUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1067.SaveProductMasterUC>(
-      () => _i1067.SaveProductMasterUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1067.SaveVariantAttributesUC>(
-      () => _i1067.SaveVariantAttributesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1067.GetFirstVariantIdUC>(
-      () => _i1067.GetFirstVariantIdUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1067.SetProductActiveUC>(
-      () => _i1067.SetProductActiveUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1067.ClearCatalogCacheUC>(
-      () => _i1067.ClearCatalogCacheUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1014.GetProductImagesUC>(
-      () => _i1014.GetProductImagesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1014.UploadImageToStorageUC>(
-      () => _i1014.UploadImageToStorageUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1014.DeleteProductImageUC>(
-      () => _i1014.DeleteProductImageUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1014.SyncProductImagesUC>(
-      () => _i1014.SyncProductImagesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1014.ClearVariantImagesUC>(
-      () => _i1014.ClearVariantImagesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i538.UpdateIngredientUC>(
-      () => _i538.UpdateIngredientUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i538.DeleteIngredientUC>(
-      () => _i538.DeleteIngredientUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i538.GetIngredientsUC>(
-      () => _i538.GetIngredientsUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i597.GetAttributesUC>(
-      () => _i597.GetAttributesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i597.GetProductIngredientsUC>(
-      () => _i597.GetProductIngredientsUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i597.SearchIngredientsUC>(
-      () => _i597.SearchIngredientsUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i597.CreateIngredientUC>(
-      () => _i597.CreateIngredientUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i597.ClearProductIngredientsUC>(
-      () => _i597.ClearProductIngredientsUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i597.InsertProductIngredientUC>(
-      () => _i597.InsertProductIngredientUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i929.GetVariantByIdUC>(
-      () => _i929.GetVariantByIdUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i929.GetStockByVariantUC>(
-      () => _i929.GetStockByVariantUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i929.GetVariantsDraftsUC>(
-      () => _i929.GetVariantsDraftsUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i929.DeleteVariantUC>(
-      () => _i929.DeleteVariantUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i929.DeactivateVariantUC>(
-      () => _i929.DeactivateVariantUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i929.HasVariantSalesUC>(
-      () => _i929.HasVariantSalesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i44.CheckWishlistStateUseCase>(
-      () => _i44.CheckWishlistStateUseCase(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i498.CreateIngredientUC>(
-      () => _i498.CreateIngredientUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i712.GetAdminFinancialDataUseCase>(
-      () => _i712.GetAdminFinancialDataUseCase(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i487.GetAttributesUC>(
-      () => _i487.GetAttributesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i700.GetCategoriesUC>(
-      () => _i700.GetCategoriesUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i567.GetProductByIdUC>(
-      () => _i567.GetProductByIdUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i338.GetProductExtraDataUseCase>(
-      () => _i338.GetProductExtraDataUseCase(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i958.GetProductStockUC>(
-      () => _i958.GetProductStockUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i222.GetProductsUC>(
-      () => _i222.GetProductsUC(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i1064.SaveProductUseCase>(
-      () => _i1064.SaveProductUseCase(gh<_i1018.CatalogRepository>()),
-    );
-    gh.lazySingleton<_i839.ToggleWishlistUseCase>(
-      () => _i839.ToggleWishlistUseCase(gh<_i1018.CatalogRepository>()),
     );
     gh.lazySingleton<_i36.GetCustomersUseCase>(
       () => _i36.GetCustomersUseCase(gh<_i875.CustomersRepository>()),
@@ -543,6 +468,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i94.GetInventoryEntriesUseCase>(
       () => _i94.GetInventoryEntriesUseCase(
         gh<_i74.InventoryEntriesRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i1064.SaveProductUseCase>(
+      () => _i1064.SaveProductUseCase(
+        gh<_i570.ProductsRepository>(),
+        gh<_i850.IngredientsRepository>(),
       ),
     );
     gh.factory<_i876.ExportKardexPdfUseCase>(
@@ -742,17 +673,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i580.RegisterCreditPaymentUseCase>(),
       ),
     );
-    gh.factory<_i919.AttributesCubit>(
-      () => _i919.AttributesCubit(
-        getAttributesUC: gh<_i487.GetAttributesUC>(),
-        createAttributeUC: gh<_i382.CreateAttributeUC>(),
-        updateAttributeUC: gh<_i382.UpdateAttributeUC>(),
-        deleteAttributeUC: gh<_i382.DeleteAttributeUC>(),
-        createAttributeValueUC: gh<_i382.CreateAttributeValueUC>(),
-        updateAttributeValueUC: gh<_i382.UpdateAttributeValueUC>(),
-        deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
-      ),
-    );
     gh.factory<_i811.GetAccountMovementsUseCase>(
       () => _i811.GetAccountMovementsUseCase(
         gh<_i561.AccountMovementsRepository>(),
@@ -790,19 +710,101 @@ extension GetItInjectableX on _i174.GetIt {
         getCurrentUser: gh<_i813.GetCurrentUserUseCase>(),
       ),
     );
-    gh.factory<_i713.KardexCubit>(
-      () => _i713.KardexCubit(
+    gh.factory<_i712.KardexCubit>(
+      () => _i712.KardexCubit(
         getKardexMovements: gh<_i392.GetKardexMovementsUseCase>(),
         exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),
       ),
     );
-    gh.factory<_i161.CustomerCatalogCubit>(
-      () => _i161.CustomerCatalogCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        getProductsUC: gh<_i222.GetProductsUC>(),
-        getProductStockUC: gh<_i958.GetProductStockUC>(),
-        catalogRepository: gh<_i1018.CatalogRepository>(),
-      ),
+    gh.lazySingleton<_i382.CreateAttributeUC>(
+      () => _i382.CreateAttributeUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i382.UpdateAttributeUC>(
+      () => _i382.UpdateAttributeUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i382.DeleteAttributeUC>(
+      () => _i382.DeleteAttributeUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i382.CreateAttributeValueUC>(
+      () => _i382.CreateAttributeValueUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i382.UpdateAttributeValueUC>(
+      () => _i382.UpdateAttributeValueUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i382.DeleteAttributeValueUC>(
+      () => _i382.DeleteAttributeValueUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1067.SaveProductMasterUC>(
+      () => _i1067.SaveProductMasterUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1067.SaveVariantAttributesUC>(
+      () => _i1067.SaveVariantAttributesUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1067.GetFirstVariantIdUC>(
+      () => _i1067.GetFirstVariantIdUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1067.SetProductActiveUC>(
+      () => _i1067.SetProductActiveUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1067.ClearCatalogCacheUC>(
+      () => _i1067.ClearCatalogCacheUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1014.GetProductImagesUC>(
+      () => _i1014.GetProductImagesUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1014.UploadImageToStorageUC>(
+      () => _i1014.UploadImageToStorageUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1014.DeleteProductImageUC>(
+      () => _i1014.DeleteProductImageUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1014.SyncProductImagesUC>(
+      () => _i1014.SyncProductImagesUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i1014.ClearVariantImagesUC>(
+      () => _i1014.ClearVariantImagesUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i929.GetVariantByIdUC>(
+      () => _i929.GetVariantByIdUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i929.GetStockByVariantUC>(
+      () => _i929.GetStockByVariantUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i929.GetVariantsDraftsUC>(
+      () => _i929.GetVariantsDraftsUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i929.DeleteVariantUC>(
+      () => _i929.DeleteVariantUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i929.DeactivateVariantUC>(
+      () => _i929.DeactivateVariantUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i929.HasVariantSalesUC>(
+      () => _i929.HasVariantSalesUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i44.CheckWishlistStateUseCase>(
+      () => _i44.CheckWishlistStateUseCase(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i713.GetAdminFinancialDataUseCase>(
+      () => _i713.GetAdminFinancialDataUseCase(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i487.GetAttributesUC>(
+      () => _i487.GetAttributesUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i567.GetProductByIdUC>(
+      () => _i567.GetProductByIdUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i338.GetProductExtraDataUseCase>(
+      () => _i338.GetProductExtraDataUseCase(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i958.GetProductStockUC>(
+      () => _i958.GetProductStockUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i222.GetProductsUC>(
+      () => _i222.GetProductsUC(gh<_i570.ProductsRepository>()),
+    );
+    gh.lazySingleton<_i839.ToggleWishlistUseCase>(
+      () => _i839.ToggleWishlistUseCase(gh<_i570.ProductsRepository>()),
     );
     gh.factory<_i556.AppConfigCubit>(
       () => _i556.AppConfigCubit(
@@ -873,6 +875,18 @@ extension GetItInjectableX on _i174.GetIt {
         createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
       ),
     );
+    gh.lazySingleton<_i110.CreateCategoryUC>(
+      () => _i110.CreateCategoryUC(
+        gh<_i1018.CategoriesRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i110.UpdateCategoryUC>(
+      () => _i110.UpdateCategoryUC(
+        gh<_i1018.CategoriesRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
     gh.factory<_i777.InventoryCubit>(
       () => _i777.InventoryCubit(
         getGeneralStockMetrics: gh<_i226.GetGeneralStockMetricsUseCase>(),
@@ -887,6 +901,45 @@ extension GetItInjectableX on _i174.GetIt {
         getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
       ),
     );
+    gh.factory<_i919.AttributesCubit>(
+      () => _i919.AttributesCubit(
+        getAttributesUC: gh<_i487.GetAttributesUC>(),
+        createAttributeUC: gh<_i382.CreateAttributeUC>(),
+        updateAttributeUC: gh<_i382.UpdateAttributeUC>(),
+        deleteAttributeUC: gh<_i382.DeleteAttributeUC>(),
+        createAttributeValueUC: gh<_i382.CreateAttributeValueUC>(),
+        updateAttributeValueUC: gh<_i382.UpdateAttributeValueUC>(),
+        deleteAttributeValueUC: gh<_i382.DeleteAttributeValueUC>(),
+      ),
+    );
+    gh.factory<_i778.CategoriesCubit>(
+      () => _i778.CategoriesCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        createCategoryUC: gh<_i110.CreateCategoryUC>(),
+        updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
+        deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
+      ),
+    );
+    gh.lazySingleton<_i1067.CatalogFormMutationsUC>(
+      () => _i1067.CatalogFormMutationsUC(
+        gh<_i570.ProductsRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.lazySingleton<_i1067.SaveVariantUC>(
+      () => _i1067.SaveVariantUC(
+        gh<_i570.ProductsRepository>(),
+        gh<_i927.GetCurrentProfileIdUseCase>(),
+      ),
+    );
+    gh.factory<_i161.CustomerCatalogCubit>(
+      () => _i161.CustomerCatalogCubit(
+        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
+        getProductsUC: gh<_i222.GetProductsUC>(),
+        getProductStockUC: gh<_i958.GetProductStockUC>(),
+        catalogRepository: gh<_i540.CatalogSearchRepository>(),
+      ),
+    );
     gh.factory<_i17.CustomerWishlistCubit>(
       () => _i17.CustomerWishlistCubit(
         gh<_i927.GetCurrentProfileIdUseCase>(),
@@ -897,7 +950,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i711.ProductDetailCubit>(
       () => _i711.ProductDetailCubit(
         getExtraData: gh<_i338.GetProductExtraDataUseCase>(),
-        getAdminData: gh<_i712.GetAdminFinancialDataUseCase>(),
+        getAdminData: gh<_i713.GetAdminFinancialDataUseCase>(),
         checkWishlist: gh<_i44.CheckWishlistStateUseCase>(),
         toggleWishlist: gh<_i839.ToggleWishlistUseCase>(),
         getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
@@ -915,38 +968,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i929.HasVariantSalesUC>(),
         gh<_i927.GetCurrentProfileIdUseCase>(),
         gh<_i1064.SaveProductUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i110.CreateCategoryUC>(
-      () => _i110.CreateCategoryUC(
-        gh<_i1018.CatalogRepository>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i110.UpdateCategoryUC>(
-      () => _i110.UpdateCategoryUC(
-        gh<_i1018.CatalogRepository>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i1067.CatalogFormMutationsUC>(
-      () => _i1067.CatalogFormMutationsUC(
-        gh<_i1018.CatalogRepository>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i1067.SaveVariantUC>(
-      () => _i1067.SaveVariantUC(
-        gh<_i1018.CatalogRepository>(),
-        gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.factory<_i778.CategoriesCubit>(
-      () => _i778.CategoriesCubit(
-        getCategoriesUC: gh<_i700.GetCategoriesUC>(),
-        createCategoryUC: gh<_i110.CreateCategoryUC>(),
-        updateCategoryUC: gh<_i110.UpdateCategoryUC>(),
-        deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
       ),
     );
     return this;

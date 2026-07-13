@@ -2,11 +2,11 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/categories_repository.dart';
 
 @lazySingleton
 class GetCategoriesUC {
-  final CatalogRepository repository;
+  final CategoriesRepository repository;
 
   GetCategoriesUC(this.repository);
 

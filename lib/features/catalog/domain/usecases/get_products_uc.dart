@@ -2,11 +2,11 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
 @lazySingleton
 class GetProductsUC {
-  final CatalogRepository repository;
+  final ProductsRepository repository;
 
   GetProductsUC(this.repository);
 

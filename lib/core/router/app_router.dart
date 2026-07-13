@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 // Proveedores
@@ -119,7 +119,7 @@ class _ProductLoaderState extends State<_ProductLoader> {
   @override
   void initState() {
     super.initState();
-    _future = sl<CatalogRepository>()
+    _future = sl<ProductsRepository>()
         .getProductById(widget.productId)
         .then((res) => res.fold((l) => null, (r) => r));
   }

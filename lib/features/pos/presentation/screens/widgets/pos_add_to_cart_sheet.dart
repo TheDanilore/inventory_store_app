@@ -3,7 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
@@ -24,7 +24,7 @@ class PosAddToCartSheet extends StatefulWidget {
 
 class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
 
-  final _repo = sl<CatalogRepository>();
+  final _repo = sl<ProductsRepository>();
   bool _isLoading = true;
   List<ProductVariantEntity> _variants = [];
   final Map<String, int> _stockByVariant = {};

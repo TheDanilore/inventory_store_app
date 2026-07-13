@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/catalog_repository.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -55,7 +55,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
-      final repo = sl<CatalogRepository>();
+      final repo = sl<ProductsRepository>();
       final variantsMapRes = await repo.fetchVariantsByProductIds([product.id]);
         final variantsMap = variantsMapRes.fold((l) => <String, List<ProductVariantEntity>>{}, (r) => r);
       final variants = variantsMap[product.id] ?? [];
@@ -130,16 +130,16 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
     if (!mounted) return;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder:
-          (_) => Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 750),
-              child: PosAddToCartSheet(productEntity: product),
+          (_) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
+            child: PosAddToCartSheet(productEntity: product),
           ),
     );
   }
@@ -219,32 +219,45 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
             ],
           );
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 6, child: catalogContent),
-              Container(
-                width: 440,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(-3, 0),
-                    ),
-                  ],
+          final isDesktop = MediaQuery.of(context).size.width >= 800;
+
+          if (isDesktop) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 6, child: catalogContent),
+                Container(
+                  width: 440,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 10,
+                        offset: const Offset(-3, 0),
+                      ),
+                    ],
+                  ),
+                  child: DesktopPosPanel(
+                    onSaleCompleted: () {
+                      cubit.refreshProducts();
+                    },
+                  ),
                 ),
-                child: DesktopPosPanel(
-                  onSaleCompleted: () {
-                    cubit.refreshProducts();
-                  },
-                ),
-              ),
-            ],
-          );
+              ],
+            );
+          } else {
+            return catalogContent;
+          }
         },
       ),
+      floatingActionButton: MediaQuery.of(context).size.width >= 800 
+          ? null 
+          : FloatingActionButton.extended(
+              onPressed: () => context.push('/admin/pos-checkout'),
+              label: const Text('Ir a Caja'),
+              icon: const Icon(Icons.shopping_cart_checkout),
+            ),
     );
   }
 
