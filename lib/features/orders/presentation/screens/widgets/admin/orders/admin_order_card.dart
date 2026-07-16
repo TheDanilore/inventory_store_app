@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class AdminOrderCard extends StatelessWidget {
-  final OrderModel order;
+  final OrderEntity order;
   final bool isProcessing;
   final bool isGeneratingPDF;
   final bool isSelected;
   final bool isLoyaltyEnabled;
   final VoidCallback onTap;
-  final Function(OrderModel, String) onUpdateStatus;
+  final Function(OrderEntity, String) onUpdateStatus;
   final VoidCallback onPrint;
 
   const AdminOrderCard({
@@ -30,7 +30,7 @@ class AdminOrderCard extends StatelessWidget {
     final status = order.status;
     final date = (order.createdAt ?? DateTime.now()).toLocal();
     final dateString = DateFormat('dd MMM yyyy, hh:mm a').format(date);
-    final customerName = order.displayCustomerName;
+    final customerName = (order.customerName);
     final shortId = order.id.substring(0, 8).toUpperCase();
 
     final isCredit = order.paymentMethod == 'CRÉDITO';
@@ -225,7 +225,7 @@ class AdminOrderCard extends StatelessWidget {
                             ],
                           ),
 
-                          if (warehouseName.isNotEmpty) ...[
+                          if (warehouseName != null && warehouseName.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Row(
                               children: [

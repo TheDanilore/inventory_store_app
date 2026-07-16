@@ -1,6 +1,6 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -10,8 +10,9 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/orders/admin_order_card.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/orders_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_state.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -26,13 +27,13 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
-  OrderModel? _selectedOrder;
+  OrderEntity? _selectedOrder;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrdersProvider>().loadOrders(reset: true);
+      context.read<OrdersCubit>().loadOrders(reset: true);
     });
   }
 
@@ -47,16 +48,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
-        context.read<OrdersProvider>().setSearchQuery(value);
+        context.read<OrdersCubit>().setSearchQuery(value);
       }
     });
   }
 
   // â”€â”€â”€ GENERACIÃ“N DE TICKET PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  Future<void> _printOrderTicket(OrderModel order) async {
+  Future<void> _printOrderTicket(OrderEntity order) async {
     try {
-      await context.read<OrdersProvider>().generatePdfTicket(order);
+      await context.read<OrdersCubit>().generatePdfTicket(order);
     } catch (e) {
       if (mounted) {
         AppSnackbar.show(
@@ -70,8 +71,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   // â”€â”€â”€ ACTUALIZAR ESTADO DE PEDIDO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  Future<void> _updateOrderStatus(OrderModel order, String newStatus) async {
-    if (context.read<OrdersProvider>().isOrderProcessing(order.id)) return;
+  Future<void> _updateOrderStatus(OrderEntity order, String newStatus) async {
+    if (context.read<OrdersCubit>().state.isOrderProcessing(order.id)) return;
 
     // Aviso si el mÃ©todo de pago es "POR ACORDAR" al completar
     if (newStatus == 'COMPLETED' &&
@@ -91,7 +92,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (!mounted) return;
 
     try {
-      await context.read<OrdersProvider>().updateOrderStatus(order, newStatus);
+      await context.read<OrdersCubit>().updateOrderStatus(order, newStatus);
 
       if (mounted) {
         AppSnackbar.show(
@@ -114,7 +115,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  Future<bool?> _showConfirmDialog(OrderModel order, String newStatus) {
+  Future<bool?> _showConfirmDialog(OrderEntity order, String newStatus) {
     final isCompleting = newStatus == 'COMPLETED';
     final isCancelling = newStatus == 'CANCELLED';
     final isReturning = newStatus == 'RETURNED';
@@ -171,7 +172,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Cliente: ${order.displayCustomerName}',
+                  'Cliente: ${(order.customerName)}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
@@ -304,7 +305,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Future<void> _showOrderDetails(OrderModel order, bool isWide) async {
+  Future<void> _showOrderDetails(OrderEntity order, bool isWide) async {
     if (isWide) {
       setState(() {
         _selectedOrder = order;
@@ -326,20 +327,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ),
     );
     if (result == true) {
-      if (mounted) context.read<OrdersProvider>().loadOrders(background: true);
+      if (mounted) context.read<OrdersCubit>().loadOrders(background: true);
     }
   }
 
   void _onOrderEmbeddedPop(bool wasModified) {
     if (wasModified && mounted) {
-      context.read<OrdersProvider>().loadOrders(background: true);
+      context.read<OrdersCubit>().loadOrders(background: true);
     }
     setState(() {
       _selectedOrder = null;
     });
   }
 
-  Future<String?> _showPaymentMethodBottomSheet(OrderModel order) {
+  Future<String?> _showPaymentMethodBottomSheet(OrderEntity order) {
     final isWide = MediaQuery.of(context).size.width >= 800;
 
     final content = Column(
@@ -466,11 +467,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 800;
 
-          return Consumer<OrdersProvider>(
-            builder: (context, provider, _) {
+          return BlocBuilder<OrdersCubit, OrdersState>(
+            builder: (context, state) {
+              final cubit = context.read<OrdersCubit>();
               final content = CustomScrollView(
                 slivers: [
-                  if (provider.isBackgroundLoading)
+                  if (state.isBackgroundLoading)
                     const SliverToBoxAdapter(
                       child: LinearProgressIndicator(
                         color: AppColors.teal,
@@ -483,14 +485,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     delegate: _OrdersFiltersHeaderDelegate(
                       searchCtrl: _searchCtrl,
                       onSearchChanged: _onSearchChanged,
-                      provider: provider,
+                      cubit: cubit,
+                      state: state,
                       buildFilterChip: _buildFilterChip,
                     ),
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: _buildListSliver(
-                      provider,
+                      state,
+                      cubit,
                       isWide,
                       isLoyaltyEnabled,
                     ),
@@ -542,14 +546,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Widget _buildListSliver(
-    OrdersProvider provider,
+    OrdersState state,
+    OrdersCubit cubit,
     bool isWide,
     bool isLoyaltyEnabled,
   ) {
-    final totalPages = provider.totalPages;
-    final pageItems = provider.orders;
+    final totalPages = state.totalPages;
+    final pageItems = state.orders;
 
-    if (provider.isLoading) {
+    if (state.isLoading) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => const Padding(
@@ -561,13 +566,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
       );
     }
 
-    if (provider.errorMessage.isNotEmpty) {
+    if (state.errorMessage.isNotEmpty) {
       return SliverFillRemaining(
         child: AppEmptyState(
           icon: Icons.error_outline_rounded,
           color: Colors.red,
           title: 'OcurriÃ³ un error',
-          message: provider.errorMessage,
+          message: state.errorMessage,
         ),
       );
     }
@@ -599,7 +604,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
               const Spacer(),
               Text(
-                'PÃ¡g. ${provider.currentPage + 1} / $totalPages',
+                'PÃ¡g. ${state.currentPage + 1} / $totalPages',
                 style: TextStyle(
                   color: Colors.grey.shade600,
                   fontSize: 12,
@@ -615,8 +620,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           final isSelected = isWide && _selectedOrder?.id == order.id;
           return AdminOrderCard(
             order: order,
-            isProcessing: provider.isOrderProcessing(order.id),
-            isGeneratingPDF: provider.isGeneratingPDF(order.id),
+            isProcessing: cubit.state.isOrderProcessing(order.id),
+            isGeneratingPDF: state.isGeneratingPDF(order.id),
             isSelected: isSelected,
             isLoyaltyEnabled: isLoyaltyEnabled,
             onTap: () => _showOrderDetails(order, isWide),
@@ -630,9 +635,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             child: AdminPageBlocks(
-              currentPage: provider.currentPage,
+              currentPage: state.currentPage,
               totalPages: totalPages,
-              onPageChanged: provider.goToPage,
+              onPageChanged: cubit.goToPage,
             ),
           ),
       ]),
@@ -645,7 +650,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final TextEditingController searchCtrl;
   final Function(String) onSearchChanged;
-  final OrdersProvider provider;
+  final OrdersCubit cubit;
+  final OrdersState state;
   final Widget Function({
     required String label,
     required bool isSelected,
@@ -656,7 +662,8 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
   _OrdersFiltersHeaderDelegate({
     required this.searchCtrl,
     required this.onSearchChanged,
-    required this.provider,
+    required this.cubit,
+    required this.state,
     required this.buildFilterChip,
   });
 
@@ -698,7 +705,7 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                           ),
                           onPressed: () {
                             searchCtrl.clear();
-                            provider.setSearchQuery('');
+                            cubit.setSearchQuery('');
                           },
                         )
                         : null,
@@ -735,32 +742,32 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
               children: [
                 buildFilterChip(
                   label: 'Todos',
-                  isSelected: provider.statusFilter == 'ALL',
-                  onSelected: (_) => provider.setStatusFilter('ALL'),
+                  isSelected: state.statusFilter == 'ALL',
+                  onSelected: (_) => cubit.setStatusFilter('ALL'),
                 ),
                 const SizedBox(width: 8),
                 buildFilterChip(
                   label: 'Borradores',
-                  isSelected: provider.statusFilter == 'PENDING',
-                  onSelected: (_) => provider.setStatusFilter('PENDING'),
+                  isSelected: state.statusFilter == 'PENDING',
+                  onSelected: (_) => cubit.setStatusFilter('PENDING'),
                 ),
                 const SizedBox(width: 8),
                 buildFilterChip(
                   label: 'Completados',
-                  isSelected: provider.statusFilter == 'COMPLETED',
-                  onSelected: (_) => provider.setStatusFilter('COMPLETED'),
+                  isSelected: state.statusFilter == 'COMPLETED',
+                  onSelected: (_) => cubit.setStatusFilter('COMPLETED'),
                 ),
                 const SizedBox(width: 8),
                 buildFilterChip(
                   label: 'Cancelados',
-                  isSelected: provider.statusFilter == 'CANCELLED',
-                  onSelected: (_) => provider.setStatusFilter('CANCELLED'),
+                  isSelected: state.statusFilter == 'CANCELLED',
+                  onSelected: (_) => cubit.setStatusFilter('CANCELLED'),
                 ),
                 const SizedBox(width: 8),
                 buildFilterChip(
                   label: 'Devueltos',
-                  isSelected: provider.statusFilter == 'RETURNED',
-                  onSelected: (_) => provider.setStatusFilter('RETURNED'),
+                  isSelected: state.statusFilter == 'RETURNED',
+                  onSelected: (_) => cubit.setStatusFilter('RETURNED'),
                 ),
                 const SizedBox(width: 16),
                 Container(
@@ -772,13 +779,13 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                     border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: PopupMenuButton<String>(
-                    initialValue: provider.paymentStatusFilter,
+                    initialValue: state.paymentStatusFilter,
                     offset: const Offset(0, 45),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                     onSelected: (val) {
-                      provider.setPaymentStatusFilter(val);
+                      cubit.setPaymentStatusFilter(val);
                     },
                     itemBuilder:
                         (context) => const [
@@ -803,7 +810,7 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                         children: [
                           Text(
                             _getPaymentStatusLabel(
-                              provider.paymentStatusFilter,
+                              state.paymentStatusFilter,
                             ),
                             style: const TextStyle(
                               fontSize: 13,
@@ -824,12 +831,12 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
                 const SizedBox(width: 8),
                 DateFilterCalendar(
-                  dateRange: provider.dateRange,
+                  dateRange: state.startDate != null && state.endDate != null ? DateTimeRange(start: state.startDate!, end: state.endDate!) : null,
                   onDateRangeSelected: (picked) {
-                    provider.setDateRange(picked);
+                    cubit.setDateRange(picked.start, picked.end);
                   },
                   onClear: () {
-                    provider.setDateRange(null);
+                    cubit.setDateRange(null, null);
                   },
                 ),
               ],
@@ -855,7 +862,7 @@ class _OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _OrdersFiltersHeaderDelegate oldDelegate) {
-    return oldDelegate.provider != provider ||
+    return oldDelegate.state != state ||
         oldDelegate.searchCtrl.text != searchCtrl.text;
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
@@ -99,7 +98,6 @@ class MyApp extends StatelessWidget {
           
           ChangeNotifierProvider(create: (_) => UsersProvider(role: '')),
           ChangeNotifierProvider(create: (_) => PosProvider()),
-          ChangeNotifierProvider(create: (_) => CartCheckoutProvider()),
           ChangeNotifierProvider(create: (_) => CartProvider()),
         ],
         child: MaterialApp.router(

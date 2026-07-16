@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 
 class CartWalletSummary extends StatelessWidget {
   final CartProvider cart;
@@ -21,11 +20,12 @@ class CartWalletSummary extends StatelessWidget {
     if (saldoPuntos <= 0) return const SizedBox.shrink();
 
     final config = context.watch<AppConfigCubit>();
-    final checkout = context.watch<CartCheckoutProvider>();
+    final checkoutState = context.watch<CheckoutCubit>().state;
+    final checkoutCubit = context.read<CheckoutCubit>();
 
     final earningRate = config.getDouble('points_earning_rate', 0.03);
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
-    final totalAPagar = checkout.calculateFinalTotal(
+    final totalAPagar = checkoutCubit.calculateFinalTotal(
       cart,
       pointsToSolesRatio,
       saldoPuntos,
@@ -97,10 +97,10 @@ class CartWalletSummary extends StatelessWidget {
                 ),
               ),
               CupertinoSwitch(
-                value: checkout.usePoints,
+                value: checkoutState.usePoints,
                 activeTrackColor: Colors.amber,
                 onChanged: (val) {
-                  checkout.toggleUsePoints();
+                  checkoutCubit.toggleUsePoints();
                 },
               ),
             ],

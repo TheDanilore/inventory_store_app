@@ -1,5 +1,6 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 
 class CartItemModel {
   final ProductEntity product;
@@ -121,6 +122,24 @@ class CartItemModel {
       availableStock: availableStock ?? this.availableStock,
       usesBatches: usesBatches ?? this.usesBatches,
       isSelected: isSelected ?? this.isSelected,
+    );
+  }
+  CartItemEntity toEntity() {
+    return CartItemEntity(
+      productId: product.id,
+      productName: product.name,
+      cartKey: cartKey,
+      quantity: quantity,
+      unitPrice: unitPrice,
+      wholesalePrice: wholesalePrice,
+      unitCost: unitCost,
+      imageUrl: imageUrl,
+      sku: sku,
+      availableStock: availableStock,
+      usesBatches: usesBatches,
+      variantId: variantId,
+      variantLabel: variantLabel,
+      isSelected: isSelected,
     );
   }
 }

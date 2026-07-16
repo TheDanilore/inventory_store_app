@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailAuditSection extends StatelessWidget {
-  final OrderModel order;
+  final OrderEntity order;
   final String? updaterName;
 
   const OrderDetailAuditSection({
@@ -28,16 +28,28 @@ class OrderDetailAuditSection extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.add_circle_outline, size: 16, color: Colors.grey),
+                const Icon(
+                  Icons.add_circle_outline,
+                  size: 16,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Creado el', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text(
+                        'Creado el',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                       Text(
-                        DateFormat('dd MMM yyyy, hh:mm a').format(order.createdAt!),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        DateFormat(
+                          'dd MMM yyyy, hh:mm a',
+                        ).format(order.createdAt!),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -50,21 +62,37 @@ class OrderDetailAuditSection extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.edit_note_rounded, size: 16, color: Colors.grey),
+                const Icon(
+                  Icons.edit_note_rounded,
+                  size: 16,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Última modificación', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text(
+                        'Última modificación',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                       Text(
-                        DateFormat('dd MMM yyyy, hh:mm a').format(order.updatedAt!),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        DateFormat(
+                          'dd MMM yyyy, hh:mm a',
+                        ).format(order.updatedAt!),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       if (updaterName != null)
                         Text(
                           'por $updaterName',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                     ],
                   ),

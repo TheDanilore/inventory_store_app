@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 
 class CustomerOrderDetailSheet extends StatelessWidget {
-  final OrderModel order;
-  final List<OrderItemModel> items;
+  final OrderEntity order;
+  final List<OrderItemEntity> items;
 
   const CustomerOrderDetailSheet({
     super.key,
@@ -84,10 +84,7 @@ class CustomerOrderDetailSheet extends StatelessWidget {
           Flexible(
             child: ListView.separated(
               shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               itemCount: items.length,
               separatorBuilder: (_, _) => const Divider(height: 24),
               itemBuilder: (context, index) {
@@ -97,61 +94,61 @@ class CustomerOrderDetailSheet extends StatelessWidget {
           ),
 
           Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  _buildSummaryRow(
+                    'Subtotal',
+                    'S/ ${(order.totalAmount + order.discountAmount).toStringAsFixed(2)}',
+                  ),
+                  if (order.discountAmount > 0) ...[
+                    const SizedBox(height: 8),
+                    _buildSummaryRow(
+                      'Descuento',
+                      '-S/ ${order.discountAmount.toStringAsFixed(2)}',
+                      isDiscount: true,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  children: [
-                    _buildSummaryRow(
-                      'Subtotal',
-                      'S/ ${(order.totalAmount + order.discountAmount).toStringAsFixed(2)}',
-                    ),
-                    if (order.discountAmount > 0) ...[
-                      const SizedBox(height: 8),
-                      _buildSummaryRow(
-                        'Descuento',
-                        '-S/ ${order.discountAmount.toStringAsFixed(2)}',
-                        isDiscount: true,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Total',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          'S/ ${order.totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             ),
+          ),
         ],
       ),
     );
@@ -184,7 +181,7 @@ class CustomerOrderDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildItemCard(BuildContext context, OrderItemModel item) {
+  Widget _buildItemCard(BuildContext context, OrderItemEntity item) {
     String attributesStr = '';
 
     if (item.attributes.isNotEmpty) {
@@ -193,7 +190,7 @@ class CustomerOrderDetailSheet extends StatelessWidget {
           .join(' • ');
     }
 
-    String? imageUrl = item.displayImageUrl;
+    final imageUrl = item.variantImageUrl ?? item.productImageUrl;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),

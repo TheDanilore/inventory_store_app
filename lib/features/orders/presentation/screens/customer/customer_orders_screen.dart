@@ -1,11 +1,12 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/customer_orders_provider.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_state.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/orders/customer_order_card.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
@@ -31,7 +32,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CustomerOrdersProvider>().init();
+      context.read<OrdersCubit>().init();
     });
 
     _scrollController.addListener(_onScroll);
@@ -49,9 +50,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      final provider = context.read<CustomerOrdersProvider>();
-      if (!provider.isLoadingMore && provider.hasMore) {
-        provider.fetchOrders(reset: false);
+      final cubit = context.read<OrdersCubit>();
+      final state = cubit.state;
+      if (!state.isLoading && state.orders.length < state.totalRecords) {
+        cubit.loadOrders(reset: false);
       }
     }
   }
@@ -60,13 +62,14 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (!mounted) return;
-      context.read<CustomerOrdersProvider>().setSearchQuery(query);
+      context.read<OrdersCubit>().setSearchQuery(query);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CustomerOrdersProvider>();
+    final state = context.watch<OrdersCubit>().state;
+    final cubit = context.read<OrdersCubit>();
 
     return CustomerLayout(
       title: 'Mis Pedidos',
@@ -76,7 +79,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       body: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: () async {
-          await provider.fetchOrders(reset: true);
+          await cubit.loadOrders(reset: true);
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -88,9 +91,9 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (provider.isBackgroundLoading)
+                    if (state.isBackgroundLoading)
                       _buildBackgroundSyncIndicator(),
-                    _buildHeaderBanner(provider.orders.length),
+                    _buildHeaderBanner(state.orders.length),
                   ],
                 ),
               ),
@@ -108,7 +111,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
                     children: [
                       _buildSearchBar(),
                       const SizedBox(height: 12),
-                      _buildFilters(provider),
+                      _buildFilters(state, cubit),
                     ],
                   ),
                 ),
@@ -118,11 +121,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             // Body
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: _buildBody(provider),
+              sliver: _buildBody(state, cubit),
             ),
 
             // Bottom Loading Indicator
-            if (provider.isLoadingMore)
+            if (state.isLoading)
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -282,7 +285,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildFilters(CustomerOrdersProvider provider) {
+  Widget _buildFilters(OrdersState state, OrdersCubit cubit) {
     return SizedBox(
       height: 38,
       child: ListView.separated(
@@ -293,7 +296,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           final filter = _filters[index];
           final value = filter['value']!;
           final label = filter['label']!;
-          final isSelected = provider.statusFilter == value;
+          final isSelected = state.statusFilter == value;
 
           return Material(
             color: isSelected ? AppColors.primary : Colors.white,
@@ -306,7 +309,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(40),
-              onTap: () => provider.setStatusFilter(value),
+              onTap: () => cubit.setStatusFilter(value),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Center(
@@ -328,8 +331,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
     );
   }
 
-  Widget _buildBody(CustomerOrdersProvider provider) {
-    if (provider.isLoading) {
+  Widget _buildBody(OrdersState state, OrdersCubit cubit) {
+    if (state.isLoading) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => const Padding(
@@ -345,7 +348,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       );
     }
 
-    if (provider.profileId == null) {
+    if (state.customerIdFilter == null) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
@@ -358,34 +361,34 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
       );
     }
 
-    if (provider.errorMessage.isNotEmpty && provider.orders.isEmpty) {
+    if (state.errorMessage.isNotEmpty && state.orders.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.error_outline,
             title: 'Algo saliÃ³ mal',
-            message: provider.errorMessage,
+            message: state.errorMessage,
           ),
         ),
       );
     }
 
-    if (provider.orders.isEmpty) {
+    if (state.orders.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon:
-                provider.searchQuery.isNotEmpty
+                state.searchQuery.isNotEmpty
                     ? Icons.search_off_rounded
                     : Icons.receipt_long_outlined,
             title:
-                provider.searchQuery.isNotEmpty
+                state.searchQuery.isNotEmpty
                     ? 'No se encontraron resultados'
                     : 'AÃºn no tienes pedidos',
             message:
-                provider.searchQuery.isNotEmpty
+                state.searchQuery.isNotEmpty
                     ? 'Intenta buscar con otro tÃ©rmino u otro filtro.'
                     : 'Cuando realices una compra, aparecerÃ¡ aquÃ­ tu historial.',
           ),
@@ -395,8 +398,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final order = provider.orders[index];
-        final isProcessing = provider.isOrderProcessing(order.id);
+        final order = state.orders[index];
+        final isProcessing = state.isOrderProcessing(order.id);
         return CustomerOrderCard(
           key: ValueKey(order.id),
           order: order,
@@ -407,7 +410,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             );
           },
         );
-      }, childCount: provider.orders.length),
+      }, childCount: state.orders.length),
     );
   }
 }

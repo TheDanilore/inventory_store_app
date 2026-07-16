@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/customer_orders_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/orders/customer_order_detail_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CustomerOrderCard extends StatefulWidget {
-  final OrderModel order;
+  final OrderEntity order;
   final bool isProcessing;
   final VoidCallback onReorder;
 
@@ -109,7 +109,7 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  widget.order.warehouseName,
+                                  widget.order.warehouseName ?? 'Tienda',
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 12,
@@ -221,10 +221,10 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
     );
   }
 
-  void _showOrderDetails(OrderModel order) async {
+  void _showOrderDetails(OrderEntity order) async {
     setState(() => _isLoadingDetails = true);
     try {
-      final provider = context.read<CustomerOrdersProvider>();
+      final provider = context.read<OrdersCubit>();
       final items = await provider.fetchOrderItems(order.id);
 
       if (!mounted) return;

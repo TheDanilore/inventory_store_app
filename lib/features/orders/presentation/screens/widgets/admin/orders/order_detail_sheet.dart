@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_skeleton.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/order_detail_provider.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_state.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -25,7 +26,7 @@ import 'package:inventory_store_app/features/orders/presentation/screens/widgets
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_audit_section.dart';
 
 class OrderDetailSheet extends StatefulWidget {
-  final OrderModel order;
+  final OrderEntity order;
   final bool isEmbedded;
   final ValueChanged<bool>? onPop;
 
@@ -45,21 +46,21 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
   final TextEditingController _manualNameCtrl = TextEditingController();
   List<TextEditingController> _quantityControllers = [];
   bool _isEditing = false;
-  late OrderDetailProvider _provider;
 
   @override
   void initState() {
     super.initState();
-    _provider = OrderDetailProvider(widget.order);
-    _pointsUsedCtrl.text = _provider.pointsUsed.toString();
-    _manualNameCtrl.text = widget.order.displayCustomerName.trim();
+    context.read<OrderDetailCubit>().setInitialOrder(widget.order);
+    _pointsUsedCtrl.text = context.read<OrderDetailCubit>().state.pointsUsed.toString();
+    _manualNameCtrl.text = widget.order.customerName?.trim() ?? '';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _provider.fetchData(_manualNameCtrl.text).then((_) {
+      context.read<OrderDetailCubit>().fetchData(_manualNameCtrl.text).then((_) {
         if (mounted) {
+          final state = context.read<OrderDetailCubit>().state;
           setState(() {
             _quantityControllers =
-                _provider.items
+                state.items
                     .map(
                       (item) =>
                           TextEditingController(text: item.quantity.toString()),
@@ -78,7 +79,6 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     for (final controller in _quantityControllers) {
       controller.dispose();
     }
-    _provider.dispose();
     super.dispose();
   }
 
@@ -90,13 +90,14 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     }
   }
 
-  Future<void> _showBatchEditSheet(OrderItemModel item) async {
-    final warehouseId = _provider.order.warehouseId;
+  Future<void> _showBatchEditSheet(OrderItemEntity item) async {
+    final state = context.read<OrderDetailCubit>().state;
+    final warehouseId = state.order?.warehouseId;
     if (warehouseId == null) return;
 
     List<BatchAssignmentModel> batches;
     try {
-      batches = await _provider.fetchAvailableBatches(
+      batches = await context.read<OrderDetailCubit>().fetchAvailableBatches(
         item.variantId ?? '',
         warehouseId,
       );
@@ -120,7 +121,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       return;
     }
 
-    final saved = _provider.batchOverrides[item.id ?? ''];
+    final saved = state.batchOverrides[item.id ?? ''];
     if (saved != null) {
       for (final s in saved) {
         final idx = batches.indexWhere((b) => b.batchId == s.batchId);
@@ -150,7 +151,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     );
 
     if (result != null && mounted) {
-      _provider.updateBatchOverrides(item.id ?? '', result);
+      context.read<OrderDetailCubit>().updateBatchOverrides(item.id ?? '', result);
     }
   }
 
@@ -202,34 +203,9 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     );
   }
 
-  void _showStockErrorDialog(List<String> messages) {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text(
-              'Stock Insuficiente',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              'El stock varió y ya no hay disponibilidad para completar este pedido:\n\n${messages.join('\n')}',
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Entendido'),
-              ),
-            ],
-          ),
-    );
-  }
-
   Future<void> _saveChanges(double pointsToSolesRatio) async {
-    final isNowCancelled = _provider.currentStatus.toUpperCase() == 'CANCELLED';
+    final state = context.read<OrderDetailCubit>().state;
+    final isNowCancelled = state.currentStatus.toUpperCase() == 'CANCELLED';
     String? notesOverride;
 
     if (isNowCancelled) {
@@ -240,7 +216,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       if (notesOverride == null) return;
     }
 
-    final result = await _provider.saveChanges(
+    final result = await context.read<OrderDetailCubit>().saveChanges(
       notesOverride: notesOverride,
       manualCustomerName: _manualNameCtrl.text,
       pointsToSolesRatio: pointsToSolesRatio,
@@ -248,28 +224,26 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
 
     if (!mounted) return;
 
-    if (result.success) {
+    if (result) {
       AppSnackbar.show(
         context,
         message: 'Cambios guardados correctamente',
         type: SnackbarType.success,
       );
       _handlePop(true);
-    } else if (result.stockError) {
-      _showStockErrorDialog(result.stockMessages);
     } else {
       AppSnackbar.show(
         context,
-        message: result.errorMessage ?? 'Error desconocido',
+        message: context.read<OrderDetailCubit>().state.errorMessage ?? 'Error desconocido',
         type: SnackbarType.error,
       );
     }
   }
 
   Future<void> _processReturn(String? notes) async {
-    final result = await _provider.processReturn(notes);
+    final result = await context.read<OrderDetailCubit>().processReturn(notes);
     if (!mounted) return;
-    if (result.success) {
+    if (result == true) {
       AppSnackbar.show(
         context,
         message: 'Devolución procesada con éxito',
@@ -279,7 +253,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     } else {
       AppSnackbar.show(
         context,
-        message: result.errorMessage ?? 'Error procesando devolución',
+        message: context.read<OrderDetailCubit>().state.errorMessage ?? 'Error al procesar devolución',
         type: SnackbarType.error,
       );
     }

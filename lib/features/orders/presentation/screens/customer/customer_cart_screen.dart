@@ -1,9 +1,12 @@
+import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
+
+import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_action_header.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_address_card.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_checkout_footer.dart';
@@ -13,9 +16,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
+
 import 'package:go_router/go_router.dart';
 
 class CustomerCartScreen extends StatefulWidget {
@@ -30,7 +32,9 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CartCheckoutProvider>().loadAddress();
+      context.read<CheckoutCubit>().loadAddress(
+        context.read<AuthCubit>().state.currentUser?.id ?? '',
+      );
     });
   }
 
@@ -43,7 +47,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final config = context.read<AppConfigCubit>();
     final whatsappNumber = config.businessPhone;
     if (whatsappNumber.isEmpty) {
-      if (mounted) {
+      if (context.mounted) {
         AppSnackbar.show(
           context,
           message: 'NÃºmero de WhatsApp de la tienda no configurado.',
@@ -60,7 +64,9 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     for (final item in selectedItems) {
       final variantLabel =
           item.variantLabel != null ? ' Modelo: ${item.variantLabel}' : '';
-      buffer.writeln('â€¢ ${item.quantity} x ${item.product.name}$variantLabel');
+      buffer.writeln(
+        'â€¢ ${item.quantity} x ${item.product.name}$variantLabel',
+      );
     }
 
     buffer.writeln();
@@ -88,18 +94,22 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   Future<void> _processCheckout(BuildContext context) async {
     final cart = context.read<CartProvider>();
     final walletState = context.read<WalletCubit>().state;
-    final checkout = context.read<CartCheckoutProvider>();
+    final checkout = context.read<CheckoutCubit>();
     final config = context.read<AppConfigCubit>();
 
-    final result = await checkout.processCheckout(
+    final result = await checkout.submitOrder(
+      itemsToBuy: cart.items.values.map((e) => e.toEntity()).toList(),
       cart: cart,
-      walletState: walletState,
-      config: config,
+      profileId: context.read<AuthCubit>().state.currentUser?.id ?? '',
+      pointsToSolesRatio: config.state.values['points_to_soles_ratio'] ?? 0.05,
+      conversionRate: (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
+      saldoPuntos: walletState.balance ?? 0,
+      activeWarehouseId: null /* TODO activeWarehouseId from config */,
     );
 
     if (result == null) return;
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     if (result['error'] == 'STOCK') {
       final messages = result['messages'] as List<String>;
@@ -128,7 +138,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     } else if (result['error'] != null) {
       AppSnackbar.show(
         context,
-        message: result['message'] ?? 'OcurriÃ³ un error al procesar el pedido.',
+        message:
+            result['message'] ?? 'OcurriÃ³ un error al procesar el pedido.',
         backgroundColor: AppColors.error,
       );
     } else if (result['success'] == true) {
@@ -144,7 +155,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
 
       // Saldo es reactivo en el background
 
-      if (mounted) {
+      if (context.mounted) {
         AppSnackbar.show(
           context,
           message: 'Â¡Pedido registrado exitosamente!',
@@ -158,7 +169,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
     final walletState = context.watch<WalletCubit>().state;
-    final checkout = context.watch<CartCheckoutProvider>();
+    final checkout = context.watch<CheckoutCubit>().state;
     final config = context.watch<AppConfigCubit>();
 
     final saldoPuntos = walletState.balance ?? 0;
@@ -223,9 +234,9 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                 onTap: () async {
                                   await context.push('/customer/locations');
                                   if (context.mounted) {
-                                    context
-                                        .read<CartCheckoutProvider>()
-                                        .loadAddress();
+                                    context.read<CheckoutCubit>().loadAddress(
+                                      context.read<AuthCubit>().state.currentUser?.id ?? '',
+                                    );
                                   }
                                 },
                               );
@@ -260,4 +271,3 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     );
   }
 }
-

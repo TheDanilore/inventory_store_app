@@ -1,13 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
+
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
 
 class CartItemCard extends StatelessWidget {
   final String productId;
@@ -27,9 +27,9 @@ class CartItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final checkoutProvider = context.read<CartCheckoutProvider>();
+    final checkoutProvider = context.read<CheckoutCubit>();
     final product = item.product;
-    final wPrice = checkoutProvider.wholesalePriceOf(item);
+    final wPrice = checkoutProvider.wholesalePriceOf(item.toEntity());
 
     final String? imageUrl =
         item.imageUrl ??
@@ -51,7 +51,7 @@ class CartItemCard extends StatelessWidget {
     final appliedPoints =
         isLoyaltyEnabled
             ? checkoutProvider.getAppliedPointsForItem(
-              item,
+              item.toEntity(),
               cart,
               pointsToSolesRatio,
               saldoPuntos,

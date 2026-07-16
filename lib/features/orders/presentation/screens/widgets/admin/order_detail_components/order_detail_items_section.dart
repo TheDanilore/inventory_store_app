@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailItemCard extends StatelessWidget {
-  final OrderItemModel item;
+  final OrderItemEntity item;
   final bool isEditing;
   final bool usesBatches;
   final List<Map<String, dynamic>> batches;
@@ -354,7 +354,7 @@ class OrderDetailItemCard extends StatelessWidget {
 }
 
 class OrderDetailItemsSection extends StatelessWidget {
-  final List<OrderItemModel> items;
+  final List<OrderItemEntity> items;
   final bool isLoading;
   final bool isEditing;
   final bool isLocked;
@@ -366,7 +366,7 @@ class OrderDetailItemsSection extends StatelessWidget {
   final void Function(int index) onIncrease;
   final void Function(int index, String value) onQuantityChanged;
   final void Function(int index)? onQuantityTap;
-  final void Function(OrderItemModel item)? onEditBatches;
+  final void Function(OrderItemEntity item)? onEditBatches;
 
   const OrderDetailItemsSection({
     super.key,
@@ -415,7 +415,7 @@ class OrderDetailItemsSection extends StatelessWidget {
                     isEditing: isEditing && !isLocked,
                     usesBatches: usesBatches,
                     batches: batches,
-                    batchAssignments: batchOverrides[item.id ?? ''],
+                    batchAssignments: batchOverrides[item.id],
                     quantityController: quantityControllers[index],
                     onDecrease: () => onDecrease(index),
                     onIncrease: () => onIncrease(index),

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/orders/data/repositories/orders_service.dart';
 
@@ -66,7 +66,7 @@ class OrderDetailService {
     required String paymentMethod,
     required String? selectedCustomerId,
     required String? customerNameToSave,
-    required List<OrderItemModel> items,
+    required List<OrderItemEntity> items,
     required int pointsUsed,
     required int pointsEarned,
     required double totalAmount,
@@ -179,7 +179,7 @@ class OrderDetailService {
                 'net_profit':
                     (item.appliedPrice - item.unitCost) * item.quantity,
               })
-              .eq('id', item.id ?? ''),
+              .eq('id', item.id),
         ),
       );
 
@@ -196,7 +196,7 @@ class OrderDetailService {
     required String orderId,
     required String paymentMethod,
     required String? selectedCustomerId,
-    required List<OrderItemModel> items,
+    required List<OrderItemEntity> items,
     required double totalAmount,
     required Map<String, List<BatchAssignmentModel>> batchOverrides,
     required String? currentProfileId,
@@ -252,7 +252,7 @@ class OrderDetailService {
       List<({String id, int take, int available, String batchNumber})>
       segments = [];
 
-      final overrides = batchOverrides[item.id ?? ''];
+      final overrides = batchOverrides[item.id];
 
       if (overrides != null) {
         final totalAssigned = overrides.fold(0, (s, b) => s + b.assigned);
@@ -369,7 +369,7 @@ class OrderDetailService {
   /// Llama a OrdersService para revertir stock, crédito/caja, y monedas de fidelidad.
   Future<SaveOrderResult> processReturn({
     required String orderId,
-    required List<OrderItemModel> items,
+    required List<OrderItemEntity> items,
     String? notesOverride,
   }) async {
     try {

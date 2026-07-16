@@ -3,9 +3,9 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/pos/data/repositories_impl/cart_cloud_service.dart';
+import 'package:inventory_store_app/features/pos/data/repositories_impl/cart_local_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/orders/data/repositories/cart_cloud_service.dart';
-import 'package:inventory_store_app/features/orders/data/repositories/cart_local_service.dart';
 
 class CartProvider with ChangeNotifier {
   Map<String, CartItemModel> _items = {};

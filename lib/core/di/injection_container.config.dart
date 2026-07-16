@@ -108,7 +108,7 @@ import '../../features/catalog/presentation/bloc/attributes_cubit.dart'
 import '../../features/catalog/presentation/bloc/categories_cubit.dart'
     as _i778;
 import '../../features/catalog/presentation/bloc/customer_catalog_cubit.dart'
-    as _i161;
+    as _i162;
 import '../../features/catalog/presentation/bloc/ingredients_cubit.dart'
     as _i841;
 import '../../features/catalog/presentation/bloc/product_detail_cubit.dart'
@@ -292,6 +292,34 @@ import '../../features/loyalty/presentation/bloc/points_cubit.dart' as _i742;
 import '../../features/loyalty/presentation/bloc/top_customers_cubit.dart'
     as _i478;
 import '../../features/loyalty/presentation/bloc/wallet_cubit.dart' as _i1028;
+import '../../features/orders/data/repositories_impl/checkout_repository_impl.dart'
+    as _i161;
+import '../../features/orders/data/repositories_impl/orders_repository_impl.dart'
+    as _i647;
+import '../../features/orders/domain/repositories/checkout_repository.dart'
+    as _i760;
+import '../../features/orders/domain/repositories/orders_repository.dart'
+    as _i992;
+import '../../features/orders/domain/usecases/cancel_order_uc.dart' as _i534;
+import '../../features/orders/domain/usecases/get_customer_orders_uc.dart'
+    as _i857;
+import '../../features/orders/domain/usecases/get_default_address_uc.dart'
+    as _i828;
+import '../../features/orders/domain/usecases/get_filtered_orders_uc.dart'
+    as _i617;
+import '../../features/orders/domain/usecases/get_order_details_uc.dart'
+    as _i93;
+import '../../features/orders/domain/usecases/get_order_items_uc.dart' as _i812;
+import '../../features/orders/domain/usecases/process_checkout_uc.dart'
+    as _i446;
+import '../../features/orders/domain/usecases/save_order_changes_uc.dart'
+    as _i904;
+import '../../features/orders/domain/usecases/verify_stock_uc.dart' as _i714;
+import '../../features/orders/presentation/bloc/checkout_cubit.dart' as _i602;
+import '../../features/orders/presentation/bloc/customer_orders_cubit.dart'
+    as _i565;
+import '../../features/orders/presentation/bloc/order_detail_cubit.dart'
+    as _i39;
 import '../../features/purchases/domain/usecases/get_active_suppliers_uc.dart'
     as _i664;
 import '../network/network_cubit.dart' as _i11;
@@ -367,6 +395,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i700.GetCategoriesUC>(
       () => _i700.GetCategoriesUC(gh<_i1018.CategoriesRepository>()),
     );
+    gh.lazySingleton<_i992.OrdersRepository>(
+      () => _i647.OrdersRepositoryImpl(),
+    );
     gh.factory<_i753.GetActiveProductsAndVariantsUseCase>(
       () =>
           _i753.GetActiveProductsAndVariantsUseCase(gh<_i454.SupabaseClient>()),
@@ -394,6 +425,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i275.ToggleWarehouseStatusUseCase>(
       () =>
           _i275.ToggleWarehouseStatusUseCase(gh<_i317.WarehousesRepository>()),
+    );
+    gh.lazySingleton<_i760.CheckoutRepository>(
+      () => _i161.CheckoutRepositoryImpl(),
     );
     gh.lazySingleton<_i557.CustomerLocationsRepository>(
       () => _i429.CustomerLocationsRepositoryImpl(),
@@ -862,6 +896,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i570.ProductsRepository>()),
     );
+    gh.factory<_i828.GetDefaultAddressUc>(
+      () => _i828.GetDefaultAddressUc(gh<_i760.CheckoutRepository>()),
+    );
+    gh.factory<_i446.ProcessCheckoutUc>(
+      () => _i446.ProcessCheckoutUc(gh<_i760.CheckoutRepository>()),
+    );
+    gh.factory<_i714.VerifyStockUc>(
+      () => _i714.VerifyStockUc(gh<_i760.CheckoutRepository>()),
+    );
     gh.factory<_i556.AppConfigCubit>(
       () => _i556.AppConfigCubit(
         getAppSettingsUseCase: gh<_i506.GetAppSettingsUseCase>(),
@@ -873,6 +916,24 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i37.RestoreDefaultConnectionUseCase>(),
         getConnectionUrlUseCase: gh<_i653.GetConnectionUrlUseCase>(),
       ),
+    );
+    gh.factory<_i857.GetCustomerOrdersUc>(
+      () => _i857.GetCustomerOrdersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.factory<_i93.GetOrderDetailsUc>(
+      () => _i93.GetOrderDetailsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i534.CancelOrderUc>(
+      () => _i534.CancelOrderUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i617.GetFilteredOrdersUc>(
+      () => _i617.GetFilteredOrdersUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i812.GetOrderItemsUc>(
+      () => _i812.GetOrderItemsUc(gh<_i992.OrdersRepository>()),
+    );
+    gh.lazySingleton<_i904.SaveOrderChangesUc>(
+      () => _i904.SaveOrderChangesUc(gh<_i992.OrdersRepository>()),
     );
     gh.factory<_i679.FinancialAccountsCubit>(
       () => _i679.FinancialAccountsCubit(
@@ -999,6 +1060,12 @@ extension GetItInjectableX on _i174.GetIt {
         deleteCategoryUC: gh<_i110.DeleteCategoryUC>(),
       ),
     );
+    gh.factory<_i39.OrderDetailCubit>(
+      () => _i39.OrderDetailCubit(
+        getOrderDetailsUc: gh<_i93.GetOrderDetailsUc>(),
+        saveOrderChangesUc: gh<_i904.SaveOrderChangesUc>(),
+      ),
+    );
     gh.lazySingleton<_i1067.CatalogFormMutationsUC>(
       () => _i1067.CatalogFormMutationsUC(
         gh<_i570.ProductsRepository>(),
@@ -1011,12 +1078,19 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i161.CustomerCatalogCubit>(
-      () => _i161.CustomerCatalogCubit(
+    gh.factory<_i162.CustomerCatalogCubit>(
+      () => _i162.CustomerCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         getProductsUC: gh<_i222.GetProductsUC>(),
         getProductStockUC: gh<_i958.GetProductStockUC>(),
         catalogRepository: gh<_i540.CatalogSearchRepository>(),
+      ),
+    );
+    gh.factory<_i602.CheckoutCubit>(
+      () => _i602.CheckoutCubit(
+        getDefaultAddressUc: gh<_i828.GetDefaultAddressUc>(),
+        verifyStockUc: gh<_i714.VerifyStockUc>(),
+        processCheckoutUc: gh<_i446.ProcessCheckoutUc>(),
       ),
     );
     gh.factory<_i17.CustomerWishlistCubit>(
@@ -1024,6 +1098,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
         gh<_i600.GetWishlistUseCase>(),
         gh<_i600.RemoveFromWishlistUseCase>(),
+      ),
+    );
+    gh.factory<_i565.CustomerOrdersCubit>(
+      () => _i565.CustomerOrdersCubit(
+        getCustomerOrdersUc: gh<_i857.GetCustomerOrdersUc>(),
       ),
     );
     gh.factory<_i711.ProductDetailCubit>(

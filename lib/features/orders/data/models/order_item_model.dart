@@ -1,34 +1,21 @@
-class OrderItemModel {
-  final String? id;
-  final String orderId;
-  final String? productId;
-  final String? variantId;
-  int quantity;
-  final double unitCost;
-  final double appliedPrice;
-  final double netProfit;
-  final DateTime? createdAt;
-  final String? productName;
-  final String? sku;
-  final Map<String, dynamic> attributes;
-  final String? variantImageUrl;
-  final String? productImageUrl;
+import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 
-  OrderItemModel({
-    this.id,
-    required this.orderId,
-    this.productId,
-    this.variantId,
-    required this.quantity,
-    required this.unitCost,
-    required this.appliedPrice,
-    required this.netProfit,
-    this.createdAt,
-    this.productName,
-    this.sku,
-    this.attributes = const {},
-    this.variantImageUrl,
-    this.productImageUrl,
+class OrderItemModel extends OrderItemEntity {
+  const OrderItemModel({
+    required super.id,
+    required super.orderId,
+    super.productId,
+    super.variantId,
+    required super.quantity,
+    required super.unitCost,
+    required super.appliedPrice,
+    required super.netProfit,
+    super.createdAt,
+    super.productName,
+    super.sku,
+    super.attributes,
+    super.variantImageUrl,
+    super.productImageUrl,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -86,7 +73,7 @@ class OrderItemModel {
     }
 
     return OrderItemModel(
-      id: json['id'] as String?,
+      id: json['id'] as String? ?? '',
       orderId: json['order_id'] as String? ?? '',
       productId: json['product_id'] as String?,
       variantId: json['variant_id'] as String?,
@@ -105,7 +92,7 @@ class OrderItemModel {
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
+      'id': id,
       'order_id': orderId,
       'product_id': productId,
       'variant_id': variantId,
@@ -117,8 +104,10 @@ class OrderItemModel {
     };
   }
 
+  @override
   double get subtotal => appliedPrice * quantity;
 
+  @override
   String? get displayImageUrl =>
       (variantImageUrl != null && variantImageUrl!.isNotEmpty)
           ? variantImageUrl
@@ -126,6 +115,7 @@ class OrderItemModel {
           ? productImageUrl
           : null;
 
+  @override
   String get variantLabel {
     if (attributes.isEmpty) {
       return sku?.trim().isNotEmpty == true ? sku! : 'Variante estándar';
@@ -139,6 +129,7 @@ class OrderItemModel {
   String? get variantDisplayName =>
       variantLabel.isNotEmpty ? variantLabel : null;
 
+  @override
   OrderItemModel copyWith({
     String? id,
     String? orderId,

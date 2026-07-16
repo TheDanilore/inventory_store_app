@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/admin_sale_client_section.dart';
@@ -22,7 +23,6 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
-import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
 
 class PosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;

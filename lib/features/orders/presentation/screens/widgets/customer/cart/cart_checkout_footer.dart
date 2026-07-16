@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/cart_checkout_provider.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
 
 class CartCheckoutFooter extends StatelessWidget {
   final CartProvider cart;
@@ -22,9 +21,9 @@ class CartCheckoutFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final checkoutProvider = context.read<CartCheckoutProvider>();
-    final isSending = context.select<CartCheckoutProvider, bool>(
-      (p) => p.isSending,
+    final checkoutProvider = context.read<CheckoutCubit>();
+    final isSending = context.select<CheckoutCubit, bool>(
+      (p) => p.state.isSending,
     );
 
     final config = context.read<AppConfigCubit>();

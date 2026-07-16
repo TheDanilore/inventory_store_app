@@ -50,9 +50,14 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
   Future<void> _loadData() async {
     try {
       final variantsRes = await _service.loadActiveVariants(widget.product.id);
-      final variantsData = variantsRes.fold((l) => <Map<String, dynamic>>[], (r) => r);
+      final variantsData = variantsRes.fold(
+        (l) => <Map<String, dynamic>>[],
+        (r) => r,
+      );
       _variants =
-          variantsData.map((v) => ProductVariantModel.fromJson(v).toEntity()).toList();
+          variantsData
+              .map((v) => ProductVariantModel.fromJson(v).toEntity())
+              .toList();
       final stockRes = await _service.loadStockByVariant(widget.product.id);
       _stockByVariant = stockRes.fold((l) => <String, int>{}, (r) => r);
     } catch (e) {
@@ -203,7 +208,10 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                       variant.wholesalePrice ?? widget.product.wholesalePrice,
                   unitCost: variant.unitCost ?? widget.product.unitCost,
                   imageUrl:
-                      (variant.images.isNotEmpty ? variant.images.first.imageUrl : null) ?? widget.product.primaryImageUrl,
+                      (variant.images.isNotEmpty
+                          ? variant.images.first.imageUrl
+                          : null) ??
+                      widget.product.primaryImageUrl,
                   sku: variant.sku,
                   availableStock: variantStock,
                 );
@@ -242,7 +250,7 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                   child:
                       variant.images.isNotEmpty
                           ? CachedNetworkImage(
-                              imageUrl: variant.images.first.imageUrl,
+                            imageUrl: variant.images.first.imageUrl,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => _imgFallback(),
                             errorWidget:

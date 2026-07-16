@@ -1,53 +1,32 @@
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 
-class OrderModel {
-  final String id;
-  final String? customerId;
-  final double totalAmount;
-  final double totalProfit;
-  final String paymentMethod;
-  final String status;
-  final DateTime? createdAt;
-  final String? warehouseId;
-  final int pointsUsed;
-  final int pointsEarned;
-  final String customerName;
-  final String paymentStatus;
-  final double amountPaid;
-  final DateTime? dueDate;
-  final String? createdBy;
-  final String? updatedBy;
-  final DateTime? updatedAt;
-  final double discountAmount;
-
+class OrderModel extends OrderEntity {
   final WarehouseModel? warehouse;
 
-  // Agregamos propiedades para guardar la información del JOIN de 'profiles'
-  final String? profileFullName;
-  final String? profilePhone;
-
-  OrderModel({
-    required this.id,
-    this.customerId,
-    this.totalAmount = 0.00,
-    this.totalProfit = 0.00,
-    this.paymentMethod = 'EFECTIVO',
-    this.status = 'COMPLETED',
-    this.createdAt,
-    this.warehouseId,
-    this.pointsUsed = 0,
-    this.pointsEarned = 0,
-    this.customerName = '',
-    this.paymentStatus = 'PENDING',
-    this.amountPaid = 0.00,
-    this.dueDate,
-    this.createdBy,
-    this.updatedBy,
-    this.updatedAt,
+  const OrderModel({
+    required super.id,
+    super.customerId,
+    super.totalAmount,
+    super.totalProfit,
+    super.paymentMethod,
+    super.status,
+    super.createdAt,
+    super.warehouseId,
+    super.pointsUsed,
+    super.pointsEarned,
+    super.customerName,
+    super.paymentStatus,
+    super.amountPaid,
+    super.dueDate,
+    super.createdBy,
+    super.updatedBy,
+    super.updatedAt,
     this.warehouse,
-    this.discountAmount = 0.00,
-    this.profileFullName,
-    this.profilePhone,
+    super.warehouseName,
+    super.discountAmount,
+    super.profileFullName,
+    super.profilePhone,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -138,9 +117,12 @@ class OrderModel {
     return 'Cliente General';
   }
 
+  @override
   String get warehouseName => warehouse?.name ?? 'Almacén Desconocido';
 
+  @override
   OrderModel copyWith({
+    String? warehouseName,
     String? id,
     String? customerId,
     double? totalAmount,
@@ -182,6 +164,7 @@ class OrderModel {
       updatedBy: updatedBy ?? this.updatedBy,
       updatedAt: updatedAt ?? this.updatedAt,
       warehouse: warehouse ?? this.warehouse,
+      warehouseName: warehouseName ?? this.warehouseName,
       discountAmount: discountAmount ?? this.discountAmount,
       profileFullName: profileFullName ?? this.profileFullName,
       profilePhone: profilePhone ?? this.profilePhone,

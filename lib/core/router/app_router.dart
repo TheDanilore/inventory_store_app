@@ -5,6 +5,8 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/top_cus
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
@@ -26,15 +28,17 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 // Pantallas Cliente
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
+import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart' as inventory_store_app_orders_repository;
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
 
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_orders_screen.dart';
+import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/points_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 
 // Pantallas Admin
@@ -67,10 +71,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/inve
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/kardex_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
-import 'package:inventory_store_app/features/orders/presentation/providers/orders_provider.dart';
-import 'package:inventory_store_app/features/orders/data/repositories/orders_service.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/orders/order_detail_sheet.dart';
-import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/admin/points_settings_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/pos_checkout_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/product_form_screen.dart';
@@ -393,9 +394,8 @@ class AppRouter {
                                   child: CircularProgressIndicator(),
                                 ),
                           );
-                          final order = await OrdersService().getOrderById(
-                            orderId,
-                          );
+                          final result = await sl<inventory_store_app_orders_repository.OrdersRepository>().getOrderById(orderId);
+                          final order = result.fold((l) => null, (r) => r);
                           if (context.mounted) {
                             Navigator.pop(context); // Cerrar loading dialog
                             if (order != null) {
@@ -405,7 +405,10 @@ class AppRouter {
                                 useRootNavigator: true,
                                 backgroundColor: Colors.transparent,
                                 builder:
-                                    (ctx) => OrderDetailSheet(order: order),
+                                    (ctx) => BlocProvider(
+                                      create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+                                      child: OrderDetailSheet(order: order),
+                                    ),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -456,11 +459,9 @@ class AppRouter {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (_) => ChangeNotifierProvider(
+                                  (_) => BlocProvider(
                                     create:
-                                        (_) => OrdersProvider(
-                                          customerIdFilter: customerId,
-                                        ),
+                                        (_) => sl<OrdersCubit>(),
                                     child: OrdersScreen(
                                       customTitle:
                                           'Pedidos de ${(customer as dynamic)?.fullName ?? ''}',
@@ -862,7 +863,10 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/customer/cart',
-                  builder: (context, state) => const CustomerCartScreen(),
+                  builder: (context, state) => BlocProvider(
+                      create: (_) => sl<CheckoutCubit>(),
+                      child: const CustomerCartScreen(),
+                    ),
                 ),
               ],
             ),
