@@ -10,13 +10,31 @@ class OrderItemEntity extends Equatable {
   final double appliedPrice;
   final double netProfit;
   final DateTime? createdAt;
-  
+
   final String? productName;
   final String? sku;
   final Map<String, dynamic> attributes;
   final String? variantImageUrl;
   final String? productImageUrl;
 
+  const OrderItemEntity({
+    required this.id,
+    required this.orderId,
+    this.productId,
+    this.variantId,
+    required this.quantity,
+    required this.unitCost,
+    required this.appliedPrice,
+    required this.netProfit,
+    this.createdAt,
+    this.productName,
+    this.sku,
+    this.attributes = const {},
+    this.variantImageUrl,
+    this.productImageUrl,
+  });
+
+  // La lógica vive ÚNICAMENTE aquí
   double get subtotal => appliedPrice * quantity;
 
   String? get displayImageUrl =>
@@ -30,10 +48,14 @@ class OrderItemEntity extends Equatable {
     if (attributes.isEmpty) {
       return sku?.trim().isNotEmpty == true ? sku! : 'Variante estándar';
     }
+    // Bug corregido
     return attributes.entries
-        .map((entry) => ': ')
+        .map((entry) => '${entry.key}: ${entry.value}')
         .join(' | ');
   }
+
+  String? get variantDisplayName =>
+      variantLabel.isNotEmpty ? variantLabel : null;
 
   OrderItemEntity copyWith({
     String? id,
@@ -69,39 +91,21 @@ class OrderItemEntity extends Equatable {
     );
   }
 
-
-  const OrderItemEntity({
-    required this.id,
-    required this.orderId,
-    this.productId,
-    this.variantId,
-    required this.quantity,
-    required this.unitCost,
-    required this.appliedPrice,
-    required this.netProfit,
-    this.createdAt,
-    this.productName,
-    this.sku,
-    this.attributes = const {},
-    this.variantImageUrl,
-    this.productImageUrl,
-  });
-
   @override
   List<Object?> get props => [
-        id,
-        orderId,
-        productId,
-        variantId,
-        quantity,
-        unitCost,
-        appliedPrice,
-        netProfit,
-        createdAt,
-        productName,
-        sku,
-        attributes,
-        variantImageUrl,
-        productImageUrl,
-      ];
+    id,
+    orderId,
+    productId,
+    variantId,
+    quantity,
+    unitCost,
+    appliedPrice,
+    netProfit,
+    createdAt,
+    productName,
+    sku,
+    attributes,
+    variantImageUrl,
+    productImageUrl,
+  ];
 }
