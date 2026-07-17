@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_section_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailAuditSection extends StatelessWidget {
   final OrderEntity order;

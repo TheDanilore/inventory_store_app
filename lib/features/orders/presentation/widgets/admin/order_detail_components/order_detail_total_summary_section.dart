@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_section_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 
 class OrderDetailTotalSummarySection extends StatelessWidget {
   final double subtotal;

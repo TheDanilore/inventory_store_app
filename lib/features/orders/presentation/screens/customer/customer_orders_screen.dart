@@ -7,7 +7,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders_state.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/orders/customer_order_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/orders/customer_order_card.dart';
 
 class CustomerOrdersScreen extends StatefulWidget {
   const CustomerOrdersScreen({super.key});

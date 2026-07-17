@@ -7,11 +7,11 @@ import 'package:inventory_store_app/features/pos/presentation/providers/cart_pro
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_action_header.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_address_card.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_checkout_footer.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_item_card.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_wallet_summary.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_action_header.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_address_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_checkout_footer.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_item_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_wallet_summary.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';

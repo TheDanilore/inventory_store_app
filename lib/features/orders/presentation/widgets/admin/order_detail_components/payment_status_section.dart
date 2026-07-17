@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_section_card.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_section_card.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

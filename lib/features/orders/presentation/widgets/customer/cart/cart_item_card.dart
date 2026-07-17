@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_variant_picker_sheet.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CartItemCard extends StatelessWidget {

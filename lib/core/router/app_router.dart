@@ -35,7 +35,7 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/custom
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_cart_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_orders_screen.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/customer/cart/cart_variant_picker_sheet.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/points_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
@@ -71,7 +71,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/inve
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/kardex_screen.dart';
 import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/orders/order_detail_sheet.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/screens/admin/points_settings_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/pos_checkout_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/product_form_screen.dart';

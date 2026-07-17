@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/batch_edit_sheet.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_skeleton.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_skeleton.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,16 +14,16 @@ import 'package:inventory_store_app/features/orders/presentation/bloc/order_deta
 import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_header_row.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_status_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_customer_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_payment_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_total_summary_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_items_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_points_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_credit_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/payment_status_section.dart';
-import 'package:inventory_store_app/features/orders/presentation/screens/widgets/admin/order_detail_components/order_detail_audit_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_header_row.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_status_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_customer_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_payment_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_total_summary_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_items_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_points_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_credit_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/payment_status_section.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_audit_section.dart';
 
 class OrderDetailSheet extends StatefulWidget {
   final OrderEntity order;
