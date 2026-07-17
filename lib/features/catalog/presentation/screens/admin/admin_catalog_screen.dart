@@ -20,7 +20,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_product_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_fab_buttons.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_add_to_cart_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to_cart_sheet.dart';
 
 class AdminCatalogScreen extends StatefulWidget {
   final Widget? floatingActionButton;

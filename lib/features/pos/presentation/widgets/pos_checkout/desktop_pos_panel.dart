@@ -13,13 +13,13 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/admin_sale_client_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/admin_sale_points_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/payment_warehouse_account_card.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_cart_items_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_total_summary_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_dialogs.dart';
-import 'package:inventory_store_app/features/pos/presentation/screens/widgets/pos_checkout/pos_processing_overlay.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_client_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/batch_edit_sheet.dart';
 
 class DesktopPosPanel extends StatefulWidget {

@@ -11,7 +11,7 @@ import 'package:inventory_store_app/features/inventory/data/models/batch_assignm
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_state.dart';
-import 'package:inventory_store_app/features/orders/data/repositories/order_pdf_generator.dart';
+import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/order_detail_components/order_detail_header_row.dart';
