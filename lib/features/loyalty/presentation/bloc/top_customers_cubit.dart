@@ -25,11 +25,14 @@ class TopCustomersCubit extends Cubit<TopCustomersState> {
     final result = await getTopCustomersUC(state.limit);
     result.fold(
       (failure) {
-        if (!isClosed) emit(state.copyWith(isLoading: false, participants: []));
+        if (!isClosed) {
+          emit(state.copyWith(isLoading: false, participants: []));
+        }
       },
       (customers) {
-        if (!isClosed)
+        if (!isClosed) {
           emit(state.copyWith(isLoading: false, participants: customers));
+        }
       },
     );
   }

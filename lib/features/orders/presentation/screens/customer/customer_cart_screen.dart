@@ -104,7 +104,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       pointsToSolesRatio: config.state.values['points_to_soles_ratio'] ?? 0.05,
       conversionRate: (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
       saldoPuntos: walletState.balance ?? 0,
-      activeWarehouseId: null /* TODO activeWarehouseId from config */,
+      activeWarehouseId: config.state.values['active_warehouse_id'] as String?,
     );
 
     if (result == null) return;

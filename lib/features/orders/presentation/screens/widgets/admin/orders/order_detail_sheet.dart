@@ -52,7 +52,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     super.initState();
     context.read<OrderDetailCubit>().setInitialOrder(widget.order);
     _pointsUsedCtrl.text = context.read<OrderDetailCubit>().state.pointsUsed.toString();
-    _manualNameCtrl.text = widget.order.customerName?.trim() ?? '';
+    _manualNameCtrl.text = widget.order.customerName.trim();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderDetailCubit>().fetchData(_manualNameCtrl.text).then((_) {
@@ -121,7 +121,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       return;
     }
 
-    final saved = state.batchOverrides[item.id ?? ''];
+    final saved = state.batchOverrides[item.id];
     if (saved != null) {
       for (final s in saved) {
         final idx = batches.indexWhere((b) => b.batchId == s.batchId);
@@ -148,10 +148,10 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             totalRequired: item.quantity,
             batches: batches,
           ),
-    );
+        );
 
     if (result != null && mounted) {
-      context.read<OrderDetailCubit>().updateBatchOverrides(item.id ?? '', result);
+      context.read<OrderDetailCubit>().updateBatchOverrides(item.id, result);
     }
   }
 
@@ -200,7 +200,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               ),
             ],
           ),
-    );
+        );
   }
 
   Future<void> _saveChanges(double pointsToSolesRatio) async {
@@ -215,6 +215,8 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
       );
       if (notesOverride == null) return;
     }
+
+    if (!mounted) return;
 
     final result = await context.read<OrderDetailCubit>().saveChanges(
       notesOverride: notesOverride,
@@ -311,7 +313,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               ),
             ],
           ),
-    );
+        );
 
     if (confirmed == true && mounted) {
       await _processReturn(notes.isNotEmpty ? notes : null);
@@ -324,36 +326,36 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
 
-    return ChangeNotifierProvider.value(
-      value: _provider,
-      child: Consumer<OrderDetailProvider>(
-        builder: (context, provider, _) {
-          final isEditing = provider.canToggleEdit;
-          final isCompleted = provider.isCompleted;
+    return BlocBuilder<OrderDetailCubit, OrderDetailState>(
+      builder: (context, state) {
+        if (state.order == null && !state.isLoading) return const SizedBox.shrink();
+        final cubit = context.read<OrderDetailCubit>();
+          final isEditing = cubit.canToggleEdit();
+          final isCompleted = cubit.isCompleted();
           final maxPtsUser =
-              provider.selectedCustomerId != null
-                  ? provider.profiles.firstWhere(
-                            (p) => p['id'] == provider.selectedCustomerId,
+              state.selectedCustomerId != null
+                  ? state.profiles.firstWhere(
+                            (p) => p['id'] == state.selectedCustomerId,
                             orElse: () => {'wallet_balance': 0},
                           )['wallet_balance']
                           as int? ??
                       0
                   : 0;
 
-          final subtotal = provider.items.fold(
+          final subtotal = state.items.fold(
             0.0,
             (sum, i) => sum + i.subtotal,
           );
 
-          final rawDiscount = provider.pointsUsed * pointsToSolesRatio;
+          final rawDiscount = state.pointsUsed * pointsToSolesRatio;
           final maxDiscount = subtotal * 0.5;
           final appliedDiscount =
               rawDiscount > maxDiscount ? maxDiscount : rawDiscount;
           final totalFinal =
-              subtotal - appliedDiscount - provider.order.discountAmount;
+              subtotal - appliedDiscount - state.order!.discountAmount;
           final actualTotal = totalFinal < 0 ? 0.0 : totalFinal;
 
-          List<Map<String, dynamic>> profiles = provider.profiles;
+          List<Map<String, dynamic>> profiles = state.profiles;
 
           String getCustomerLabel(String? customerId) {
             if (customerId == null) {
@@ -361,14 +363,14 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
               return manualName.isNotEmpty ? manualName : 'Cliente mostrador';
             }
             try {
-              final profile = provider.profiles.firstWhere(
+              final profile = state.profiles.firstWhere(
                 (p) => p['id'] == customerId,
               );
               final name = (profile['full_name'] as String?)?.trim();
               if (name != null && name.isNotEmpty) return name;
             } catch (_) {}
-            return provider.order.displayCustomerName.isNotEmpty
-                ? provider.order.displayCustomerName
+            return state.order!.customerName.isNotEmpty
+                ? state.order!.customerName
                 : 'Cliente mostrador';
           }
 
@@ -402,12 +404,12 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                     ),
                   Expanded(
                     child:
-                        provider.isLoading
+                        state.isLoading
                             ? const Padding(
                               padding: EdgeInsets.all(16.0),
                               child: OrderDetailSkeleton(),
                             )
-                            : provider.hasError
+                            : state.hasError
                             ? AppEmptyState(
                               icon: Icons.error_outline_rounded,
                               color: Colors.red,
@@ -416,9 +418,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   'Verifica tu conexión a internet o intenta nuevamente.',
                               action: ElevatedButton.icon(
                                 onPressed:
-                                    () => provider.fetchData(
-                                      _manualNameCtrl.text,
-                                    ),
+                                    () => cubit.fetchData(state.order!.id),
                                 icon: const Icon(Icons.refresh_rounded),
                                 label: const Text('Reintentar'),
                                 style: ElevatedButton.styleFrom(
@@ -431,17 +431,17 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                               children: [
                                 OrderDetailHeaderRow(
-                                  orderId: provider.order.id,
+                                  orderId: state.order!.id,
                                   isCompleted: isCompleted,
                                   isEditing: _isEditing,
-                                  canToggleEdit: provider.canToggleEdit,
+                                  canToggleEdit: cubit.canToggleEdit(),
                                   onToggleEditing: () {
                                     if (_isEditing) {
-                                      provider.resetEditState();
+                                      cubit.resetEditState();
                                       _pointsUsedCtrl.text =
-                                          provider.pointsUsed.toString();
+                                          state.pointsUsed.toString();
                                       _manualNameCtrl.text =
-                                          provider.order.displayCustomerName
+                                          state.order!.customerName
                                               .trim();
                                     }
                                     setState(() {
@@ -450,18 +450,18 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   },
                                   onShare:
                                       () => OrderPdfGenerator.shareTicket(
-                                        provider.order,
-                                        items: provider.items,
+                                        state.order!,
+                                        items: state.items,
                                       ),
                                 ),
                                 const SizedBox(height: 16),
                                 OrderDetailStatusSection(
-                                  originalStatus: provider.order.status,
-                                  currentStatus: provider.currentStatus,
+                                  originalStatus: state.order!.status,
+                                  currentStatus: state.currentStatus,
                                   isEditing: false, // Siempre en modo lectura
                                   onChanged: (val) {
                                     if (val != null) {
-                                      provider.updateStatus(val);
+                                      cubit.updateStatus(val);
                                     }
                                   },
                                 ),
@@ -474,19 +474,19 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   manualNameController: _manualNameCtrl,
                                   profiles: profiles,
                                   selectedCustomerLabel: getCustomerLabel(
-                                    provider.selectedCustomerId,
+                                    state.selectedCustomerId,
                                   ),
                                   selectedCustomerId:
-                                      provider.selectedCustomerId,
+                                      state.selectedCustomerId,
                                   onSelectCustomer: (id) {
-                                    provider.selectCustomer(
+                                    cubit.selectCustomer(
                                       id,
                                       pointsToSolesRatio,
                                       earningRate,
                                     );
                                   },
                                   onClearCustomer: () {
-                                    provider.selectCustomer(
+                                    cubit.selectCustomer(
                                       null,
                                       pointsToSolesRatio,
                                       earningRate,
@@ -498,11 +498,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 OrderDetailPaymentSection(
                                   isEditing: _isEditing,
                                   isCompleted: isCompleted,
-                                  accounts: provider.accounts,
-                                  currentPaymentMethod: provider.paymentMethod,
+                                  accounts: state.accounts,
+                                  currentPaymentMethod: state.paymentMethod,
                                   onChanged: (val) {
                                     if (val != null) {
-                                      provider.updatePaymentMethod(
+                                      cubit.updatePaymentMethod(
                                         val,
                                         pointsToSolesRatio,
                                         earningRate,
@@ -514,73 +514,73 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   },
                                 ),
                                 const SizedBox(height: 16),
-                                if (provider.order.paymentStatus != 'PAID')
+                                if (state.order!.paymentStatus != 'PAID')
                                   PaymentStatusSection(
-                                    orderId: provider.order.id,
-                                    paymentStatus: provider.order.paymentStatus,
-                                    totalAmount: provider.order.totalAmount,
-                                    amountPaid: provider.order.amountPaid,
-                                    paymentMethod: provider.paymentMethod,
-                                    creditInfo: provider.creditInfo,
+                                    orderId: state.order!.id,
+                                    paymentStatus: state.order!.paymentStatus,
+                                    totalAmount: state.order!.totalAmount,
+                                    amountPaid: state.order!.amountPaid,
+                                    paymentMethod: state.paymentMethod,
+                                    creditInfo: state.creditInfo,
                                     supabase: Supabase.instance.client,
-                                    accounts: provider.accounts,
-                                    customerId: provider.selectedCustomerId,
-                                    pointsEarned: provider.pointsEarned,
+                                    accounts: state.accounts,
+                                    customerId: state.selectedCustomerId,
+                                    pointsEarned: state.pointsEarned,
                                     onPaymentRegistered: () {
-                                      provider.wasModified = true;
-                                      provider.fetchData(_manualNameCtrl.text);
+                                      cubit.setWasModified();
+                                      cubit.fetchData(state.order!.id);
                                     },
                                     isLoyaltyEnabled:
                                         config.loyaltyGlobalEnabled,
                                   ),
                                 const SizedBox(height: 16),
-                                if (provider.selectedCustomerId != null &&
-                                    provider.selectedCustomerId!.isNotEmpty &&
-                                    provider.creditInfo != null) ...[
+                                if (state.selectedCustomerId != null &&
+                                    state.selectedCustomerId!.isNotEmpty &&
+                                    state.creditInfo != null) ...[
                                   OrderDetailCreditSection(
-                                    creditInfo: provider.creditInfo!,
-                                    customerId: provider.selectedCustomerId!,
+                                    creditInfo: state.creditInfo!,
+                                    customerId: state.selectedCustomerId!,
                                   ),
                                 ],
                                 const SizedBox(height: 16),
                                 OrderDetailItemsSection(
-                                  items: provider.items,
-                                  isLoading: provider.isLoading,
+                                  items: state.items,
+                                  isLoading: state.isLoading,
                                   isEditing: _isEditing,
                                   isLocked:
-                                      provider.currentStatus.toUpperCase() !=
+                                      state.currentStatus.toUpperCase() !=
                                       'PENDING',
-                                  batchesByVariant: provider.batchesByVariant,
-                                  usesBatchesMap: provider.usesBatchesMap,
-                                  batchOverrides: provider.batchOverrides,
+                                  batchesByVariant: state.batchesByVariant,
+                                  usesBatchesMap: state.usesBatchesMap,
+                                  batchOverrides: state.batchOverrides,
                                   quantityControllers: _quantityControllers,
                                   onDecrease: (idx) {
-                                    if (provider.items[idx].quantity > 1) {
-                                      provider.updateItemQuantity(
+                                    if (state.items[idx].quantity > 1) {
+                                      cubit.updateItemQuantity(
                                         idx,
-                                        provider.items[idx].quantity - 1,
+                                        state.items[idx].quantity - 1,
                                         pointsToSolesRatio,
                                         earningRate,
                                       );
                                       _quantityControllers[idx].text =
-                                          provider.items[idx].quantity
+                                          state.items[idx].quantity
                                               .toString();
                                     }
                                   },
                                   onIncrease: (idx) {
-                                    provider.updateItemQuantity(
+                                    cubit.updateItemQuantity(
                                       idx,
-                                      provider.items[idx].quantity + 1,
+                                      state.items[idx].quantity + 1,
                                       pointsToSolesRatio,
                                       earningRate,
                                     );
                                     _quantityControllers[idx].text =
-                                        provider.items[idx].quantity.toString();
+                                        state.items[idx].quantity.toString();
                                   },
                                   onQuantityChanged: (idx, val) {
                                     final qty = int.tryParse(val) ?? 1;
                                     if (qty > 0) {
-                                      provider.updateItemQuantity(
+                                      cubit.updateItemQuantity(
                                         idx,
                                         qty,
                                         pointsToSolesRatio,
@@ -593,18 +593,18 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                 ),
                                 const SizedBox(height: 16),
                                 if (config.loyaltyGlobalEnabled &&
-                                    provider.selectedCustomerId != null &&
-                                    provider.selectedCustomerId!.isNotEmpty &&
-                                    provider.paymentMethod != 'CRÉDITO') ...[
+                                    state.selectedCustomerId != null &&
+                                    state.selectedCustomerId!.isNotEmpty &&
+                                    state.paymentMethod != 'CRÉDITO') ...[
                                   OrderDetailPointsSection(
                                     isEditing: _isEditing,
-                                    pointsUsed: provider.pointsUsed,
+                                    pointsUsed: state.pointsUsed,
                                     pointsUsedCtrl: _pointsUsedCtrl,
                                     maxPointsAvailable: maxPtsUser,
                                     pointsToSolesRatio: pointsToSolesRatio,
                                     onPointsChanged: (val) {
                                       final pts = int.tryParse(val) ?? 0;
-                                      provider.updatePointsUsed(
+                                      cubit.updatePointsUsed(
                                         pts <= maxPtsUser ? pts : maxPtsUser,
                                         pointsToSolesRatio,
                                         earningRate,
@@ -618,25 +618,25 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   const SizedBox(height: 16),
                                 ],
                                 OrderDetailAuditSection(
-                                  order: provider.order,
-                                  updaterName: provider.updaterName,
+                                  order: state.order!,
+                                  updaterName: state.updaterName,
                                 ),
                                 const SizedBox(height: 16),
                                 OrderDetailTotalSummarySection(
                                   subtotal: subtotal,
-                                  pointsUsed: provider.pointsUsed,
-                                  pointsEarned: provider.pointsEarned,
+                                  pointsUsed: state.pointsUsed,
+                                  pointsEarned: state.pointsEarned,
                                   pointsToSolesRatio: pointsToSolesRatio,
-                                  discountAmount: provider.order.discountAmount,
+                                  discountAmount: state.order!.discountAmount,
                                   isCompleted:
                                       isCompleted &&
-                                      provider.order.paymentStatus == 'PAID',
+                                      state.order!.paymentStatus == 'PAID',
                                   isLoyaltyEnabled: config.loyaltyGlobalEnabled,
                                 ),
                               ],
                             ),
                   ),
-                  if (!provider.isLoading && !provider.hasError)
+                  if (!state.isLoading && !state.hasError)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -685,7 +685,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               flex: 5,
                               child: ElevatedButton(
                                 onPressed:
-                                    provider.isSaving
+                                    state.isSaving
                                         ? null
                                         : () =>
                                             _saveChanges(pointsToSolesRatio),
@@ -699,7 +699,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   ),
                                 ),
                                 child:
-                                    provider.isSaving
+                                    state.isSaving
                                         ? const SizedBox(
                                           width: 20,
                                           height: 20,
@@ -722,7 +722,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               flex: 5,
                               child: ElevatedButton.icon(
                                 onPressed:
-                                    provider.isReturning
+                                    state.isReturning
                                         ? null
                                         : _confirmReturn,
                                 style: ElevatedButton.styleFrom(
@@ -740,7 +740,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                                   ),
                                 ),
                                 icon:
-                                    provider.isReturning
+                                    state.isReturning
                                         ? const SizedBox(
                                           width: 20,
                                           height: 20,
@@ -763,7 +763,7 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
                               flex: 5,
                               child: TextButton(
                                 onPressed:
-                                    () => _handlePop(provider.wasModified),
+                                    () => _handlePop(state.wasModified),
                                 style: TextButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
@@ -791,12 +791,11 @@ class _OrderDetailSheetState extends State<OrderDetailSheet> {
             canPop: false,
             onPopInvokedWithResult: (didPop, dynamic result) {
               if (didPop) return;
-              _handlePop(provider.wasModified);
+              _handlePop(state.wasModified);
             },
             child: child,
           );
         },
-      ),
     );
   }
 }

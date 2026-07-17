@@ -18,6 +18,27 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     required this.saveOrderChangesUc,
   }) : super(const OrderDetailState());
 
+  void setInitialOrder(OrderEntity order) {
+    emit(state.copyWith(
+      order: order,
+      selectedCustomerId: order.customerId,
+      currentStatus: order.status,
+      pointsUsed: order.pointsUsed,
+      pointsEarned: order.pointsEarned,
+      paymentMethod: order.paymentMethod,
+    ));
+  }
+
+  void setWasModified() {
+    emit(state.copyWith(wasModified: true));
+  }
+
+  void resetEditState() {
+    if (state.order != null) {
+      setInitialOrder(state.order!);
+    }
+  }
+
   Future<void> fetchData(String orderId) async {
     emit(state.copyWith(isLoading: true, hasError: false));
 
@@ -73,20 +94,6 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
 
   void updateStatus(String status) {
     emit(state.copyWith(currentStatus: status));
-  }
-
-  void resetEditState() {
-    if (state.order != null) {
-      emit(
-        state.copyWith(
-          selectedCustomerId: state.order!.customerId,
-          currentStatus: state.order!.status,
-          pointsUsed: state.order!.pointsUsed,
-          pointsEarned: state.order!.pointsEarned,
-          paymentMethod: state.order!.paymentMethod,
-        ),
-      );
-    }
   }
 
   double calculateOrderFinalAmount(double pointsToSolesRatio) {
@@ -208,18 +215,6 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     return s != 'CANCELLED' && s != 'COMPLETED' && s != 'RETURNED';
   }
 
-  void setInitialOrder(OrderEntity order) {
-    emit(
-      state.copyWith(
-        order: order,
-        currentStatus: order.status,
-        pointsUsed: order.pointsUsed,
-        pointsEarned: order.pointsEarned,
-        paymentMethod: order.paymentMethod,
-        selectedCustomerId: order.customerId,
-      ),
-    );
-  }
 
   
 
