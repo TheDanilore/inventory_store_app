@@ -94,9 +94,14 @@ class AppRouter {
         }
 
         if (authState.authStatus == AuthStatus.unauthenticated) {
+          // Rutas públicas: galería, detalle de producto y catálogo de cliente (modo invitado)
           if (isGallery) return null;
           if (currentPath.startsWith('/product/')) return null;
-          return isLogin ? null : '/login';
+          if (currentPath.startsWith('/customer')) return null;
+          // Login y registro: acceso libre
+          if (isLogin) return null;
+          // Cualquier otra ruta (ej. /admin) → catálogo invitado
+          return '/customer';
         }
 
         if (authState.authStatus == AuthStatus.authenticated &&
