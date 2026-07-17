@@ -26,8 +26,9 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/custom
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey =
-    GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
 
 class AppRouter {
   static String? _pendingDeepLink;
@@ -49,29 +50,38 @@ class AppRouter {
       restorationScopeId: 'router',
       initialLocation: '/',
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
-      errorBuilder: (context, state) => Scaffold(
-        appBar: AppBar(title: const Text('Página no encontrada')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.link_off_rounded, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text('Esta página no existe',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(state.matchedLocation,
-                  style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: () => context.go('/'),
-                icon: const Icon(Icons.home_rounded),
-                label: const Text('Ir al Inicio'),
+      errorBuilder:
+          (context, state) => Scaffold(
+            appBar: AppBar(title: const Text('Página no encontrada')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.link_off_rounded,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Esta página no existe',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.matchedLocation,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Ir al Inicio'),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
       redirect: (context, state) {
         final authState = authCubit.state;
         final currentPath = state.uri.path;
@@ -117,27 +127,29 @@ class AppRouter {
 
         // ADMIN ROUTES
         ShellRoute(
-          builder: (context, state, child) => BlocProvider(
-            create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
-            child: child,
-          ),
+          builder:
+              (context, state, child) => BlocProvider(
+                create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                child: child,
+              ),
           routes: [
             GoRoute(
               path: '/admin',
-              builder: (context, state) => AdminLayout(
-                title: 'Catálogo',
-                showAppBar: false,
-                body: AdminCatalogScreen(
-                  onProfileAvatarTap: () {
-                    final auth = context.read<AuthCubit>();
-                    if (auth.state.currentUser == null) {
-                      context.go('/login');
-                    } else {
-                      context.push('/admin/profile');
-                    }
-                  },
-                ),
-              ),
+              builder:
+                  (context, state) => AdminLayout(
+                    title: 'Catálogo',
+                    showAppBar: false,
+                    body: AdminCatalogScreen(
+                      onProfileAvatarTap: () {
+                        final auth = context.read<AuthCubit>();
+                        if (auth.state.currentUser == null) {
+                          context.go('/login');
+                        } else {
+                          context.push('/admin/profile');
+                        }
+                      },
+                    ),
+                  ),
               routes: [
                 ...AuthRoutes.adminRoutes,
                 ...AppConfigRoutes.adminRoutes,
@@ -158,10 +170,9 @@ class AppRouter {
 
         // CUSTOMER ROUTES
         StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) => CustomerLayout(
-            title: '',
-            body: navigationShell,
-          ),
+          builder:
+              (context, state, navigationShell) =>
+                  CustomerLayout(title: '', body: navigationShell),
           branches: [
             StatefulShellBranch(
               routes: [
@@ -170,7 +181,8 @@ class AppRouter {
                   builder: (context, state) {
                     final config = context.watch<AppConfigCubit>();
                     return BlocProvider(
-                      create: (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
+                      create:
+                          (_) => sl<CustomerCatalogCubit>()..loadInitialData(),
                       child: CustomerCatalogScreen(
                         businessName: config.businessName,
                         businessAddress: config.businessAddress,
@@ -184,7 +196,8 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 OrdersRoutes.customerRoutes.firstWhere(
-                    (route) => (route as GoRoute).path == '/customer/cart'),
+                  (route) => (route as GoRoute).path == '/customer/cart',
+                ),
               ],
             ),
             StatefulShellBranch(
@@ -192,7 +205,8 @@ class AppRouter {
                 ...CustomersRoutes.customerRoutes,
                 ...LoyaltyRoutes.customerRoutes,
                 ...OrdersRoutes.customerRoutes.where(
-                    (route) => (route as GoRoute).path != '/customer/cart'),
+                  (route) => (route as GoRoute).path != '/customer/cart',
+                ),
               ],
             ),
           ],
