@@ -7,13 +7,15 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credit_movements/movements_summary_header.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credit_movements/movement_card.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/orders/domain/usecases/get_order_by_id_usecase.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 
 class CustomerCreditMovementsScreen extends StatelessWidget {
   final String creditId;
   final String customerName;
   final double currentDebt;
   final double creditLimit;
-  final Function(String orderId) onOpenOrder;
 
   const CustomerCreditMovementsScreen({
     super.key,
@@ -21,7 +23,6 @@ class CustomerCreditMovementsScreen extends StatelessWidget {
     required this.customerName,
     this.currentDebt = 0.0,
     this.creditLimit = 0.0,
-    required this.onOpenOrder,
   });
 
   @override
@@ -34,7 +35,6 @@ class CustomerCreditMovementsScreen extends StatelessWidget {
         customerName: customerName,
         currentDebt: currentDebt,
         creditLimit: creditLimit,
-        onOpenOrder: onOpenOrder,
       ),
     );
   }
@@ -45,14 +45,12 @@ class _CustomerCreditMovementsScreenContent extends StatefulWidget {
   final String customerName;
   final double currentDebt;
   final double creditLimit;
-  final Function(String orderId) onOpenOrder;
 
   const _CustomerCreditMovementsScreenContent({
     required this.creditId,
     required this.customerName,
     required this.currentDebt,
     required this.creditLimit,
-    required this.onOpenOrder,
   });
 
   @override
@@ -81,6 +79,36 @@ class _CustomerCreditMovementsScreenContentState
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleOpenOrder(String orderId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final result = await sl<GetOrderByIdUseCase>()(orderId);
+    if (!mounted) return;
+    Navigator.pop(context);
+    result.fold(
+        (failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error al cargar la orden')),
+          );
+        },
+        (order) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useRootNavigator: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => BlocProvider(
+              create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+              child: OrderDetailSheet(order: order),
+            ),
+          );
+        },
+      );
   }
 
   @override
@@ -153,7 +181,7 @@ class _CustomerCreditMovementsScreenContentState
                         final movement = movements[index];
                         return MovementCard(
                           movement: movement,
-                          onOpenOrder: widget.onOpenOrder,
+                          onOpenOrder: _handleOpenOrder,
                         );
                       },
                     );
