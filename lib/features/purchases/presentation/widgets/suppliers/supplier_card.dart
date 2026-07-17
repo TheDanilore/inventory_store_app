@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_model.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SupplierCard extends StatelessWidget {
-  final SupplierModel supplier;
+  final SupplierEntity supplier;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
 
@@ -261,3 +261,4 @@ class _QuickActionButton extends StatelessWidget {
     );
   }
 }
+

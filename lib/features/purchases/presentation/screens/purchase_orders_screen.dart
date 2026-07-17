@@ -1,14 +1,17 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/features/inventory/data/models/entry_item_ui.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
-import 'package:inventory_store_app/features/purchases/presentation/providers/purchase_orders_provider.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_detail_sheet.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +30,8 @@ class PurchaseOrdersScreen extends StatefulWidget {
 }
 
 class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
+  PurchaseOrdersCubit get cubit => context.read<PurchaseOrdersCubit>();
+  _PurchaseOrdersViewModel get provider => _PurchaseOrdersViewModel(cubit, cubit.state);
   final _searchCtrl = TextEditingController();
   bool _hasDraft = false;
   Timer? _debounce;
@@ -45,9 +50,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     super.initState();
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<PurchaseOrdersProvider>();
-      provider.loadOrders(reset: true);
-      _searchCtrl.text = provider.searchText;
+      
+      cubit.loadOrders(refresh: true);
+      
     });
   }
 
@@ -77,7 +82,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   Future<void> _pickDateRange(BuildContext context) async {
-    final provider = context.read<PurchaseOrdersProvider>();
+    
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -100,7 +105,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           ),
     );
     if (picked != null) {
-      provider.setDateRange(picked);
+      cubit.setDateRange(picked.start, picked.end);
     }
   }
 
@@ -147,7 +152,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   void _showDetail(BuildContext context, PurchaseOrderModel po) {
-    final provider = context.read<PurchaseOrdersProvider>();
+    
 
     showModalBottomSheet(
       context: context,
@@ -156,9 +161,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       builder:
           (_) => PODetailSheet(
             po: po,
-            loadItems: () => provider.loadItemsForOrder(po.id),
+            loadItems: () async { final res = await sl<FetchPurchaseOrderItemsUseCase>().call(po.id); return res.fold((l)=>[],(r)=>r); },
             onReceive: () async {
-              final items = await provider.loadItemsForOrder(po.id);
+              final res = await sl<FetchPurchaseOrderItemsUseCase>().call(po.id);
+              final items = res.fold((l)=>[],(r)=>r);
               if (!context.mounted) return;
 
               final entryItems =
@@ -167,7 +173,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         (i) => EntryItemUI(
                           product: _dummyProduct(
                             i.productId,
-                            i.productName ?? 'â€”',
+                            i.productName ?? '—',
                             i.usesBatches,
                             i.imageUrl,
                           ),
@@ -202,7 +208,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 },
               );
               if (result == true && context.mounted) {
-                context.read<PurchaseOrdersProvider>().loadOrders();
+                cubit.loadOrders();
               }
             },
             onUpdateStatus:
@@ -230,8 +236,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PurchaseOrdersProvider>(
-      builder: (context, provider, child) {
+    return BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
+      builder: (context, state) {
+        final provider = _PurchaseOrdersViewModel(context.read<PurchaseOrdersCubit>(), state);
         if (provider.errorMessage.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             AppSnackbar.show(
@@ -248,11 +255,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         final pendingCount = provider.pendingCountFiltered;
 
         return AdminLayout(
-          title: 'Ã“rdenes de Compra',
+          title: 'Órdenes de Compra',
           showBackButton: true,
           body: Column(
             children: [
-              // â”€â”€ Borrador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Borrador ──────────────────────────────────────────────────
               if (_hasDraft)
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -288,7 +295,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           );
                           _checkDraft();
                           if (result == true && context.mounted) {
-                            context.read<PurchaseOrdersProvider>().loadOrders();
+                            cubit.loadOrders();
                           }
                         },
                         style: FilledButton.styleFrom(
@@ -303,20 +310,20 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   ),
                 ),
 
-              // â”€â”€ Resumen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Resumen ───────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   children: [
                     _SummaryTile(
-                      label: 'Ã“rdenes',
+                      label: 'Órdenes',
                       value: '${filtered.length}',
                       icon: Icons.shopping_cart_rounded,
                       color: AppColors.primary,
                     ),
                     const SizedBox(width: 8),
                     _SummaryTile(
-                      label: 'Total PÃ¡g.',
+                      label: 'Total Pág.',
                       value: 'S/ ${totalAmount.toStringAsFixed(2)}',
                       icon: Icons.payments_rounded,
                       color: AppColors.teal,
@@ -335,7 +342,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                 ),
               ),
 
-              // â”€â”€ Filtros â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Filtros ───────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Column(
@@ -369,7 +376,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         _DateRangeButton(
                           dateRange: provider.dateRange,
                           onTap: () => _pickDateRange(context),
-                          onClear: () => provider.setDateRange(null),
+                          onClear: () => cubit.setDateRange(null, null),
                         ),
                       ],
                     ),
@@ -411,7 +418,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           return Wrap(children: chips);
                         }
 
-                        // Scroll horizontal en mÃ³viles
+                        // Scroll horizontal en móviles
                         return SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(children: chips),
@@ -423,7 +430,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               ),
               const SizedBox(height: 6),
 
-              // â”€â”€ Lista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Lista ─────────────────────────────────────────────────────
               Expanded(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
@@ -468,7 +475,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   children: [
                                     const Spacer(),
                                     Text(
-                                      'PÃ¡g. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 12,
@@ -482,7 +489,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                 child: RefreshIndicator(
                                   color: AppColors.primary,
                                   onRefresh:
-                                      () => provider.loadOrders(reset: true),
+                                      () => cubit.loadOrders(refresh: true),
                                   child: ListView.separated(
                                     physics:
                                         const AlwaysScrollableScrollPhysics(),
@@ -518,7 +525,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   child: AdminPageBlocks(
                                     currentPage: provider.currentPage,
                                     totalPages: provider.totalPages,
-                                    onPageChanged: (p) => provider.goToPage(p),
+                                    onPageChanged: (p) => provider.setPage(p),
                                   ),
                                 ),
                             ],
@@ -528,14 +535,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             ],
           ),
 
-          // â”€â”€ FAB NUEVA ORDEN â”€â”€
+          // ── FAB NUEVA ORDEN ──
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
               final result = await context.push<bool>(
                 '/admin/purchase-order-form',
               );
               if (result == true && context.mounted) {
-                context.read<PurchaseOrdersProvider>().loadOrders();
+                cubit.loadOrders();
               }
               _checkDraft();
             },
@@ -660,7 +667,7 @@ class _DateRangeButton extends StatelessWidget {
 
   String _formatRange(DateTimeRange range) {
     final fmt = DateFormat('d MMM', 'es');
-    return '${fmt.format(range.start)} â€“ ${fmt.format(range.end)}';
+    return '${fmt.format(range.start)} – ${fmt.format(range.end)}';
   }
 
   @override
@@ -728,4 +735,114 @@ class _DateRangeButton extends StatelessWidget {
     );
   }
 }
+
+
+class _PurchaseOrdersViewModel {
+  final PurchaseOrdersCubit cubit;
+  final PurchaseOrdersState state;
+  _PurchaseOrdersViewModel(this.cubit, this.state);
+
+  String get errorMessage {
+    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).message;
+    return '';
+  }
+  void clearError() => cubit.clearError();
+
+  bool get isLoading => state is PurchaseOrdersLoading || state is PurchaseOrdersInitial;
+  
+  List<dynamic> get orders {
+    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).orders;
+    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).currentOrders;
+    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).currentOrders;
+    return [];
+  }
+  
+  String get searchText {
+    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).searchText;
+    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).searchText;
+    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).searchText;
+    return '';
+  }
+  
+  String get statusFilter {
+    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).statusFilter;
+    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).statusFilter;
+    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).statusFilter;
+    return 'Todos';
+  }
+  
+  DateTimeRange? get dateRange {
+    DateTime? start;
+    DateTime? end;
+    if (state is PurchaseOrdersLoaded) {
+      start = (state as PurchaseOrdersLoaded).startDate;
+      end = (state as PurchaseOrdersLoaded).endDate;
+    } else if (state is PurchaseOrdersLoading) {
+      start = (state as PurchaseOrdersLoading).startDate;
+      end = (state as PurchaseOrdersLoading).endDate;
+    } else if (state is PurchaseOrdersError) {
+      start = (state as PurchaseOrdersError).startDate;
+      end = (state as PurchaseOrdersError).endDate;
+    }
+    if (start != null && end != null) return DateTimeRange(start: start, end: end);
+    return null;
+  }
+  
+  int get currentPage {
+    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).currentPage;
+    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).currentPage;
+    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).currentPage;
+    return 0;
+  }
+  
+  int get totalPages {
+    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).totalPages;
+    int tc = 0;
+    if (state is PurchaseOrdersLoading) tc = (state as PurchaseOrdersLoading).totalCount;
+    if (state is PurchaseOrdersError) tc = (state as PurchaseOrdersError).totalCount;
+    return tc == 0 ? 1 : (tc / 10).ceil();
+  }
+  
+  double get totalAmountFiltered {
+    double total = 0;
+    for (final o in orders) {
+      total += (o.totalAmount ?? 0.0) as double;
+    }
+    return total;
+  }
+  
+  int get pendingCountFiltered {
+    int count = 0;
+    for (final o in orders) {
+      if (o.status == 'PENDING') count++;
+    }
+    return count;
+  }
+
+  void loadOrders({bool reset = false}) => cubit.loadOrders(refresh: reset);
+  void setSearchText(String v) => cubit.setSearchText(v);
+  void setStatusFilter(String v) => cubit.setStatusFilter(v);
+  void setDateRange(DateTimeRange? v) => cubit.setDateRange(v?.start, v?.end);
+  void setPage(int p) => cubit.loadOrders(page: p);
+  Future<List<dynamic>> loadItemsForOrder(String id) async {
+    final result = await sl<FetchPurchaseOrderItemsUseCase>().call(id);
+    return result.fold((l) => [], (r) => r);
+  }
+  Future<void> updateOrderStatus(String id, String status) async {
+    await cubit.updateOrderStatus(id, status);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 

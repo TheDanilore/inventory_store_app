@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_account_modal.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_payment_modal.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -9,9 +9,9 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SupplierAccountOptionsSheet extends StatelessWidget {
-  final SupplierCreditModel account;
+  final SupplierCreditEntity account;
   final VoidCallback onRefresh;
-  final Function(SupplierCreditModel) onToggleStatus;
+  final Function(SupplierCreditEntity) onToggleStatus;
 
   const SupplierAccountOptionsSheet({
     super.key,
@@ -233,3 +233,6 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
     );
   }
 }
+
+
+

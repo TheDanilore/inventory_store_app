@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_model.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SupplierFormModal extends StatefulWidget {
-  final SupplierModel? supplierToEdit;
+  final SupplierEntity? supplierToEdit;
   final VoidCallback onSaved;
 
   const SupplierFormModal({
@@ -283,3 +283,4 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
     );
   }
 }
+

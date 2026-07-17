@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
-import 'package:inventory_store_app/features/purchases/presentation/providers/purchase_order_form_provider.dart';
+import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_cubit.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
@@ -33,7 +36,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PurchaseOrderFormProvider>().loadCatalogsAndDraft();
+      context.read<PurchaseOrderFormCubit>().initForm();
     });
   }
 
@@ -45,7 +48,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 
   Future<void> _pickDueDate(BuildContext context) async {
-    final provider = context.read<PurchaseOrderFormProvider>();
+    final cubit = context.read<PurchaseOrderFormCubit>();
+    final state = cubit.state;
+    final provider = _PurchaseOrderFormViewModel(cubit, state);
     final picked = await showDatePicker(
       context: context,
       initialDate:
@@ -60,13 +65,15 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 
   Future<void> _pickDocumentDate(BuildContext context) async {
-    final provider = context.read<PurchaseOrderFormProvider>();
+    final cubit = context.read<PurchaseOrderFormCubit>();
+    final state = cubit.state;
+    final provider = _PurchaseOrderFormViewModel(cubit, state);
     final picked = await showDatePicker(
       context: context,
       initialDate: provider.documentDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      helpText: 'Fecha del Documento FÃ­sico',
+      helpText: 'Fecha del Documento Físico',
     );
     if (picked != null) {
       provider.setDocumentDate(picked);
@@ -74,7 +81,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 
   Future<void> _showAddProductSheet(BuildContext context) async {
-    final provider = context.read<PurchaseOrderFormProvider>();
+    final cubit = context.read<PurchaseOrderFormCubit>();
+    final state = cubit.state;
+    final provider = _PurchaseOrderFormViewModel(cubit, state);
 
     // Validar que se haya seleccionado un proveedor primero
     if (provider.selectedSupplierId == null) {
@@ -86,11 +95,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       return;
     }
 
-    // Validar que se haya seleccionado un almacÃ©n de destino
+    // Validar que se haya seleccionado un almacén de destino
     if (provider.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacÃ©n de destino antes de agregar productos.',
+        message: 'Selecciona un almacén de destino antes de agregar productos.',
         type: SnackbarType.warning,
       );
       return;
@@ -111,16 +120,17 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 
   Future<void> _handleSave() async {
-    final provider = context.read<PurchaseOrderFormProvider>();
-    final success = await provider.saveOrder(
-      documentNumber: _documentNumberCtrl.text.trim(),
-      notes: _notesCtrl.text.trim(),
-    );
+    final cubit = context.read<PurchaseOrderFormCubit>();
+    final state = cubit.state;
+    final provider = _PurchaseOrderFormViewModel(cubit, state);
+    provider.setDocumentNumber(_documentNumberCtrl.text.trim());
+    provider.setNotes(_notesCtrl.text.trim());
+    final success = await provider.saveOrder();
 
     if (success && mounted) {
       AppSnackbar.show(
         context,
-        message: 'Orden generada con Ã©xito',
+        message: 'Orden generada con éxito',
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
@@ -140,7 +150,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           (_) => AlertDialog(
             title: const Text('Descartar Borrador'),
             content: const Text(
-              'Â¿EstÃ¡s seguro de que quieres limpiar la orden actual? PerderÃ¡s todos los Ã­tems agregados.',
+              '¿Estás seguro de que quieres limpiar la orden actual? Perderás todos los ítems agregados.',
             ),
             actions: [
               TextButton(
@@ -159,7 +169,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
 
     if (confirm == true && mounted) {
-      context.read<PurchaseOrderFormProvider>().clearDraft();
+      context.read<PurchaseOrderFormCubit>().clearDraft();
       _documentNumberCtrl.clear();
       _notesCtrl.clear();
       AppSnackbar.show(
@@ -172,8 +182,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PurchaseOrderFormProvider>(
-      builder: (context, provider, child) {
+    return BlocBuilder<PurchaseOrderFormCubit, PurchaseOrderFormState>(
+      builder: (context, state) {
+        final provider = _PurchaseOrderFormViewModel(context.read<PurchaseOrderFormCubit>(), state);
         if (provider.isLoading) {
           return const AdminLayout(
             title: 'Nueva Orden',
@@ -201,9 +212,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               context: context,
               builder:
                   (ctx) => AlertDialog(
-                    title: const Text('Ã“rden en progreso'),
+                    title: const Text('Órden en progreso'),
                     content: const Text(
-                      'Tienes productos en la Ã³rden actual. Â¿QuÃ© deseas hacer al salir?',
+                      'Tienes productos en la órden actual. ¿Qué deseas hacer al salir?',
                     ),
                     actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     actions: [
@@ -292,7 +303,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                   ),
                                 ),
                               ),
-                              // Derecha: Productos y BotÃ³n Guardar
+                              // Derecha: Productos y Botón Guardar
                               Expanded(
                                 flex: 4,
                                 child: Column(
@@ -311,7 +322,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                           );
                         }
 
-                        // MÃ³vil
+                        // Móvil
                         return Column(
                           children: [
                             Expanded(
@@ -343,7 +354,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildStickySaveButton(PurchaseOrderFormProvider provider) {
+  Widget _buildStickySaveButton(_PurchaseOrderFormViewModel provider) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
@@ -385,7 +396,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildHeaderData(PurchaseOrderFormProvider provider) {
+  Widget _buildHeaderData(_PurchaseOrderFormViewModel provider) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,7 +434,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             isExpanded: true,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
-              'AlmacÃ©n Destino (Obligatorio)',
+              'Almacén Destino (Obligatorio)',
               icon: Icons.warehouse_rounded,
             ),
             items:
@@ -453,7 +464,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildProductsData(PurchaseOrderFormProvider provider) {
+  Widget _buildProductsData(_PurchaseOrderFormViewModel provider) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,7 +491,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   ),
                   if (provider.items.isNotEmpty)
                     PopupMenuButton<String>(
-                      tooltip: 'MÃ¡s opciones',
+                      tooltip: 'Más opciones',
                       icon: const Icon(
                         Icons.more_vert_rounded,
                         color: AppColors.textSecondary,
@@ -532,7 +543,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Tu orden estÃ¡ vacÃ­a',
+                    'Tu orden está vacía',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -598,7 +609,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildPaymentData(PurchaseOrderFormProvider provider) {
+  Widget _buildPaymentData(_PurchaseOrderFormViewModel provider) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,7 +645,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               DropdownMenuItem(
                 value: 'CREDITO',
                 child: Text(
-                  'LÃ­nea de CrÃ©dito',
+                  'Línea de Crédito',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -716,7 +727,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildDocumentData(PurchaseOrderFormProvider provider) {
+  Widget _buildDocumentData(_PurchaseOrderFormViewModel provider) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -760,7 +771,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 child: TextFormField(
                   controller: _documentNumberCtrl,
                   decoration: InputDecoration(
-                    labelText: 'NÃºmero / Serie',
+                    labelText: 'Número / Serie',
                     filled: true,
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
@@ -778,7 +789,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           ),
           const SizedBox(height: 16),
           _DatePickerField(
-            label: 'Fecha EmisiÃ³n FÃ­sico',
+            label: 'Fecha Emisión Físico',
             value: provider.documentDate,
             onPick: () => _pickDocumentDate(context),
             onClear: () => provider.setDocumentDate(null),
@@ -808,7 +819,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   }
 }
 
-// â”€â”€ UTILS UI â”€â”€
+// ── UTILS UI ──
 
 InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
   return InputDecoration(
@@ -943,4 +954,125 @@ class _DatePickerField extends StatelessWidget {
     );
   }
 }
+
+
+class _PurchaseOrderFormViewModel {
+  final PurchaseOrderFormCubit cubit;
+  final PurchaseOrderFormState state;
+  _PurchaseOrderFormViewModel(this.cubit, this.state);
+
+  String get errorMessage {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).errorMessage ?? '';
+    return '';
+  }
+  void clearError() => cubit.clearError();
+
+  bool get isLoading => state is PurchaseOrderFormLoading || state is PurchaseOrderFormInitial;
+  bool get isSaving {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).isSaving;
+    return false;
+  }
+  
+  List<Map<String, dynamic>> get suppliers {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).suppliers;
+    return [];
+  }
+  List<WarehouseModel> get warehouses {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).warehouses;
+    return [];
+  }
+  List<FinancialAccountModel> get accounts {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).accounts;
+    return [];
+  }
+  
+  List<InventoryEntryItemEntity> get items {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).items;
+    return [];
+  }
+  
+  String? get selectedSupplierId {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).selectedSupplierId;
+    return null;
+  }
+  String? get selectedWarehouseId {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).selectedWarehouseId;
+    return null;
+  }
+  DateTime? get dueDate {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).dueDate;
+    return null;
+  }
+  DateTime? get documentDate {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).documentDate;
+    return null;
+  }
+  String get documentType {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).documentType;
+    return 'NINGUNO';
+  }
+  String get paymentMode {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).paymentMode;
+    return 'EFECTIVO';
+  }
+  String get paymentStatus {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).paymentStatus;
+    return 'PENDING';
+  }
+  String? get selectedAccountId {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).selectedAccountId;
+    return null;
+  }
+  String get documentNumber {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).documentNumber;
+    return '';
+  }
+  String get notes {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).notes;
+    return '';
+  }
+  bool get isValid {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).isValid;
+    return false;
+  }
+  double get totalAmount {
+    if (state is PurchaseOrderFormLoaded) return (state as PurchaseOrderFormLoaded).totalAmount;
+    return 0.0;
+  }
+
+    void setSupplier(String? v) => cubit.updateField(supplierId: v);
+  void setWarehouse(String? v) => cubit.updateField(warehouseId: v);
+  void setDueDate(DateTime? v) => v == null ? cubit.clearDueDate() : cubit.updateField(dueDate: v);
+  void setDocumentDate(DateTime? v) => v == null ? cubit.clearDocumentDate() : cubit.updateField(documentDate: v);
+  void setDocumentType(String v) => cubit.updateField(documentType: v);
+  void setPaymentMode(String v) => cubit.updateField(paymentMode: v);
+  void setPaymentStatus(String v) => cubit.updateField(paymentStatus: v);
+  void setAccount(String? v) => cubit.updateField(accountId: v);
+  void setDocumentNumber(String v) => cubit.updateField(documentNumber: v);
+  void setNotes(String v) => cubit.updateField(notes: v);
+  
+  void addItem(InventoryEntryItemEntity i) => cubit.addItem(i);
+  void updateItem(int idx, InventoryEntryItemEntity i) {
+    cubit.updateItemQuantity(i.productId, i.variantId, i.quantity);
+    cubit.updateItemCost(i.productId, i.variantId, i.unitCost);
+  }
+  void updateItemQuantity(int idx, double qty) {
+    if (idx < 0 || idx >= items.length) return;
+    final i = items[idx];
+    cubit.updateItemQuantity(i.productId, i.variantId, qty);
+  }
+  void removeItem(int idx) {
+    if (idx < 0 || idx >= items.length) return;
+    final i = items[idx];
+    cubit.removeItem(i.productId, i.variantId);
+  }
+  
+  Future<bool> saveOrder() async { await cubit.submitOrder(); return cubit.state is PurchaseOrderFormLoaded && (cubit.state as PurchaseOrderFormLoaded).errorMessage == null; }
+  Future<void> saveDraft() => Future.value(); // Now done automatically in cubit.updateField
+  void clearDraft() => cubit.clearDraft();
+}
+
+
+
+
 

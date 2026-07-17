@@ -126,6 +126,7 @@ class OrderItemModel extends OrderItemEntity {
         .join(' | ');
   }
 
+  @override
   String? get variantDisplayName =>
       variantLabel.isNotEmpty ? variantLabel : null;
 

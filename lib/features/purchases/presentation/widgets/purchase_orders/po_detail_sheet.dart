@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
-import 'package:inventory_store_app/features/purchases/data/models/purchase_order_item_model.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -13,7 +14,7 @@ import 'package:inventory_store_app/core/widgets/product_item_card.dart';
 
 class PODetailSheet extends StatefulWidget {
   final PurchaseOrderModel po;
-  final Future<List<PurchaseOrderItemModel>> Function() loadItems;
+  final Future<List<PurchaseOrderItemEntity>> Function() loadItems;
   final VoidCallback onReceive;
   final Future<void> Function(String) onUpdateStatus;
 
@@ -30,7 +31,7 @@ class PODetailSheet extends StatefulWidget {
 }
 
 class _PODetailSheetState extends State<PODetailSheet> {
-  List<PurchaseOrderItemModel>? _items;
+  List<PurchaseOrderItemEntity>? _items;
   bool _isLoadingItems = true;
   bool _isProcessingAction = false;
 
@@ -582,3 +583,6 @@ class _StickyFooter extends StatelessWidget {
     return const SizedBox.shrink(key: ValueKey('none'));
   }
 }
+
+
+

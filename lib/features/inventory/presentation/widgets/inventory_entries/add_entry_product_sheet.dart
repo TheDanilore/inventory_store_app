@@ -11,7 +11,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:inventory_store_app/features/purchases/data/repositories/purchase_orders_service.dart';
+
 
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
@@ -35,8 +35,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   // cuando cambia el producto/variante, reseteando su controller interno.
   Key _batchAutocompleteKey = UniqueKey();
 
-  final PurchaseOrdersService _service = PurchaseOrdersService();
-
+  
   Future<void> _fetchExistingBatches(String variantId) async {
     if (widget.warehouseId == null) {
       return;
@@ -97,7 +96,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
 
     if (val != null) {
       try {
-        final variantsData = await _service.getProductVariants(val.id);
+        final variantsData = await Supabase.instance.client.from('product_variants').select().eq('product_id', val.id).eq('is_active', true).order('label');
         if (mounted) {
           setState(() {
             _availableVariants = variantsData.map((v) {
@@ -351,9 +350,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                           return const Iterable<ProductModel>.empty();
                         }
                         try {
-                          final res = await _service.searchProducts(
-                            textEditingValue.text,
-                          );
+                          final res = await Supabase.instance.client.from('products').select().ilike('name', '%${textEditingValue.text}%').eq('is_active', true).limit(20);
                           return res.map((p) => ProductModel.fromJson(p));
                         } catch (e) {
                           debugPrint('Error en autocomplete: $e');
@@ -1122,3 +1119,5 @@ class _ProductThumbnail extends StatelessWidget {
     );
   }
 }
+
+

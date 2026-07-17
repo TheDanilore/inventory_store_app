@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_movement_model.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_movement_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class SupplierCreditMovementCard extends StatelessWidget {
-  final SupplierCreditMovementModel movement;
+  final SupplierCreditMovementEntity movement;
 
   const SupplierCreditMovementCard({super.key, required this.movement});
 
@@ -162,3 +162,4 @@ class _MethodChip extends StatelessWidget {
     );
   }
 }
+

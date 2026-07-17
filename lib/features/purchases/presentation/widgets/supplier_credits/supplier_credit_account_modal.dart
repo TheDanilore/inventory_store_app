@@ -1,14 +1,19 @@
 import 'dart:async';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_existing_credit_supplier_ids_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/search_suppliers_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_admin_profile_id_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/save_supplier_credit_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart';
-import 'package:inventory_store_app/features/purchases/data/repositories/supplier_credits_service.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SupplierCreditAccountModal extends StatefulWidget {
   final VoidCallback onSaved;
-  final SupplierCreditModel? accountToEdit;
+  final SupplierCreditEntity? accountToEdit;
   const SupplierCreditAccountModal({
     super.key,
     required this.onSaved,
@@ -21,7 +26,7 @@ class SupplierCreditAccountModal extends StatefulWidget {
 
 class _SupplierCreditAccountModalState
     extends State<SupplierCreditAccountModal> {
-  final _service = SupplierCreditsService();
+  
   final _searchCtrl = TextEditingController();
   final _limitCtrl = TextEditingController();
   Timer? _debounce;
@@ -76,10 +81,12 @@ class _SupplierCreditAccountModalState
     }
     setState(() => _isSearching = true);
     try {
-      final existingIds = await _service.getExistingCreditSupplierIds(
+      final existingIdsResult = await sl<GetExistingCreditSupplierIdsUseCase>().call(
         excludeSupplierId: _isEditing ? widget.accountToEdit!.supplierId : null,
       );
-      final filtered = await _service.searchSuppliers(text, existingIds);
+      final existingIds = existingIdsResult.fold((l) => <String>{}, (r) => r);
+      final filteredResult = await sl<SearchSuppliersUseCase>().call(text, existingIds);
+      final filtered = filteredResult.fold((l) => <Map<String, dynamic>>[], (r) => r);
 
       if (mounted) {
         setState(() {
@@ -115,14 +122,16 @@ class _SupplierCreditAccountModalState
     }
     setState(() => _isSaving = true);
     try {
-      final adminProfileId = await _service.getAdminProfileId();
+      final adminProfileIdResult = await sl<GetAdminProfileIdUseCase>().call();
+      final adminProfileId = adminProfileIdResult.fold((l) => null, (r) => r);
 
-      await _service.saveAccount(
+      final saveResult = await sl<SaveSupplierCreditUseCase>().call(
         creditId: _isEditing ? widget.accountToEdit!.creditId : null,
         supplierId: _selectedSupplierId!,
         creditLimit: limitVal,
         adminProfileId: adminProfileId,
       );
+      if (saveResult.isLeft()) throw Exception(saveResult.fold((l) => l.message, (r) => ''));
 
       if (mounted) {
         AppSnackbar.show(
@@ -284,3 +293,9 @@ class _SupplierCreditAccountModalState
     );
   }
 }
+
+
+
+
+
+

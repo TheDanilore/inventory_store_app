@@ -1,45 +1,26 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_model.dart';
-import 'package:inventory_store_app/features/purchases/presentation/providers/suppliers_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_form_modal.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+// Note: We use SupplierEntity instead of SupplierModel in the UI now
 
-class SuppliersScreen extends StatelessWidget {
+class SuppliersScreen extends StatefulWidget {
   const SuppliersScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => SuppliersProvider(),
-      child: const _SuppliersView(),
-    );
-  }
+  State<SuppliersScreen> createState() => _SuppliersScreenState();
 }
 
-class _SuppliersView extends StatefulWidget {
-  const _SuppliersView();
-
-  @override
-  State<_SuppliersView> createState() => _SuppliersViewState();
-}
-
-class _SuppliersViewState extends State<_SuppliersView> {
+class _SuppliersScreenState extends State<SuppliersScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SuppliersProvider>().addListener(_onProviderError);
-    });
-  }
 
   @override
   void dispose() {
@@ -48,187 +29,194 @@ class _SuppliersViewState extends State<_SuppliersView> {
     super.dispose();
   }
 
-  void _onProviderError() {
-    if (!mounted) return;
-    final error = context.read<SuppliersProvider>().errorMessage;
-    if (error != null) {
-      AppSnackbar.show(context, message: error, type: SnackbarType.error);
-      context.read<SuppliersProvider>().clearError();
-    }
-  }
-
-  void _onSearchChanged(String query, SuppliersProvider provider) {
+  void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      provider.setSearchQuery(query);
+      context.read<SuppliersCubit>().setSearchQuery(query);
     });
   }
 
-  void _openSupplierModal(BuildContext context, [SupplierModel? supplier]) {
-    final provider = context.read<SuppliersProvider>();
+  void _openSupplierModal(BuildContext context, [SupplierEntity? supplier]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (_) => SupplierFormModal(
-            supplierToEdit: supplier,
-            onSaved: () => provider.refresh(),
-          ),
+      builder: (_) => SupplierFormModal(
+        supplierToEdit: supplier,
+        onSaved: () => context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SuppliersProvider>(
-      builder: (context, provider, _) {
-        return AdminLayout(
-          title: 'Directorio de Proveedores',
-          showBackButton: true,
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _openSupplierModal(context),
-            backgroundColor: AppColors.teal,
-            icon: const Icon(Icons.add_business_rounded, color: Colors.white),
-            label: const Text(
-              'Nuevo',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+    return BlocListener<SuppliersCubit, SuppliersState>(
+      listener: (context, state) {
+        if (state is SuppliersError) {
+          AppSnackbar.show(context, message: state.message, type: SnackbarType.error);
+          context.read<SuppliersCubit>().clearError();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Background provided by AdminLayout
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _openSupplierModal(context),
+          backgroundColor: AppColors.teal,
+          icon: const Icon(Icons.add_business_rounded, color: Colors.white),
+          label: const Text(
+            'Nuevo',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          body: Column(
-            children: [
-              // â”€â”€ Buscador â”€â”€
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(100),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: (val) => _onSearchChanged(val, provider),
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por nombre, RUC o contacto...',
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.textMuted,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(100),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        body: Column(
+          children: [
+            // â”€â”€ Buscador â”€â”€
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Buscar por nombre, RUC o contacto...',
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: AppColors.textMuted,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(100),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
+            ),
 
-              // â”€â”€ Lista â”€â”€
-              Expanded(
-                child:
-                    provider.isLoading
-                        ? const _SuppliersSkeleton()
-                        : provider.suppliers.isEmpty
-                        ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.storefront_rounded,
-                                size: 60,
-                                color: Colors.grey.shade300,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                provider.searchQuery.isNotEmpty
-                                    ? 'No hay resultados para la bÃºsqueda'
-                                    : 'No hay proveedores registrados',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+            // â”€â”€ Lista â”€â”€
+            Expanded(
+              child: BlocBuilder<SuppliersCubit, SuppliersState>(
+                builder: (context, state) {
+                  final isLoading = state is SuppliersLoading || state is SuppliersInitial;
+                  
+                  // Extract state values to avoid duplicate logic
+                  List<SupplierEntity> suppliers = [];
+                  String searchQuery = '';
+                  int currentPage = 0;
+                  int totalPages = 1;
+                  
+                  if (state is SuppliersLoaded) {
+                    suppliers = state.suppliers;
+                    searchQuery = state.searchQuery;
+                    currentPage = state.currentPage;
+                    totalPages = state.totalPages;
+                  } else if (state is SuppliersLoading) {
+                    suppliers = state.currentSuppliers;
+                    searchQuery = state.searchQuery;
+                    currentPage = state.currentPage;
+                    totalPages = state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                  } else if (state is SuppliersError) {
+                    suppliers = state.currentSuppliers;
+                    searchQuery = state.searchQuery;
+                    currentPage = state.currentPage;
+                    totalPages = state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+                  }
+
+                  if (isLoading && suppliers.isEmpty) {
+                    return const _SuppliersSkeleton();
+                  }
+
+                  if (suppliers.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.storefront_rounded,
+                            size: 60,
+                            color: Colors.grey.shade300,
                           ),
-                        )
-                        : Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'PÃ¡gina ${provider.currentPage + 1} de ${provider.totalPages}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
+                          const SizedBox(height: 16),
+                          Text(
+                            searchQuery.isNotEmpty
+                                ? 'No hay resultados para la búsqueda'
+                                : 'No hay proveedores registrados',
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w600,
                             ),
-                            Expanded(
-                              child: RefreshIndicator(
-                                onRefresh: () => provider.refresh(),
-                                child: ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    4,
-                                    16,
-                                    16,
-                                  ),
-                                  itemCount: provider.suppliers.length,
-                                  separatorBuilder:
-                                      (_, _) => const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final supplier = provider.suppliers[index];
-                                    return SupplierCard(
-                                      supplier: supplier,
-                                      onEdit:
-                                          () => _openSupplierModal(
-                                            context,
-                                            supplier,
-                                          ),
-                                      onToggleStatus:
-                                          () => provider.toggleSupplierStatus(
-                                            supplier,
-                                          ),
-                                    );
-                                  },
-                                ),
-                              ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Página ${currentPage + 1} de $totalPages',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
                             ),
-                            if (provider.totalPages > 1)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  8,
-                                  16,
-                                  10,
-                                ),
-                                child: AdminPageBlocks(
-                                  currentPage: provider.currentPage,
-                                  totalPages: provider.totalPages,
-                                  onPageChanged: provider.setPage,
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
+                      ),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () async => context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                            itemCount: suppliers.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final supplier = suppliers[index];
+                              return SupplierCard(
+                                // Notice SupplierCard might need to be updated to take SupplierEntity instead of SupplierModel
+                                supplier: supplier,
+                                onEdit: () => _openSupplierModal(context, supplier),
+                                onToggleStatus: () => context.read<SuppliersCubit>().toggleSupplierStatus(supplier),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      if (totalPages > 1)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                          child: AdminPageBlocks(
+                            currentPage: currentPage,
+                            totalPages: totalPages,
+                            onPageChanged: context.read<SuppliersCubit>().setPage,
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -321,4 +309,3 @@ class _SuppliersSkeleton extends StatelessWidget {
     );
   }
 }
-

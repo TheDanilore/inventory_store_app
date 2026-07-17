@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/register_supplier_credit_payment_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_cash_shift_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_financial_accounts_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_pending_purchase_orders_usecase.dart';
+import 'package:inventory_store_app/features/purchases/domain/usecases/get_admin_profile_id_usecase.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart';
-import 'package:inventory_store_app/features/purchases/data/repositories/supplier_credits_service.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SupplierPaymentModal extends StatefulWidget {
-  final SupplierCreditModel account;
+  final SupplierCreditEntity account;
   final VoidCallback onPaymentSaved;
   const SupplierPaymentModal({
     super.key,
@@ -18,7 +24,7 @@ class SupplierPaymentModal extends StatefulWidget {
 }
 
 class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
-  final _service = SupplierCreditsService();
+  
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   bool _isSaving = false;
@@ -46,9 +52,10 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
 
   Future<void> _loadPendingOrders() async {
     try {
-      final resp = await _service.getPendingPurchaseOrders(
+      final respResult = await sl<GetPendingPurchaseOrdersUseCase>().call(
         widget.account.supplierId,
       );
+      final resp = respResult.fold((l) => <Map<String, dynamic>>[], (r) => r);
       if (mounted) {
         setState(() {
           _pendingOrders = resp;
@@ -62,7 +69,8 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
 
   Future<void> _loadAccounts() async {
     try {
-      final resp = await _service.getFinancialAccounts();
+      final respResult = await sl<GetFinancialAccountsUseCase>().call();
+      final resp = respResult.fold((l) => <SupplierFinancialAccountOption>[], (r) => r);
       if (mounted) {
         setState(() {
           _accounts = resp;
@@ -84,7 +92,8 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
 
   Future<void> _checkActiveShift(String accountId) async {
     try {
-      final shift = await _service.getActiveCashShift(accountId);
+      final shiftResult = await sl<GetActiveCashShiftUseCase>().call(accountId);
+      final shift = shiftResult.fold((l) => <String, dynamic>{}, (r) => r);
       if (mounted) {
         setState(() {
           _activeShift = shift;
@@ -166,9 +175,10 @@ class _SupplierPaymentModalState extends State<SupplierPaymentModal> {
     setState(() => _isSaving = true);
 
     try {
-      final adminProfileId = await _service.getAdminProfileId();
+      final adminProfileIdResult = await sl<GetAdminProfileIdUseCase>().call();
+      final adminProfileId = adminProfileIdResult.fold((l) => null, (r) => r);
 
-      await _service.registerPayment(
+      await sl<RegisterSupplierCreditPaymentUseCase>().call(
         account: widget.account,
         amount: amount,
         selectedAccount: _selectedAccount!,
@@ -908,3 +918,12 @@ class _QuickAmountChip extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+
+
+

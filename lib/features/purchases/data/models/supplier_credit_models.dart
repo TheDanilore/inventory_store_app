@@ -1,28 +1,16 @@
-class SupplierCreditModel {
-  final String creditId;
-  final String supplierId;
-  final String supplierName;
-  final String? supplierTaxId;
-  final String? supplierPhone;
-  final double creditLimit;
-  final double currentDebt;
-  final bool isActive;
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 
-  double get availableCredit =>
-      (creditLimit - currentDebt).clamp(0.0, double.infinity);
-  double get usagePercent =>
-      creditLimit > 0 ? (currentDebt / creditLimit).clamp(0.0, 1.0) : 0.0;
-  bool get isMaxedOut => currentDebt >= creditLimit && creditLimit > 0;
+class SupplierCreditModel extends SupplierCreditEntity {
 
-  SupplierCreditModel({
-    required this.creditId,
-    required this.supplierId,
-    required this.supplierName,
-    this.supplierTaxId,
-    this.supplierPhone,
-    required this.creditLimit,
-    required this.currentDebt,
-    required this.isActive,
+  const SupplierCreditModel({
+    required super.creditId,
+    required super.supplierId,
+    required super.supplierName,
+    super.supplierTaxId,
+    super.supplierPhone,
+    required super.creditLimit,
+    required super.currentDebt,
+    required super.isActive,
   });
 
   factory SupplierCreditModel.fromView(Map<String, dynamic> json) {

@@ -1,24 +1,18 @@
-class SupplierModel {
-  final String id;
-  final String name;
-  final String? taxId;
-  final String? contactName;
-  final String? phone;
-  final String? email;
-  final String? address;
-  final bool isActive;
-  final DateTime? createdAt;
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 
-  SupplierModel({
-    required this.id,
-    required this.name,
-    this.taxId,
-    this.contactName,
-    this.phone,
-    this.email,
-    this.address,
-    this.isActive = true,
-    this.createdAt,
+class SupplierModel extends SupplierEntity {
+
+
+  const SupplierModel({
+    required super.id,
+    required super.name,
+    super.taxId,
+    super.contactName,
+    super.phone,
+    super.email,
+    super.address,
+    super.isActive = true,
+    super.createdAt,
   });
 
   factory SupplierModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +45,7 @@ class SupplierModel {
     };
   }
 
+  @override
   SupplierModel copyWith({
     String? id,
     String? name,
@@ -75,3 +70,4 @@ class SupplierModel {
     );
   }
 }
+

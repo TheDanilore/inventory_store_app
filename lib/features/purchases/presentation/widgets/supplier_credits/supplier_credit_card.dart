@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/purchases/data/models/supplier_credit_models.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class SupplierCreditCard extends StatelessWidget {
-  final SupplierCreditModel account;
+  final SupplierCreditEntity account;
   final VoidCallback onTap;
 
   const SupplierCreditCard({
@@ -164,3 +164,6 @@ class SupplierCreditCard extends StatelessWidget {
     );
   }
 }
+
+
+

@@ -1,40 +1,25 @@
-class PurchaseOrderModel {
-  final String id;
-  final DateTime createdAt;
-  final String? supplierId;
-  final String supplierName;
-  final String? warehouseName;
-  final String status;
-  final double totalAmount;
-  final String paymentMethod;
-  final String paymentStatus;
-  final double amountPaid;
-  final DateTime? dueDate;
-  final double discountAmount;
-  final double taxAmount;
-  final String documentType;
-  final String? documentNumber;
-  final String? notes;
-  final int itemCount;
+import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_entity.dart';
+
+class PurchaseOrderModel extends PurchaseOrderEntity {
 
   const PurchaseOrderModel({
-    required this.id,
-    required this.createdAt,
-    this.supplierId,
-    required this.supplierName,
-    this.warehouseName,
-    required this.status,
-    required this.totalAmount,
-    required this.paymentMethod,
-    required this.paymentStatus,
-    required this.amountPaid,
-    this.dueDate,
-    required this.discountAmount,
-    required this.taxAmount,
-    required this.documentType,
-    this.documentNumber,
-    this.notes,
-    required this.itemCount,
+    required super.id,
+    required super.createdAt,
+    super.supplierId,
+    required super.supplierName,
+    super.warehouseName,
+    required super.status,
+    required super.totalAmount,
+    required super.paymentMethod,
+    required super.paymentStatus,
+    required super.amountPaid,
+    super.dueDate,
+    required super.discountAmount,
+    required super.taxAmount,
+    required super.documentType,
+    super.documentNumber,
+    super.notes,
+    required super.itemCount,
   });
 
   factory PurchaseOrderModel.fromMap(Map<String, dynamic> m) {

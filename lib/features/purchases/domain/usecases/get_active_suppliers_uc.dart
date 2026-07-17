@@ -2,6 +2,7 @@ import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 @injectable
+@lazySingleton
 class GetActiveSuppliersUseCase {
   final SupabaseClient _supabase;
 
@@ -16,3 +17,5 @@ class GetActiveSuppliersUseCase {
     return List<Map<String, dynamic>>.from(response);
   }
 }
+
+

@@ -1,15 +1,14 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:provider/provider.dart';
-
-import 'package:inventory_store_app/features/purchases/presentation/providers/supplier_credits_provider.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_cubit.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
-// Widgets extraÃ­dos
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_global_stats_bar.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_credit_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_account_options_sheet.dart';
@@ -34,11 +33,13 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     _tabCtrl.addListener(_onTabChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<SupplierCreditsProvider>();
-      _searchCtrl.text = provider.searchQuery;
-      // Setup initial tab based on provider state
-      _tabCtrl.index = provider.withDebtOnly ? 1 : 0;
-      provider.fetchAccounts();
+      final cubit = context.read<SupplierCreditsCubit>();
+      // Using initial state values if they are loaded
+      final currentState = cubit.state;
+      if (currentState is SupplierCreditsLoaded) {
+        _searchCtrl.text = currentState.searchQuery;
+        _tabCtrl.index = currentState.withDebtOnly ? 1 : 0;
+      }
     });
   }
 
@@ -51,8 +52,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
 
   void _onTabChanged() {
     if (_tabCtrl.indexIsChanging) return;
-    final provider = context.read<SupplierCreditsProvider>();
-    provider.setWithDebtOnly(_tabCtrl.index == 1);
+    context.read<SupplierCreditsCubit>().setWithDebtOnly(_tabCtrl.index == 1);
   }
 
   void _openCreateAccountModal() {
@@ -63,13 +63,13 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
       builder:
           (_) => SupplierCreditAccountModal(
             onSaved: () {
-              context.read<SupplierCreditsProvider>().fetchAccounts();
+              context.read<SupplierCreditsCubit>().loadAccounts(refresh: true);
             },
           ),
     );
   }
 
-  void _openAccountOptions(BuildContext context, dynamic account) {
+  void _openAccountOptions(BuildContext context, SupplierCreditEntity account) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -81,33 +81,21 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
           (_) => SupplierAccountOptionsSheet(
             account: account,
             onRefresh: () {
-              context.read<SupplierCreditsProvider>().fetchAccounts(
-                showLoading: false,
-              );
+              context.read<SupplierCreditsCubit>().loadAccounts();
             },
             onToggleStatus: (acc) async {
-              try {
-                await context
-                    .read<SupplierCreditsProvider>()
-                    .toggleAccountStatus(acc.creditId, acc.isActive);
-                if (context.mounted) {
-                  AppSnackbar.show(
-                    context,
-                    message:
-                        acc.isActive
-                            ? 'CrÃ©dito suspendido.'
-                            : 'CrÃ©dito reactivado.',
-                    type: SnackbarType.success,
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  AppSnackbar.show(
-                    context,
-                    message: 'Error al cambiar estado: $e',
-                    type: SnackbarType.error,
-                  );
-                }
+              context.read<SupplierCreditsCubit>().toggleAccountStatus(
+                acc,
+              );
+              if (context.mounted) {
+                AppSnackbar.show(
+                  context,
+                  message:
+                      acc.isActive
+                          ? 'Crédito suspendido.'
+                          : 'Crédito reactivado.',
+                  type: SnackbarType.success,
+                );
               }
             },
           ),
@@ -116,236 +104,311 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AdminLayout(
-      title: 'Cuentas por Pagar',
-      showBackButton: true,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreateAccountModal,
-        backgroundColor: Colors.blue.shade700,
-        icon: const Icon(Icons.domain_add_rounded, color: Colors.white),
-        label: const Text(
-          'Nueva LÃ­nea',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    return BlocListener<SupplierCreditsCubit, SupplierCreditsState>(
+      listener: (context, state) {
+        if (state is SupplierCreditsError) {
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
+          context.read<SupplierCreditsCubit>().clearError();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openCreateAccountModal,
+          backgroundColor: Colors.blue.shade700,
+          icon: const Icon(Icons.domain_add_rounded, color: Colors.white),
+          label: const Text(
+            'Nueva Línea',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
-      ),
-      body: Consumer<SupplierCreditsProvider>(
-        builder: (context, provider, child) {
-          return RefreshIndicator(
-            onRefresh: () => provider.fetchAccounts(),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      // Stats Bar
-                      SupplierGlobalStatsBar(
-                        totalDebt: provider.totalDebt,
-                        activeAccounts: provider.activeAccounts,
-                        suspendedAccounts: provider.suspendedAccounts,
-                        maxedOutAccounts: provider.maxedOutAccounts,
-                      ),
-                      const SizedBox(height: 16),
+        body: BlocBuilder<SupplierCreditsCubit, SupplierCreditsState>(
+          builder: (context, state) {
+            final isLoading =
+                state is SupplierCreditsLoading ||
+                state is SupplierCreditsInitial;
+            final isError = state is SupplierCreditsError;
 
-                      // Buscador y Tabs integrados
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+            List<SupplierCreditEntity> accounts = [];
+            bool withDebtOnly = false;
+            int currentPage = 0;
+            int totalPages = 1;
+            Map<String, dynamic> stats = {};
+            String? errorMessage;
+
+            if (state is SupplierCreditsLoaded) {
+              accounts = state.accounts;
+              
+              withDebtOnly = state.withDebtOnly;
+              currentPage = state.currentPage;
+              totalPages = state.totalPages;
+              stats = state.stats;
+            } else if (state is SupplierCreditsLoading) {
+              accounts = state.currentAccounts;
+              
+              withDebtOnly = state.withDebtOnly;
+              currentPage = state.currentPage;
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+              stats = state.stats;
+            } else if (state is SupplierCreditsError) {
+              accounts = state.currentAccounts;
+              
+              withDebtOnly = state.withDebtOnly;
+              currentPage = state.currentPage;
+              totalPages =
+                  state.totalCount == 0 ? 1 : (state.totalCount / 8).ceil();
+              stats = state.stats;
+              errorMessage = state.message;
+            }
+
+            final totalDebt =
+                double.tryParse(stats['totalDebt']?.toString() ?? '0') ?? 0.0;
+            final activeAccounts =
+                int.tryParse(stats['activeAccounts']?.toString() ?? '0') ?? 0;
+            final suspendedAccounts =
+                int.tryParse(stats['suspendedAccounts']?.toString() ?? '0') ??
+                0;
+            final maxedOutAccounts =
+                int.tryParse(stats['maxedOutAccounts']?.toString() ?? '0') ?? 0;
+            final debtCount =
+                int.tryParse(stats['debtCount']?.toString() ?? '0') ?? 0;
+
+            return RefreshIndicator(
+              onRefresh:
+                  () => context.read<SupplierCreditsCubit>().loadAccounts(
+                    refresh: true,
+                  ),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        // Stats Bar
+                        SupplierGlobalStatsBar(
+                          totalDebt: totalDebt,
+                          activeAccounts: activeAccounts,
+                          suspendedAccounts: suspendedAccounts,
+                          maxedOutAccounts: maxedOutAccounts,
                         ),
-                        child: Column(
-                          children: [
-                            TextField(
-                              controller: _searchCtrl,
-                              onChanged: provider.setSearchQuery,
-                              decoration: InputDecoration(
-                                hintText: 'Buscar por proveedor o RUC...',
-                                prefixIcon: const Icon(
-                                  Icons.search_rounded,
-                                  color: AppColors.textMuted,
+                        const SizedBox(height: 16),
+
+                        // Buscador y Tabs integrados
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: _searchCtrl,
+                                onChanged:
+                                    context
+                                        .read<SupplierCreditsCubit>()
+                                        .setSearchQuery,
+                                decoration: InputDecoration(
+                                  hintText: 'Buscar por proveedor o RUC...',
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  suffixIcon:
+                                      _searchCtrl.text.isNotEmpty
+                                          ? IconButton(
+                                            icon: const Icon(
+                                              Icons.clear_rounded,
+                                              color: AppColors.textMuted,
+                                            ),
+                                            onPressed: () {
+                                              _searchCtrl.clear();
+                                              context
+                                                  .read<SupplierCreditsCubit>()
+                                                  .setSearchQuery('');
+                                            },
+                                          )
+                                          : null,
+                                  filled: true,
+                                  fillColor: AppColors.background,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
-                                suffixIcon:
-                                    _searchCtrl.text.isNotEmpty
-                                        ? IconButton(
-                                          icon: const Icon(
-                                            Icons.clear_rounded,
-                                            color: AppColors.textMuted,
-                                          ),
-                                          onPressed: () {
-                                            _searchCtrl.clear();
-                                            provider.setSearchQuery('');
-                                          },
-                                        )
-                                        : null,
-                                filled: true,
-                                fillColor: AppColors.background,
-                                border: OutlineInputBorder(
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: TabBar(
-                                controller: _tabCtrl,
-                                indicatorSize: TabBarIndicatorSize.tab,
-                                dividerColor: Colors.transparent,
-                                indicator: BoxDecoration(
-                                  color: Colors.blue.shade700,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                padding: const EdgeInsets.all(4),
-                                labelColor: Colors.white,
-                                unselectedLabelColor: AppColors.textMuted,
-                                tabs: [
-                                  const Tab(text: 'Todas'),
-                                  Tab(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const Text('Por Pagar'),
-                                        if (provider.debtCount > 0) ...[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 1,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.danger,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              '${provider.debtCount}',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                child: TabBar(
+                                  controller: _tabCtrl,
+                                  indicatorSize: TabBarIndicatorSize.tab,
+                                  dividerColor: Colors.transparent,
+                                  indicator: BoxDecoration(
+                                    color: Colors.blue.shade700,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  labelColor: Colors.white,
+                                  unselectedLabelColor: AppColors.textMuted,
+                                  tabs: [
+                                    const Tab(text: 'Todas'),
+                                    Tab(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Text('Por Pagar'),
+                                          if (debtCount > 0) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 1,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.danger,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                '$debtCount',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                          ],
                                         ],
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+
+                  // Contenido principal
+                  if (isLoading && accounts.isEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: AppShimmer(
+                              width: double.infinity,
+                              height: 120,
+                              borderRadius: 16,
                             ),
-                          ],
+                          ),
+                          childCount: 5,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-
-                // Contenido principal
-                if (provider.isLoading)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => const Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: AppShimmer(
-                            width: double.infinity,
-                            height: 120,
-                            borderRadius: 16,
-                          ),
+                    )
+                  else if (isError && errorMessage != null && accounts.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: AppEmptyState(
+                        icon: Icons.error_outline_rounded,
+                        color: AppColors.danger,
+                        title: 'Ocurrió un error',
+                        message: errorMessage,
+                        action: ElevatedButton.icon(
+                          onPressed:
+                              () => context
+                                  .read<SupplierCreditsCubit>()
+                                  .loadAccounts(refresh: true),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Reintentar'),
                         ),
-                        childCount: 5,
+                      ),
+                    )
+                  else if (accounts.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: AppEmptyState(
+                        icon: Icons.receipt_long_rounded,
+                        title:
+                            _searchCtrl.text.isNotEmpty
+                                ? 'No se encontraron resultados'
+                                : (withDebtOnly
+                                    ? 'No hay créditos con deuda'
+                                    : 'No hay líneas de crédito registradas'),
+                        message:
+                            'Intenta cambiar los filtros o realizar otra búsqueda.',
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final account = accounts[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: SupplierCreditCard(
+                              account: account,
+                              onTap:
+                                  () => _openAccountOptions(context, account),
+                            ),
+                          );
+                        }, childCount: accounts.length),
                       ),
                     ),
-                  )
-                else if (provider.errorMessage != null)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: AppEmptyState(
-                      icon: Icons.error_outline_rounded,
-                      color: AppColors.danger,
-                      title: 'OcurriÃ³ un error',
-                      message: provider.errorMessage ?? '',
-                      action: ElevatedButton.icon(
-                        onPressed: provider.fetchAccounts,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Reintentar'),
-                      ),
-                    ),
-                  )
-                else if (provider.accounts.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: AppEmptyState(
-                      icon: Icons.receipt_long_rounded,
-                      title:
-                          _searchCtrl.text.isNotEmpty
-                              ? 'No se encontraron resultados'
-                              : (provider.withDebtOnly
-                                  ? 'No hay crÃ©ditos con deuda'
-                                  : 'No hay lÃ­neas de crÃ©dito registradas'),
-                      message:
-                          'Intenta cambiar los filtros o realizar otra bÃºsqueda.',
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final account = provider.accounts[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: SupplierCreditCard(
-                            account: account,
-                            onTap: () => _openAccountOptions(context, account),
-                          ),
-                        );
-                      }, childCount: provider.accounts.length),
-                    ),
-                  ),
 
-                // PaginaciÃ³n
-                if (!provider.isLoading && provider.totalPages > 1)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: (page) {
-                          provider.setPage(page);
-                        },
+                  // Paginación
+                  if (!isLoading && totalPages > 1)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        child: AdminPageBlocks(
+                          currentPage: currentPage,
+                          totalPages: totalPages,
+                          onPageChanged:
+                              context.read<SupplierCreditsCubit>().setPage,
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              ],
-            ),
-          );
-        },
+                    )
+                  else
+                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 }
+
+
 

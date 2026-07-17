@@ -1,28 +1,18 @@
-class SupplierCreditMovementModel {
-  final String id;
-  final String creditId;
-  final String? purchaseOrderId;
-  final String movementType;
-  final double amount;
-  final String? paymentMethod;
-  final String? notes;
-  final DateTime? createdAt;
-  final String? createdByName;
-  final double? orderTotalAmount;
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_movement_entity.dart';
 
-  bool get isCharge => movementType == 'CHARGE';
+class SupplierCreditMovementModel extends SupplierCreditMovementEntity {
 
   const SupplierCreditMovementModel({
-    required this.id,
-    required this.creditId,
-    this.purchaseOrderId,
-    required this.movementType,
-    required this.amount,
-    this.paymentMethod,
-    this.notes,
-    this.createdAt,
-    this.createdByName,
-    this.orderTotalAmount,
+    required super.id,
+    required super.creditId,
+    super.purchaseOrderId,
+    required super.movementType,
+    required super.amount,
+    super.paymentMethod,
+    super.notes,
+    super.createdAt,
+    super.createdByName,
+    super.orderTotalAmount,
   });
 
   factory SupplierCreditMovementModel.fromJson(Map<String, dynamic> json) {
