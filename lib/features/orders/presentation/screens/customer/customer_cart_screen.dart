@@ -250,7 +250,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
 
                             final index = i - 3;
                             final cartItem = sortedCartItems[index];
-                            final productId = cartItem.product.id;
+                            final productId = cartItem.productId;
                             return CartItemCard(
                               productId: productId,
                               item: cartItem,
@@ -263,7 +263,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                       ),
                       CartCheckoutFooter(
                         cartCubit: cartCubit,
-                        cartState: cartState,
+
                         saldoPuntos: saldoPuntos,
                         pointsToSolesRatio: pointsToSolesRatio,
                         onProcessCheckout: () => _processCheckout(context),
