@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
-import 'package:provider/provider.dart';
+
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -161,15 +161,15 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
 
     setState(() => _isLoading = true);
 
-    final configProvider = context.read<AppConfigCubit>();
+    final configCubit = context.read<AppConfigCubit>();
 
     try {
-      await configProvider.saveValue(
+      await configCubit.saveValue(
         'admin_goal_current',
         newCurrent,
         // description: 'Progreso actual del ahorro',
       );
-      await configProvider.saveValue(
+      await configCubit.saveValue(
         'admin_goal_target',
         newTarget,
         // description: 'Meta de ahorro del administrador',

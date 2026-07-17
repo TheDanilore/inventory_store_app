@@ -260,12 +260,11 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       Navigator.pop(context, true);
     } else {
       AppSnackbar.show(
-      context,
-      message: cubit.state.errorMessage,
-      type: SnackbarType.error,
-    );
+        context,
+        message: cubit.state.errorMessage,
+        type: SnackbarType.error,
+      );
     }
-
   }
 
   @override
@@ -275,7 +274,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-    
         if (cubit.state.items.isEmpty || cubit.state.isSaving) {
           if (cubit.state.items.isEmpty) cubit.clearDraft();
           Navigator.pop(context, result);
@@ -332,8 +330,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       },
       child: BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
         builder: (context, state) {
-        final cubit = context.read<InventoryExitFormCubit>();
-                if (cubit.state.isLoading) {
+          final cubit = context.read<InventoryExitFormCubit>();
+          if (cubit.state.isLoading) {
             return const AdminLayout(
               title: 'Nueva Salida',
               showBackButton: true,
@@ -378,7 +376,10 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // LAYOUTS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMobileLayout(BuildContext context, InventoryExitFormState state) {
+  Widget _buildMobileLayout(
+    BuildContext context,
+    InventoryExitFormState state,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
@@ -392,7 +393,10 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  Widget _buildTabletLayout(BuildContext context, InventoryExitFormState state) {
+  Widget _buildTabletLayout(
+    BuildContext context,
+    InventoryExitFormState state,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -420,7 +424,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // SECTIONS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildGeneralInfoSection(InventoryExitFormCubit provider) {
+  Widget _buildGeneralInfoSection(InventoryExitFormCubit cubit) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +518,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  Widget _buildProductsSection(InventoryExitFormCubit provider) {
+  Widget _buildProductsSection(InventoryExitFormCubit cubit) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -810,7 +814,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // FIXED BOTTOM BUTTON
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildBottomActionButton(InventoryExitFormCubit provider) {
+  Widget _buildBottomActionButton(InventoryExitFormCubit cubit) {
     return Positioned(
       bottom: 0,
       left: 0,

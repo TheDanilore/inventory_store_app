@@ -224,8 +224,8 @@ class _CustomerOrderCardState extends State<CustomerOrderCard> {
   void _showOrderDetails(OrderEntity order) async {
     setState(() => _isLoadingDetails = true);
     try {
-      final provider = context.read<OrdersCubit>();
-      final items = await provider.fetchOrderItems(order.id);
+      final cubit = context.read<OrdersCubit>();
+      final items = await cubit.fetchOrderItems(order.id);
 
       if (!mounted) return;
       setState(() => _isLoadingDetails = false);

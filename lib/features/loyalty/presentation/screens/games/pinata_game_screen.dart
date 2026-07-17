@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
+
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -127,7 +127,11 @@ class _PinataGameScreenState extends State<PinataGameScreen>
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_PINATA', _pointsEarned, 'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_PINATA',
+          _pointsEarned,
+          'Rompe la Piñata: $_tapCount toques. Ganó $_pointsEarned monedas',
+        );
       } catch (e) {
         if (mounted) {
           AppSnackbar.show(
@@ -415,4 +419,3 @@ class _PinataGameScreenState extends State<PinataGameScreen>
     );
   }
 }
-

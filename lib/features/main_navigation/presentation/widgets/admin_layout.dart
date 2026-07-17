@@ -1,9 +1,10 @@
-﻿import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/network/network_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
-import 'package:provider/provider.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
@@ -149,14 +150,15 @@ class AdminLayout extends StatelessWidget {
           child: Column(
             children: [
               // Offline banner Animates its height layout size so it doesn't leave gaps
-              Consumer<NetworkCubit>(
-                builder: (context, network, child) {
+              BlocBuilder<NetworkCubit, NetworkState>(
+                builder: (context, state) {
+                  final isOnline = state is NetworkConnected;
                   return AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeOutCubic,
                     alignment: Alignment.topCenter,
                     child:
-                        network.isOnline
+                        isOnline
                             ? const SizedBox(width: double.infinity, height: 0)
                             : Column(
                               mainAxisSize: MainAxisSize.min,
@@ -385,4 +387,3 @@ class AdminProfileAvatar extends StatelessWidget {
     );
   }
 }
-

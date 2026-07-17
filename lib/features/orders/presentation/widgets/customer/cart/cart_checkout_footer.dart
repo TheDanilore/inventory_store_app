@@ -21,7 +21,7 @@ class CartCheckoutFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final checkoutProvider = context.read<CheckoutCubit>();
+    final checkoutCubit = context.read<CheckoutCubit>();
     final isSending = context.select<CheckoutCubit, bool>(
       (p) => p.state.isSending,
     );
@@ -33,7 +33,7 @@ class CartCheckoutFooter extends StatelessWidget {
     final subtotal = cartCubit.state.selectedTotalAmount;
     final totalAPagar =
         isLoyaltyEnabled
-            ? checkoutProvider.calculateFinalTotal(
+            ? checkoutCubit.calculateFinalTotal(
               cartCubit,
               pointsToSolesRatio,
               saldoPuntos,
@@ -41,7 +41,7 @@ class CartCheckoutFooter extends StatelessWidget {
             : subtotal;
     final puntosUsados =
         isLoyaltyEnabled
-            ? checkoutProvider.calculateApplicablePoints(
+            ? checkoutCubit.calculateApplicablePoints(
               cartCubit,
               pointsToSolesRatio,
               saldoPuntos,

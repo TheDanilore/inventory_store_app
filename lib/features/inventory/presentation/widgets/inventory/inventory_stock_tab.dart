@@ -27,8 +27,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   @override
   bool get wantKeepAlive => true;
 
-
-
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -46,11 +44,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   Future<void> _fetchProductAndSelect(String productId) async {
     // Aquí idealmente usamos un servicio para cargar el ProductModel completo por ID.
     // Como el InventoryStockItem tiene datos parciales, delegaremos esto
-    // creando un mock provisional de ProductModel o buscando en un ProductProvider,
-    // pero como InventoryStockItem tiene productId, podemos llamar al Provider para obtener el producto.
-    // Wait, el provider de inventario tiene `stockItems` pero no son `ProductModel`.
+    // creando un mock provisional de ProductModel o buscando en un ProductCubit,
+    // pero como InventoryStockItem tiene productId, podemos llamar al Cubit para obtener el producto.
+    // Wait, el cubit de inventario tiene `stockItems` pero no son `ProductModel`.
     // Para simplificar, ProductDetailScreen requiere un ProductModel completo.
-    // Vamos a buscar el producto usando el InventoryProvider o un servicio.
+    // Vamos a buscar el producto usando el InventoryCubit o un servicio.
     try {
       // NOTE: This functionality should probably be moved to a UseCase
       // or handled differently in the Cubit. For now we will assume the selected product
@@ -76,27 +74,46 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     super.build(context);
     return BlocBuilder<InventoryCubit, InventoryState>(
       builder: (context, state) {
-        if (state is InventoryInitial || state is InventoryLoading && state is! InventoryLoaded) {
+        if (state is InventoryInitial ||
+            state is InventoryLoading && state is! InventoryLoaded) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final loadedState = state is InventoryLoaded 
-          ? state 
-          : (state is InventoryLoading 
-              ? context.read<InventoryCubit>().state as InventoryLoaded? // Try to get previous loaded state
-              : null);
+        final loadedState =
+            state is InventoryLoaded
+                ? state
+                : (state is InventoryLoading
+                    ? context.read<InventoryCubit>().state
+                        as InventoryLoaded? // Try to get previous loaded state
+                    : null);
 
         if (loadedState == null && state is InventoryError) {
           return Center(child: Text('Error: ${state.message}'));
         }
 
-        final currentState = loadedState ?? const InventoryLoaded(
-          stockItems: [], batchItems: [], currentStockPage: 0, totalStockPages: 1, 
-          stockSearchText: '', stockCategoryFilter: 'Todos', categories: ['Todos'], 
-          globalTotalVariants: 0, globalTotalStock: 0, globalLowStockCount: 0, globalTotalCost: 0.0, 
-          currentBatchPage: 0, totalBatchPages: 1, batchSearchText: '', batchStatusFilter: 'Todos', 
-          countVencido: 0, countCritico: 0, countProximo: 0, countNormal: 0,
-        );
+        final currentState =
+            loadedState ??
+            const InventoryLoaded(
+              stockItems: [],
+              batchItems: [],
+              currentStockPage: 0,
+              totalStockPages: 1,
+              stockSearchText: '',
+              stockCategoryFilter: 'Todos',
+              categories: ['Todos'],
+              globalTotalVariants: 0,
+              globalTotalStock: 0,
+              globalLowStockCount: 0,
+              globalTotalCost: 0.0,
+              currentBatchPage: 0,
+              totalBatchPages: 1,
+              batchSearchText: '',
+              batchStatusFilter: 'Todos',
+              countVencido: 0,
+              countCritico: 0,
+              countProximo: 0,
+              countNormal: 0,
+            );
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -116,7 +133,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           ),
                         ),
                       ),
-                      child: _buildListContent(currentState, state is InventoryLoading, isTablet: true),
+                      child: _buildListContent(
+                        currentState,
+                        state is InventoryLoading,
+                        isTablet: true,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -157,7 +178,11 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               );
             }
 
-            return _buildListContent(currentState, state is InventoryLoading, isTablet: false);
+            return _buildListContent(
+              currentState,
+              state is InventoryLoading,
+              isTablet: false,
+            );
           },
         );
       },
@@ -250,7 +275,10 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                 child: _CategoryPill(
                                   label: cat,
                                   isSelected: isSelected,
-                                  onTap: () => context.read<InventoryCubit>().setStockCategory(cat),
+                                  onTap:
+                                      () => context
+                                          .read<InventoryCubit>()
+                                          .setStockCategory(cat),
                                 ),
                               );
                             }).toList(),
@@ -343,7 +371,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               child: AdminPageBlocks(
                 currentPage: state.currentStockPage,
                 totalPages: state.totalStockPages,
-                onPageChanged: (page) => context.read<InventoryCubit>().setStockPage(page),
+                onPageChanged:
+                    (page) => context.read<InventoryCubit>().setStockPage(page),
               ),
             ),
           ),

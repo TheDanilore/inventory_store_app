@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_locations_cubit.dart';
@@ -24,21 +24,24 @@ class LocationManagementScreen extends StatelessWidget {
         ),
         body: const _LocationManagementContent(),
         floatingActionButton: Builder(
-          builder: (context) => FloatingActionButton(
-            onPressed: () => _openForm(context, null),
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.add_location_alt_rounded),
-          ),
+          builder:
+              (context) => FloatingActionButton(
+                onPressed: () => _openForm(context, null),
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add_location_alt_rounded),
+              ),
         ),
       ),
     );
   }
 
   void _openForm(BuildContext context, CustomerLocationEntity? loc) async {
-    final customerId = context.read<CustomerLocationsCubit>().state is CustomerLocationsLoaded 
-      ? this.customerId : this.customerId;
+    final customerId =
+        context.read<CustomerLocationsCubit>().state is CustomerLocationsLoaded
+            ? this.customerId
+            : this.customerId;
     final res = await CustomerLocationFormSheet.show(
-      context, 
+      context,
       existing: loc,
       onSave: (location) async {
         if (loc == null) {
@@ -54,9 +57,13 @@ class LocationManagementScreen extends StatelessWidget {
             isDefault: location.isDefault,
           );
         } else {
-          await context.read<CustomerLocationsCubit>().updateLocation(customerId, loc.id, location);
+          await context.read<CustomerLocationsCubit>().updateLocation(
+            customerId,
+            loc.id,
+            location,
+          );
         }
-      }
+      },
     );
     if (res == true && context.mounted) {
       context.read<CustomerLocationsCubit>().loadLocations(customerId);
@@ -71,22 +78,25 @@ class _LocationManagementContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<CustomerLocationsCubit, CustomerLocationsState>(
       builder: (context, state) {
-        if (state is CustomerLocationsLoading || state is CustomerLocationsInitial) {
+        if (state is CustomerLocationsLoading ||
+            state is CustomerLocationsInitial) {
           return const Center(child: CircularProgressIndicator());
         } else if (state is CustomerLocationsError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(state.message, style: const TextStyle(color: AppColors.danger)),
+                Text(
+                  state.message,
+                  style: const TextStyle(color: AppColors.danger),
+                ),
                 ElevatedButton(
                   onPressed: () {
-                    
                     // Needs customerId, but we can't easily get it if we only have error state.
                     // For now, we leave it as is or require customerId in error state.
                   },
                   child: const Text('Reintentar'),
-                )
+                ),
               ],
             ),
           );
@@ -120,7 +130,7 @@ class _LocationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     IconData typeIcon = Icons.location_on_rounded;
     Color typeColor = AppColors.primary;
-    
+
     switch (location.locationType.toUpperCase()) {
       case 'HOME':
         typeIcon = Icons.home_rounded;
@@ -158,40 +168,69 @@ class _LocationCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(location.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text(CustomerLocationEntity.typeLabel(location.locationType), style: TextStyle(color: typeColor, fontSize: 12)),
+                      Text(
+                        location.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        CustomerLocationEntity.typeLabel(location.locationType),
+                        style: TextStyle(color: typeColor, fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
                 if (location.isDefault)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: typeColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('Principal', style: TextStyle(color: typeColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Principal',
+                      style: TextStyle(
+                        color: typeColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 12),
-            Text('Lat , Lng ', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-            if (location.addressLine != null && location.addressLine!.isNotEmpty)
+            Text(
+              'Lat , Lng ',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            if (location.addressLine != null &&
+                location.addressLine!.isNotEmpty)
               Text(location.addressLine!, style: const TextStyle(fontSize: 14)),
             if (location.reference != null && location.reference!.isNotEmpty)
-              Text(location.reference!, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+              Text(
+                location.reference!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             const Divider(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => CustomerLocationMapScreen(
-                        locations: [location],
-                        focusedLocation: location,
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (_) => CustomerLocationMapScreen(
+                              locations: [location],
+                              focusedLocation: location,
+                            ),
                       ),
-                    ));
+                    );
                   },
                   icon: const Icon(Icons.map, size: 16),
                   label: const Text('Ver Mapa'),
@@ -199,14 +238,22 @@ class _LocationCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () async {
                     final res = await CustomerLocationFormSheet.show(
-                      context, 
+                      context,
                       existing: location,
                       onSave: (loc) async {
-                        await context.read<CustomerLocationsCubit>().updateLocation(location.profileId, location.id, loc);
-                      }
+                        await context
+                            .read<CustomerLocationsCubit>()
+                            .updateLocation(
+                              location.profileId,
+                              location.id,
+                              loc,
+                            );
+                      },
                     );
                     if (res == true && context.mounted) {
-                      context.read<CustomerLocationsCubit>().loadLocations(location.profileId);
+                      context.read<CustomerLocationsCubit>().loadLocations(
+                        location.profileId,
+                      );
                     }
                   },
                   icon: const Icon(Icons.edit, size: 16),
@@ -215,7 +262,10 @@ class _LocationCard extends StatelessWidget {
                 if (!location.isDefault)
                   TextButton.icon(
                     onPressed: () {
-                      context.read<CustomerLocationsCubit>().setAsDefault(location.profileId, location.id);
+                      context.read<CustomerLocationsCubit>().setAsDefault(
+                        location.profileId,
+                        location.id,
+                      );
                     },
                     icon: const Icon(Icons.star, size: 16),
                     label: const Text('Principal'),
@@ -224,27 +274,48 @@ class _LocationCard extends StatelessWidget {
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (c) => AlertDialog(
-                        title: const Text('Eliminar Ubicación'),
-                        content: const Text('¿Está seguro de eliminar esta ubicación?'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancelar')),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(c);
-                              context.read<CustomerLocationsCubit>().deleteLocation(location.profileId, location.id);
-                            },
-                            child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+                      builder:
+                          (c) => AlertDialog(
+                            title: const Text('Eliminar Ubicación'),
+                            content: const Text(
+                              '¿Está seguro de eliminar esta ubicación?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(c),
+                                child: const Text('Cancelar'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(c);
+                                  context
+                                      .read<CustomerLocationsCubit>()
+                                      .deleteLocation(
+                                        location.profileId,
+                                        location.id,
+                                      );
+                                },
+                                child: const Text(
+                                  'Eliminar',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
                     );
                   },
-                  icon: const Icon(Icons.delete, size: 16, color: AppColors.error),
-                  label: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+                  icon: const Icon(
+                    Icons.delete,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
+                  label: const Text(
+                    'Eliminar',
+                    style: TextStyle(color: AppColors.error),
+                  ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),

@@ -50,43 +50,43 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Future<void> _pickDueDate(BuildContext context) async {
     final cubit = context.read<PurchaseOrderFormCubit>();
     final state = cubit.state;
-    final provider = _PurchaseOrderFormViewModel(cubit, state);
+    final viewModel = _PurchaseOrderFormViewModel(cubit, state);
     final picked = await showDatePicker(
       context: context,
       initialDate:
-          provider.dueDate ?? DateTime.now().add(const Duration(days: 7)),
+          viewModel.dueDate ?? DateTime.now().add(const Duration(days: 7)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
       helpText: 'Fecha de Entrega o Vencimiento',
     );
     if (picked != null) {
-      provider.setDueDate(picked);
+      viewModel.setDueDate(picked);
     }
   }
 
   Future<void> _pickDocumentDate(BuildContext context) async {
     final cubit = context.read<PurchaseOrderFormCubit>();
     final state = cubit.state;
-    final provider = _PurchaseOrderFormViewModel(cubit, state);
+    final viewModel = _PurchaseOrderFormViewModel(cubit, state);
     final picked = await showDatePicker(
       context: context,
-      initialDate: provider.documentDate ?? DateTime.now(),
+      initialDate: viewModel.documentDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       helpText: 'Fecha del Documento Físico',
     );
     if (picked != null) {
-      provider.setDocumentDate(picked);
+      viewModel.setDocumentDate(picked);
     }
   }
 
   Future<void> _showAddProductSheet(BuildContext context) async {
     final cubit = context.read<PurchaseOrderFormCubit>();
     final state = cubit.state;
-    final provider = _PurchaseOrderFormViewModel(cubit, state);
+    final viewModel = _PurchaseOrderFormViewModel(cubit, state);
 
     // Validar que se haya seleccionado un proveedor primero
-    if (provider.selectedSupplierId == null) {
+    if (viewModel.selectedSupplierId == null) {
       AppSnackbar.show(
         context,
         message: 'Selecciona un proveedor antes de agregar productos.',
@@ -96,7 +96,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     }
 
     // Validar que se haya seleccionado un almacén de destino
-    if (provider.selectedWarehouseId == null) {
+    if (viewModel.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
         message: 'Selecciona un almacén de destino antes de agregar productos.',
@@ -111,21 +111,21 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       backgroundColor: Colors.transparent,
       builder:
           (_) =>
-              AddEntryProductSheet(warehouseId: provider.selectedWarehouseId),
+              AddEntryProductSheet(warehouseId: viewModel.selectedWarehouseId),
     );
 
     if (newItem != null && context.mounted) {
-      provider.addItem(newItem);
+      viewModel.addItem(newItem);
     }
   }
 
   Future<void> _handleSave() async {
     final cubit = context.read<PurchaseOrderFormCubit>();
     final state = cubit.state;
-    final provider = _PurchaseOrderFormViewModel(cubit, state);
-    provider.setDocumentNumber(_documentNumberCtrl.text.trim());
-    provider.setNotes(_notesCtrl.text.trim());
-    final success = await provider.saveOrder();
+    final viewModel = _PurchaseOrderFormViewModel(cubit, state);
+    viewModel.setDocumentNumber(_documentNumberCtrl.text.trim());
+    viewModel.setNotes(_notesCtrl.text.trim());
+    final success = await viewModel.saveOrder();
 
     if (success && mounted) {
       AppSnackbar.show(
@@ -134,10 +134,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
         type: SnackbarType.success,
       );
       Navigator.pop(context, true);
-    } else if (mounted && provider.errorMessage.isNotEmpty) {
+    } else if (mounted && viewModel.errorMessage.isNotEmpty) {
       AppSnackbar.show(
         context,
-        message: provider.errorMessage,
+        message: viewModel.errorMessage,
         type: SnackbarType.error,
       );
     }
@@ -184,8 +184,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<PurchaseOrderFormCubit, PurchaseOrderFormState>(
       builder: (context, state) {
-        final provider = _PurchaseOrderFormViewModel(context.read<PurchaseOrderFormCubit>(), state);
-        if (provider.isLoading) {
+        final viewModel = _PurchaseOrderFormViewModel(context.read<PurchaseOrderFormCubit>(), state);
+        if (viewModel.isLoading) {
           return const AdminLayout(
             title: 'Nueva Orden',
             showBackButton: true,
@@ -202,8 +202,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           onPopInvokedWithResult: (didPop, result) async {
             if (didPop) return;
 
-            if (provider.items.isEmpty) {
-              provider.clearDraft();
+            if (viewModel.items.isEmpty) {
+              viewModel.clearDraft();
               Navigator.pop(context, result);
               return;
             }
@@ -252,7 +252,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             if (!context.mounted) return;
 
             if (action == 'discard') {
-              provider.clearDraft();
+              viewModel.clearDraft();
               Navigator.pop(context, result);
             } else if (action == 'draft') {
               Navigator.pop(context, result);
@@ -264,7 +264,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             showProfileButton: false,
             showDrawerButton: false,
             body:
-                provider.isSaving
+                viewModel.isSaving
                     ? const Center(
                       child: CircularProgressIndicator(
                         color: AppColors.primary,
@@ -293,11 +293,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     padding: const EdgeInsets.all(24.0),
                                     child: Column(
                                       children: [
-                                        _buildHeaderData(provider),
+                                        _buildHeaderData(viewModel),
                                         const SizedBox(height: 24),
-                                        _buildPaymentData(provider),
+                                        _buildPaymentData(viewModel),
                                         const SizedBox(height: 24),
-                                        _buildDocumentData(provider),
+                                        _buildDocumentData(viewModel),
                                       ],
                                     ),
                                   ),
@@ -311,10 +311,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     Expanded(
                                       child: SingleChildScrollView(
                                         padding: const EdgeInsets.all(24.0),
-                                        child: _buildProductsData(provider),
+                                        child: _buildProductsData(viewModel),
                                       ),
                                     ),
-                                    _buildStickySaveButton(provider),
+                                    _buildStickySaveButton(viewModel),
                                   ],
                                 ),
                               ),
@@ -331,19 +331,19 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildHeaderData(provider),
+                                    _buildHeaderData(viewModel),
                                     const SizedBox(height: 16),
-                                    _buildProductsData(provider),
+                                    _buildProductsData(viewModel),
                                     const SizedBox(height: 16),
-                                    _buildPaymentData(provider),
+                                    _buildPaymentData(viewModel),
                                     const SizedBox(height: 16),
-                                    _buildDocumentData(provider),
+                                    _buildDocumentData(viewModel),
                                     const SizedBox(height: 24),
                                   ],
                                 ),
                               ),
                             ),
-                            _buildStickySaveButton(provider),
+                            _buildStickySaveButton(viewModel),
                           ],
                         );
                       },
@@ -354,7 +354,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildStickySaveButton(_PurchaseOrderFormViewModel provider) {
+  Widget _buildStickySaveButton(_PurchaseOrderFormViewModel viewModel) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
@@ -374,7 +374,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           children: [
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: provider.items.isEmpty ? null : _handleSave,
+                onPressed: viewModel.items.isEmpty ? null : _handleSave,
                 icon: const Icon(Icons.check_circle_outline_rounded),
                 label: const Text(
                   'Generar Orden',
@@ -396,7 +396,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildHeaderData(_PurchaseOrderFormViewModel provider) {
+  Widget _buildHeaderData(_PurchaseOrderFormViewModel viewModel) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +407,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.selectedSupplierId,
+            initialValue: viewModel.selectedSupplierId,
             isExpanded: true,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
@@ -415,7 +415,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               icon: Icons.local_shipping_rounded,
             ),
             items:
-                provider.suppliers
+                viewModel.suppliers
                     .map(
                       (s) => DropdownMenuItem(
                         value: s['id'] as String,
@@ -426,11 +426,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                       ),
                     )
                     .toList(),
-            onChanged: provider.setSupplier,
+            onChanged: viewModel.setSupplier,
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.selectedWarehouseId,
+            initialValue: viewModel.selectedWarehouseId,
             isExpanded: true,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
@@ -438,7 +438,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               icon: Icons.warehouse_rounded,
             ),
             items:
-                provider.warehouses
+                viewModel.warehouses
                     .map(
                       (w) => DropdownMenuItem(
                         value: w.id,
@@ -449,14 +449,14 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                       ),
                     )
                     .toList(),
-            onChanged: provider.setWarehouse,
+            onChanged: viewModel.setWarehouse,
           ),
           const SizedBox(height: 16),
           _DatePickerField(
             label: 'Fecha Vencimiento (Opcional)',
-            value: provider.dueDate,
+            value: viewModel.dueDate,
             onPick: () => _pickDueDate(context),
-            onClear: () => provider.setDueDate(null),
+            onClear: () => viewModel.setDueDate(null),
             icon: Icons.event_rounded,
           ),
         ],
@@ -464,7 +464,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildProductsData(_PurchaseOrderFormViewModel provider) {
+  Widget _buildProductsData(_PurchaseOrderFormViewModel viewModel) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,7 +489,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     ),
                     label: const Text('Agregar'),
                   ),
-                  if (provider.items.isNotEmpty)
+                  if (viewModel.items.isNotEmpty)
                     PopupMenuButton<String>(
                       tooltip: 'Más opciones',
                       icon: const Icon(
@@ -525,7 +525,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          if (provider.items.isEmpty)
+          if (viewModel.items.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
@@ -583,13 +583,13 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: provider.items.length,
+              itemCount: viewModel.items.length,
               itemBuilder: (context, index) {
                 return POFormItemTile(
-                  item: provider.items[index],
+                  item: viewModel.items[index],
                   onUpdateQuantity:
-                      (newQty) => provider.updateItemQuantity(index, newQty),
-                  onRemove: () => provider.removeItem(index),
+                      (newQty) => viewModel.updateItemQuantity(index, newQty),
+                  onRemove: () => viewModel.removeItem(index),
                 );
               },
             ),
@@ -597,11 +597,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             duration: const Duration(milliseconds: 350),
             curve: Curves.easeInOut,
             child:
-                provider.items.isEmpty
+                viewModel.items.isEmpty
                     ? const SizedBox.shrink()
                     : Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: POFormSummaryCard(items: provider.items),
+                      child: POFormSummaryCard(items: viewModel.items),
                     ),
           ),
         ],
@@ -609,7 +609,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildPaymentData(_PurchaseOrderFormViewModel provider) {
+  Widget _buildPaymentData(_PurchaseOrderFormViewModel viewModel) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,7 +620,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: provider.paymentMode,
+            initialValue: viewModel.paymentMode,
             isExpanded: true,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
@@ -655,18 +655,18 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             ],
             onChanged: (v) {
               if (v != null) {
-                provider.setPaymentMode(v);
+                viewModel.setPaymentMode(v);
                 if (v == 'CREDITO') {
-                  provider.setPaymentStatus('PENDING');
-                  provider.setAccount(null);
+                  viewModel.setPaymentStatus('PENDING');
+                  viewModel.setAccount(null);
                 }
               }
             },
           ),
           const SizedBox(height: 16),
-          if (provider.paymentMode != 'CREDITO') ...[
+          if (viewModel.paymentMode != 'CREDITO') ...[
             DropdownButtonFormField<String>(
-              initialValue: provider.paymentStatus,
+              initialValue: viewModel.paymentStatus,
               icon: const Icon(Icons.expand_more_rounded),
               decoration: _dropdownDecoration(
                 'Estado del Pago',
@@ -692,13 +692,13 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 ),
               ],
               onChanged: (v) {
-                if (v != null) provider.setPaymentStatus(v);
+                if (v != null) viewModel.setPaymentStatus(v);
               },
             ),
-            if (provider.paymentStatus == 'PAID') ...[
+            if (viewModel.paymentStatus == 'PAID') ...[
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: provider.selectedAccountId,
+                initialValue: viewModel.selectedAccountId,
                 isExpanded: true,
                 icon: const Icon(Icons.expand_more_rounded),
                 decoration: _dropdownDecoration(
@@ -706,7 +706,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                   icon: Icons.account_balance_wallet_rounded,
                 ),
                 items:
-                    provider.accounts.map((acc) {
+                    viewModel.accounts.map((acc) {
                       return DropdownMenuItem(
                         value: acc.id,
                         child: Text(
@@ -718,7 +718,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                         ),
                       );
                     }).toList(),
-                onChanged: provider.setAccount,
+                onChanged: viewModel.setAccount,
               ),
             ],
           ],
@@ -727,7 +727,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildDocumentData(_PurchaseOrderFormViewModel provider) {
+  Widget _buildDocumentData(_PurchaseOrderFormViewModel viewModel) {
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,7 +741,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: provider.documentType,
+                  initialValue: viewModel.documentType,
                   isExpanded: true,
                   icon: const Icon(Icons.expand_more_rounded),
                   decoration: _dropdownDecoration('Tipo Doc.'),
@@ -761,7 +761,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                           )
                           .toList(),
                   onChanged: (v) {
-                    if (v != null) provider.setDocumentType(v);
+                    if (v != null) viewModel.setDocumentType(v);
                   },
                 ),
               ),
@@ -790,9 +790,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           const SizedBox(height: 16),
           _DatePickerField(
             label: 'Fecha Emisión Físico',
-            value: provider.documentDate,
+            value: viewModel.documentDate,
             onPick: () => _pickDocumentDate(context),
-            onClear: () => provider.setDocumentDate(null),
+            onClear: () => viewModel.setDocumentDate(null),
             icon: Icons.edit_calendar_rounded,
           ),
           const SizedBox(height: 16),

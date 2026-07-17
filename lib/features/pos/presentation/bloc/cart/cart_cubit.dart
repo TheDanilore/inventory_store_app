@@ -55,7 +55,7 @@ class CartCubit extends Cubit<CartState> {
 
     // Supabase will automatically map the auth ID to profile ID inside the repository if we want,
     // or we can pass auth_user_id and let repository handle it. The repo takes profileId.
-    // Wait, the repository `syncCloudCart` takes profileId, but old provider passed auth.currentUser.id!
+    // Wait, the repository `syncCloudCart` takes profileId, but old implementation passed auth.currentUser.id!
     // So the repo `_getOrCreateCartId` handles profileId, wait no, old CartCloudService did `_getProfileId(authUserId)`.
     // I need to ensure my `CartRepositoryImpl.syncCloudCart` gets the profile ID correctly.
     // In CartRepositoryImpl, `syncCloudCart` parameter is `String profileId`. We can assume the caller passes authUserId and the repo looks it up, OR we can look it up here.

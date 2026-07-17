@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/financi
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
-import 'package:provider/provider.dart';
+
 
 // FINANCIAL ACCOUNTS SCREEN
 

@@ -5,7 +5,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
-import 'package:provider/provider.dart';
+
 import 'package:shimmer/shimmer.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

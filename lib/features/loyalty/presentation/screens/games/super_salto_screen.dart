@@ -3,7 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
+
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -204,7 +204,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_JUMP', _score, 'Super Salto: Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_JUMP',
+          _score,
+          'Super Salto: Ganó $_score monedas',
+        );
         if (mounted) Navigator.pop(context, _score);
       } catch (e) {
         if (mounted) {
@@ -229,7 +233,11 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
         return;
       }
       try {
-        await context.read<PointsCubit>().recordMiniGameResult('MINI_GAME_JUMP', _score, 'Super Salto: Ganó $_score monedas');
+        await context.read<PointsCubit>().recordMiniGameResult(
+          'MINI_GAME_JUMP',
+          _score,
+          'Super Salto: Ganó $_score monedas',
+        );
         if (mounted) _startGame();
       } catch (e) {
         if (mounted) {
@@ -691,4 +699,3 @@ class _SuperSaltoScreenState extends State<SuperSaltoScreen> {
     );
   }
 }
-

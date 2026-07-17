@@ -136,7 +136,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     cubit.setDocumentNumber(_documentNumberCtrl.text.trim());
 
-    // Obtenemos el shift activo que seteamos en el initState (que ahora está guardado en el provider)
+    // Obtenemos el shift activo que seteamos en el initState (que ahora está guardado en el cubit)
     String activeShiftId = "";
     final shiftResp =
         await Supabase.instance.client

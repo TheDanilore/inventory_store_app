@@ -127,7 +127,7 @@ class SupplierCreditMovementsCubit extends Cubit<SupplierCreditMovementsState> {
     emit(currentState.copyWith(isExporting: true));
 
     // Notice we fetch all the items bypassing the pagination inside the repo internally, or we fetch again by requesting all.
-    // The previous provider made a custom query to fetch all without pagination limit.
+    // The previous implementation made a custom query to fetch all without pagination limit.
     // We can do it by requesting with a large pageSize just for the pdf, or handle it properly.
     // To keep it simple, we'll fetch with pageSize: 100000 for PDF just like we used to.
     final fetchResult = await fetchMovementsUseCase(

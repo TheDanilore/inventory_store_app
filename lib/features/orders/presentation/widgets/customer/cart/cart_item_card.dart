@@ -29,8 +29,8 @@ class CartItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final checkoutProvider = context.read<CheckoutCubit>();
-    final wPrice = checkoutProvider.wholesalePriceOf(item);
+    final checkoutCubit = context.read<CheckoutCubit>();
+    final wPrice = checkoutCubit.wholesalePriceOf(item);
 
     final String? imageUrl = item.imageUrl;
 
@@ -42,7 +42,7 @@ class CartItemCard extends StatelessWidget {
 
     final appliedPoints =
         isLoyaltyEnabled
-            ? checkoutProvider.getAppliedPointsForItem(
+            ? checkoutCubit.getAppliedPointsForItem(
               item,
               cartCubit,
               pointsToSolesRatio,

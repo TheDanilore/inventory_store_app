@@ -31,7 +31,7 @@ class PurchaseOrdersScreen extends StatefulWidget {
 
 class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   PurchaseOrdersCubit get cubit => context.read<PurchaseOrdersCubit>();
-  _PurchaseOrdersViewModel get provider => _PurchaseOrdersViewModel(cubit, cubit.state);
+  _PurchaseOrdersViewModel get viewModel => _PurchaseOrdersViewModel(cubit, cubit.state);
   final _searchCtrl = TextEditingController();
   bool _hasDraft = false;
   Timer? _debounce;
@@ -87,7 +87,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: provider.dateRange,
+      initialDateRange: viewModel.dateRange,
       initialEntryMode: DatePickerEntryMode.input,
       builder:
           (context, child) => Theme(
@@ -212,7 +212,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
               }
             },
             onUpdateStatus:
-                (status) => provider.updateOrderStatus(po.id, status),
+                (status) => viewModel.updateOrderStatus(po.id, status),
           ),
     );
   }
@@ -238,21 +238,21 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
       builder: (context, state) {
-        final provider = _PurchaseOrdersViewModel(context.read<PurchaseOrdersCubit>(), state);
-        if (provider.errorMessage.isNotEmpty) {
+        final viewModel = _PurchaseOrdersViewModel(context.read<PurchaseOrdersCubit>(), state);
+        if (viewModel.errorMessage.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             AppSnackbar.show(
               context,
-              message: provider.errorMessage,
+              message: viewModel.errorMessage,
               type: SnackbarType.error,
             );
-            provider.clearError();
+            viewModel.clearError();
           });
         }
 
-        final filtered = provider.orders;
-        final totalAmount = provider.totalAmountFiltered;
-        final pendingCount = provider.pendingCountFiltered;
+        final filtered = viewModel.orders;
+        final totalAmount = viewModel.totalAmountFiltered;
+        final pendingCount = viewModel.pendingCountFiltered;
 
         return AdminLayout(
           title: 'Órdenes de Compra',
@@ -358,23 +358,23 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               _debounce?.cancel();
                               _debounce = Timer(
                                 const Duration(milliseconds: 300),
-                                () => provider.setSearchText(v),
+                                () => viewModel.setSearchText(v),
                               );
                             },
                             onSubmitted: (v) {
                               _debounce?.cancel();
-                              provider.setSearchText(v);
+                              viewModel.setSearchText(v);
                             },
                             onClear: () {
                               _debounce?.cancel();
                               _searchCtrl.clear();
-                              provider.setSearchText('');
+                              viewModel.setSearchText('');
                             },
                           ),
                         ),
                         const SizedBox(width: 8),
                         _DateRangeButton(
-                          dateRange: provider.dateRange,
+                          dateRange: viewModel.dateRange,
                           onTap: () => _pickDateRange(context),
                           onClear: () => cubit.setDateRange(null, null),
                         ),
@@ -385,7 +385,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                       builder: (context, constraints) {
                         final chips =
                             _statusLabels.entries.map((e) {
-                              final sel = provider.statusFilter == e.key;
+                              final sel = viewModel.statusFilter == e.key;
                               return Padding(
                                 padding: const EdgeInsets.only(
                                   right: 6,
@@ -395,7 +395,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   label: Text(e.value),
                                   selected: sel,
                                   onSelected:
-                                      (_) => provider.setStatusFilter(e.key),
+                                      (_) => viewModel.setStatusFilter(e.key),
                                   selectedColor: _statusColor(
                                     e.key,
                                   ).withValues(alpha: 0.15),
@@ -437,7 +437,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   switchInCurve: Curves.easeOut,
                   switchOutCurve: Curves.easeIn,
                   child:
-                      provider.isLoading
+                      viewModel.isLoading
                           ? ListView.separated(
                             key: const ValueKey('loading'),
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -461,7 +461,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                           )
                           : Column(
                             key: ValueKey(
-                              '${provider.statusFilter}_${provider.currentPage}',
+                              '${viewModel.statusFilter}_${viewModel.currentPage}',
                             ),
                             children: [
                               Padding(
@@ -475,7 +475,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   children: [
                                     const Spacer(),
                                     Text(
-                                      'Pág. ${provider.currentPage + 1} / ${provider.totalPages}',
+                                      'Pág. ${viewModel.currentPage + 1} / ${viewModel.totalPages}',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 12,
@@ -514,7 +514,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   ),
                                 ),
                               ),
-                              if (provider.totalPages > 1)
+                              if (viewModel.totalPages > 1)
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -523,9 +523,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     8,
                                   ),
                                   child: AdminPageBlocks(
-                                    currentPage: provider.currentPage,
-                                    totalPages: provider.totalPages,
-                                    onPageChanged: (p) => provider.setPage(p),
+                                    currentPage: viewModel.currentPage,
+                                    totalPages: viewModel.totalPages,
+                                    onPageChanged: (p) => viewModel.setPage(p),
                                   ),
                                 ),
                             ],

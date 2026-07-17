@@ -1,5 +1,5 @@
-﻿import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
+
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -326,8 +326,8 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
       descriptions[def.key] = def.description;
     }
 
-    final provider = context.read<AppConfigCubit>();
-    final success = await provider.saveMultipleValues(
+    final cubit = context.read<AppConfigCubit>();
+    final success = await cubit.saveMultipleValues(
       newValues,
       descriptions: descriptions,
     );
@@ -743,8 +743,8 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   Widget _buildSaveButton(int tabIndex, List<String> keys) {
-    final provider = context.watch<AppConfigCubit>();
-    final isSaving = provider.saveState == ViewState.loading;
+    final cubit = context.watch<AppConfigCubit>();
+    final isSaving = cubit.saveState == ViewState.loading;
     return Align(
       alignment: Alignment.centerRight,
       child: SizedBox(
@@ -941,4 +941,3 @@ class _SettingDefinition {
     this.icon,
   });
 }
-

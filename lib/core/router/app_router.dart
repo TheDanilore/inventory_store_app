@@ -29,7 +29,8 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders_cubit.dart';
-import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart' as inventory_store_app_orders_repository;
+import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart'
+    as inventory_store_app_orders_repository;
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
 
 import 'package:inventory_store_app/features/orders/presentation/screens/customer/customer_cart_screen.dart';
@@ -175,13 +176,7 @@ class AppRouter {
     }
   }
 
-  /// Crea el GoRouter recibiendo el [AuthProvider] directamente.
-  ///
-  /// IMPORTANTE: Esta firma reemplaza la anterior `createRouter(BuildContext context)`.
-  /// El provider se pasa como parámetro para que el router pueda crearse
-  /// FUERA del árbol de widgets (en main(), antes de runApp()), eliminando
-  /// así el crash "DartError: Assertion failed" causado por la recreación
-  /// del GoRouter en rebuilds de MyApp.
+  /// Crea el GoRouter recibiendo el [authCubit] directamente.
   static GoRouter createRouter(AuthCubit authCubit) {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
@@ -398,7 +393,10 @@ class AppRouter {
                                   child: CircularProgressIndicator(),
                                 ),
                           );
-                          final result = await sl<inventory_store_app_orders_repository.OrdersRepository>().getOrderById(orderId);
+                          final result = await sl<
+                                inventory_store_app_orders_repository.OrdersRepository
+                              >()
+                              .getOrderById(orderId);
                           final order = result.fold((l) => null, (r) => r);
                           if (context.mounted) {
                             Navigator.pop(context); // Cerrar loading dialog
@@ -410,7 +408,10 @@ class AppRouter {
                                 backgroundColor: Colors.transparent,
                                 builder:
                                     (ctx) => BlocProvider(
-                                      create: (_) => sl<OrderDetailCubit>()..fetchData(order.id),
+                                      create:
+                                          (_) =>
+                                              sl<OrderDetailCubit>()
+                                                ..fetchData(order.id),
                                       child: OrderDetailSheet(order: order),
                                     ),
                               );
@@ -464,8 +465,7 @@ class AppRouter {
                             MaterialPageRoute(
                               builder:
                                   (_) => BlocProvider(
-                                    create:
-                                        (_) => sl<OrdersCubit>(),
+                                    create: (_) => sl<OrdersCubit>(),
                                     child: OrdersScreen(
                                       customTitle:
                                           'Pedidos de ${(customer as dynamic)?.fullName ?? ''}',
@@ -537,17 +537,22 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'financial-accounts',
-                  builder: (context, state) => MultiBlocProvider(
-                    providers: [
-                      BlocProvider(create: (_) => sl<FinancialAccountsCubit>()),
-                      BlocProvider(create: (_) => sl<AccountMovementsCubit>()),
-                    ],
-                    child: const AdminLayout(
-                      title: 'Cuentas y Finanzas',
-                      showBackButton: true,
-                      body: FinancialAccountsScreen(),
-                    ),
-                  ),
+                  builder:
+                      (context, state) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider(
+                            create: (_) => sl<FinancialAccountsCubit>(),
+                          ),
+                          BlocProvider(
+                            create: (_) => sl<AccountMovementsCubit>(),
+                          ),
+                        ],
+                        child: const AdminLayout(
+                          title: 'Cuentas y Finanzas',
+                          showBackButton: true,
+                          body: FinancialAccountsScreen(),
+                        ),
+                      ),
                 ),
                 GoRoute(
                   path: 'all-cash-shifts',
@@ -555,14 +560,15 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'inventory-entries',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<InventoryEntriesCubit>()..init(),
-                    child: const AdminLayout(
-                      title: 'Historial de Entradas',
-                      showBackButton: true,
-                      body: InventoryEntriesScreen(),
-                    ),
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<InventoryEntriesCubit>()..init(),
+                        child: const AdminLayout(
+                          title: 'Historial de Entradas',
+                          showBackButton: true,
+                          body: InventoryEntriesScreen(),
+                        ),
+                      ),
                 ),
                 GoRoute(
                   path: 'inventory-entry-form',
@@ -586,89 +592,104 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'inventory-exit-form',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<InventoryExitFormCubit>(),
-                    child: const InventoryExitFormScreen(),
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<InventoryExitFormCubit>(),
+                        child: const InventoryExitFormScreen(),
+                      ),
                 ),
                 GoRoute(
                   path: 'inventory-exits',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<InventoryExitsCubit>()..initLoad(),
-                    child: Builder(
-                      builder: (innerContext) => AdminLayout(
-                        title: 'Salidas de Inventario',
-                        showBackButton: true,
-                        showSettingsButton: true,
-                        settingsActions: const [
-                          PopupMenuItem(
-                            value: 'pdf',
-                            child: Text('Exportar a PDF (Historial)'),
-                          ),
-                        ],
-                        onSettingsSelected: (val) {
-                          if (val != 'pdf') return;
-                          final cubit = innerContext.read<InventoryExitsCubit>();
-                          if (cubit.state.exits.isNotEmpty) {
-                            final startDate = cubit.state.startDate;
-                            final endDate = cubit.state.endDate;
-                            final selectedRange =
-                                startDate != null && endDate != null
-                                    ? DateTimeRange(
-                                      start: startDate,
-                                      end: endDate,
-                                    )
-                                    : null;
-                            InventoryExitsPdfGenerator.shareReport(
-                              exits: cubit.state.exits,
-                              dateRange: selectedRange,
-                            );
-                          } else {
-                            ScaffoldMessenger.of(innerContext).showSnackBar(
-                              const SnackBar(
-                                content: Text('No hay datos para exportar'),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<InventoryExitsCubit>()..initLoad(),
+                        child: Builder(
+                          builder:
+                              (innerContext) => AdminLayout(
+                                title: 'Salidas de Inventario',
+                                showBackButton: true,
+                                showSettingsButton: true,
+                                settingsActions: const [
+                                  PopupMenuItem(
+                                    value: 'pdf',
+                                    child: Text('Exportar a PDF (Historial)'),
+                                  ),
+                                ],
+                                onSettingsSelected: (val) {
+                                  if (val != 'pdf') return;
+                                  final cubit =
+                                      innerContext.read<InventoryExitsCubit>();
+                                  if (cubit.state.exits.isNotEmpty) {
+                                    final startDate = cubit.state.startDate;
+                                    final endDate = cubit.state.endDate;
+                                    final selectedRange =
+                                        startDate != null && endDate != null
+                                            ? DateTimeRange(
+                                              start: startDate,
+                                              end: endDate,
+                                            )
+                                            : null;
+                                    InventoryExitsPdfGenerator.shareReport(
+                                      exits: cubit.state.exits,
+                                      dateRange: selectedRange,
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(
+                                      innerContext,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'No hay datos para exportar',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                body: const InventoryExitsScreen(),
                               ),
-                            );
-                          }
-                        },
-                        body: const InventoryExitsScreen(),
+                        ),
                       ),
-                    ),
-                  ),
                 ),
                 GoRoute(
                   path: 'inventory',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<InventoryCubit>(),
-                    child: const AdminLayout(
-                      title: 'Inventario',
-                      showBackButton: true,
-                      body: InventoryScreen(),
-                    ),
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<InventoryCubit>(),
+                        child: const AdminLayout(
+                          title: 'Inventario',
+                          showBackButton: true,
+                          body: InventoryScreen(),
+                        ),
+                      ),
                 ),
                 GoRoute(
                   path: 'kardex',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<KardexCubit>()..loadMovements(),
-                    child: Builder(
-                      builder: (innerContext) => AdminLayout(
-                        title: 'Kardex',
-                        showBackButton: true,
-                        showSettingsButton: true,
-                        settingsActions: const [
-                          PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
-                        ],
-                        onSettingsSelected: (value) {
-                          if (value == 'export') {
-                            final cubit = innerContext.read<KardexCubit>();
-                            cubit.exportToPdf();
-                          }
-                        },
-                        body: const KardexScreen(),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<KardexCubit>()..loadMovements(),
+                        child: Builder(
+                          builder:
+                              (innerContext) => AdminLayout(
+                                title: 'Kardex',
+                                showBackButton: true,
+                                showSettingsButton: true,
+                                settingsActions: const [
+                                  PopupMenuItem(
+                                    value: 'export',
+                                    child: Text('Exportar a PDF'),
+                                  ),
+                                ],
+                                onSettingsSelected: (value) {
+                                  if (value == 'export') {
+                                    final cubit =
+                                        innerContext.read<KardexCubit>();
+                                    cubit.exportToPdf();
+                                  }
+                                },
+                                body: const KardexScreen(),
+                              ),
+                        ),
                       ),
-                    ),
-                  ),
                 ),
                 GoRoute(
                   path: 'orders',
@@ -715,35 +736,40 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'purchase-order-form',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<PurchaseOrderFormCubit>(),
-                    child: const PurchaseOrderFormScreen(), // Assuming this screen might want its own layout or just doesn't need AdminLayout? Wait, previous code didn't wrap it in app_router.
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<PurchaseOrderFormCubit>(),
+                        child:
+                            const PurchaseOrderFormScreen(), // Assuming this screen might want its own layout or just doesn't need AdminLayout? Wait, previous code didn't wrap it in app_router.
+                      ),
                 ),
                 GoRoute(
                   path: 'purchase-orders',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<PurchaseOrdersCubit>(),
-                    child: const AdminLayout(
-                      title: 'Órdenes de Compra',
-                      showBackButton: true,
-                      body: PurchaseOrdersScreen(),
-                    ),
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<PurchaseOrdersCubit>(),
+                        child: const AdminLayout(
+                          title: 'Órdenes de Compra',
+                          showBackButton: true,
+                          body: PurchaseOrdersScreen(),
+                        ),
+                      ),
                 ),
                 GoRoute(
                   path: 'supplier-credit-movements/:creditId',
                   builder: (context, state) {
                     final creditId = state.pathParameters['creditId'] ?? '';
                     final args = state.extra as Map<String, dynamic>? ?? {};
-                    final supplierName = args['supplierName'] ??
-                          state.uri.queryParameters['name'] ??
-                          '';
+                    final supplierName =
+                        args['supplierName'] ??
+                        state.uri.queryParameters['name'] ??
+                        '';
                     return BlocProvider(
-                      create: (_) => sl<SupplierCreditMovementsCubit>(
-                        param1: creditId,
-                        param2: supplierName,
-                      ),
+                      create:
+                          (_) => sl<SupplierCreditMovementsCubit>(
+                            param1: creditId,
+                            param2: supplierName,
+                          ),
                       child: SupplierCreditMovementsScreen(
                         creditId: creditId,
                         supplierName: supplierName,
@@ -765,25 +791,27 @@ class AppRouter {
                 ),
                 GoRoute(
                   path: 'supplier-credits',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<SupplierCreditsCubit>(),
-                    child: const AdminLayout(
-                      title: 'Cuentas por Pagar',
-                      showBackButton: true,
-                      body: SupplierCreditsScreen(),
-                    ),
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<SupplierCreditsCubit>(),
+                        child: const AdminLayout(
+                          title: 'Cuentas por Pagar',
+                          showBackButton: true,
+                          body: SupplierCreditsScreen(),
+                        ),
+                      ),
                 ),
                 GoRoute(
                   path: 'suppliers',
-                  builder: (context, state) => BlocProvider(
-                    create: (_) => sl<SuppliersCubit>(),
-                    child: const AdminLayout(
-                      title: 'Directorio de Proveedores',
-                      showBackButton: true,
-                      body: SuppliersScreen(),
-                    ),
-                  ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<SuppliersCubit>(),
+                        child: const AdminLayout(
+                          title: 'Directorio de Proveedores',
+                          showBackButton: true,
+                          body: SuppliersScreen(),
+                        ),
+                      ),
                 ),
                 GoRoute(
                   path: 'user-form',
@@ -813,9 +841,10 @@ class AppRouter {
                     final productId = state.pathParameters['id'];
                     final variantId = state.uri.queryParameters['variantId'];
                     final extra = state.extra;
-                    final ProductEntity? product = extra is ProductEntity 
-                        ? extra 
-                        : (extra as ProductModel?)?.toEntity();
+                    final ProductEntity? product =
+                        extra is ProductEntity
+                            ? extra
+                            : (extra as ProductModel?)?.toEntity();
                     if (product != null) {
                       return ProductDetailScreen(
                         product: product,
@@ -866,9 +895,10 @@ class AppRouter {
                         final variantId =
                             state.uri.queryParameters['variantId'];
                         final extra = state.extra;
-                        final ProductEntity? product = extra is ProductEntity 
-                            ? extra 
-                            : (extra as ProductModel?)?.toEntity();
+                        final ProductEntity? product =
+                            extra is ProductEntity
+                                ? extra
+                                : (extra as ProductModel?)?.toEntity();
                         if (product != null) {
                           return ProductDetailScreen(
                             product: product,
@@ -897,10 +927,11 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/customer/cart',
-                  builder: (context, state) => BlocProvider(
-                      create: (_) => sl<CheckoutCubit>(),
-                      child: const CustomerCartScreen(),
-                    ),
+                  builder:
+                      (context, state) => BlocProvider(
+                        create: (_) => sl<CheckoutCubit>(),
+                        child: const CustomerCartScreen(),
+                      ),
                 ),
               ],
             ),
@@ -1009,10 +1040,11 @@ class AppRouter {
             final productId = state.pathParameters['id'];
             final variantId = state.uri.queryParameters['variantId'];
             final extra = state.extra;
-            final ProductEntity? product = extra is ProductEntity 
-                ? extra 
-                : (extra as ProductModel?)?.toEntity();
-            // Usamos el authProvider capturado en el closure (no context.read)
+            final ProductEntity? product =
+                extra is ProductEntity
+                    ? extra
+                    : (extra as ProductModel?)?.toEntity();
+            // Usamos el authCubit capturado en el closure (no context.read)
             // para evitar dependencia del contexto en rutas compartidas.
             final role = authCubit.state.currentUser?.role;
             final isAdmin = role == AppRoles.admin;

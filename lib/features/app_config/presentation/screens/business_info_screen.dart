@@ -94,7 +94,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     if (pickedFile == null) return;
 
     if (!mounted) return;
-    final provider = context.read<AppConfigCubit>();
+    final cubit = context.read<AppConfigCubit>();
     final bytes = await pickedFile.readAsBytes();
 
     final compressed = await FlutterImageCompress.compressWithList(
@@ -104,7 +104,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
       quality: 80,
     );
 
-    final url = await provider.uploadBusinessLogo(compressed);
+    final url = await cubit.uploadBusinessLogo(compressed);
     if (url != null) {
       setState(() {
         _logoUrlCtrl.text = url;
