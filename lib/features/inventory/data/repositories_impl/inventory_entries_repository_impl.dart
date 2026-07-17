@@ -193,7 +193,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
               .update({'balance': accountBalance - totalCost})
               .eq('id', accountId);
         }
-      } else if (paymentMode == 'CREDITO' && supplierId != null) {
+      } else if (paymentMode == 'CRÉDITO' && supplierId != null) {
         var creditResp =
             await _supabase
                 .from('supplier_credits')

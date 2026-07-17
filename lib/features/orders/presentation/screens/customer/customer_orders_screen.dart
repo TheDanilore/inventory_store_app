@@ -354,8 +354,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.person_off_outlined,
-            title: 'Necesitas iniciar sesiÃ³n',
-            message: 'Inicia sesiÃ³n para ver tu historial de pedidos.',
+            title: 'Necesitas iniciar sesión',
+            message: 'Inicia sesión para ver tu historial de pedidos.',
           ),
         ),
       );
@@ -367,7 +367,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           padding: const EdgeInsets.only(top: 40),
           child: AppEmptyState(
             icon: Icons.error_outline,
-            title: 'Algo saliÃ³ mal',
+            title: 'Algo salió mal',
             message: state.errorMessage,
           ),
         ),
@@ -386,11 +386,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
             title:
                 state.searchQuery.isNotEmpty
                     ? 'No se encontraron resultados'
-                    : 'AÃºn no tienes pedidos',
+                    : 'Aún no tienes pedidos',
             message:
                 state.searchQuery.isNotEmpty
-                    ? 'Intenta buscar con otro tÃ©rmino u otro filtro.'
-                    : 'Cuando realices una compra, aparecerÃ¡ aquÃ­ tu historial.',
+                    ? 'Intenta buscar con otro término u otro filtro.'
+                    : 'Cuando realices una compra, aparecerá aquí tu historial.',
           ),
         ),
       );
@@ -406,7 +406,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
           isProcessing: isProcessing,
           onReorder: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('FunciÃ³n de re-ordenar pronto.')),
+              const SnackBar(content: Text('Función de re-ordenar pronto.')),
             );
           },
         );

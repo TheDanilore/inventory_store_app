@@ -49,7 +49,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   final _puntosCtrl = TextEditingController();
   final _descuentoCtrl = TextEditingController();
 
-  // BÃºsqueda de clientes
+  // Búsqueda de clientes
   List<Map<String, dynamic>> _clientMatches = [];
   bool _searchingClients = false;
   int _clientSearchVersion = 0;
@@ -57,13 +57,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
   bool _isDiscountPercentage = false;
 
-  // AlmacÃ©n, Cuentas y Caja
+  // Almacén, Cuentas y Caja
   List<WarehouseModel> _warehouseList = [];
   List<Map<String, dynamic>> _accountsList = [];
   String? _selectedAccountId;
   CashShiftEntity? _activeShift;
 
-  // CrÃ©dito del cliente seleccionado
+  // Crédito del cliente seleccionado
   Map<String, dynamic>?
   _creditInfo; // {id, credit_limit, current_debt, is_active}
 
@@ -89,7 +89,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     super.dispose();
   }
 
-  // â”€â”€â”€ CARGA DE DATOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // CARGA DE DATOS 
 
   Future<void> _loadInitialData(PosCubit posCubit) async {
     try {
@@ -245,17 +245,17 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       );
       if (mounted) setState(() => _creditInfo = creditResp.fold((l) => null, (r) => r));
     } catch (e) {
-      debugPrint('Error cargando crÃ©dito: $e');
+      debugPrint('Error cargando crédito: $e');
     }
   }
 
-  // â”€â”€â”€ CÃ LCULOS (Movidos a PosCalculatorUtils) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  CÁLCULOS (Movidos a PosCalculatorUtils) 
 
   Future<void> _processSale(PosCubit posCubit, CartCubit cartCubit, {bool isDraft = false}) async {
     if (posCubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacÃ©n.',
+        message: 'Selecciona un almacén.',
         type: SnackbarType.error,
       );
       return;
@@ -263,13 +263,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     if (cartCubit.state.items.isEmpty) {
       AppSnackbar.show(
         context,
-        message: 'La caja estÃ¡ vacÃ­a.',
+        message: 'La caja está vacía.',
         type: SnackbarType.error,
       );
       return;
     }
 
-    final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+    final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
 
     if (!isDraft && !isCredito) {
       if (_selectedAccountId == null) {
@@ -309,7 +309,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       if (posCubit.state.selectedClientId == null) {
         AppSnackbar.show(
           context,
-          message: 'Debes seleccionar un cliente para ventas a crÃ©dito.',
+          message: 'Debes seleccionar un cliente para ventas a crédito.',
           type: SnackbarType.error,
         );
         return;
@@ -317,7 +317,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       if (!PosCalculatorUtils.isCreditActivo(_creditInfo)) {
         AppSnackbar.show(
           context,
-          message: 'El cliente no tiene lÃ­nea de crÃ©dito activa.',
+          message: 'El cliente no tiene línea de crédito activa.',
           type: SnackbarType.error,
         );
         return;
@@ -328,7 +328,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         AppSnackbar.show(
           context,
           message:
-              'CrÃ©dito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
+              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
           type: SnackbarType.error,
         );
         return;
@@ -572,7 +572,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     }
   }
 
-  // â”€â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // BUILD
 
   @override
   Widget build(BuildContext context) {
@@ -653,7 +653,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     );
                   }
 
-                  // MÃ³vil (Columna Ãºnica pero con Action Bar pegajoso al fondo)
+                  // Móvil (Columna única pero con Action Bar pegajoso al fondo)
                   return Column(
                     children: [
                       Expanded(
@@ -722,7 +722,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         PosSectionLabel('Cliente'),
         Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return AdminSaleClientSection(
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
@@ -740,7 +740,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
         final cartCubit = context.watch<CartCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return AdminSalePointsSection(
               show:
                   isLoyaltyEnabled &&
@@ -769,10 +769,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           },
         ),
         const SizedBox(height: 24),
-        PosSectionLabel('ConfiguraciÃ³n de venta'),
+        PosSectionLabel('Configuración de venta'),
         Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return PaymentWarehouseAccountCard(
               paymentMethod: posCubit.state.paymentMethod,
               warehouseList: _warehouseList,
@@ -783,7 +783,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               isCredito: isCredito,
               onCreditoToggle: (isCredito) {
                 if (isCredito) {
-                  posCubit.setPaymentMethod('CRÃ‰DITO');
+                  posCubit.setPaymentMethod('CRÉDITO');
                   posCubit.setPuntosAUsar(0);
                   _puntosCtrl.text = '0';
                 } else {
@@ -828,7 +828,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     return Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
         final cartCubit = context.watch<CartCubit>();
-        final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+        final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
         final puntosSeguros = PosCalculatorUtils.clampPointsValue(
           posCubit.state.puntosAUsar,
           posCubit.state,
@@ -1116,7 +1116,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         child: Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
         final cartCubit = context.watch<CartCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             final puntosSeguros = PosCalculatorUtils.clampPointsValue(
               posCubit.state.puntosAUsar,
               posCubit.state,
@@ -1171,7 +1171,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                         enabled: puedeVender,
                         label:
                             isCredito
-                                ? 'Vender a crÃ©dito'
+                                ? 'Vender a crédito'
                                 : 'Cobrar (S/ ${totalFinal.toStringAsFixed(2)})',
                         onPressed: () => _processSale(posCubit, cartCubit, isDraft: false),
                       ),
@@ -1258,7 +1258,7 @@ class _CreditWarningCard extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Debes seleccionar un cliente para ventas a crÃ©dito.',
+                'Debes seleccionar un cliente para ventas a crédito.',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1285,7 +1285,7 @@ class _CreditWarningCard extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Este cliente no tiene lÃ­nea de crÃ©dito activa.',
+                'Este cliente no tiene línea de crédito activa.',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1325,7 +1325,7 @@ class _CreditWarningCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                insuficiente ? 'CrÃ©dito insuficiente' : 'CrÃ©dito disponible',
+                insuficiente ? 'Crédito insuficiente' : 'Crédito disponible',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -1342,7 +1342,7 @@ class _CreditWarningCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'LÃ­mite',
+                      'Límite',
                       style: TextStyle(
                         fontSize: 10,
                         color: AppColors.textMuted,

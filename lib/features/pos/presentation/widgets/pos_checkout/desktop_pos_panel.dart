@@ -47,7 +47,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
   final _puntosCtrl = TextEditingController();
   final _descuentoCtrl = TextEditingController();
 
-  // BÃºsqueda de clientes
+  // Busqueda de clientes
   List<Map<String, dynamic>> _clientMatches = [];
   bool _searchingClients = false;
   int _clientSearchVersion = 0;
@@ -55,13 +55,13 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
 
   bool _isDiscountPercentage = false;
 
-  // AlmacÃ©n, Cuentas y Caja
+  // Almacén, Cuentas y Caja
   List<WarehouseModel> _warehouseList = [];
   List<Map<String, dynamic>> _accountsList = [];
   String? _selectedAccountId;
   CashShiftEntity? _activeShift;
 
-  // CrÃ©dito del cliente seleccionado
+  // Crédito del cliente seleccionado
   Map<String, dynamic>? _creditInfo;
 
   // Venta
@@ -282,7 +282,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     if (posCubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacÃ©n.',
+        message: 'Selecciona un almacén.',
         type: SnackbarType.error,
       );
       return;
@@ -290,13 +290,13 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     if (cartCubit.state.items.isEmpty) {
       AppSnackbar.show(
         context,
-        message: 'La caja estÃ¡ vacÃ­a.',
+        message: 'La caja está vacía.',
         type: SnackbarType.error,
       );
       return;
     }
 
-    final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+    final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
 
     if (!isDraft && !isCredito) {
       if (_selectedAccountId == null) {
@@ -336,7 +336,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       if (posCubit.state.selectedClientId == null) {
         AppSnackbar.show(
           context,
-          message: 'Debes seleccionar un cliente para ventas a crÃ©dito.',
+          message: 'Debes seleccionar un cliente para ventas a crédito.',
           type: SnackbarType.error,
         );
         return;
@@ -344,7 +344,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
       if (!PosCalculatorUtils.isCreditActivo(_creditInfo)) {
         AppSnackbar.show(
           context,
-          message: 'El cliente no tiene lÃ­nea de crÃ©dito activa.',
+          message: 'El cliente no tiene línea de crédito activa.',
           type: SnackbarType.error,
         );
         return;
@@ -355,7 +355,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         AppSnackbar.show(
           context,
           message:
-              'CrÃ©dito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
+              'Crédito insuficiente. Disponible: S/ ${disp.toStringAsFixed(2)}',
           type: SnackbarType.error,
         );
         return;
@@ -520,7 +520,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     if (posCubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacÃ©n primero',
+        message: 'Selecciona un almacén primero',
         type: SnackbarType.warning,
       );
       return;
@@ -760,7 +760,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         const _SectionTitle('Cliente'),
         Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CREDITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return AdminSaleClientSection(
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
@@ -778,7 +778,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
         final cartCubit = context.watch<CartCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CREDITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return AdminSalePointsSection(
               show:
                   isLoyaltyEnabled &&
@@ -810,7 +810,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
         const _SectionTitle('Configuración de venta'),
         Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
-            final isCredito = posCubit.state.paymentMethod == 'CREDITO';
+            final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
             return PaymentWarehouseAccountCard(
               paymentMethod: posCubit.state.paymentMethod,
               warehouseList: _warehouseList,
@@ -821,7 +821,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
               isCredito: isCredito,
               onCreditoToggle: (isCredito) {
                 if (isCredito) {
-                  posCubit.setPaymentMethod('CRÃ‰DITO');
+                  posCubit.setPaymentMethod('CRÉDITO');
                   posCubit.setPuntosAUsar(0);
                   _puntosCtrl.text = '0';
                 } else {
@@ -866,7 +866,7 @@ class _DesktopPosPanelState extends State<DesktopPosPanel> {
     return Builder(builder: (context) {
         final posCubit = context.watch<PosCubit>();
         final cartCubit = context.watch<CartCubit>();
-        final isCredito = posCubit.state.paymentMethod == 'CRÃ‰DITO';
+        final isCredito = posCubit.state.paymentMethod == 'CRÉDITO';
         final puntosSeguros = PosCalculatorUtils.clampPointsValue(
           posCubit.state.puntosAUsar,
           posCubit.state,
@@ -1163,28 +1163,28 @@ class _CreditWarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!clienteSeleccionado) {
       return _buildAlert(
-        'Selecciona un cliente para ver su crÃ©dito.',
+        'Selecciona un cliente para ver su crédito.',
         Icons.info_outline,
         Colors.blue,
       );
     }
     if (!creditActivo) {
       return _buildAlert(
-        'El cliente no tiene crÃ©dito activo.',
+        'El cliente no tiene crédito activo.',
         Icons.warning_amber_rounded,
         AppColors.danger,
       );
     }
     if (totalFinal > creditDisponible) {
       return _buildAlert(
-        'CrÃ©dito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLÃ­mite: S/ ${(creditInfo?['credit_limit'] ?? 0).toStringAsFixed(2)}',
+        'Crédito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLímite: S/ ${(creditInfo?['credit_limit'] ?? 0).toStringAsFixed(2)}',
         Icons.error_outline_rounded,
         AppColors.danger,
       );
     }
 
     return _buildAlert(
-      'CrÃ©dito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
+      'Crédito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
       Icons.check_circle_outline_rounded,
       AppColors.success,
     );

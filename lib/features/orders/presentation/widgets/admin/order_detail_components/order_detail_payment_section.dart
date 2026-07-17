@@ -51,7 +51,7 @@ class OrderDetailPaymentSection extends StatelessWidget {
 
     final List<Map<String, dynamic>> fixedOptions = [
       {'id': 'POR_ACORDAR', 'name': 'POR ACORDAR', 'type': 'FIXED'},
-      {'id': 'CREDITO', 'name': 'CRÉDITO', 'type': 'FIXED'},
+      {'id': 'CRÉDITO', 'name': 'CRÉDITO', 'type': 'FIXED'},
     ];
 
     final allOptions = [...fixedOptions, ...accounts];

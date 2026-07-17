@@ -73,7 +73,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         ),
         body: Column(
           children: [
-            // â”€â”€ Buscador â”€â”€
+            // Buscador
             Container(
               margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               decoration: BoxDecoration(
@@ -107,7 +107,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
               ),
             ),
 
-            // â”€â”€ Lista â”€â”€
+            // Lista
             Expanded(
               child: BlocBuilder<SuppliersCubit, SuppliersState>(
                 builder: (context, state) {

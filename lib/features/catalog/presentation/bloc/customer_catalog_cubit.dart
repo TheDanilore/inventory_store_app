@@ -140,7 +140,7 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
         }
 
         final enriched = data.products
-            .map((p) => p.copyWith(totalStock: stock[p.id] ?? 0))
+            .map((p) => p.copyWith(totalStock: stock[p.id] ?? p.totalStock))
             .toList();
 
         final updated = List<ProductEntity>.from(state.products)

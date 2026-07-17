@@ -195,7 +195,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
           return false;
         }
       }
-      if (state.paymentMode == 'CREDITO' && state.selectedSupplierId == null) {
+      if (state.paymentMode == 'CRÉDITO' && state.selectedSupplierId == null) {
         emit(state.copyWith(errorMessage: 'Seleccione un proveedor para compra a crédito'));
         return false;
       }

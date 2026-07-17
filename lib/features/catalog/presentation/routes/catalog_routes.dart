@@ -124,7 +124,7 @@ class CatalogRoutes {
 
   static List<RouteBase> get customerRoutes => [
         GoRoute(
-          path: '/customer/product/:id',
+          path: 'product/:id',
           builder: (context, state) {
             final productId = state.pathParameters['id'];
             final variantId = state.uri.queryParameters['variantId'];

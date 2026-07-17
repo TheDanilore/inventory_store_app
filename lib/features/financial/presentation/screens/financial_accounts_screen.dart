@@ -29,7 +29,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
   void initState() {
     super.initState();
     _mobileTabController = TabController(length: 3, vsync: this);
-    // En tablet, el lado derecho tiene 2 pestaÃ±as: Movimientos y Turnos
+    // En tablet, el lado derecho tiene 2 pestañas: Movimientos y Turnos
     _tabletTabController = TabController(length: 2, vsync: this);
 
     // Fetch data initially

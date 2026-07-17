@@ -101,9 +101,8 @@ class _OrderRow extends StatelessWidget {
     switch (method.toUpperCase()) {
       case 'EFECTIVO':
         return 'Efectivo';
-      case 'CREDITO':
-      case 'CRÃ‰DITO':
-        return 'CrÃ©dito';
+      case 'CRÉDITO':
+        return 'Crédito';
       case 'YAPE':
         return 'Yape';
       case 'TRANSFERENCIA':
@@ -165,7 +164,7 @@ class _OrderRow extends StatelessWidget {
                           ),
                           TextSpan(
                             text:
-                                'â€¢ ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
+                                '• ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
                           ),
                         ],
                       ),

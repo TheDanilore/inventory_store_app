@@ -51,7 +51,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       if (context.mounted) {
         AppSnackbar.show(
           context,
-          message: 'NÃºmero de WhatsApp de la tienda no configurado.',
+          message: 'Número de WhatsApp de la tienda no configurado.',
           backgroundColor: AppColors.error,
         );
       }
@@ -59,14 +59,14 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     }
 
     final buffer = StringBuffer();
-    buffer.writeln('Hola, me gustarÃ­a confirmar mi pedido (#$orderId):');
+    buffer.writeln('Hola, me gustaría confirmar mi pedido (#$orderId):');
     buffer.writeln();
 
     for (final item in selectedItems) {
       final variantLabel =
           item.variantLabel != null ? ' Modelo: ${item.variantLabel}' : '';
       buffer.writeln(
-        'â€¢ ${item.quantity} x ${item.product.name}$variantLabel',
+        '• ${item.quantity} x ${item.product.name}$variantLabel',
       );
     }
 
@@ -124,7 +124,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               content: Text(
-                'Lo sentimos, el stock ha variado y algunos productos ya no estÃ¡n disponibles en las cantidades solicitadas:\n\n${messages.join('\n')}',
+                'Lo sentimos, el stock ha variado y algunos productos ya no están disponibles en las cantidades solicitadas:\n\n${messages.join('\n')}',
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -141,7 +141,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       AppSnackbar.show(
         context,
         message:
-            result['message'] ?? 'OcurriÃ³ un error al procesar el pedido.',
+            result['message'] ?? 'Ocurrió un error al procesar el pedido.',
         backgroundColor: AppColors.error,
       );
     } else if (result['success'] == true) {
@@ -160,7 +160,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       if (context.mounted) {
         AppSnackbar.show(
           context,
-          message: 'Â¡Pedido registrado exitosamente!',
+          message: '¡Pedido registrado exitosamente!',
           backgroundColor: AppColors.success,
         );
       }
@@ -205,9 +205,9 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                  : cartState.items.isEmpty
                 ? const AppEmptyState(
                   icon: Icons.shopping_bag_outlined,
-                  title: 'Tu carrito estÃ¡ vacÃ­o',
+                  title: 'Tu carrito está vacío',
                   message:
-                      'Agrega productos desde el catÃ¡logo para armar tu pedido.',
+                      'Agrega productos desde el catálogo para armar tu pedido.',
                 )
                 : SizedBox(
                   height: double.infinity,

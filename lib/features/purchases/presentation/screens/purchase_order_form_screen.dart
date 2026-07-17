@@ -643,7 +643,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                 ),
               ),
               DropdownMenuItem(
-                value: 'CREDITO',
+                value: 'CRÉDITO',
                 child: Text(
                   'Línea de Crédito',
                   style: TextStyle(
@@ -656,7 +656,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             onChanged: (v) {
               if (v != null) {
                 viewModel.setPaymentMode(v);
-                if (v == 'CREDITO') {
+                if (v == 'CRÉDITO') {
                   viewModel.setPaymentStatus('PENDING');
                   viewModel.setAccount(null);
                 }
@@ -664,7 +664,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             },
           ),
           const SizedBox(height: 16),
-          if (viewModel.paymentMode != 'CREDITO') ...[
+          if (viewModel.paymentMode != 'CRÉDITO') ...[
             DropdownButtonFormField<String>(
               initialValue: viewModel.paymentStatus,
               icon: const Icon(Icons.expand_more_rounded),

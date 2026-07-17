@@ -273,7 +273,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         });
       }
 
-      if (paymentMode == 'CREDITO') {
+      if (paymentMode == 'CRÉDITO') {
         final creditData =
             await _supabase
                 .from('supplier_credits')

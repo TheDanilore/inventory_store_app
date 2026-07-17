@@ -198,7 +198,7 @@ class SupplierCreditsRepositoryImpl implements SupplierCreditsRepository {
           .from('purchase_orders')
           .select('id, total_amount, amount_paid, payment_status, created_at')
           .eq('supplier_id', supplierId)
-          .eq('payment_method', 'CREDITO')
+          .eq('payment_method', 'CRÉDITO')
           .inFilter('payment_status', ['PENDING', 'PARTIAL'])
           .inFilter('status', ['COMPLETED', 'RECEIVED'])
           .order('created_at', ascending: true);

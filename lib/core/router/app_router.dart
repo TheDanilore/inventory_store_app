@@ -177,7 +177,7 @@ class AppRouter {
         StatefulShellRoute.indexedStack(
           builder:
               (context, state, navigationShell) =>
-                  CustomerLayout(title: '', body: navigationShell),
+                  CustomerLayout(title: '', body: navigationShell, showAppBar: false),
           branches: [
             StatefulShellBranch(
               routes: [

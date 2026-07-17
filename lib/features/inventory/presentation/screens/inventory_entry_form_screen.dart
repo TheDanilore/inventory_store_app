@@ -473,7 +473,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormState state,
     InventoryEntryFormCubit cubit,
   ) {
-    final isCredit = cubit.state.paymentMode == 'CREDITO';
+    final isCredit = cubit.state.paymentMode == 'CRÉDITO';
 
     return _SectionCard(
       highlightColor: isCredit ? Colors.purple.shade50 : null,
@@ -503,7 +503,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 ),
               ),
               DropdownMenuItem(
-                value: 'CREDITO',
+                value: 'CRÉDITO',
                 child: Text(
                   'Compra al Crédito',
                   style: TextStyle(
