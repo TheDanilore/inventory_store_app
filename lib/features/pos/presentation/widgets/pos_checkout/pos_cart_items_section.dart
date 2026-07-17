@@ -1,89 +1,91 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class PosCartItemsSection extends StatelessWidget {
-  final PosProvider pos;
-  final Function(CartItemModel item) onShowBatchEditSheet;
+  final Function(CartItemEntity item) onShowBatchEditSheet;
 
   const PosCartItemsSection({
     super.key,
-    required this.pos,
     required this.onShowBatchEditSheet,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (pos.itemCount == 0) {
-      return Container(
-        height: 120,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border, style: BorderStyle.solid),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(
-              Icons.shopping_bag_outlined,
-              size: 32,
-              color: AppColors.textMuted,
+    return BlocBuilder<CartCubit, CartState>(
+      builder: (context, state) {
+        if (state.items.isEmpty) {
+          return Container(
+            height: 120,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border, style: BorderStyle.solid),
             ),
-            SizedBox(height: 8),
-            Text(
-              'La caja está vacía',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 32,
+                  color: AppColors.textMuted,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'La caja está vacía',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(),
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: pos.itemCount,
-        separatorBuilder:
-            (_, _) => const Divider(height: 1, color: AppColors.border),
-        itemBuilder: (context, index) {
-          final item = pos.items.values.elementAt(index);
-          return PosCartItemRow(
-            item: item,
-            pos: pos,
-            onShowBatchEditSheet: () => onShowBatchEditSheet(item),
           );
-        },
-      ),
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppColors.radius),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(),
+          ),
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: state.items.length,
+            separatorBuilder:
+                (_, _) => const Divider(height: 1, color: AppColors.border),
+            itemBuilder: (context, index) {
+              final item = state.items.values.elementAt(index);
+              return PosCartItemRow(
+                item: item,
+                onShowBatchEditSheet: () => onShowBatchEditSheet(item),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
 
 class PosCartItemRow extends StatelessWidget {
-  final CartItemModel item;
-  final PosProvider pos;
+  final CartItemEntity item;
   final VoidCallback onShowBatchEditSheet;
 
   const PosCartItemRow({
     super.key,
     required this.item,
-    required this.pos,
     required this.onShowBatchEditSheet,
   });
 
@@ -132,7 +134,7 @@ class PosCartItemRow extends StatelessWidget {
                 onPressed: () {
                   final newQty = int.tryParse(qtyCtrl.text.trim());
                   if (newQty != null && newQty >= 0) {
-                    pos.setQuantity(item.cartKey, newQty);
+                    context.read<CartCubit>().updateQuantity(item.cartKey, newQty);
                     Navigator.pop(dialogContext);
                   }
                 },
@@ -148,7 +150,8 @@ class PosCartItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasBatchOverride = pos.hasBatchOverride(item.cartKey);
+    // Inject PosCubit to check for batch overrides.
+    final bool hasBatchOverride = context.watch<PosCubit>().state.batchOverrides.containsKey(item.cartKey);
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -200,7 +203,7 @@ class PosCartItemRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.product.name,
+                  item.productName,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -231,16 +234,10 @@ class PosCartItemRow extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color:
-                            hasBatchOverride
-                                ? AppColors.warningLight
-                                : AppColors.tealLight,
+                        color: AppColors.tealLight,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color:
-                              hasBatchOverride
-                                  ? AppColors.warning
-                                  : AppColors.teal.withValues(alpha: 0.3),
+                          color: AppColors.teal.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
@@ -289,7 +286,7 @@ class PosCartItemRow extends StatelessWidget {
                           InkWell(
                             onTap:
                                 item.quantity > 1
-                                    ? () => pos.setQuantity(
+                                    ? () => context.read<CartCubit>().updateQuantity(
                                       item.cartKey,
                                       item.quantity - 1,
                                     )
@@ -331,7 +328,7 @@ class PosCartItemRow extends StatelessWidget {
                           InkWell(
                             onTap:
                                 item.quantity < item.availableStock
-                                    ? () => pos.setQuantity(
+                                    ? () => context.read<CartCubit>().updateQuantity(
                                       item.cartKey,
                                       item.quantity + 1,
                                     )
@@ -373,7 +370,7 @@ class PosCartItemRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'S/ ${item.totalItemPrice.toStringAsFixed(2)}',
+                'S/ ${item.subtotal.toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
@@ -382,7 +379,7 @@ class PosCartItemRow extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               GestureDetector(
-                onTap: () => pos.removeProduct(item.cartKey),
+                onTap: () => context.read<CartCubit>().removeItem(item.cartKey),
                 child: Container(
                   width: 28,
                   height: 28,

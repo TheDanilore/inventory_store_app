@@ -2,16 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 
 class CartWalletSummary extends StatelessWidget {
-  final CartProvider cart;
+  final CartCubit cartCubit;
   final int saldoPuntos;
 
   const CartWalletSummary({
     super.key,
-    required this.cart,
+    required this.cartCubit,
     required this.saldoPuntos,
   });
 
@@ -26,7 +26,7 @@ class CartWalletSummary extends StatelessWidget {
     final earningRate = config.getDouble('points_earning_rate', 0.03);
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final totalAPagar = checkoutCubit.calculateFinalTotal(
-      cart,
+      cartCubit,
       pointsToSolesRatio,
       saldoPuntos,
     );

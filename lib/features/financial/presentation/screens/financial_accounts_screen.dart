@@ -7,7 +7,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:provider/provider.dart';
 
 // FINANCIAL ACCOUNTS SCREEN
@@ -39,7 +39,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
         context.read<AccountMovementsCubit>().fetchMovements();
 
         final profileId = context.read<AuthCubit>().state.currentUser?.id;
-        context.read<CashShiftsProvider>().setProfileFilter(profileId);
+        context.read<CashShiftsCubit>().setProfileFilter(profileId);
       }
     });
   }

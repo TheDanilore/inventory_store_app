@@ -4,7 +4,8 @@ import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dar
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:vibration/vibration.dart';
@@ -14,16 +15,16 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/product
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CartVariantPickerSheet extends StatefulWidget {
-  final CartProvider cart;
+  final CartCubit cartCubit;
   final ProductEntity product;
-  final CartItemModel? existingCartItem;
+  final CartItemEntity? existingCartItem;
   final int initialQuantity;
   final ValueChanged<ProductVariantEntity>? onVariantSelected;
   final String? selectedVariantId;
 
   const CartVariantPickerSheet({
     super.key,
-    required this.cart,
+    required this.cartCubit,
     required this.product,
     this.existingCartItem,
     this.initialQuantity = 1,
@@ -195,25 +196,26 @@ class _CartVariantPickerSheetState extends State<CartVariantPickerSheet> {
                 // Si estamos cambiando una variante desde el carrito
                 if (widget.existingCartItem != null &&
                     widget.existingCartItem!.variantId != variant.id) {
-                  widget.cart.removeItem(widget.existingCartItem!.cartKey);
+                  widget.cartCubit.removeItem(widget.existingCartItem!.cartKey);
                 }
 
-                widget.cart.addItem(
-                  widget.product,
-                  quantity: quantity,
-                  variantId: variant.id,
-                  variantLabel: variant.label,
-                  unitPrice: variant.salePrice ?? widget.product.salePrice,
-                  wholesalePrice:
-                      variant.wholesalePrice ?? widget.product.wholesalePrice,
-                  unitCost: variant.unitCost ?? widget.product.unitCost,
-                  imageUrl:
-                      (variant.images.isNotEmpty
-                          ? variant.images.first.imageUrl
-                          : null) ??
-                      widget.product.primaryImageUrl,
-                  sku: variant.sku,
-                  availableStock: variantStock,
+                widget.cartCubit.addItem(
+                  CartItemEntity(
+                    productId: widget.product.id,
+                    productName: widget.product.name,
+                    cartKey: '${widget.product.id}_${variant.id}',
+                    quantity: quantity,
+                    variantId: variant.id,
+                    variantLabel: variant.label,
+                    unitPrice: variant.salePrice ?? widget.product.salePrice,
+                    wholesalePrice: variant.wholesalePrice ?? widget.product.wholesalePrice,
+                    wholesaleMinQuantity: widget.product.wholesaleMinQuantity,
+                    unitCost: variant.unitCost ?? widget.product.unitCost,
+                    imageUrl: (variant.images.isNotEmpty ? variant.images.first.imageUrl : null) ?? widget.product.primaryImageUrl,
+                    sku: variant.sku,
+                    availableStock: variantStock,
+                    usesBatches: widget.product.stockControl,
+                  ),
                 );
                 Navigator.pop(context);
                 AppSnackbar.show(

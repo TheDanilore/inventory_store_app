@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CartActionHeader extends StatelessWidget {
-  final CartProvider cart;
+  final CartCubit cartCubit;
+  final CartState cartState;
 
-  const CartActionHeader({super.key, required this.cart});
+  const CartActionHeader({super.key, required this.cartCubit, required this.cartState});
 
   @override
   Widget build(BuildContext context) {
@@ -20,14 +22,14 @@ class CartActionHeader extends StatelessWidget {
                 width: 24,
                 height: 24,
                 child: Checkbox(
-                  value: cart.isAllSelected,
+                  value: cartState.isAllSelected,
                   activeColor: AppColors.textPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
                   side: BorderSide(color: Colors.grey.shade400, width: 1.5),
                   onChanged: (val) {
-                    cart.toggleAllSelection(val ?? false);
+                    cartCubit.toggleAllSelection(val ?? false);
                   },
                 ),
               ),
@@ -42,10 +44,10 @@ class CartActionHeader extends StatelessWidget {
               ),
             ],
           ),
-          if (cart.selectedItems.isNotEmpty)
+          if (cartState.selectedItems.isNotEmpty)
             TextButton.icon(
               onPressed: () {
-                cart.removeSelectedItems();
+                cartCubit.removeSelected();
               },
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red.shade600,

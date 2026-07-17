@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/pos/data/models/cash_shift_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CloseShiftSheet extends StatefulWidget {
-  final CashShiftModel shift;
+  final CashShiftEntity shift;
   final double expectedAmount;
 
   const CloseShiftSheet({super.key, required this.shift, required this.expectedAmount});
 
-  static Future<bool?> show(BuildContext context, {required CashShiftModel shift, required double expectedAmount}) {
+  static Future<bool?> show(BuildContext context, {required CashShiftEntity shift, required double expectedAmount}) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -69,7 +69,7 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
           .eq('id', widget.shift.id);
 
       if (!mounted) return;
-      context.read<CashShiftsProvider>().fetchShifts();
+      context.read<CashShiftsCubit>().fetchShifts();
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -89,7 +89,7 @@ class _CloseShiftSheetState extends State<CloseShiftSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final accountName = widget.shift.accountName;
+    final accountName = widget.shift.accountName ?? '';
     final openingAmount = widget.shift.openingAmount;
 
     Color diffColor = AppColors.textSecondary;

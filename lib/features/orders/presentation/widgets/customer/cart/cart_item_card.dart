@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/pos/data/models/cart_item_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 
 class CartItemCard extends StatelessWidget {
   final String productId;
-  final CartItemModel item;
-  final CartProvider cart;
+  final CartItemEntity item;
+  final CartCubit cartCubit;
   final int saldoPuntos;
   final double pointsToSolesRatio;
 
@@ -20,7 +22,7 @@ class CartItemCard extends StatelessWidget {
     super.key,
     required this.productId,
     required this.item,
-    required this.cart,
+    required this.cartCubit,
     required this.saldoPuntos,
     required this.pointsToSolesRatio,
   });
@@ -28,21 +30,11 @@ class CartItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final checkoutProvider = context.read<CheckoutCubit>();
-    final product = item.product;
-    final wPrice = checkoutProvider.wholesalePriceOf(item.toEntity());
+    final wPrice = checkoutProvider.wholesalePriceOf(item);
 
-    final String? imageUrl =
-        item.imageUrl ??
-        (product.images.isNotEmpty
-            ? product.images
-                .firstWhere(
-                  (img) => img.isMain,
-                  orElse: () => product.images.first,
-                )
-                .imageUrl
-            : null);
+    final String? imageUrl = item.imageUrl;
 
-    final isWholesale = item.quantity >= (product.wholesaleMinQuantity);
+    final isWholesale = item.wholesaleMinQuantity > 0 && item.quantity >= item.wholesaleMinQuantity;
 
     final config = context.read<AppConfigCubit>();
     final isLoyaltyEnabled =
@@ -51,8 +43,8 @@ class CartItemCard extends StatelessWidget {
     final appliedPoints =
         isLoyaltyEnabled
             ? checkoutProvider.getAppliedPointsForItem(
-              item.toEntity(),
-              cart,
+              item,
+              cartCubit,
               pointsToSolesRatio,
               saldoPuntos,
             )
@@ -91,7 +83,7 @@ class CartItemCard extends StatelessWidget {
               ),
               side: BorderSide(color: Colors.grey.shade400, width: 1.5),
               onChanged: (val) {
-                cart.toggleItemSelection(productId);
+                cartCubit.toggleItemSelection(item.cartKey, val ?? false);
               },
             ),
           ),
@@ -119,7 +111,7 @@ class CartItemCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product.name,
+                  item.product.name,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -131,19 +123,36 @@ class CartItemCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 if (item.variantLabel != null) ...[
                   GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
+                    onTap: () async {
+                      showDialog(
                         context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder:
-                            (context) => CartVariantPickerSheet(
-                              cart: cart,
-                              product: product,
-                              existingCartItem: item,
-                              selectedVariantId: item.variantId,
-                            ),
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
                       );
+                      
+                      final repo = sl<ProductsRepository>();
+                      final res = await repo.getProductById(item.productId);
+                      
+                      if (context.mounted) {
+                        Navigator.pop(context); // cerrar loader
+                      }
+                      
+                      res.fold((l) => null, (product) {
+                        if (product != null && context.mounted) {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder:
+                                (context) => CartVariantPickerSheet(
+                                  cartCubit: cartCubit,
+                                  product: product,
+                                  existingCartItem: item,
+                                  selectedVariantId: item.variantId,
+                                ),
+                          );
+                        }
+                      });
                     },
                     child: MouseRegion(
                       cursor: SystemMouseCursors.click,
@@ -267,7 +276,7 @@ class CartItemCard extends StatelessWidget {
                     );
                     return;
                   }
-                  cart.setQuantity(productId, item.quantity + 1);
+                  cartCubit.updateQuantity(item.cartKey, item.quantity + 1);
                 },
               ),
               Padding(
@@ -287,9 +296,9 @@ class CartItemCard extends StatelessWidget {
                 iconColor: const Color(0xFFE53935),
                 onTap: () {
                   if (item.quantity > 1) {
-                    cart.setQuantity(productId, item.quantity - 1);
+                    cartCubit.updateQuantity(item.cartKey, item.quantity - 1);
                   } else {
-                    cart.removeItem(productId);
+                    cartCubit.removeItem(item.cartKey);
                   }
                 },
               ),

@@ -12,6 +12,7 @@ class CartItemEntity {
   final int quantity;
   final double unitPrice;
   final double? wholesalePrice;
+  final int wholesaleMinQuantity;
   final double unitCost;
   final String? imageUrl;
   final String? sku;
@@ -28,6 +29,7 @@ class CartItemEntity {
     required this.unitCost,
     required this.availableStock,
     required this.usesBatches,
+    this.wholesaleMinQuantity = 0,
     this.variantId,
     this.variantLabel,
     this.wholesalePrice,
@@ -67,6 +69,7 @@ class CartItemEntity {
     int? quantity,
     double? unitPrice,
     double? wholesalePrice,
+    int? wholesaleMinQuantity,
     double? unitCost,
     String? imageUrl,
     String? sku,
@@ -83,6 +86,7 @@ class CartItemEntity {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       wholesalePrice: wholesalePrice ?? this.wholesalePrice,
+      wholesaleMinQuantity: wholesaleMinQuantity ?? this.wholesaleMinQuantity,
       unitCost: unitCost ?? this.unitCost,
       imageUrl: imageUrl ?? this.imageUrl,
       sku: sku ?? this.sku,

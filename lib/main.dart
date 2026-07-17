@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
@@ -16,7 +16,8 @@ import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
@@ -91,14 +92,15 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<PointsCubit>()),
         BlocProvider(create: (_) => sl<WalletCubit>()),
         BlocProvider(create: (_) => sl<TopCustomersCubit>()),
+        BlocProvider(create: (_) => sl<CartCubit>()),
+        BlocProvider(create: (_) => sl<CashShiftsCubit>()),
+        BlocProvider(create: (_) => sl<PosCubit>()),
       ],
       child: MultiProvider(
         providers: [
           // Inyectamos la instancia global con .value (no crea una nueva).
           
           ChangeNotifierProvider(create: (_) => UsersProvider(role: '')),
-          ChangeNotifierProvider(create: (_) => PosProvider()),
-          ChangeNotifierProvider(create: (_) => CartProvider()),
         ],
         child: MaterialApp.router(
           restorationScopeId: 'app',

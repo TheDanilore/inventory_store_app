@@ -1,12 +1,13 @@
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 
 class PosCalculatorUtils {
-  static int clampPointsValue(int desired, PosProvider pos, double ratio) {
+  static int clampPointsValue(int desired, PosState pos, CartState cart, double ratio) {
     if (pos.selectedClientId == null) return 0;
     if (pos.saldoActualCliente <= 0) return 0;
 
     int maxPts = pos.saldoActualCliente;
-    final total = pos.totalAmount;
+    final total = cart.totalAmount;
     final maxPtsForTotal = (total / ratio).floor();
 
     if (maxPts > maxPtsForTotal) maxPts = maxPtsForTotal;
@@ -16,11 +17,11 @@ class PosCalculatorUtils {
     return desired;
   }
 
-  static int maxPuntosAplicables(PosProvider pos, double ratio) {
+  static int maxPuntosAplicables(PosState pos, CartState cart, double ratio) {
     if (pos.selectedClientId == null) return 0;
     if (pos.saldoActualCliente <= 0) return 0;
 
-    final total = pos.totalAmount;
+    final total = cart.totalAmount;
     final maxPtsForTotal = (total / ratio).floor();
 
     return pos.saldoActualCliente > maxPtsForTotal
@@ -31,15 +32,16 @@ class PosCalculatorUtils {
   static double getCustomDiscountAmount({
     required String discountText,
     required bool isDiscountPercentage,
-    required PosProvider pos,
+    required PosState pos,
+    required CartState cart,
     required double ratio,
   }) {
     final raw = double.tryParse(discountText) ?? 0.0;
     if (raw <= 0) return 0.0;
 
     if (isDiscountPercentage) {
-      final safePts = clampPointsValue(pos.puntosAUsar, pos, ratio);
-      final partial = pos.totalAmount - (safePts * ratio);
+      final safePts = clampPointsValue(pos.puntosAUsar, pos, cart, ratio);
+      final partial = cart.totalAmount - (safePts * ratio);
       return partial * (raw / 100).clamp(0.0, 1.0);
     }
 
@@ -49,39 +51,43 @@ class PosCalculatorUtils {
   static double calcularTotalFinal({
     required String discountText,
     required bool isDiscountPercentage,
-    required PosProvider pos,
+    required PosState pos,
+    required CartState cart,
     required double ratio,
   }) {
-    final safePts = clampPointsValue(pos.puntosAUsar, pos, ratio);
+    final safePts = clampPointsValue(pos.puntosAUsar, pos, cart, ratio);
     final discExtra = getCustomDiscountAmount(
       discountText: discountText,
       isDiscountPercentage: isDiscountPercentage,
       pos: pos,
+      cart: cart,
       ratio: ratio,
     );
 
-    final partial = pos.totalAmount - (safePts * ratio) - discExtra;
+    final partial = cart.totalAmount - (safePts * ratio) - discExtra;
     return partial < 0 ? 0 : partial;
   }
 
   static double calcularGananciaTotal({
     required String discountText,
     required bool isDiscountPercentage,
-    required PosProvider pos,
+    required PosState pos,
+    required CartState cart,
     required double ratio,
   }) {
     double totalNetProfit = 0;
-    for (final item in pos.items.values) {
+    for (final item in cart.items.values) {
       totalNetProfit += (item.unitPrice - item.unitCost) * item.quantity;
     }
 
-    final safePts = clampPointsValue(pos.puntosAUsar, pos, ratio);
+    final safePts = clampPointsValue(pos.puntosAUsar, pos, cart, ratio);
     final totalDesc =
         (safePts * ratio) +
         getCustomDiscountAmount(
           discountText: discountText,
           isDiscountPercentage: isDiscountPercentage,
           pos: pos,
+          cart: cart,
           ratio: ratio,
         );
 
@@ -100,8 +106,8 @@ class PosCalculatorUtils {
     return disp > 0 ? disp : 0;
   }
 
-  static double getMaxCustomDiscount(PosProvider pos, double ratio, int puntosSeguros) {
-    return pos.totalAmount - (puntosSeguros * ratio);
+  static double getMaxCustomDiscount(CartState cart, double ratio, int puntosSeguros) {
+    return cart.totalAmount - (puntosSeguros * ratio);
   }
 
   static int calcularPuntosGanados({required double total, required double rate}) {

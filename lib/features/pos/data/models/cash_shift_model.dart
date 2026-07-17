@@ -1,3 +1,5 @@
+import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+
 class CashShiftModel {
   final String id;
   final String status; // 'OPEN' o 'CLOSED'
@@ -81,5 +83,25 @@ class CashShiftModel {
       'closed_at': closedAt?.toIso8601String(),
       'account_id': accountId,
     };
+  }
+
+  /// Convierte este modelo a la entidad de dominio.
+  CashShiftEntity toEntity() {
+    return CashShiftEntity(
+      id: id,
+      status: CashShiftStatus.fromString(status),
+      openingAmount: openingAmount,
+      openedAt: openedAt,
+      expectedAmount: expectedAmount,
+      actualAmount: actualAmount,
+      differenceAmount: differenceAmount,
+      notes: notes,
+      closedAt: closedAt,
+      accountId: accountId,
+      accountName: accountName,
+      accountType: accountType,
+      openedByName: openedByName,
+      closedByName: closedByName,
+    );
   }
 }

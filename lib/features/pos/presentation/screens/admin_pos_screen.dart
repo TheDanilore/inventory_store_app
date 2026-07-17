@@ -7,7 +7,8 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -83,28 +84,31 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
         if (stock > 0 || !product.stockControl) {
           if (!mounted) return;
-          final pos = context.read<PosProvider>();
-          pos.addProductToPos(
-            product: product,
+          final cart = context.read<CartCubit>();
+          
+          final cartKey = variant?.id ?? product.id;
+          cart.addItem(CartItemEntity(
+            productId: product.id,
+            productName: product.name,
+            cartKey: cartKey,
             quantity: 1,
-            variantId: variant?.id,
-            variantLabel: variant?.label,
             unitPrice: variant?.salePrice ?? product.salePrice,
             unitCost: variant?.unitCost ?? product.unitCost,
-            imageUrl:
-                (variant != null && variant.images.isNotEmpty)
-                    ? variant.images.first.imageUrl
-                    : product.primaryImageUrl,
-            sku: variant?.sku,
             availableStock: product.stockControl ? stock : 999999,
+            usesBatches: product.usesBatches,
+            variantId: variant?.id,
+            variantLabel: variant?.label,
+            wholesalePrice: variant?.wholesalePrice ?? product.wholesalePrice,
+            imageUrl: (variant != null && variant.images.isNotEmpty) ? variant.images.first.imageUrl : product.primaryImageUrl,
+            sku: variant?.sku,
+            isSelected: true,
+          ));
+
+          AppSnackbar.show(
+            context,
+            message: 'Producto agregado al POS',
+            type: SnackbarType.success,
           );
-          if (mounted) {
-            AppSnackbar.show(
-              context,
-              message: '${product.name} agregado a la caja.',
-              type: SnackbarType.success,
-            );
-          }
           return;
         } else {
           if (!mounted) return;

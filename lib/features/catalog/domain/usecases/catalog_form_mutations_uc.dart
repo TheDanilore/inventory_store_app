@@ -6,9 +6,9 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/product
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 
 @lazySingleton
-class SaveProductMasterUC {
+class SaveProductMasterUseCase {
   final ProductsRepository repository;
-  SaveProductMasterUC(this.repository);
+  SaveProductMasterUseCase(this.repository);
 
   Future<Either<Failure, String>> call(
     ProductEntity product,

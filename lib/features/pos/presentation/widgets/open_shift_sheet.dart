@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OpenShiftSheet extends StatefulWidget {
-  final List<FinancialAccountModel> accounts;
+  final List<Map<String, dynamic>> accounts;
   const OpenShiftSheet({super.key, required this.accounts});
 
   static Future<bool?> show(
     BuildContext context, {
-    required List<FinancialAccountModel> accounts,
+    required List<Map<String, dynamic>> accounts,
   }) {
     return showModalBottomSheet<bool>(
       context: context,
@@ -38,7 +37,7 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
   void initState() {
     super.initState();
     if (widget.accounts.isNotEmpty) {
-      _selectedAccountId = widget.accounts.first.id;
+      _selectedAccountId = widget.accounts.first['id'];
     }
   }
 
@@ -66,13 +65,13 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
       final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0.0;
 
       final selectedAccount =
-          widget.accounts.firstWhere((a) => a.id == _selectedAccountId);
-      if (amount > selectedAccount.balance) {
+          widget.accounts.firstWhere((a) => a['id'] == _selectedAccountId);
+      if (amount > selectedAccount['balance']) {
         if (mounted) {
           AppSnackbar.show(
             context,
             message:
-                'Saldo insuficiente. La cuenta solo tiene S/ ${selectedAccount.balance.toStringAsFixed(2)}',
+                'Saldo insuficiente. La cuenta solo tiene S/ ${(selectedAccount['balance'] as num).toStringAsFixed(2)}',
             type: SnackbarType.error,
           );
           setState(() => _saving = false);
@@ -89,7 +88,7 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
       });
 
       if (!mounted) return;
-      context.read<CashShiftsProvider>().fetchShifts();
+      context.read<CashShiftsCubit>().fetchShifts();
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -166,7 +165,7 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
                   items: widget.accounts
                       .map(
                         (a) => DropdownMenuItem<String>(
-                          value: a.id,
+                          value: a['id'],
                           child: Row(
                             children: [
                               Icon(
@@ -176,7 +175,7 @@ class _OpenShiftSheetState extends State<OpenShiftSheet> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                a.name,
+                                a['name'],
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,

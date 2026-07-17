@@ -39,8 +39,6 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/custome
 import 'package:inventory_store_app/features/loyalty/presentation/screens/points_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
-
 // Pantallas Admin
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/admin_pos_screen.dart';
@@ -906,7 +904,7 @@ class AppRouter {
                             backgroundColor: Colors.transparent,
                             builder:
                                 (bCtx) => CartVariantPickerSheet(
-                                  cart: bCtx.read<CartProvider>(),
+                                  cartCubit: bCtx.read<CartCubit>(),
                                   product: product,
                                 ),
                           );

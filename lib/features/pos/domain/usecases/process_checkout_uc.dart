@@ -1,10 +1,12 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 
 /// Caso de uso para procesar y finalizar una venta en el POS.
+@lazySingleton
 class ProcessCheckoutUseCase extends UseCase<String, SaleEntity> {
   final PosRepository repository;
 
@@ -31,8 +33,7 @@ class ProcessCheckoutUseCase extends UseCase<String, SaleEntity> {
       }
 
       // 2. Ejecución a través del repositorio
-      final orderId = await repository.processSale(params);
-      return right(orderId);
+      return await repository.processSale(params);
     } catch (e) {
       // En caso de que el repositorio lance una excepción
       return left(Failure.from(e));

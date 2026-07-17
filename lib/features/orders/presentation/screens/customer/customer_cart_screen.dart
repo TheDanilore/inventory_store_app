@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/wallet_cubit.dart';
 
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
@@ -92,14 +93,15 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
   }
 
   Future<void> _processCheckout(BuildContext context) async {
-    final cart = context.read<CartProvider>();
+    final cartCubit = context.read<CartCubit>();
+    final cartState = cartCubit.state;
     final walletState = context.read<WalletCubit>().state;
     final checkout = context.read<CheckoutCubit>();
     final config = context.read<AppConfigCubit>();
 
     final result = await checkout.submitOrder(
-      itemsToBuy: cart.items.values.map((e) => e.toEntity()).toList(),
-      cart: cart,
+      itemsToBuy: cartState.items.values.toList(),
+      cartCubit: cartCubit,
       profileId: context.read<AuthCubit>().state.currentUser?.id ?? '',
       pointsToSolesRatio: config.state.values['points_to_soles_ratio'] ?? 0.05,
       conversionRate: (config.state.values['loyalty_earning_rate'] ?? 1.0).toInt(),
@@ -167,7 +169,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cart = context.watch<CartProvider>();
+    final cartCubit = context.watch<CartCubit>();
+    final cartState = cartCubit.state;
     final walletState = context.watch<WalletCubit>().state;
     final checkout = context.watch<CheckoutCubit>().state;
     final config = context.watch<AppConfigCubit>();
@@ -176,7 +179,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
 
     final sortedCartItems =
-        cart.items.values.toList()..sort((a, b) {
+        cartState.items.values.toList()..sort((a, b) {
           final aInStock = a.availableStock > 0 ? 1 : 0;
           final bInStock = b.availableStock > 0 ? 1 : 0;
           return bInStock.compareTo(aInStock);
@@ -193,13 +196,13 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
         child:
-            cart.isLoading
+            cartState.isLoading
                 ? const Center(
                   child: CircularProgressIndicator(
                     valueColor: AlwaysStoppedAnimation(AppColors.primary),
                   ),
                 )
-                : cart.items.isEmpty
+                 : cartState.items.isEmpty
                 ? const AppEmptyState(
                   icon: Icons.shopping_bag_outlined,
                   title: 'Tu carrito estÃ¡ vacÃ­o',
@@ -215,15 +218,15 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                       Expanded(
                         child: ListView.builder(
                           padding: const EdgeInsets.only(top: 4, bottom: 20),
-                          itemCount: cart.items.length + 3,
+                          itemCount: cartState.items.length + 3,
                           itemBuilder: (context, i) {
                             if (i == 0) {
                               if (!config.loyaltyGlobalEnabled ||
                                   !config.loyaltyCustomerVisible) {
                                 return const SizedBox.shrink();
                               }
-                              return CartWalletSummary(
-                                cart: cart,
+                                return CartWalletSummary(
+                                  cartCubit: cartCubit,
                                 saldoPuntos: saldoPuntos,
                               );
                             }
@@ -242,7 +245,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                               );
                             }
                             if (i == 2) {
-                              return CartActionHeader(cart: cart);
+                                return CartActionHeader(cartCubit: cartCubit, cartState: cartState);
                             }
 
                             final index = i - 3;
@@ -251,7 +254,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                             return CartItemCard(
                               productId: productId,
                               item: cartItem,
-                              cart: cart,
+                              cartCubit: cartCubit,
                               saldoPuntos: saldoPuntos,
                               pointsToSolesRatio: pointsToSolesRatio,
                             );
@@ -259,7 +262,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                         ),
                       ),
                       CartCheckoutFooter(
-                        cart: cart,
+                        cartCubit: cartCubit,
+                        cartState: cartState,
                         saldoPuntos: saldoPuntos,
                         pointsToSolesRatio: pointsToSolesRatio,
                         onProcessCheckout: () => _processCheckout(context),

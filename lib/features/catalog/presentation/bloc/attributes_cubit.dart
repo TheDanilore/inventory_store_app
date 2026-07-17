@@ -8,7 +8,7 @@ import 'attributes_state.dart';
 @injectable
 class AttributesCubit extends Cubit<AttributesState> {
   final GetAttributesUC getAttributesUC;
-  final CreateAttributeUC createAttributeUC;
+  final CreateAttributeUseCase createAttributeUseCase;
   final UpdateAttributeUC updateAttributeUC;
   final DeleteAttributeUC deleteAttributeUC;
   final CreateAttributeValueUC createAttributeValueUC;
@@ -17,7 +17,7 @@ class AttributesCubit extends Cubit<AttributesState> {
 
   AttributesCubit({
     required this.getAttributesUC,
-    required this.createAttributeUC,
+    required this.createAttributeUseCase,
     required this.updateAttributeUC,
     required this.deleteAttributeUC,
     required this.createAttributeValueUC,
@@ -49,7 +49,7 @@ class AttributesCubit extends Cubit<AttributesState> {
     emit(state.copyWith(isSaving: true));
     final result =
         id == null
-            ? await createAttributeUC(name)
+            ? await createAttributeUseCase(name)
             : await updateAttributeUC(id, name);
 
     return result.fold(

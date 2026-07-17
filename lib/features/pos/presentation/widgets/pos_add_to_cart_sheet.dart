@@ -6,11 +6,11 @@ import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 
 /// Bottom sheet para agregar un producto al carrito del POS.
 /// Carga variantes con el join relacional correcto (sin JSONB obsoleto).
@@ -371,23 +371,30 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                         Vibration.vibrate(duration: 50, amplitude: 128);
                       }
 
-                      context.read<PosProvider>().addProductToPos(
-                        product: widget.productEntity,
-                        quantity: _quantity,
-                        variantId: _selectedVariant!.id,
-                        variantLabel: _selectedVariant!.label,
-                        unitPrice:
-                            _selectedVariant!.salePrice ??
-                            widget.productEntity.salePrice,
-                        wholesalePrice:
-                            _selectedVariant!.wholesalePrice ??
-                            widget.productEntity.wholesalePrice,
-                        unitCost:
-                            _selectedVariant!.unitCost ??
-                            widget.productEntity.unitCost,
-                        imageUrl: imageUrl,
-                        sku: _selectedVariant!.sku,
-                        availableStock: _hasStockControl ? stock : 999999,
+                      final cartKey = _selectedVariant!.id;
+                      context.read<CartCubit>().addItem(
+                        CartItemEntity(
+                          productId: widget.productEntity.id,
+                          productName: widget.productEntity.name,
+                          cartKey: cartKey,
+                          quantity: _quantity,
+                          unitPrice:
+                              _selectedVariant!.salePrice ??
+                              widget.productEntity.salePrice,
+                          unitCost:
+                              _selectedVariant!.unitCost ??
+                              widget.productEntity.unitCost,
+                          availableStock: _hasStockControl ? stock : 999999,
+                          usesBatches: widget.productEntity.usesBatches,
+                          variantId: _selectedVariant!.id,
+                          variantLabel: _selectedVariant!.label,
+                          wholesalePrice:
+                              _selectedVariant!.wholesalePrice ??
+                              widget.productEntity.wholesalePrice,
+                          imageUrl: imageUrl,
+                          sku: _selectedVariant?.sku,
+                          isSelected: true,
+                        ),
                       );
                       Navigator.pop(context);
                       AppSnackbar.show(

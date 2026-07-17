@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/pos_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 
 class PosCartFab extends StatelessWidget {
   const PosCartFab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PosProvider>(
-      builder: (context, pos, child) {
-        if (pos.itemCount == 0) {
+    return BlocBuilder<CartCubit, CartState>(
+      builder: (context, cartState) {
+        if (cartState.items.isEmpty) {
           return const SizedBox.shrink();
         }
         return Material(
@@ -66,7 +67,7 @@ class PosCartFab extends StatelessWidget {
                             ),
                             child: Center(
                               child: Text(
-                                '${pos.itemCount}',
+                                '${cartState.items.length}',
                                 style: const TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w800,
@@ -92,7 +93,7 @@ class PosCartFab extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'S/ ${pos.totalAmount.toStringAsFixed(2)}',
+                          'S/ ${cartState.totalAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,

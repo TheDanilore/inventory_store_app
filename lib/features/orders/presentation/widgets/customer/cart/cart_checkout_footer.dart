@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/checkout_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class CartCheckoutFooter extends StatelessWidget {
-  final CartProvider cart;
+  final CartCubit cartCubit;
   final int saldoPuntos;
   final double pointsToSolesRatio;
   final VoidCallback onProcessCheckout;
 
   const CartCheckoutFooter({
     super.key,
-    required this.cart,
+    required this.cartCubit,
     required this.saldoPuntos,
     required this.pointsToSolesRatio,
     required this.onProcessCheckout,
@@ -30,11 +30,11 @@ class CartCheckoutFooter extends StatelessWidget {
     final isLoyaltyEnabled =
         config.loyaltyGlobalEnabled && config.loyaltyCustomerVisible;
 
-    final subtotal = cart.selectedTotalAmount;
+    final subtotal = cartCubit.state.selectedTotalAmount;
     final totalAPagar =
         isLoyaltyEnabled
             ? checkoutProvider.calculateFinalTotal(
-              cart,
+              cartCubit,
               pointsToSolesRatio,
               saldoPuntos,
             )
@@ -42,14 +42,14 @@ class CartCheckoutFooter extends StatelessWidget {
     final puntosUsados =
         isLoyaltyEnabled
             ? checkoutProvider.calculateApplicablePoints(
-              cart,
+              cartCubit,
               pointsToSolesRatio,
               saldoPuntos,
             )
             : 0;
     final descuentoSoles = puntosUsados * pointsToSolesRatio;
 
-    final selectedCount = cart.selectedItems.length;
+    final selectedCount = cartCubit.state.selectedItems.length;
 
     return Container(
       padding: EdgeInsets.only(

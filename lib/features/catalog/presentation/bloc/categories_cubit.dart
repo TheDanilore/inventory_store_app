@@ -10,7 +10,7 @@ import 'categories_state.dart';
 @injectable
 class CategoriesCubit extends Cubit<CategoriesState> {
   final GetCategoriesUC getCategoriesUC;
-  final CreateCategoryUC createCategoryUC;
+  final CreateCategoryUseCase createCategoryUseCase;
   final UpdateCategoryUC updateCategoryUC;
   final DeleteCategoryUC deleteCategoryUC;
 
@@ -18,7 +18,7 @@ class CategoriesCubit extends Cubit<CategoriesState> {
 
   CategoriesCubit({
     required this.getCategoriesUC,
-    required this.createCategoryUC,
+    required this.createCategoryUseCase,
     required this.updateCategoryUC,
     required this.deleteCategoryUC,
   }) : super(const CategoriesState());
@@ -125,7 +125,7 @@ class CategoriesCubit extends Cubit<CategoriesState> {
 
     final result =
         existingCategory == null
-            ? await createCategoryUC(
+            ? await createCategoryUseCase(
               name: name,
               description: description,
               isActive: isActive,

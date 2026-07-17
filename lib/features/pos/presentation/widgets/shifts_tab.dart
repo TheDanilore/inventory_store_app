@@ -4,8 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:vibration/vibration.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/pos/data/models/cash_shift_model.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cash_shifts_provider.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
@@ -13,7 +14,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class ShiftsTab extends StatefulWidget {
@@ -48,11 +49,13 @@ class _ShiftsTabState extends State<ShiftsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CashShiftsProvider>(
-      builder: (context, provider, _) {
-        final shifts = provider.shifts;
-        final isLoading = provider.isLoading;
-        final openShifts = shifts.where((s) => s.status == 'OPEN').toList();
+    final cubit = context.read<CashShiftsCubit>();
+    
+    return BlocBuilder<CashShiftsCubit, CashShiftsState>(
+      builder: (context, state) {
+        final shifts = state.shifts;
+        final isLoading = state.isLoading;
+        final openShifts = shifts.where((s) => s.status.name == 'open' || s.status.toString() == 'CashShiftStatus.open').toList();
 
         return Stack(
           children: [
@@ -70,7 +73,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                                   child: _ActiveShiftBanner(
                                     shift: s,
                                     onClose: () async {
-                                      final expected = await provider
+                                      final expected = await cubit
                                           .calcExpected(
                                             s.id,
                                             s.accountId ?? '',
@@ -101,24 +104,24 @@ class _ShiftsTabState extends State<ShiftsTab> {
                     children: [
                       _StatusChip(
                         label: 'Abiertos',
-                        count: provider.totalOpenCount,
+                        count: state.totalOpenCount,
                         color: AppColors.success,
-                        selected: provider.filterStatus == 'OPEN',
+                        selected: state.filterStatus == 'OPEN',
                         onTap: () {
-                          provider.setFilterStatus(
-                            provider.filterStatus == 'OPEN' ? 'Todos' : 'OPEN',
+                          cubit.setFilterStatus(
+                            state.filterStatus == 'OPEN' ? 'Todos' : 'OPEN',
                           );
                         },
                       ),
                       const SizedBox(width: 6),
                       _StatusChip(
                         label: 'Cerrados',
-                        count: provider.totalClosedCount,
+                        count: state.totalClosedCount,
                         color: AppColors.textSecondary,
-                        selected: provider.filterStatus == 'CLOSED',
+                        selected: state.filterStatus == 'CLOSED',
                         onTap: () {
-                          provider.setFilterStatus(
-                            provider.filterStatus == 'CLOSED'
+                          cubit.setFilterStatus(
+                            state.filterStatus == 'CLOSED'
                                 ? 'Todos'
                                 : 'CLOSED',
                           );
@@ -147,14 +150,14 @@ class _ShiftsTabState extends State<ShiftsTab> {
                       const SizedBox(width: 4),
                       DateFilterCalendar(
                         dateRange:
-                            provider.dateFrom != null && provider.dateTo != null
+                            state.dateFrom != null && state.dateTo != null
                                 ? DateTimeRange(
-                                  start: provider.dateFrom!,
-                                  end: provider.dateTo!,
+                                  start: state.dateFrom!,
+                                  end: state.dateTo!,
                                 )
                                 : null,
                         onDateRangeSelected: (picked) {
-                          provider.setDateRange(
+                          cubit.setDateRange(
                             picked.start,
                             DateTime(
                               picked.end.year,
@@ -167,7 +170,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                           );
                         },
                         onClear: () {
-                          provider.setDateRange(null, null);
+                          cubit.setDateRange(null, null);
                         },
                       ),
                     ],
@@ -190,7 +193,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                             children: [
                               Expanded(
                                 child: RefreshIndicator(
-                                  onRefresh: () async => provider.fetchShifts(),
+                                  onRefresh: () async => cubit.fetchShifts(),
                                   child: AnimationLimiter(
                                     child: ListView.separated(
                                       controller: _scrollController,
@@ -218,10 +221,10 @@ class _ShiftsTabState extends State<ShiftsTab> {
                                                 child: _ShiftCard(
                                                   shift: shifts[i],
                                                   onClose:
-                                                      shifts[i].status == 'OPEN'
+                                                      shifts[i].status.name == 'open' || shifts[i].status.toString() == 'CashShiftStatus.open'
                                                           ? () async {
                                                             final expected =
-                                                                await provider
+                                                                await cubit
                                                                     .calcExpected(
                                                                       shifts[i]
                                                                           .id,
@@ -258,7 +261,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                           ),
                 ),
                 // --- PAGINACIÓN ANCLADA ---
-                if (provider.totalPages > 1 && !isLoading)
+                if (state.totalPages > 1 && !isLoading)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -275,9 +278,9 @@ class _ShiftsTabState extends State<ShiftsTab> {
                     child: SafeArea(
                       top: false,
                       child: AdminPageBlocks(
-                        currentPage: provider.currentPage,
-                        totalPages: provider.totalPages,
-                        onPageChanged: (page) => provider.setPage(page),
+                        currentPage: state.currentPage,
+                        totalPages: state.totalPages,
+                        onPageChanged: (page) => cubit.setPage(page),
                       ),
                     ),
                   ),
@@ -291,18 +294,15 @@ class _ShiftsTabState extends State<ShiftsTab> {
                 onPressed:
                     isLoading
                         ? null
-                        : () {
+                        : () async {
                           // Solo vibrar si no es web para evitar MissingPluginException
                           if (!kIsWeb) {
                             Vibration.vibrate(duration: 50, amplitude: 128);
                           }
-                          final availableAccounts =
-                              provider.cajaAccounts
-                                  .where(
-                                    (a) =>
-                                        !provider.openAccountIds.contains(a.id),
-                                  )
-                                  .toList();
+                          // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea. 
+                          // Wait, CashShiftsState doesn't expose cajaAccounts. Let's fetch them on demand or from cubit.
+                          final availableAccounts = await cubit.getAvailableAccounts();
+                          if (!context.mounted) return;
                           if (availableAccounts.isEmpty) {
                             AppSnackbar.show(
                               context,
@@ -346,7 +346,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
 }
 
 class _ActiveShiftBanner extends StatefulWidget {
-  final CashShiftModel shift;
+  final CashShiftEntity shift;
   final Future<void> Function() onClose;
 
   const _ActiveShiftBanner({required this.shift, required this.onClose});
@@ -403,7 +403,7 @@ class _ActiveShiftBannerState extends State<_ActiveShiftBanner> {
                   ),
                 ),
                 Text(
-                  widget.shift.accountName,
+                  widget.shift.accountName ?? '',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
@@ -412,7 +412,7 @@ class _ActiveShiftBannerState extends State<_ActiveShiftBanner> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Por: ${widget.shift.openedByName.split(' ')[0]}',
+                  'Por: ${(widget.shift.openedByName ?? '').split(' ')[0]}',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -527,7 +527,7 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _ShiftCard extends StatefulWidget {
-  final CashShiftModel shift;
+  final CashShiftEntity shift;
   final Future<void> Function()? onClose;
 
   const _ShiftCard({required this.shift, this.onClose});
@@ -541,7 +541,7 @@ class _ShiftCardState extends State<_ShiftCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isOpen = widget.shift.status == 'OPEN';
+    final isOpen = widget.shift.status == CashShiftStatus.open;
     final shift = widget.shift;
     return Container(
       decoration: BoxDecoration(
@@ -584,7 +584,7 @@ class _ShiftCardState extends State<_ShiftCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        shift.accountName,
+                        shift.accountName ?? '',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -619,7 +619,7 @@ class _ShiftCardState extends State<_ShiftCard> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              shift.openedByName.split(' ')[0],
+                              (shift.openedByName ?? '').split(' ')[0],
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,

@@ -6,10 +6,10 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/categor
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_current_profile_id_usecase.dart';
 
 @lazySingleton
-class CreateCategoryUC {
+class CreateCategoryUseCase {
   final CategoriesRepository repository;
   final GetCurrentProfileIdUseCase getProfileId;
-  CreateCategoryUC(this.repository, this.getProfileId);
+  CreateCategoryUseCase(this.repository, this.getProfileId);
   Future<Either<Failure, CategoryEntity>> call({
     required String name,
     String? description,

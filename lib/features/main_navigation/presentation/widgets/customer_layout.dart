@@ -10,7 +10,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/pos/presentation/providers/cart_provider.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class CustomerLayout extends StatelessWidget {
@@ -186,9 +187,9 @@ class CustomerLayout extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(left: noLeadingIcon ? 16.0 : 0.0),
-      child: Consumer<AppConfigCubit>(
-        builder: (context, config, child) {
-          final liveTitle = config.businessName;
+      child: BlocBuilder<AppConfigCubit, AppConfigState>(
+        builder: (context, config) {
+          final liveTitle = config.businessInfo?.businessName ?? '';
           final displayTitle =
               liveTitle.isNotEmpty && liveTitle != 'Cargando...'
                   ? liveTitle
@@ -238,16 +239,16 @@ class CustomerLayout extends StatelessWidget {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      Consumer<CartProvider>(
-                        builder: (context, cart, _) {
-                          if (cart.itemCount == 0) {
+                      BlocBuilder<CartCubit, CartState>(
+                        builder: (context, cartState) {
+                          if (cartState.itemCount == 0) {
                             return const SizedBox.shrink();
                           }
                           return Positioned(
                             right: 4,
                             top: 4,
                             child: _AnimatedCartBadge(
-                              itemCount: cart.itemCount,
+                              itemCount: cartState.itemCount,
                             ),
                           );
                         },
@@ -509,7 +510,7 @@ class CustomerLayout extends StatelessWidget {
                                     ),
                                     SizedBox(width: 8),
                                     Text(
-                                      'Sin conexiÃ³n a internet',
+                                      'Sin conexión a internet',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,
@@ -632,12 +633,12 @@ class _ShakeCartIconState extends State<_ShakeCartIcon>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CartProvider>(
-      builder: (context, cart, child) {
-        if (cart.itemCount > _prevCount) {
+    return BlocBuilder<CartCubit, CartState>(
+      builder: (context, cartState) {
+        if (cartState.itemCount > _prevCount) {
           _ctrl.forward(from: 0.0);
         }
-        _prevCount = cart.itemCount;
+        _prevCount = cartState.itemCount;
 
         return RotationTransition(
           turns: _animation,
@@ -654,11 +655,11 @@ class _ShakeCartIconState extends State<_ShakeCartIcon>
                         ? AppColors.primary
                         : AppColors.textSecondary,
               ),
-              if (cart.itemCount > 0)
+              if (cartState.itemCount > 0)
                 Positioned(
                   right: -6,
                   top: -4,
-                  child: _AnimatedCartBadge(itemCount: cart.itemCount),
+                  child: _AnimatedCartBadge(itemCount: cartState.itemCount),
                 ),
             ],
           ),

@@ -4,9 +4,9 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 
 @lazySingleton
-class CreateAttributeUC {
+class CreateAttributeUseCase {
   final ProductsRepository repository;
-  CreateAttributeUC(this.repository);
+  CreateAttributeUseCase(this.repository);
   Future<Either<Failure, Map<String, dynamic>>> call(String name) async {
     return await repository.createAttribute(name);
   }

@@ -1,3 +1,6 @@
+import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
+
 /// Entidad de una venta completada en el POS.
 ///
 /// Agrupa todos los datos necesarios para procesar y registrar
@@ -18,7 +21,7 @@ class SaleEntity {
   final int pointsEarned;
   final bool isDraft;
   final bool isCredit;
-  final Map<String, dynamic>? activeShift;
+  final CashShiftEntity? activeShift;
 
   const SaleEntity({
     required this.items,
@@ -61,6 +64,7 @@ class SaleItemEntity {
   final int quantity;
   final double unitCost;
   final double appliedPrice;
+  final List<BatchAssignmentModel>? batchAssignments;
 
   const SaleItemEntity({
     required this.productId,
@@ -68,6 +72,7 @@ class SaleItemEntity {
     required this.unitCost,
     required this.appliedPrice,
     this.variantId,
+    this.batchAssignments,
   });
 
   double get netProfit => (appliedPrice - unitCost) * quantity;
