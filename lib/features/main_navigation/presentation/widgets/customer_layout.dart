@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/network/network_state.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
@@ -9,7 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:provider/provider.dart';
+
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -475,9 +476,9 @@ class CustomerLayout extends StatelessWidget {
     // Banner de sin conexión + body
     Widget pageBody = Column(
       children: [
-        Consumer<NetworkCubit>(
-          builder: (context, network, child) {
-            final isOnline = network.isOnline;
+        BlocBuilder<NetworkCubit, NetworkState>(
+          builder: (context, state) {
+            final isOnline = state is NetworkConnected;
             return AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,

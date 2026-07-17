@@ -278,10 +278,10 @@ class AppRouter {
           builder:
               (context, state) => SplashScreen(
                 onInitialize: (ctx) async {
-                  final configProvider = ctx.read<AppConfigCubit>();
+                  final configCubit = ctx.read<AppConfigCubit>();
                   await Future.wait([
-                    configProvider.loadConfig(),
-                    configProvider.loadBusinessInfo(),
+                    configCubit.loadConfig(),
+                    configCubit.loadBusinessInfo(),
                   ]).timeout(const Duration(seconds: 5));
                 },
               ),

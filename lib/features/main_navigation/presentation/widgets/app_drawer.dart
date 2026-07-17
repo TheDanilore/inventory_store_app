@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart' as auth_state;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:provider/provider.dart';
+
 
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
@@ -737,8 +738,9 @@ class _DrawerHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Consumer<AppConfigCubit>(
-            builder: (context, config, _) {
+          BlocBuilder<AppConfigCubit, AppConfigState>(
+            builder: (context, state) {
+              final config = context.read<AppConfigCubit>();
               final businessName = config.businessName;
               final businessAddress = config.businessAddress;
               return Column(
