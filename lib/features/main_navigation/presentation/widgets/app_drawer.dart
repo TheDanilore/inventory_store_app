@@ -3,11 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart' as auth_state;
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart'
+    as auth_state;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-
-
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 // ---------------------------------------------------------------------------
@@ -498,7 +497,9 @@ class _AppDrawerState extends State<AppDrawer> {
     // Si algún sub-ítem es la pantalla activa, auto-expandir el grupo
     final currentPath = GoRouterState.of(context).uri.path;
     final hasActiveChild = item.children.any(
-      (sub) => currentPath == sub.routePath || currentPath.startsWith('${sub.routePath}/'),
+      (sub) =>
+          currentPath == sub.routePath ||
+          currentPath.startsWith('${sub.routePath}/'),
     );
     if (hasActiveChild && !_expanded.contains(item.title)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -632,7 +633,9 @@ class _SubItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentPath = GoRouterState.of(context).uri.path;
-    final active = currentPath == item.routePath || currentPath.startsWith('${item.routePath}/');
+    final active =
+        currentPath == item.routePath ||
+        currentPath.startsWith('${item.routePath}/');
     return Padding(
       padding: const EdgeInsets.only(left: 8, right: 0, top: 2, bottom: 2),
       child: Container(
@@ -919,8 +922,7 @@ class _DrawerFooter extends StatelessWidget {
                               tooltip: 'Cerrar Sesión',
                               onPressed: () async {
                                 Navigator.pop(context);
-                                final authCubit =
-                                    context.read<AuthCubit>();
+                                final authCubit = context.read<AuthCubit>();
                                 try {
                                   await authCubit.logout();
                                 } catch (e) {

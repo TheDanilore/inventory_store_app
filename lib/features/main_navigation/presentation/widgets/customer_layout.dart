@@ -10,7 +10,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'dart:ui';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -52,8 +51,10 @@ class CustomerLayout extends StatelessWidget {
       builder: (context, config) {
         return BlocBuilder<WalletCubit, WalletState>(
           builder: (context, walletState) {
-            final globalEnabled = config.businessInfo?.loyaltyGlobalEnabled ?? true;
-            final customerVisible = config.businessInfo?.loyaltyCustomerVisible ?? true;
+            final globalEnabled =
+                config.businessInfo?.loyaltyGlobalEnabled ?? true;
+            final customerVisible =
+                config.businessInfo?.loyaltyCustomerVisible ?? true;
             if (!globalEnabled || !customerVisible) {
               return const SizedBox.shrink();
             }
@@ -67,7 +68,10 @@ class CustomerLayout extends StatelessWidget {
               child: GestureDetector(
                 onTap: () => context.go('/customer/points'),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.goldLight,
                     borderRadius: BorderRadius.circular(20),
@@ -95,7 +99,10 @@ class CustomerLayout extends StatelessWidget {
                               begin: const Offset(0.0, 0.5),
                               end: Offset.zero,
                             ).animate(animation),
-                            child: FadeTransition(opacity: animation, child: child),
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
                           );
                         },
                         child:
@@ -735,4 +742,3 @@ class _AnimatedCartBadgeState extends State<_AnimatedCartBadge>
     );
   }
 }
-

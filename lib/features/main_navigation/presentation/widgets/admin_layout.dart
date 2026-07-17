@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/network/network_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/offline_games_suggestion.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
