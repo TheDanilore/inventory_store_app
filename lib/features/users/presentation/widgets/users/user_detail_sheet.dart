@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/users/presentation/providers/user_detail_provider.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_cubit.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 class UserDetailSheet extends StatelessWidget {
-  final Map<String, dynamic> userData;
+  final String userId;
   final VoidCallback onUserUpdated;
 
   const UserDetailSheet({
     super.key,
-    required this.userData,
+    required this.userId,
     required this.onUserUpdated,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => UserDetailProvider(initialUser: userData),
+    return BlocProvider(
+      create: (_) => sl<UserDetailCubit>()..fetchUser(userId),
       child: _UserDetailContent(onUserUpdated: onUserUpdated),
     );
   }
@@ -46,103 +47,98 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     super.dispose();
   }
 
-  void _handleProviderMessages(
-    BuildContext context,
-    UserDetailProvider provider,
-  ) {
-    if (provider.errorMessage != null) {
-      AppSnackbar.show(
-        context,
-        message: provider.errorMessage!,
-        type: SnackbarType.error,
-      );
-      provider.clearMessages();
-    } else if (provider.successMessage != null) {
-      AppSnackbar.show(
-        context,
-        message: provider.successMessage!,
-        type: SnackbarType.success,
-      );
-      provider.clearMessages();
-      widget.onUserUpdated();
-    }
-  }
-
-  Future<void> _openEditForm(
-    BuildContext context,
-    UserDetailProvider provider,
-  ) async {
-    if (provider.user == null) return;
-    final result = await context.push(
-      '/admin/user-form',
-      extra: {'existingUser': provider.user!},
-    );
-
-    if (result == true && mounted) {
-      await provider.reloadUser();
-      widget.onUserUpdated();
-    }
-  }
-
-  String _formatDate(String? isoString) {
-    if (isoString == null || isoString.isEmpty) return 'No disponible';
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'N/A';
     try {
-      final date = DateTime.parse(isoString).toLocal();
-      return DateFormat('dd MMM yyyy, hh:mm a').format(date);
+      final date = DateTime.parse(dateStr).toLocal();
+      return DateFormat('dd/MM/yyyy HH:mm').format(date);
     } catch (_) {
-      return 'Fecha inválida';
+      return dateStr;
     }
   }
 
-  void _copyToClipboard(BuildContext context, String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
-    AppSnackbar.show(
-      context,
-      message: '$label copiado al portapapeles',
-      type: SnackbarType.info,
+  void _openEditForm(BuildContext context, UserDetailLoaded state) async {
+    final changed = await context.push<bool?>(
+      '/admin/user-form',
+      extra: {'existingUser': state.user},
     );
+    if (changed == true) {
+      widget.onUserUpdated();
+      // ignore: use_build_context_synchronously
+      context.read<UserDetailCubit>().fetchUser(state.user.id);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final isLoyaltyEnabled =
-        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
+    final isLoyaltyEnabled = context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
-    return Consumer<UserDetailProvider>(
-      builder: (context, provider, child) {
-        // Ejecutar mensajes después del frame
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _handleProviderMessages(context, provider);
-        });
-
-        final user = provider.user;
-        if (user == null) {
+    return BlocConsumer<UserDetailCubit, UserDetailState>(
+      listener: (context, state) {
+        if (state is UserDetailLoaded) {
+          if (state.errorMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
+            context.read<UserDetailCubit>().clearMessages();
+          } else if (state.successMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.successMessage!,
+              type: SnackbarType.success,
+            );
+            _pointsCtrl.clear();
+            widget.onUserUpdated();
+            context.read<UserDetailCubit>().clearMessages();
+          }
+        } else if (state is UserDetailError) {
+           AppSnackbar.show(
+              context,
+              message: state.message,
+              type: SnackbarType.error,
+            );
+        }
+      },
+      builder: (context, state) {
+        if (state is UserDetailInitial || state is UserDetailLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final String fullName = user['full_name'] ?? 'Usuario';
-        final String initial =
-            fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
-        final String role = user['role'] ?? 'customer';
-        final bool isActive = user['is_active'] ?? true;
-        final int balance = user['wallet_balance'] ?? 0;
-        final String? email = user['email'];
-        final String? phone = user['phone'];
-        final String? docType = user['document_type'];
-        final String? docNumber = user['document_number'];
-        final String? createdAt = user['created_at'];
+        if (state is UserDetailError) {
+          return Center(
+            child: Text(
+              'Error al cargar: ${state.message}',
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
 
-        return Stack(
+        if (state is! UserDetailLoaded) {
+          return const SizedBox.shrink();
+        }
+
+        final role = state.user.role;
+        final fullName = state.user.fullName;
+        final email = state.user.email;
+        final phone = state.user.phone;
+        final documentType = state.user.documentType;
+        final documentNumber = state.user.documentNumber;
+        final isActive = state.user.isActive;
+        final walletBalance = state.user.walletBalance;
+
+        final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
+
+        return Column(
           children: [
-            Container(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 24),
+            Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── HANDLE ──────────────────────────────────────────────────────
+                    // Handle
                     Center(
                       child: Container(
                         width: 40,
@@ -155,17 +151,16 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                       ),
                     ),
 
-                    // ─── CABECERA DEL PERFIL + BOTÓN EDITAR ──────────────────────────
+                    // ─── CABECERA DEL PERFIL + BOTÓN EDITAR ──────────
                     Row(
                       children: [
                         Container(
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color:
-                                role == 'admin'
-                                    ? Colors.indigo.withValues(alpha: 0.1)
-                                    : AppColors.primary.withValues(alpha: 0.1),
+                            color: role == 'admin'
+                                ? Colors.indigo.withValues(alpha: 0.1)
+                                : AppColors.primary.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -174,10 +169,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
-                                color:
-                                    role == 'admin'
-                                        ? Colors.indigo.shade700
-                                        : AppColors.primary,
+                                color: role == 'admin'
+                                    ? Colors.indigo.shade700
+                                    : AppColors.primary,
                               ),
                             ),
                           ),
@@ -204,29 +198,24 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color:
-                                          role == 'admin'
-                                              ? Colors.indigo.shade50
-                                              : AppColors.surface,
+                                      color: role == 'admin'
+                                          ? Colors.indigo.shade50
+                                          : AppColors.surface,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color:
-                                            role == 'admin'
-                                                ? Colors.indigo.shade200
-                                                : AppColors.border,
+                                        color: role == 'admin'
+                                            ? Colors.indigo.shade200
+                                            : AppColors.border,
                                       ),
                                     ),
                                     child: Text(
-                                      role == 'admin'
-                                          ? 'Administrador'
-                                          : 'Cliente',
+                                      role == 'admin' ? 'Administrador' : 'Cliente',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color:
-                                            role == 'admin'
-                                                ? Colors.indigo.shade700
-                                                : AppColors.textSecondary,
+                                        color: role == 'admin'
+                                            ? Colors.indigo.shade700
+                                            : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -237,16 +226,14 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color:
-                                          isActive
-                                              ? Colors.green.shade50
-                                              : Colors.red.shade50,
+                                      color: isActive
+                                          ? Colors.green.shade50
+                                          : Colors.red.shade50,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color:
-                                            isActive
-                                                ? Colors.green.shade200
-                                                : Colors.red.shade200,
+                                        color: isActive
+                                            ? Colors.green.shade200
+                                            : Colors.red.shade200,
                                       ),
                                     ),
                                     child: Text(
@@ -254,10 +241,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color:
-                                            isActive
-                                                ? Colors.green.shade700
-                                                : Colors.red.shade700,
+                                        color: isActive
+                                            ? Colors.green.shade700
+                                            : Colors.red.shade700,
                                       ),
                                     ),
                                   ),
@@ -267,14 +253,12 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           ),
                         ),
 
-                        // ✅ Botón Editar
+                        // Botón Editar
                         IconButton(
-                          onPressed: () => _openEditForm(context, provider),
+                          onPressed: () => _openEditForm(context, state),
                           tooltip: 'Editar usuario',
                           style: IconButton.styleFrom(
-                            backgroundColor: AppColors.primary.withValues(
-                              alpha: 0.08,
-                            ),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -290,7 +274,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
 
                     const SizedBox(height: 24),
 
-                    // ─── INFORMACIÓN DEL USUARIO ─────────────────────────────────────
+                    // ─── INFORMACIÓN DEL USUARIO ──────────
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -303,134 +287,137 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           if (email != null && email.isNotEmpty) ...[
                             _buildInfoRow(
                               context,
-                              icon: Icons.email_rounded,
-                              label: 'Correo electrónico',
+                              icon: Icons.email_outlined,
+                              label: 'Correo Electrónico',
                               value: email,
-                              onCopy:
-                                  () => _copyToClipboard(
-                                    context,
-                                    email,
-                                    'Correo',
-                                  ),
+                              onCopy: () {
+                                Clipboard.setData(ClipboardData(text: email));
+                                AppSnackbar.show(
+                                  context,
+                                  message: 'Correo copiado',
+                                  type: SnackbarType.success,
+                                );
+                              },
                             ),
-                            const Divider(height: 24),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1),
+                            ),
                           ],
                           if (phone != null && phone.isNotEmpty) ...[
                             _buildInfoRow(
                               context,
-                              icon: Icons.phone_rounded,
+                              icon: Icons.phone_outlined,
                               label: 'Teléfono',
                               value: phone,
-                              onCopy:
-                                  () => _copyToClipboard(
-                                    context,
-                                    phone,
-                                    'Teléfono',
-                                  ),
+                              onCopy: () {
+                                Clipboard.setData(ClipboardData(text: phone));
+                                AppSnackbar.show(
+                                  context,
+                                  message: 'Teléfono copiado',
+                                  type: SnackbarType.success,
+                                );
+                              },
                             ),
-                            const Divider(height: 24),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1),
+                            ),
                           ],
-                          if (docNumber != null && docNumber.isNotEmpty) ...[
+                          if (documentNumber != null && documentNumber.isNotEmpty) ...[
                             _buildInfoRow(
                               context,
-                              icon: Icons.badge_rounded,
-                              label: 'Documento',
-                              value: '${docType ?? 'DNI'}: $docNumber',
-                              onCopy:
-                                  () => _copyToClipboard(
-                                    context,
-                                    docNumber,
-                                    'Documento',
-                                  ),
+                              icon: Icons.badge_outlined,
+                              label: 'Documento ($documentType)',
+                              value: documentNumber,
+                              onCopy: () {
+                                Clipboard.setData(ClipboardData(text: documentNumber));
+                                AppSnackbar.show(
+                                  context,
+                                  message: 'Documento copiado',
+                                  type: SnackbarType.success,
+                                );
+                              },
                             ),
-                            const Divider(height: 24),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1),
+                            ),
                           ],
                           _buildInfoRow(
                             context,
-                            icon: Icons.calendar_today_rounded,
+                            icon: Icons.calendar_today_outlined,
                             label: 'Fecha de registro',
-                            value: _formatDate(createdAt),
+                            value: _formatDate(state.user.createdAt?.toIso8601String()),
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 20),
-
-                    // ─── SECCIÓN DE MONEDAS / BILLETERA ─────────────────────────────
-                    if (isLoyaltyEnabled)
+                    // ─── FIDELIDAD (Opcional) ──────────
+                    if (isLoyaltyEnabled) ...[
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Programa de Fidelidad',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.amberLight.withValues(alpha: 0.3),
+                          color: Colors.amber.shade50,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.amberLight),
+                          border: Border.all(color: Colors.amber.shade200),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'Monedas de Fidelidad',
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.stars_rounded,
+                                      color: Colors.amber.shade600,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Balance Actual',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '$walletBalance pt.',
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.amberDark,
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.stars_rounded,
-                                  color: Colors.amber.shade500,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (provider.isSaving)
-                                  const AppShimmer(
-                                    width: 80,
-                                    height: 32,
-                                    borderRadius: 4,
-                                  )
-                                else
-                                  Text(
-                                    balance.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.amberDark,
-                                      height: 1.0,
-                                    ),
-                                  ),
-                                const SizedBox(width: 8),
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    'monedas actuales',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
-                                    ),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.amber.shade700,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 20),
-
+                            const SizedBox(height: 16),
+                            const Divider(height: 1),
+                            const SizedBox(height: 16),
                             const Text(
-                              'Ajustar saldo manualmente',
+                              'Ajustar puntos manualmente',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary,
+                                color: Colors.black54,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
@@ -440,9 +427,7 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.amber.shade200,
-                                      ),
+                                      border: Border.all(color: Colors.grey.shade300),
                                     ),
                                     child: TextField(
                                       controller: _pointsCtrl,
@@ -450,14 +435,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       inputFormatters: [
                                         FilteringTextInputFormatter.digitsOnly,
                                       ],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
                                       decoration: const InputDecoration(
                                         hintText: 'Cantidad...',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
+                                        hintStyle: TextStyle(color: Colors.grey),
                                         border: InputBorder.none,
                                         contentPadding: EdgeInsets.symmetric(
                                           horizontal: 16,
@@ -477,32 +457,23 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                       ),
-                                      onPressed:
-                                          provider.isSaving
-                                              ? null
-                                              : () {
-                                                if (_pointsCtrl.text
-                                                    .trim()
-                                                    .isEmpty) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message: 'Ingresa un monto',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                final amount =
-                                                    int.tryParse(
-                                                      _pointsCtrl.text.trim(),
-                                                    ) ??
-                                                    0;
-                                                provider.adjustPoints(-amount);
-                                              },
+                                      onPressed: state.isSaving
+                                          ? null
+                                          : () {
+                                              if (_pointsCtrl.text.trim().isEmpty) {
+                                                AppSnackbar.show(
+                                                  context,
+                                                  message: 'Ingresa un monto',
+                                                  type: SnackbarType.warning,
+                                                );
+                                                return;
+                                              }
+                                              final amount = int.tryParse(_pointsCtrl.text.trim()) ?? 0;
+                                              context.read<UserDetailCubit>().adjustPoints(-amount);
+                                            },
                                       child: const Icon(Icons.remove_rounded),
                                     ),
                                   ),
@@ -518,32 +489,23 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                       ),
-                                      onPressed:
-                                          provider.isSaving
-                                              ? null
-                                              : () {
-                                                if (_pointsCtrl.text
-                                                    .trim()
-                                                    .isEmpty) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message: 'Ingresa un monto',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                final amount =
-                                                    int.tryParse(
-                                                      _pointsCtrl.text.trim(),
-                                                    ) ??
-                                                    0;
-                                                provider.adjustPoints(amount);
-                                              },
+                                      onPressed: state.isSaving
+                                          ? null
+                                          : () {
+                                              if (_pointsCtrl.text.trim().isEmpty) {
+                                                AppSnackbar.show(
+                                                  context,
+                                                  message: 'Ingresa un monto',
+                                                  type: SnackbarType.warning,
+                                                );
+                                                return;
+                                              }
+                                              final amount = int.tryParse(_pointsCtrl.text.trim()) ?? 0;
+                                              context.read<UserDetailCubit>().adjustPoints(amount);
+                                            },
                                       child: const Icon(Icons.add_rounded),
                                     ),
                                   ),
@@ -553,93 +515,76 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           ],
                         ),
                       ),
-
-                    // ─── HISTORIAL RECIENTE (Extra Proposal) ─────────────────────────────
-                    if (provider.isLoading) ...[
+                      
                       const SizedBox(height: 24),
-                      const AppShimmer(width: 200, height: 16, borderRadius: 4),
-                      const SizedBox(height: 12),
-                      const AppShimmer(
-                        width: double.infinity,
-                        height: 60,
-                        borderRadius: 12,
-                      ),
-                      const SizedBox(height: 8),
-                      const AppShimmer(
-                        width: double.infinity,
-                        height: 60,
-                        borderRadius: 12,
-                      ),
-                    ] else if (provider.recentMovements.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Últimos movimientos de fidelidad',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      if (state.recentMovements.isNotEmpty) ...[
+                        const Text(
+                          'Últimos movimientos de fidelidad',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...provider.recentMovements.map((mov) {
-                        final isPositive = (mov['points'] ?? 0) >= 0;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                isPositive
-                                    ? Icons.add_circle_outline_rounded
-                                    : Icons.remove_circle_outline_rounded,
-                                color: isPositive ? Colors.green : Colors.red,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      mov['description'] ?? 'Movimiento',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _formatDate(mov['created_at']),
-                                      style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
+                        const SizedBox(height: 12),
+                        ...state.recentMovements.map((mov) {
+                          final isPositive = (mov['points'] ?? 0) >= 0;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isPositive
+                                      ? Icons.add_circle_outline_rounded
+                                      : Icons.remove_circle_outline_rounded,
+                                  color: isPositive ? Colors.green : Colors.red,
+                                  size: 20,
                                 ),
-                              ),
-                              Text(
-                                '${isPositive ? '+' : ''}${mov['points']}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color:
-                                      isPositive
-                                          ? Colors.green.shade700
-                                          : Colors.red.shade700,
-                                  fontSize: 14,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        mov['description'] ?? 'Movimiento',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _formatDate(mov['created_at']),
+                                        style: TextStyle(
+                                          color: Colors.grey.shade500,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                                Text(
+                                  '${isPositive ? '+' : ''}${mov['points']}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: isPositive
+                                        ? Colors.green.shade700
+                                        : Colors.red.shade700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ],
-
                     const SizedBox(height: 24),
                   ],
                 ),

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
-import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -37,10 +35,14 @@ Future<void> main() async {
   await initializeDateFormatting('es', null);
 
   final prefs = await SharedPreferences.getInstance();
-  
+
   // Si no hay conexión guardada, usamos la de por defecto
-  final url = prefs.getString('SUPABASE_URL') ?? 'https://lvupdgdmlmzztjmydqak.supabase.co';
-  final key = prefs.getString('SUPABASE_KEY') ?? 'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB';
+  final url =
+      prefs.getString('SUPABASE_URL') ??
+      'https://lvupdgdmlmzztjmydqak.supabase.co';
+  final key =
+      prefs.getString('SUPABASE_KEY') ??
+      'sb_publishable_rTnni_12Jz1J9IDn5Jshew_kzyof4jB';
 
   await _initErpAndRunApp(url, key);
 }
@@ -49,10 +51,7 @@ Future<void> _initErpAndRunApp(String url, String publishableKey) async {
   // Supabase.initialize lanza si ya fue inicializado (en hot restart).
   // Lo envolvemos para que sea idempotente.
   try {
-    await Supabase.initialize(
-      url: url,
-      publishableKey: publishableKey,
-    );
+    await Supabase.initialize(url: url, publishableKey: publishableKey);
   } catch (e) {
     // En hot restart Supabase ya está inicializado → ignoramos el error.
     debugPrint('Supabase init (posiblemente ya inicializado): $e');
@@ -85,9 +84,11 @@ class MyApp extends StatelessWidget {
         BlocProvider.value(value: _authCubit!),
         BlocProvider(create: (_) => sl<NetworkCubit>()),
         BlocProvider(
-          create: (_) => sl<AppConfigCubit>()
-            ..fetchSettings()
-            ..loadBusinessInfo(),
+          create:
+              (_) =>
+                  sl<AppConfigCubit>()
+                    ..fetchSettings()
+                    ..loadBusinessInfo(),
         ),
         BlocProvider(create: (_) => sl<PointsCubit>()),
         BlocProvider(create: (_) => sl<WalletCubit>()),
@@ -96,25 +97,19 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<CashShiftsCubit>()),
         BlocProvider(create: (_) => sl<PosCubit>()),
       ],
-      child: MultiProvider(
-        providers: [
-          // Inyectamos la instancia global con .value (no crea una nueva).
-          
-          ChangeNotifierProvider(create: (_) => UsersProvider(role: '')),
+
+      child: MaterialApp.router(
+        restorationScopeId: 'app',
+        title: 'Inventario Store',
+        theme: AppTheme.light(),
+        debugShowCheckedModeBanner: false,
+        supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
         ],
-        child: MaterialApp.router(
-          restorationScopeId: 'app',
-          title: 'Inventario Store',
-          theme: AppTheme.light(),
-          debugShowCheckedModeBanner: false,
-          supportedLocales: const [Locale('es', 'ES'), Locale('en', 'US')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          routerConfig: _router!,
-        ),
+        routerConfig: _router!,
       ),
     );
   }

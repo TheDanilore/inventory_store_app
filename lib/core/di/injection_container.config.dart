@@ -260,7 +260,7 @@ import '../../features/inventory/presentation/bloc/inventory_entries_cubit.dart'
 import '../../features/inventory/presentation/bloc/inventory_entry_form_cubit.dart'
     as _i1033;
 import '../../features/inventory/presentation/bloc/inventory_exit_form_cubit.dart'
-    as _i962;
+    as _i963;
 import '../../features/inventory/presentation/bloc/inventory_exits_cubit.dart'
     as _i5;
 import '../../features/inventory/presentation/bloc/kardex_cubit.dart' as _i712;
@@ -416,6 +416,23 @@ import '../../features/purchases/presentation/bloc/supplier_credits/supplier_cre
     as _i54;
 import '../../features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart'
     as _i431;
+import '../../features/users/data/repositories_impl/users_repository_impl.dart'
+    as _i960;
+import '../../features/users/domain/repositories/users_repository.dart'
+    as _i476;
+import '../../features/users/domain/usecases/create_user_usecase.dart' as _i12;
+import '../../features/users/domain/usecases/delete_user_usecase.dart' as _i496;
+import '../../features/users/domain/usecases/get_global_users_count_usecase.dart'
+    as _i962;
+import '../../features/users/domain/usecases/get_user_by_id_usecase.dart'
+    as _i342;
+import '../../features/users/domain/usecases/get_users_usecase.dart' as _i499;
+import '../../features/users/domain/usecases/update_user_usecase.dart' as _i90;
+import '../../features/users/presentation/bloc/user_detail/user_detail_cubit.dart'
+    as _i587;
+import '../../features/users/presentation/bloc/user_form/user_form_cubit.dart'
+    as _i833;
+import '../../features/users/presentation/bloc/users/users_cubit.dart' as _i451;
 import '../network/network_cubit.dart' as _i11;
 import 'register_module.dart' as _i291;
 
@@ -476,6 +493,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i561.AccountMovementsRepository>(),
         gh<_i662.FinancialAccountsRepository>(),
       ),
+    );
+    gh.lazySingleton<_i476.UsersRepository>(
+      () => _i960.UsersRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i92.InventoryExitsRepository>(
       () => _i698.InventoryExitsRepositoryImpl(),
@@ -783,6 +803,24 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i662.FinancialAccountsRepository>(),
       ),
     );
+    gh.factory<_i12.CreateUserUseCase>(
+      () => _i12.CreateUserUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i496.DeleteUserUseCase>(
+      () => _i496.DeleteUserUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i962.GetGlobalUsersCountUseCase>(
+      () => _i962.GetGlobalUsersCountUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i342.GetUserByIdUseCase>(
+      () => _i342.GetUserByIdUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i499.GetUsersUseCase>(
+      () => _i499.GetUsersUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i90.UpdateUserUseCase>(
+      () => _i90.UpdateUserUseCase(gh<_i476.UsersRepository>()),
+    );
     gh.lazySingleton<_i580.GetCreditAccountsUseCase>(
       () => _i580.GetCreditAccountsUseCase(gh<_i4.CustomerCreditsRepository>()),
     );
@@ -1016,6 +1054,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i626.RecordMiniGameUC>(
       () => _i626.RecordMiniGameUC(gh<_i747.LoyaltyRepository>()),
     );
+    gh.factory<_i587.UserDetailCubit>(
+      () => _i587.UserDetailCubit(
+        gh<_i342.GetUserByIdUseCase>(),
+        gh<_i476.UsersRepository>(),
+      ),
+    );
     gh.factory<_i1001.CustomerCreditsCubit>(
       () => _i1001.CustomerCreditsCubit(
         gh<_i580.GetCreditAccountByCustomerUseCase>(),
@@ -1034,8 +1078,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i561.AccountMovementsRepository>(),
       ),
     );
-    gh.factory<_i962.InventoryExitFormCubit>(
-      () => _i962.InventoryExitFormCubit(
+    gh.factory<_i963.InventoryExitFormCubit>(
+      () => _i963.InventoryExitFormCubit(
         getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
         getActiveProductsAndVariantsUseCase:
             gh<_i753.GetActiveProductsAndVariantsUseCase>(),
@@ -1077,6 +1121,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i712.KardexCubit(
         getKardexMovements: gh<_i392.GetKardexMovementsUseCase>(),
         exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),
+      ),
+    );
+    gh.factory<_i451.UsersCubit>(
+      () => _i451.UsersCubit(
+        gh<_i499.GetUsersUseCase>(),
+        gh<_i962.GetGlobalUsersCountUseCase>(),
+        gh<_i90.UpdateUserUseCase>(),
       ),
     );
     gh.lazySingleton<_i382.CreateAttributeUseCase>(
@@ -1274,6 +1325,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i478.TopCustomersCubit>(
       () => _i478.TopCustomersCubit(
         getTopCustomersUC: gh<_i34.GetTopCustomersUC>(),
+      ),
+    );
+    gh.factory<_i833.UserFormCubit>(
+      () => _i833.UserFormCubit(
+        gh<_i12.CreateUserUseCase>(),
+        gh<_i90.UpdateUserUseCase>(),
       ),
     );
     gh.factory<_i1028.WalletCubit>(

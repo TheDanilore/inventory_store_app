@@ -1,32 +1,39 @@
-﻿import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:inventory_store_app/features/users/presentation/providers/user_form_provider.dart';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/user_form/user_form_cubit.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/user_form/user_form_state.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
+import 'package:go_router/go_router.dart';
 
 class UserFormScreen extends StatelessWidget {
   final String? initialRole;
-  final Map<String, dynamic>? existingUser;
+  final UserEntity? existingUser;
 
   const UserFormScreen({super.key, this.initialRole, this.existingUser});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create:
-          (_) => UserFormProvider(
-            existingUser: existingUser,
-            initialRole: initialRole,
-          ),
-      child: const _UserFormContent(),
+    return BlocProvider(
+      create: (_) => sl<UserFormCubit>(),
+      child: _UserFormContent(
+        initialRole: initialRole,
+        existingUser: existingUser,
+      ),
     );
   }
 }
 
 class _UserFormContent extends StatefulWidget {
-  const _UserFormContent();
+  final String? initialRole;
+  final UserEntity? existingUser;
+
+  const _UserFormContent({this.initialRole, this.existingUser});
 
   @override
   State<_UserFormContent> createState() => _UserFormContentState();
@@ -35,25 +42,47 @@ class _UserFormContent extends StatefulWidget {
 class _UserFormContentState extends State<_UserFormContent> {
   final _formKey = GlobalKey<FormState>();
 
-  void _handleProviderMessages(
-    BuildContext context,
-    UserFormProvider provider,
-  ) {
-    if (provider.errorMessage != null) {
-      AppSnackbar.show(
-        context,
-        message: provider.errorMessage!,
-        type: SnackbarType.error,
-      );
-      provider.clearMessages();
-    } else if (provider.successMessage != null) {
-      AppSnackbar.show(
-        context,
-        message: provider.successMessage!,
-        type: SnackbarType.success,
-      );
-      provider.clearMessages();
+  // Controladores
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _emailCtrl;
+  late final TextEditingController _passwordCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _docCtrl;
+
+  // Estados locales
+  String _docType = 'DNI';
+  String _role = AppRoles.customer;
+  bool _isActive = true;
+  bool _obscurePassword = true;
+
+  bool get _isEditing => widget.existingUser != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.existingUser?.fullName ?? '');
+    _emailCtrl = TextEditingController(text: widget.existingUser?.email ?? '');
+    _passwordCtrl = TextEditingController();
+    _phoneCtrl = TextEditingController(text: widget.existingUser?.phone ?? '');
+    _docCtrl = TextEditingController(text: widget.existingUser?.documentNumber ?? '');
+
+    if (_isEditing) {
+      _docType = widget.existingUser?.documentType ?? 'DNI';
+      _role = widget.existingUser?.role ?? AppRoles.customer;
+      _isActive = widget.existingUser?.isActive ?? true;
+    } else {
+      _role = widget.initialRole ?? AppRoles.customer;
     }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _phoneCtrl.dispose();
+    _docCtrl.dispose();
+    super.dispose();
   }
 
   String? _required(String? value, String fieldName) {
@@ -61,93 +90,150 @@ class _UserFormContentState extends State<_UserFormContent> {
     return null;
   }
 
-  Future<void> _onSave(UserFormProvider provider) async {
+  void _generatePassword() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*';
+    final random = Random.secure();
+    final generated = List.generate(
+      10,
+      (index) => chars[random.nextInt(chars.length)],
+    ).join();
+
+    setState(() {
+      _passwordCtrl.text = generated;
+      _obscurePassword = false;
+    });
+
+    Clipboard.setData(ClipboardData(text: generated));
+    AppSnackbar.show(
+      context,
+      message: 'Contraseña generada y copiada al portapapeles: $generated',
+      type: SnackbarType.success,
+    );
+  }
+
+  void _onSave() {
     if (!_formKey.currentState!.validate()) return;
-    final success = await provider.saveUser();
-    if (success && mounted) {
-      Navigator.pop(context, true);
-    }
+    
+    context.read<UserFormCubit>().saveUser(
+      id: widget.existingUser?.id,
+      email: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text,
+      fullName: _nameCtrl.text.trim(),
+      role: _role,
+      phone: _phoneCtrl.text.trim(),
+      documentType: _docType,
+      documentNumber: _docCtrl.text.trim(),
+      isActive: _isActive,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserFormProvider>(
-      builder: (context, provider, _) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _handleProviderMessages(context, provider);
-        });
+    return BlocConsumer<UserFormCubit, UserFormState>(
+      listener: (context, state) {
+        if (state is UserFormSuccess) {
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.success,
+          );
+          if (context.canPop()) {
+            context.pop(true); // Return true to indicate change
+          }
+        } else if (state is UserFormError) {
+          AppSnackbar.show(
+            context,
+            message: state.message,
+            type: SnackbarType.error,
+          );
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state is UserFormLoading;
 
-        final isEditing = provider.isEditing;
-
-        return AdminLayout(
-          title: isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
-          showBackButton: true,
-          showProfileButton: false,
-          showDrawerButton: false,
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            title: Text(
+              _isEditing ? 'Editar Usuario' : 'Nuevo Usuario',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+              ),
+            ),
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+              onPressed: () => context.pop(),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Container(color: Colors.grey.shade200, height: 1),
+            ),
+          ),
           body: Stack(
             children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 20,
-                  bottom: 100,
-                ),
-                child: Form(
-                  key: _formKey,
+              Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // â”€â”€â”€ SELECTOR DE ROL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                      const Text(
-                        'Tipo de cuenta',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
+                      if (!_isEditing) ...[
+                        const Text(
+                          'Selecciona el Rol',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _RoleCard(
-                              title: 'Cliente',
-                              icon: Icons.people_alt_rounded,
-                              isSelected: provider.role == AppRoles.customer,
-                              color: AppColors.primary,
-                              onTap: () => provider.setRole(AppRoles.customer),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _RoleCard(
+                                title: 'Cliente',
+                                icon: Icons.person_outline_rounded,
+                                isSelected: _role == AppRoles.customer,
+                                color: AppColors.primary,
+                                onTap: () => setState(() => _role = AppRoles.customer),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _RoleCard(
-                              title: 'Empleado',
-                              icon: Icons.badge_rounded,
-                              isSelected: provider.role == AppRoles.employee,
-                              color: Colors.teal,
-                              onTap: () => provider.setRole(AppRoles.employee),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _RoleCard(
+                                title: 'Empleado',
+                                icon: Icons.badge_outlined,
+                                isSelected: _role == AppRoles.employee,
+                                color: Colors.orange.shade600,
+                                onTap: () => setState(() => _role = AppRoles.employee),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _RoleCard(
-                              title: 'Admin',
-                              icon: Icons.admin_panel_settings_rounded,
-                              isSelected: provider.role == AppRoles.admin,
-                              color: Colors.indigo,
-                              onTap: () => provider.setRole(AppRoles.admin),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _RoleCard(
+                                title: 'Admin',
+                                icon: Icons.admin_panel_settings_outlined,
+                                isSelected: _role == AppRoles.admin,
+                                color: Colors.indigo,
+                                onTap: () => setState(() => _role = AppRoles.admin),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
 
-                      // â”€â”€â”€ ESTADO ACTIVO (solo en modo ediciÃ³n) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                      if (isEditing) ...[
+                      if (_isEditing) ...[
                         _SectionCard(
-                          title: 'Estado de la cuenta',
-                          icon: Icons.toggle_on_rounded,
+                          title: 'Estado del Usuario',
+                          icon: Icons.shield_rounded,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -164,23 +250,20 @@ class _UserFormContentState extends State<_UserFormContent> {
                                       ),
                                     ),
                                     Text(
-                                      provider.isActive
-                                          ? 'Puede iniciar sesiÃ³n'
-                                          : 'Acceso bloqueado',
+                                      _isActive ? 'Puede iniciar sesión' : 'Acceso bloqueado',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color:
-                                            provider.isActive
-                                                ? Colors.green.shade600
-                                                : Colors.red.shade600,
+                                        color: _isActive
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
                                       ),
                                     ),
                                   ],
                                 ),
                                 Switch(
-                                  value: provider.isActive,
+                                  value: _isActive,
                                   activeThumbColor: AppColors.primary,
-                                  onChanged: provider.toggleActive,
+                                  onChanged: (v) => setState(() => _isActive = v),
                                 ),
                               ],
                             ),
@@ -189,23 +272,18 @@ class _UserFormContentState extends State<_UserFormContent> {
                         const SizedBox(height: 20),
                       ],
 
-                      // â”€â”€â”€ CREDENCIALES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _SectionCard(
                         title: 'Credenciales de Acceso',
                         icon: Icons.lock_person_rounded,
                         children: [
                           _CustomTextField(
-                            controller: provider.emailCtrl,
-                            label: 'Correo ElectrÃ³nico',
+                            controller: _emailCtrl,
+                            label: 'Correo Electrónico',
                             hint: 'ejemplo@correo.com',
                             icon: Icons.email_rounded,
                             keyboardType: TextInputType.emailAddress,
-                            readOnly: isEditing,
-                            validator:
-                                isEditing
-                                    ? null
-                                    : (v) =>
-                                        _required(v, 'el correo electrÃ³nico'),
+                            readOnly: _isEditing,
+                            validator: _isEditing ? null : (v) => _required(v, 'el correo electrónico'),
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -213,83 +291,59 @@ class _UserFormContentState extends State<_UserFormContent> {
                             children: [
                               Expanded(
                                 child: _CustomTextField(
-                                  controller: provider.passwordCtrl,
-                                  label:
-                                      isEditing
-                                          ? 'Nueva contraseÃ±a (opcional)'
-                                          : 'ContraseÃ±a temporal',
-                                  hint:
-                                      isEditing
-                                          ? 'Dejar vacÃ­o para no cambiar'
-                                          : 'MÃ­nimo 6 caracteres',
+                                  controller: _passwordCtrl,
+                                  label: _isEditing ? 'Nueva contraseña (opcional)' : 'Contraseña temporal',
+                                  hint: _isEditing ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres',
                                   icon: Icons.vpn_key_rounded,
-                                  obscureText: provider.obscurePassword,
+                                  obscureText: _obscurePassword,
                                   validator: (v) {
-                                    if (isEditing) {
-                                      if (v != null &&
-                                          v.isNotEmpty &&
-                                          v.length < 6) {
-                                        return 'MÃ­nimo 6 caracteres';
+                                    if (_isEditing) {
+                                      if (v != null && v.isNotEmpty && v.length < 6) {
+                                        return 'Mínimo 6 caracteres';
                                       }
                                       return null;
                                     }
                                     if (v == null || v.isEmpty) {
-                                      return 'Ingresa una contraseÃ±a';
+                                      return 'Ingresa una contraseña';
                                     }
                                     if (v.length < 6) {
-                                      return 'MÃ­nimo 6 caracteres';
+                                      return 'Mínimo 6 caracteres';
                                     }
                                     return null;
                                   },
                                   suffixIcon: IconButton(
                                     icon: Icon(
-                                      provider.obscurePassword
+                                      _obscurePassword
                                           ? Icons.visibility_rounded
                                           : Icons.visibility_off_rounded,
                                       color: Colors.grey.shade500,
                                       size: 20,
                                     ),
-                                    onPressed:
-                                        provider.togglePasswordVisibility,
+                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                   ),
                                 ),
                               ),
-                              if (!isEditing) ...[
+                              if (!_isEditing) ...[
                                 const SizedBox(width: 8),
                                 Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 24,
-                                  ), // Alinear con el input (debajo del label)
+                                  padding: const EdgeInsets.only(top: 24),
                                   child: Tooltip(
                                     message: 'Generar y copiar',
                                     child: ElevatedButton(
-                                      onPressed:
-                                          () => provider.generatePassword(
-                                            context,
-                                          ),
+                                      onPressed: _generatePassword,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.surface,
                                         foregroundColor: AppColors.primary,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                          borderRadius: BorderRadius.circular(12),
                                           side: BorderSide(
-                                            color: AppColors.primary.withValues(
-                                              alpha: 0.3,
-                                            ),
+                                            color: AppColors.primary.withValues(alpha: 0.3),
                                           ),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 14,
-                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                       ),
-                                      child: const Icon(
-                                        Icons.password_rounded,
-                                        size: 20,
-                                      ),
+                                      child: const Icon(Icons.password_rounded, size: 20),
                                     ),
                                   ),
                                 ),
@@ -300,30 +354,28 @@ class _UserFormContentState extends State<_UserFormContent> {
                       ),
                       const SizedBox(height: 20),
 
-                      // â”€â”€â”€ DATOS PERSONALES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _SectionCard(
                         title: 'Datos Personales',
-                        icon: Icons.person_rounded,
+                        icon: Icons.badge_rounded,
                         children: [
                           _CustomTextField(
-                            controller: provider.nameCtrl,
-                            label: 'Nombre completo',
-                            hint: 'Nombres y Apellidos',
-                            icon: Icons.badge_rounded,
+                            controller: _nameCtrl,
+                            label: 'Nombre completo o Razón social',
+                            hint: 'Ej. Juan Pérez',
                             textCapitalization: TextCapitalization.words,
                             validator: (v) => _required(v, 'el nombre'),
                           ),
                           const SizedBox(height: 16),
                           _CustomTextField(
-                            controller: provider.phoneCtrl,
-                            label: 'TelÃ©fono (Opcional)',
-                            hint: 'Ej. 987654321',
+                            controller: _phoneCtrl,
+                            label: 'Teléfono',
+                            hint: 'Opcional',
                             icon: Icons.phone_rounded,
                             keyboardType: TextInputType.phone,
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Documento de Identidad (Opcional)',
+                            'Documento de Identidad',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -336,43 +388,31 @@ class _UserFormContentState extends State<_UserFormContent> {
                             children: [
                               Container(
                                 width: 100,
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
                                   color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                  ),
+                                  border: Border.all(color: Colors.grey.shade200),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
-                                    value: provider.docType,
+                                    value: _docType,
                                     isExpanded: true,
-                                    icon: const Icon(
-                                      Icons.arrow_drop_down_rounded,
-                                      color: Colors.grey,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                    ),
-                                    items:
-                                        ['DNI', 'CE', 'RUC', 'PASAPORTE']
-                                            .map(
-                                              (type) => DropdownMenuItem(
-                                                value: type,
-                                                child: Text(
-                                                  type,
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                    icon: Icon(Icons.expand_more_rounded, color: Colors.grey.shade500),
+                                    items: ['DNI', 'RUC', 'CE', 'PAS'].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          value,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
                                     onChanged: (val) {
-                                      if (val != null) {
-                                        provider.setDocType(val);
-                                      }
+                                      if (val != null) setState(() => _docType = val);
                                     },
                                   ),
                                 ),
@@ -380,8 +420,8 @@ class _UserFormContentState extends State<_UserFormContent> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _CustomTextField(
-                                  controller: provider.docCtrl,
-                                  hint: 'NÃºmero de documento',
+                                  controller: _docCtrl,
+                                  hint: 'Número de documento',
                                   keyboardType: TextInputType.number,
                                 ),
                               ),
@@ -393,8 +433,6 @@ class _UserFormContentState extends State<_UserFormContent> {
                   ),
                 ),
               ),
-
-              // â”€â”€â”€ BOTÃ“N FIJO INFERIOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Positioned(
                 left: 0,
                 right: 0,
@@ -415,53 +453,48 @@ class _UserFormContentState extends State<_UserFormContent> {
                     height: 54,
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed:
-                          provider.isLoading ? null : () => _onSave(provider),
+                      onPressed: isLoading ? null : _onSave,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            isEditing ? Colors.indigo : AppColors.primary,
+                        backgroundColor: _isEditing ? Colors.indigo : AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child:
-                          provider.isLoading
-                              ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                              : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isEditing
-                                        ? Icons.save_rounded
-                                        : Icons.person_add_rounded,
-                                    size: 20,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    isEditing
-                                        ? 'Guardar cambios'
-                                        : (provider.role == AppRoles.admin
-                                            ? 'Crear Administrador'
-                                            : provider.role == AppRoles.employee
-                                            ? 'Crear Empleado'
-                                            : 'Crear Cliente'),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
                               ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _isEditing ? Icons.save_rounded : Icons.person_add_rounded,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isEditing
+                                      ? 'Guardar cambios'
+                                      : (_role == AppRoles.admin
+                                          ? 'Crear Administrador'
+                                          : _role == AppRoles.employee
+                                              ? 'Crear Empleado'
+                                              : 'Crear Cliente'),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                 ),
@@ -473,8 +506,6 @@ class _UserFormContentState extends State<_UserFormContent> {
     );
   }
 }
-
-// â”€â”€â”€ WIDGETS AUXILIARES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _RoleCard extends StatelessWidget {
   final String title;
@@ -646,17 +677,13 @@ class _CustomTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-            prefixIcon:
-                icon != null
-                    ? Icon(icon, size: 18, color: Colors.grey.shade400)
-                    : null,
+            prefixIcon: icon != null
+                ? Icon(icon, size: 18, color: Colors.grey.shade400)
+                : null,
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: readOnly ? Colors.grey.shade100 : AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -683,4 +710,3 @@ class _CustomTextField extends StatelessWidget {
     );
   }
 }
-

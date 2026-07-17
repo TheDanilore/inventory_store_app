@@ -1,15 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/users/presentation/providers/users_provider.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:provider/provider.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class UserCard extends StatefulWidget {
-  final Map<String, dynamic> user;
+  final UserEntity user;
   final VoidCallback onTap;
   final String role;
 
@@ -32,29 +31,16 @@ class _UserCardState extends State<UserCard> {
 
     setState(() => _isToggling = true);
 
-    final provider = context.read<UsersProvider>();
-    final success = await provider.toggleUserStatus(
-      widget.user['id'],
+    await context.read<UsersCubit>().toggleUserStatus(
+      widget.user.id,
       currentStatus,
     );
 
     if (mounted) {
       setState(() => _isToggling = false);
-      if (success) {
-        AppSnackbar.show(
-          context,
-          message:
-              'Usuario ${!currentStatus ? 'activado' : 'desactivado'} con éxito',
-          type: SnackbarType.success,
-        );
-      } else if (provider.errorMessage != null) {
-        AppSnackbar.show(
-          context,
-          message: provider.errorMessage!,
-          type: SnackbarType.error,
-        );
-        provider.clearError();
-      }
+      // We rely on the Bloc Listener in the parent screen to show snackbars if needed,
+      // or we could show them here if we had a way to wait for the exact result, 
+      // but toggleUserStatus handles the error emitting.
     }
   }
 
@@ -62,11 +48,11 @@ class _UserCardState extends State<UserCard> {
   Widget build(BuildContext context) {
     final isLoyaltyEnabled =
         context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
-    final String fullName = widget.user['full_name'] ?? 'Sin nombre';
-    final String? email = widget.user['email'];
-    final String? phone = widget.user['phone'];
-    final bool isActive = widget.user['is_active'] ?? true;
-    final int walletBalance = widget.user['wallet_balance'] ?? 0;
+    final String fullName = widget.user.fullName;
+    final String? email = widget.user.email;
+    final String? phone = widget.user.phone;
+    final bool isActive = widget.user.isActive;
+    final int walletBalance = widget.user.walletBalance;
     final String initial =
         fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
 
