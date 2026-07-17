@@ -31,7 +31,8 @@ class PurchaseOrdersScreen extends StatefulWidget {
 
 class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   PurchaseOrdersCubit get cubit => context.read<PurchaseOrdersCubit>();
-  _PurchaseOrdersViewModel get viewModel => _PurchaseOrdersViewModel(cubit, cubit.state);
+  _PurchaseOrdersViewModel get viewModel =>
+      _PurchaseOrdersViewModel(cubit, cubit.state);
   final _searchCtrl = TextEditingController();
   bool _hasDraft = false;
   Timer? _debounce;
@@ -50,9 +51,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     super.initState();
     _checkDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      
       cubit.loadOrders(refresh: true);
-      
     });
   }
 
@@ -82,7 +81,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   Future<void> _pickDateRange(BuildContext context) async {
-    
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -110,7 +108,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   // Helpers para generar modelos dummy
-  ProductModel _dummyProduct(String id, String name, bool usesBatches, String? imageUrl) {
+  ProductModel _dummyProduct(
+    String id,
+    String name,
+    bool usesBatches,
+    String? imageUrl,
+  ) {
     return ProductModel.fromJson({
       'id': id,
       'name': name,
@@ -127,12 +130,17 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             'product_id': id,
             'image_url': imageUrl,
             'is_main': true,
-          }
+          },
         ],
     });
   }
 
-  ProductVariantModel _dummyVariant(String id, String productId, String attrs, String? imageUrl) {
+  ProductVariantModel _dummyVariant(
+    String id,
+    String productId,
+    String attrs,
+    String? imageUrl,
+  ) {
     return ProductVariantModel.fromJson({
       'id': id,
       'product_id': productId,
@@ -146,14 +154,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             'product_id': productId,
             'image_url': imageUrl,
             'is_main': true,
-          }
+          },
         ],
     });
   }
 
   void _showDetail(BuildContext context, PurchaseOrderModel po) {
-    
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -161,10 +167,17 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       builder:
           (_) => PODetailSheet(
             po: po,
-            loadItems: () async { final res = await sl<FetchPurchaseOrderItemsUseCase>().call(po.id); return res.fold((l)=>[],(r)=>r); },
+            loadItems: () async {
+              final res = await sl<FetchPurchaseOrderItemsUseCase>().call(
+                po.id,
+              );
+              return res.fold((l) => [], (r) => r);
+            },
             onReceive: () async {
-              final res = await sl<FetchPurchaseOrderItemsUseCase>().call(po.id);
-              final items = res.fold((l)=>[],(r)=>r);
+              final res = await sl<FetchPurchaseOrderItemsUseCase>().call(
+                po.id,
+              );
+              final items = res.fold((l) => [], (r) => r);
               if (!context.mounted) return;
 
               final entryItems =
@@ -238,7 +251,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<PurchaseOrdersCubit, PurchaseOrdersState>(
       builder: (context, state) {
-        final viewModel = _PurchaseOrdersViewModel(context.read<PurchaseOrdersCubit>(), state);
+        final viewModel = _PurchaseOrdersViewModel(
+          context.read<PurchaseOrdersCubit>(),
+          state,
+        );
         if (viewModel.errorMessage.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             AppSnackbar.show(
@@ -736,41 +752,62 @@ class _DateRangeButton extends StatelessWidget {
   }
 }
 
-
 class _PurchaseOrdersViewModel {
   final PurchaseOrdersCubit cubit;
   final PurchaseOrdersState state;
   _PurchaseOrdersViewModel(this.cubit, this.state);
 
   String get errorMessage {
-    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).message;
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).message;
+    }
     return '';
   }
+
   void clearError() => cubit.clearError();
 
-  bool get isLoading => state is PurchaseOrdersLoading || state is PurchaseOrdersInitial;
-  
+  bool get isLoading =>
+      state is PurchaseOrdersLoading || state is PurchaseOrdersInitial;
+
   List<dynamic> get orders {
-    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).orders;
-    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).currentOrders;
-    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).currentOrders;
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).orders;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).currentOrders;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).currentOrders;
+    }
     return [];
   }
-  
+
   String get searchText {
-    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).searchText;
-    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).searchText;
-    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).searchText;
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).searchText;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).searchText;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).searchText;
+    }
     return '';
   }
-  
+
   String get statusFilter {
-    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).statusFilter;
-    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).statusFilter;
-    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).statusFilter;
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).statusFilter;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).statusFilter;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).statusFilter;
+    }
     return 'Todos';
   }
-  
+
   DateTimeRange? get dateRange {
     DateTime? start;
     DateTime? end;
@@ -784,25 +821,39 @@ class _PurchaseOrdersViewModel {
       start = (state as PurchaseOrdersError).startDate;
       end = (state as PurchaseOrdersError).endDate;
     }
-    if (start != null && end != null) return DateTimeRange(start: start, end: end);
+    if (start != null && end != null) {
+      return DateTimeRange(start: start, end: end);
+    }
     return null;
   }
-  
+
   int get currentPage {
-    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).currentPage;
-    if (state is PurchaseOrdersLoading) return (state as PurchaseOrdersLoading).currentPage;
-    if (state is PurchaseOrdersError) return (state as PurchaseOrdersError).currentPage;
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).currentPage;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).currentPage;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).currentPage;
+    }
     return 0;
   }
-  
+
   int get totalPages {
-    if (state is PurchaseOrdersLoaded) return (state as PurchaseOrdersLoaded).totalPages;
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).totalPages;
+    }
     int tc = 0;
-    if (state is PurchaseOrdersLoading) tc = (state as PurchaseOrdersLoading).totalCount;
-    if (state is PurchaseOrdersError) tc = (state as PurchaseOrdersError).totalCount;
+    if (state is PurchaseOrdersLoading) {
+      tc = (state as PurchaseOrdersLoading).totalCount;
+    }
+    if (state is PurchaseOrdersError) {
+      tc = (state as PurchaseOrdersError).totalCount;
+    }
     return tc == 0 ? 1 : (tc / 10).ceil();
   }
-  
+
   double get totalAmountFiltered {
     double total = 0;
     for (final o in orders) {
@@ -810,7 +861,7 @@ class _PurchaseOrdersViewModel {
     }
     return total;
   }
-  
+
   int get pendingCountFiltered {
     int count = 0;
     for (final o in orders) {
@@ -828,21 +879,8 @@ class _PurchaseOrdersViewModel {
     final result = await sl<FetchPurchaseOrderItemsUseCase>().call(id);
     return result.fold((l) => [], (r) => r);
   }
+
   Future<void> updateOrderStatus(String id, String status) async {
     await cubit.updateOrderStatus(id, status);
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
