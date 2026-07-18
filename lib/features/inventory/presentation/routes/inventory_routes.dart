@@ -69,11 +69,7 @@ class InventoryRoutes {
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<KardexCubit>(),
-            child: const AdminLayout(
-              title: 'Kardex',
-              showBackButton: true,
-              body: KardexScreen(),
-            ),
+            child: const KardexScreen(),
           ),
     ),
     GoRoute(

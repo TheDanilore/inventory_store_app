@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'dart:async';
 
 class KardexScreen extends StatefulWidget {
@@ -221,8 +222,9 @@ class _KardexScreenState extends State<KardexScreen> {
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= 800;
 
-            return Scaffold(
-              backgroundColor: AppColors.background,
+            return AdminLayout(
+              title: 'Kardex',
+              showBackButton: true,
               body: Column(
                 children: [
                   // Acciones principales en Tablet
@@ -450,33 +452,36 @@ class _KardexScreenState extends State<KardexScreen> {
                     ),
                   ),
 
-                  // --- PAGINACIÓN ANCLADA ---
-                  if (currentState.totalPages > 1 && !isLoading)
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
-                      ),
-                      child: SafeArea(
-                        top: false,
-                        child: AdminPageBlocks(
-                          currentPage: currentState.currentPage,
-                          totalPages: currentState.totalPages,
-                          onPageChanged:
-                              (page) =>
-                                  context.read<KardexCubit>().changePage(page),
-                        ),
-                      ),
-                    ),
                 ],
               ),
+              bottomNavigationBar:
+                  currentState.totalPages > 1 && !isLoading
+                      ? Container(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, -4),
+                            ),
+                          ],
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: AdminPageBlocks(
+                            currentPage: currentState.currentPage,
+                            totalPages: currentState.totalPages,
+                            onPageChanged:
+                                (page) =>
+                                    context.read<KardexCubit>().changePage(
+                                      page,
+                                    ),
+                          ),
+                        ),
+                      )
+                      : null,
               floatingActionButton:
                   !isTablet
                       ? FloatingActionButton.extended(
