@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
@@ -83,8 +84,17 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     return BlocBuilder<CustomersCubit, CustomersState>(
       builder: (context, state) {
         final isLoading = state is CustomersLoading;
-        return Scaffold(
-          backgroundColor: Colors.transparent,
+        return AdminLayout(
+          title: 'Clientes',
+          showBackButton: true,
+          settingsActions: const [
+            PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
+          ],
+          onSettingsSelected: (value) {
+            if (value == 'export') {
+              context.read<CustomersCubit>().exportPdf();
+            }
+          },
           floatingActionButton:
               _tabCtrl.index == 0 && _searchCtrl.text.isEmpty
                   ? FloatingActionButton(

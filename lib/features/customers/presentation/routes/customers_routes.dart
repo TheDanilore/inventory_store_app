@@ -24,11 +24,7 @@ class CustomersRoutes {
       builder: (context, state) {
         return MultiBlocProvider(
           providers: [BlocProvider(create: (_) => sl<CustomersCubit>())],
-          child: const AdminLayout(
-            title: 'Clientes',
-            showBackButton: true,
-            body: CustomersScreen(),
-          ),
+          child: const CustomersScreen(),
         );
       },
     ),
