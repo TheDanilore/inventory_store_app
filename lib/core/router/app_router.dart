@@ -136,8 +136,11 @@ class AppRouter {
         // ADMIN ROUTES
         ShellRoute(
           builder:
-              (context, state, child) => BlocProvider(
-                create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+              (context, state, child) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(create: (_) => sl<AdminCatalogCubit>()..loadInitialData()),
+                  BlocProvider(create: (_) => sl<CartCubit>()..initCart(cartType: 'pos')),
+                ],
                 child: child,
               ),
           routes: [
@@ -180,17 +183,21 @@ class AppRouter {
         // CUSTOMER ROUTES
         StatefulShellRoute.indexedStack(
           builder:
-              (context, state, navigationShell) =>
-                  CustomerLayout(
-                    title: 'Danilore Store', 
-                    body: navigationShell, 
-                    showAppBar: navigationShell.currentIndex == 1, // Only show for Cart
-                    showWalletChip: true,
-                    showCartIcon: false,
-                    showProfileIcon: false,
-                    showBackButton: false,
-                    currentIndex: navigationShell.currentIndex,
-                  ),
+              (context, state, navigationShell) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(create: (_) => sl<CartCubit>()..initCart(cartType: 'customer')),
+                ],
+                child: CustomerLayout(
+                  title: 'Danilore Store', 
+                  body: navigationShell, 
+                  showAppBar: navigationShell.currentIndex == 1, // Only show for Cart
+                  showWalletChip: true,
+                  showCartIcon: false,
+                  showProfileIcon: false,
+                  showBackButton: false,
+                  currentIndex: navigationShell.currentIndex,
+                ),
+              ),
           branches: [
             StatefulShellBranch(
               routes: [

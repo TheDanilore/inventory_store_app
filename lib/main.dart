@@ -14,7 +14,6 @@ import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/points_cubit.dart';
@@ -93,7 +92,6 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<PointsCubit>()),
         BlocProvider(create: (_) => sl<WalletCubit>()),
         BlocProvider(create: (_) => sl<TopCustomersCubit>()),
-        BlocProvider(create: (_) => sl<CartCubit>()),
         BlocProvider(create: (_) => sl<CashShiftsCubit>()),
         BlocProvider(create: (_) => sl<PosCubit>()),
       ],

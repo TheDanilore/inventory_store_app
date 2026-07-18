@@ -13,14 +13,14 @@ import 'package:inventory_store_app/features/catalog/data/models/product_variant
 
 @LazySingleton(as: CartRepository)
 class CartRepositoryImpl implements CartRepository {
-  static const String _cartKey = 'local_cart';
   final SupabaseClient _supabase = Supabase.instance.client;
+  String _getCartKey(String cartType) => 'local_cart_$cartType';
 
   @override
-  Future<Either<Failure, Map<String, CartItemEntity>>> loadLocalCart() async {
+  Future<Either<Failure, Map<String, CartItemEntity>>> loadLocalCart(String cartType) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cartString = prefs.getString(_cartKey);
+      final cartString = prefs.getString(_getCartKey(cartType));
       if (cartString != null) {
         final Map<String, dynamic> decodedMap = json.decode(cartString);
         final map = decodedMap.map(
@@ -35,7 +35,7 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> saveLocalCart(Map<String, CartItemEntity> items) async {
+  Future<Either<Failure, Unit>> saveLocalCart(String cartType, Map<String, CartItemEntity> items) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       
@@ -69,7 +69,7 @@ class CartRepositoryImpl implements CartRepository {
       });
       
       final encodedMap = json.encode(modelsMap);
-      await prefs.setString(_cartKey, encodedMap);
+      await prefs.setString(_getCartKey(cartType), encodedMap);
       return right(unit);
     } catch (e) {
       return left(Failure.from(e));
@@ -77,10 +77,10 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> clearLocalCart() async {
+  Future<Either<Failure, Unit>> clearLocalCart(String cartType) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_cartKey);
+      await prefs.remove(_getCartKey(cartType));
       return right(unit);
     } catch (e) {
       return left(Failure.from(e));
@@ -108,8 +108,11 @@ class CartRepositoryImpl implements CartRepository {
 
   @override
   Future<Either<Failure, Map<String, CartItemEntity>>> syncCloudCart(
-      String profileId, Map<String, CartItemEntity> localItems) async {
+      String cartType, String profileId, Map<String, CartItemEntity> localItems) async {
     try {
+      if (cartType == 'pos') {
+        return right(localItems);
+      }
       final cartId = await _getOrCreateCartId(profileId);
       if (cartId == null) {
         return left(const ServerFailure(message: 'No se pudo crear/obtener carrito en la nube.'));
@@ -224,8 +227,11 @@ class CartRepositoryImpl implements CartRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> clearCloudCart(String profileId) async {
+  Future<Either<Failure, Unit>> clearCloudCart(String cartType, String profileId) async {
     try {
+      if (cartType == 'pos') {
+        return right(unit);
+      }
       final cartId = await _getOrCreateCartId(profileId);
       if (cartId == null) {
         return left(const ServerFailure(message: 'No se pudo crear/obtener carrito en la nube.'));

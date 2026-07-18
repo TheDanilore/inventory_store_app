@@ -6,10 +6,12 @@ import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entit
 import 'package:inventory_store_app/features/pos/domain/repositories/cart_repository.dart';
 
 class SyncCartParams {
+  final String cartType;
   final String profileId;
   final Map<String, CartItemEntity> localItems;
 
   const SyncCartParams({
+    required this.cartType,
     required this.profileId,
     required this.localItems,
   });
@@ -23,6 +25,6 @@ class SyncCartUseCase implements UseCase<Map<String, CartItemEntity>, SyncCartPa
 
   @override
   Future<Either<Failure, Map<String, CartItemEntity>>> call(SyncCartParams params) async {
-    return await repository.syncCloudCart(params.profileId, params.localItems);
+    return await repository.syncCloudCart(params.cartType, params.profileId, params.localItems);
   }
 }

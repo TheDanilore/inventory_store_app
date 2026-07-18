@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/load_cart_uc.dart';
 import 'package:inventory_store_app/features/pos/domain/usecases/save_cart_uc.dart';
@@ -16,6 +15,8 @@ class CartCubit extends Cubit<CartState> {
   final SyncCartUseCase _syncCart;
   final ClearCartUseCase _clearCart;
 
+  String _cartType = 'customer';
+
   CartCubit({
     required LoadCartUseCase loadCart,
     required SaveCartUseCase saveCart,
@@ -27,10 +28,15 @@ class CartCubit extends Cubit<CartState> {
         _clearCart = clearCart,
         super(const CartState());
 
-  Future<void> initCart() async {
+  void setCartType(String cartType) {
+    _cartType = cartType;
+  }
+
+  Future<void> initCart({String cartType = 'customer'}) async {
+    _cartType = cartType;
     emit(state.copyWith(isLoading: true));
 
-    final localRes = await _loadCart(const NoParams());
+    final localRes = await _loadCart(LoadCartParams(_cartType));
     localRes.fold(
       (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
       (items) {
@@ -62,7 +68,7 @@ class CartCubit extends Cubit<CartState> {
     // Let's pass the auth user ID to the repo and let it translate it (or we can just leave it as is if repo does it).
     // I will assume `profileId` parameter in SyncCartParams is actually `authUserId` based on legacy.
 
-    final res = await _syncCart(SyncCartParams(profileId: user.id, localItems: state.items));
+    final res = await _syncCart(SyncCartParams(cartType: _cartType, profileId: user.id, localItems: state.items));
     res.fold(
       (failure) => emit(state.copyWith(isSyncing: false, errorMessage: failure.message)),
       (items) {
@@ -72,7 +78,7 @@ class CartCubit extends Cubit<CartState> {
   }
 
   Future<void> _saveLocal() async {
-    await _saveCart(state.items);
+    await _saveCart(SaveCartParams(cartType: _cartType, items: state.items));
   }
 
   void addItem(CartItemEntity item) {
@@ -203,7 +209,7 @@ class CartCubit extends Cubit<CartState> {
     final user = Supabase.instance.client.auth.currentUser;
     final profileId = user?.id; // Note: passed as authUserId to usecase/repository
 
-    await _clearCart(ClearCartParams(profileId: profileId));
+    await _clearCart(ClearCartParams(cartType: _cartType, profileId: profileId));
     emit(state.copyWith(items: {}));
   }
 
