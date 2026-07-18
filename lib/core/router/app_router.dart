@@ -182,9 +182,13 @@ class AppRouter {
           builder:
               (context, state, navigationShell) =>
                   CustomerLayout(
-                    title: '', 
+                    title: 'Danilore Store', 
                     body: navigationShell, 
-                    showAppBar: false,
+                    showAppBar: navigationShell.currentIndex == 1, // Only show for Cart
+                    showWalletChip: true,
+                    showCartIcon: false,
+                    showProfileIcon: false,
+                    showBackButton: false,
                     currentIndex: navigationShell.currentIndex,
                   ),
           branches: [

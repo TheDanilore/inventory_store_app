@@ -16,7 +16,6 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/custome
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:go_router/go_router.dart';
@@ -185,14 +184,8 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
           return bInStock.compareTo(aInStock);
         });
 
-    return CustomerLayout(
-      title: 'Danilore Store',
-      showBackButton: false,
-      showProfileIcon: false,
-      showBottomNav: false,
-      showCartIcon: false,
-      showWalletChip: true,
-      currentIndex: 1,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
         child:

@@ -9,7 +9,6 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
@@ -100,12 +99,7 @@ class CustomersRoutes {
     GoRoute(
       path: '/customer/profile',
       builder:
-          (context, state) => const CustomerLayout(
-            title: 'Perfil',
-            currentIndex: 2,
-            showAppBar: false,
-            body: ProfileScreen(openedFromAdmin: false),
-          ),
+          (context, state) => const ProfileScreen(openedFromAdmin: false),
     ),
     GoRoute(
       path: '/customer/locations',
