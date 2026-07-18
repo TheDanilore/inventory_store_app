@@ -13,105 +13,128 @@ class ProductAvailabilityCard extends StatelessWidget {
     final cubit = context.read<ProductDetailCubit>();
     if (!cubit.isAdmin) return const SizedBox.shrink();
 
-    final filteredStocks =
-        state.warehouseStocks
-            .where((row) => row['variant_id'] == state.selectedVariantId)
-            .toList();
+    final List<Map<String, dynamic>> displayStocks;
+    if (state.selectedVariantId != null) {
+      displayStocks =
+          state.warehouseStocks
+              .where((row) => row['variant_id'] == state.selectedVariantId)
+              .toList();
+    } else {
+      final Map<String, Map<String, dynamic>> aggregated = {};
+      for (final row in state.warehouseStocks) {
+        final warehouseId = row['warehouse_id']?.toString() ?? 'unknown';
+        final qty = (row['available_quantity'] as num?)?.toInt() ?? 0;
+        if (aggregated.containsKey(warehouseId)) {
+          final currentQty =
+              aggregated[warehouseId]!['available_quantity'] as int;
+          aggregated[warehouseId]!['available_quantity'] = currentQty + qty;
+        } else {
+          aggregated[warehouseId] = Map<String, dynamic>.from(row);
+          aggregated[warehouseId]!['available_quantity'] = qty;
+        }
+      }
+      displayStocks = aggregated.values.toList();
+    }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppColors.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _CardHeader(
-            icon: Icons.warehouse_rounded,
-            iconColor: Color(0xFF0D9488),
-            iconBg: Color(0xFFCCFBF1),
-            title: 'Stock por almacén',
-          ),
-          const SizedBox(height: 14),
-          if (state.viewState == ViewState.loading)
-            const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2,
-              ),
-            )
-          else if (filteredStocks.isEmpty)
-            const Text(
-              'Sin registros.',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            )
-          else
-            ...filteredStocks.map((row) {
-              final name = row['warehouses']?['name'] ?? 'Almacén';
-              final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
-              final ok = stock > 0;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 7),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: AppColors.card(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _CardHeader(
+              icon: Icons.warehouse_rounded,
+              iconColor: Color(0xFF0D9488),
+              iconBg: Color(0xFFCCFBF1),
+              title: 'Stock por almacén',
+            ),
+            const SizedBox(height: 14),
+            if (state.viewState == ViewState.loading)
+              const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2,
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color:
-                            ok ? AppColors.successLight : AppColors.dangerLight,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Icon(
-                        Icons.warehouse_rounded,
-                        size: 13,
-                        color: ok ? AppColors.success : AppColors.danger,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        name.toString(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+              )
+            else if (displayStocks.isEmpty)
+              const Text(
+                'Sin registros.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              )
+            else
+              ...displayStocks.map((row) {
+                final name = row['warehouses']?['name'] ?? 'Almacén';
+                final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+                final ok = stock > 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color:
+                              ok
+                                  ? AppColors.successLight
+                                  : AppColors.dangerLight,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Icon(
+                          Icons.warehouse_rounded,
+                          size: 13,
+                          color: ok ? AppColors.success : AppColors.danger,
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            ok
-                                ? AppColors.primary.withValues(alpha: 0.08)
-                                : AppColors.dangerLight,
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        '$stock',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: ok ? AppColors.primary : AppColors.danger,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          name.toString(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-        ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              ok
+                                  ? AppColors.primary.withValues(alpha: 0.08)
+                                  : AppColors.dangerLight,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          '$stock',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: ok ? AppColors.primary : AppColors.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
       ),
     );
   }

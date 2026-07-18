@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/active_ingredients_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/attributes_management_screen.dart';
@@ -10,6 +12,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 
 class CatalogRoutes {
   static List<RouteBase> topLevelRoutes(AuthCubit authCubit) => [
@@ -24,19 +27,28 @@ class CatalogRoutes {
         final role = authCubit.state.currentUser?.role;
         final isAdmin = role == AppRoles.admin;
 
+        final cartType = isAdmin ? 'pos' : 'customer';
+        final cartCubit = sl<CartCubit>()..initCart(cartType: cartType);
+
         if (product != null) {
-          return ProductDetailScreen(
-            product: product,
-            isAdmin: isAdmin,
-            initialVariantId: variantId,
+          return BlocProvider.value(
+            value: cartCubit,
+            child: ProductDetailScreen(
+              product: product,
+              isAdmin: isAdmin,
+              initialVariantId: variantId,
+            ),
           );
         }
 
         if (productId != null) {
-          return ProductLoader(
-            productId: productId,
-            isAdmin: isAdmin,
-            initialVariantId: variantId,
+          return BlocProvider.value(
+            value: cartCubit,
+            child: ProductLoader(
+              productId: productId,
+              isAdmin: isAdmin,
+              initialVariantId: variantId,
+            ),
           );
         }
 
