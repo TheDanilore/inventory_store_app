@@ -31,12 +31,7 @@ class CatalogRoutes {
   static List<RouteBase> get adminRoutes => [
     GoRoute(
       path: 'active-ingredients',
-      builder:
-          (context, state) => const AdminLayout(
-            title: 'Componentes Químicos',
-            showBackButton: true,
-            body: ActiveIngredientsScreen(),
-          ),
+      builder: (context, state) => const ActiveIngredientsScreen(),
     ),
     GoRoute(
       path: 'attributes',

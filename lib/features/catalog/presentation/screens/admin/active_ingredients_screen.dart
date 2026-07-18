@@ -6,6 +6,8 @@ import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/active_ingredient_entity.dart';
 
 class ActiveIngredientsScreen extends StatefulWidget {
   const ActiveIngredientsScreen({super.key});
@@ -60,8 +62,9 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
+    return AdminLayout(
+      title: 'Componentes Químicos',
+      showBackButton: true,
       body: BlocBuilder<IngredientsCubit, IngredientsState>(
         builder: (context, state) {
           final cubit = context.read<IngredientsCubit>();
@@ -188,7 +191,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       itemBuilder: (context, index) {
         final item = state.ingredients[index];
         return _IngredientCard(
-          name: item.name,
+          ingredient: item,
           onEdit: () => _showIngredientForm(item.id, item.name),
           onDelete: () => cubit.deleteIngredient(item.id),
         );
@@ -273,12 +276,12 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
 }
 
 class _IngredientCard extends StatefulWidget {
-  final String name;
+  final ActiveIngredientEntity ingredient;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _IngredientCard({
-    required this.name,
+    required this.ingredient,
     required this.onEdit,
     required this.onDelete,
   });
@@ -319,9 +322,24 @@ class _IngredientCardState extends State<_IngredientCard> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    widget.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.ingredient.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if (widget.ingredient.description != null && widget.ingredient.description!.isNotEmpty)
+                        Text(
+                          widget.ingredient.description!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 Row(
