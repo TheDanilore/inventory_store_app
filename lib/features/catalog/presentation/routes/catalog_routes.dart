@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients_cubit.dart';
 
 class CatalogRoutes {
   static List<RouteBase> topLevelRoutes(AuthCubit authCubit) => [
@@ -19,7 +20,8 @@ class CatalogRoutes {
       path: '/gallery',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
-        final imageUrls = (extra?['imageUrls'] as List<dynamic>?)?.cast<String>() ?? [];
+        final imageUrls =
+            (extra?['imageUrls'] as List<dynamic>?)?.cast<String>() ?? [];
         final initialIndex = extra?['initialIndex'] as int? ?? 0;
         return FullScreenGallery(
           imageUrls: imageUrls,
@@ -27,13 +29,16 @@ class CatalogRoutes {
         );
       },
     ),
-
   ];
 
   static List<RouteBase> get adminRoutes => [
     GoRoute(
       path: 'active-ingredients',
-      builder: (context, state) => const ActiveIngredientsScreen(),
+      builder:
+          (context, state) => BlocProvider(
+            create: (_) => sl<IngredientsCubit>()..loadIngredients(),
+            child: const ActiveIngredientsScreen(),
+          ),
     ),
     GoRoute(
       path: 'attributes',
@@ -41,10 +46,11 @@ class CatalogRoutes {
     ),
     GoRoute(
       path: 'categories',
-      builder: (context, state) => BlocProvider(
-        create: (_) => sl<CategoriesCubit>()..loadCategories(),
-        child: const CategoriesManagementScreen(),
-      ),
+      builder:
+          (context, state) => BlocProvider(
+            create: (_) => sl<CategoriesCubit>()..loadCategories(),
+            child: const CategoriesManagementScreen(),
+          ),
     ),
     GoRoute(
       path: 'product-form',

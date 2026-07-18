@@ -33,11 +33,11 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final query = context.read<IngredientsCubit>().state.searchQuery;
       if (query.isNotEmpty) {
         _searchCtrl.text = query;
       }
-      context.read<IngredientsCubit>().loadIngredients();
     });
   }
 
@@ -50,13 +50,19 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
   }
 
   void _showIngredientForm([String? id, String? name]) {
+    final cubit = context.read<IngredientsCubit>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (context) =>
-              ActiveIngredientFormSheet(ingredientId: id, ingredientName: name),
+          (context) => BlocProvider.value(
+            value: cubit,
+            child: ActiveIngredientFormSheet(
+              ingredientId: id,
+              ingredientName: name,
+            ),
+          ),
     );
   }
 
@@ -329,7 +335,8 @@ class _IngredientCardState extends State<_IngredientCard> {
                         widget.ingredient.name,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      if (widget.ingredient.description != null && widget.ingredient.description!.isNotEmpty)
+                      if (widget.ingredient.description != null &&
+                          widget.ingredient.description!.isNotEmpty)
                         Text(
                           widget.ingredient.description!,
                           maxLines: 1,
