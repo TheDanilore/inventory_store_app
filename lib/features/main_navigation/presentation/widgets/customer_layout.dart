@@ -66,7 +66,7 @@ class CustomerLayout extends StatelessWidget {
             return MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: () => context.go('/customer/points'),
+                onTap: () => context.go('/points'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -168,7 +168,7 @@ class CustomerLayout extends StatelessWidget {
                 if (user == null) {
                   context.go('/login');
                 } else {
-                  context.go('/customer/profile');
+                  context.go('/profile');
                 }
               }
             } else {
@@ -176,7 +176,7 @@ class CustomerLayout extends StatelessWidget {
               if (user == null) {
                 context.push('/login');
               } else {
-                context.push('/customer/profile');
+                context.push('/profile');
               }
             }
           },
@@ -232,7 +232,7 @@ class CustomerLayout extends StatelessWidget {
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
-                  context.go('/customer/cart');
+                  context.go('/cart');
                 },
                 child: SizedBox(
                   width: 40,
@@ -309,9 +309,9 @@ class CustomerLayout extends StatelessWidget {
         return;
       }
     }
-    if (index == 0) context.go('/customer');
-    if (index == 1) context.go('/customer/cart');
-    if (index == 2) context.go('/customer/profile');
+    if (index == 0) context.go('/');
+    if (index == 1) context.go('/cart');
+    if (index == 2) context.go('/profile');
   }
 
   Widget _buildBottomNav(BuildContext context) {

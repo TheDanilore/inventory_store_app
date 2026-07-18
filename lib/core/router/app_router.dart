@@ -90,21 +90,14 @@ class AppRouter {
         final currentPath = state.uri.path;
         final isSplash = currentPath == '/';
         final isLogin = currentPath == '/login';
-        final isGallery = currentPath == '/gallery';
 
         if (authState.authStatus == AuthStatus.initial) {
           return isSplash ? null : '/';
         }
 
         if (authState.authStatus == AuthStatus.unauthenticated) {
-          // Rutas públicas: galería, detalle de producto y catálogo de cliente (modo invitado)
-          if (isGallery) return null;
-          if (currentPath.startsWith('/product/')) return null;
-          if (currentPath.startsWith('/customer')) return null;
-          // Login y registro: acceso libre
-          if (isLogin) return null;
-          // Cualquier otra ruta (ej. /admin) → catálogo invitado
-          return '/customer';
+          if (currentPath.startsWith('/admin')) return '/';
+          return null;
         }
 
         if (authState.authStatus == AuthStatus.authenticated &&
@@ -120,11 +113,11 @@ class AppRouter {
         }
 
         if (isSplash || isLogin) {
-          return role == AppRoles.admin ? '/admin' : '/customer';
+          return role == AppRoles.admin ? '/admin' : '/';
         }
 
         if (currentPath.startsWith('/admin') && role != AppRoles.admin) {
-          return '/customer';
+          return '/';
         }
 
         return null;
@@ -211,7 +204,7 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/customer',
+                  path: '/',
                   builder: (context, state) {
                     final config = context.watch<AppConfigCubit>();
                     return BlocProvider(
@@ -250,7 +243,7 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 OrdersRoutes.customerRoutes.firstWhere(
-                  (route) => (route as GoRoute).path == '/customer/cart',
+                  (route) => (route as GoRoute).path == '/cart',
                 ),
               ],
             ),
@@ -259,7 +252,7 @@ class AppRouter {
                 ...CustomersRoutes.customerRoutes,
                 ...LoyaltyRoutes.customerRoutes,
                 ...OrdersRoutes.customerRoutes.where(
-                  (route) => (route as GoRoute).path != '/customer/cart',
+                  (route) => (route as GoRoute).path != '/cart',
                 ),
               ],
             ),

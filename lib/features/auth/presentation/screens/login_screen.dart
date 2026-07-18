@@ -124,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen>
           if (state.currentUser?.role == AppRoles.admin) {
             context.go('/admin');
           } else {
-            context.go('/customer');
+            context.go('/');
           }
         }
       },
@@ -223,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 if (context.canPop()) {
                                   context.pop();
                                 } else {
-                                  context.go('/customer');
+                                  context.go('/');
                                 }
                               },
                             ),

@@ -199,7 +199,7 @@ class CustomerOrderDetailSheet extends StatelessWidget {
         Navigator.pop(context);
         final variantQuery =
             item.variantId != null ? '?variant=${item.variantId}' : '';
-        context.push('/customer/product/${item.productId}$variantQuery');
+        context.push('/product/${item.productId}$variantQuery');
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),

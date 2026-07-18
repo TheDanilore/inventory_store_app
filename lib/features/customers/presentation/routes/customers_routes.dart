@@ -97,11 +97,11 @@ class CustomersRoutes {
 
   static List<RouteBase> get customerRoutes => [
     GoRoute(
-      path: '/customer/profile',
+      path: '/profile',
       builder: (context, state) => const ProfileScreen(openedFromAdmin: false),
     ),
     GoRoute(
-      path: '/customer/locations',
+      path: '/locations',
       builder: (context, state) {
         final customerId =
             context.read<AuthCubit>().state.currentUser?.id ?? '';
@@ -109,7 +109,7 @@ class CustomersRoutes {
       },
     ),
     GoRoute(
-      path: '/customer/wishlist',
+      path: '/wishlist',
       builder:
           (context, state) => WishlistScreen(
             onAddToCart: (ctx, product) {

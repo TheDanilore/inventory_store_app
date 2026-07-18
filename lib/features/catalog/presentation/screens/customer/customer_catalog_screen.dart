@@ -13,9 +13,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/custom
 import 'package:inventory_store_app/features/catalog/presentation/widgets/customer/catalog/catalog_shimmers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
-import 'package:inventory_store_app/core/constants/app_roles.dart';
 
 class CustomerCatalogScreen extends StatefulWidget {
   final Future<void> Function(ProductEntity product)? onAddToCart;
@@ -105,9 +102,6 @@ class _CustomerCatalogScreenState extends State<CustomerCatalogScreen> {
   Widget build(BuildContext context) {
     final cubit = context.read<CustomerCatalogCubit>();
     final state = context.watch<CustomerCatalogCubit>().state;
-    final authState = context.watch<AuthCubit>().state;
-    final isGuest = authState.authStatus == AuthStatus.unauthenticated;
-    final isAdmin = authState.currentUser?.role == AppRoles.admin;
 
     return Scaffold(
       backgroundColor: Colors.transparent,

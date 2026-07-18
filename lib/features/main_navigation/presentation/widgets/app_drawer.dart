@@ -127,13 +127,13 @@ class _AppDrawerState extends State<AppDrawer> {
                   _DrawerItem(
                     icon: Icons.grid_view_rounded,
                     title: 'Catálogo',
-                    routePath: widget.isAdmin ? '/admin' : '/customer',
+                    routePath: widget.isAdmin ? '/admin' : '/',
                     onTap: () {
                       Navigator.pop(context);
                       if (widget.isAdmin) {
                         context.go('/admin');
                       } else {
-                        context.go('/customer');
+                        context.go('/');
                       }
                     },
                   ),
@@ -156,10 +156,10 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.shopping_cart_outlined,
                       title: 'Mi Carrito',
-                      routePath: '/customer/cart',
+                      routePath: '/cart',
                       onTap: () {
                         Navigator.pop(context);
-                        context.go('/customer/cart');
+                        context.go('/cart');
                       },
                     ),
                   ),
@@ -438,7 +438,7 @@ class _AppDrawerState extends State<AppDrawer> {
   Widget _buildItem(BuildContext context, _DrawerItem item) {
     final currentPath = GoRouterState.of(context).uri.path;
     final active =
-        (item.routePath == '/admin' || item.routePath == '/customer')
+        (item.routePath == '/admin' || item.routePath == '/')
             ? currentPath == item.routePath
             : currentPath.startsWith(item.routePath);
     return Padding(
@@ -858,7 +858,7 @@ class _DrawerFooter extends StatelessWidget {
                         if (isAdmin) {
                           context.go('/admin/profile');
                         } else {
-                          context.go('/customer/profile');
+                          context.go('/profile');
                         }
                       },
                       child: Container(

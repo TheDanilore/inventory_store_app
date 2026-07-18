@@ -315,7 +315,7 @@ class _WishlistScreenContentState extends State<_WishlistScreenContent> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  onPressed: () => context.go('/customer/catalog'),
+                  onPressed: () => context.go('/catalog'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

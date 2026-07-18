@@ -13,11 +13,11 @@ class OrdersRoutes {
 
   static List<RouteBase> get customerRoutes => [
     GoRoute(
-      path: '/customer/orders',
+      path: '/orders',
       builder: (context, state) => const CustomerOrdersScreen(),
     ),
     GoRoute(
-      path: '/customer/cart',
+      path: '/cart',
       builder:
           (context, state) => BlocProvider(
             create: (_) => sl<CheckoutCubit>(),

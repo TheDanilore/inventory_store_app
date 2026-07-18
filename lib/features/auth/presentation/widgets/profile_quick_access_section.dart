@@ -30,7 +30,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
                   icon: Icons.receipt_long_rounded,
                   iconColor: const Color(0xFF0EA5E9), // Light blue
                   backgroundColor: const Color(0xFFE0F2FE),
-                  onTap: () => context.push('/customer/orders'),
+                  onTap: () => context.push('/orders'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -41,7 +41,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
                   icon: Icons.map_outlined,
                   iconColor: const Color(0xFF10B981), // Light green
                   backgroundColor: const Color(0xFFD1FAE5),
-                  onTap: () => context.push('/customer/locations'),
+                  onTap: () => context.push('/locations'),
                 ),
               ),
             ],
@@ -56,7 +56,7 @@ class ProfileQuickAccessSection extends StatelessWidget {
                   icon: Icons.favorite_rounded,
                   iconColor: const Color(0xFFF43F5E), // Light red
                   backgroundColor: const Color(0xFFFFE4E6),
-                  onTap: () => context.push('/customer/wishlist'),
+                  onTap: () => context.push('/wishlist'),
                 ),
               ),
               const SizedBox(width: 12),

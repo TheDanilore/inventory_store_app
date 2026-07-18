@@ -288,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           openedFromAdmin: widget.openedFromAdmin,
                           onToggleView: () {
                             if (widget.openedFromAdmin) {
-                              context.go('/customer');
+                              context.go('/');
                             } else {
                               context.go('/admin');
                             }

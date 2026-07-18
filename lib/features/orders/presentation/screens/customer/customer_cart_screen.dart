@@ -266,7 +266,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
                                     );
                                     return;
                                   }
-                                  await context.push('/customer/locations');
+                                  await context.push('/locations');
                                   if (context.mounted) {
                                     context.read<CheckoutCubit>().loadAddress(
                                       user.id,

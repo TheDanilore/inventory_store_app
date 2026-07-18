@@ -63,7 +63,7 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
         onTapCancel: () => setState(() => _isCardPressed = false),
         onTap: () {
           setState(() => _isCardPressed = false);
-          context.push('/customer/product/${product.id}', extra: product);
+          context.push('/product/${product.id}', extra: product);
         },
         child: AnimatedScale(
           scale: _isCardPressed ? 0.96 : 1.0,
