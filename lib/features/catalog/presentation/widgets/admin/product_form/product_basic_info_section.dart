@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 
 class ProductBasicInfoSection extends StatelessWidget {
   final TextEditingController nombreCtrl;
@@ -16,7 +17,6 @@ class ProductBasicInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ProductFormCubit>();
-    final state = context.watch<ProductFormCubit>().state;
 
     return Container(
       width: double.infinity,
@@ -51,9 +51,16 @@ class ProductBasicInfoSection extends StatelessWidget {
             validator: (v) => v!.isEmpty ? 'Requerido' : null,
           ),
           const SizedBox(height: 16),
-          state.isLoadingCategories
-              ? const Center(child: CircularProgressIndicator())
-              : DropdownButtonFormField<String>(
+          BlocBuilder<ProductFormCubit, ProductFormState>(
+            buildWhen: (p, c) => 
+                p.isLoadingCategories != c.isLoadingCategories || 
+                p.categories != c.categories || 
+                p.selectedCategoryId != c.selectedCategoryId,
+            builder: (context, state) {
+              if (state.isLoadingCategories) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return DropdownButtonFormField<String>(
                 initialValue: state.selectedCategoryId,
                 decoration: InputDecoration(
                   labelText: 'Categoría',
@@ -77,7 +84,9 @@ class ProductBasicInfoSection extends StatelessWidget {
                   ),
                 ],
                 onChanged: cubit.setSelectedCategory,
-              ),
+              );
+            },
+          ),
           const SizedBox(height: 16),
           AppTextField(
             controller: descCtrl,

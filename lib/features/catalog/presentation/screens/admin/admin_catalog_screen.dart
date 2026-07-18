@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -618,9 +618,13 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
             final bodyContent = buildBody();
 
-            return Scaffold(
-              backgroundColor: Colors.transparent,
-              endDrawer: const AppDrawer(isAdmin: true),
+            return AdminLayout(
+              title: 'Catálogo',
+              showSettingsButton: true,
+              settingsActions: _buildMenuItems(state),
+              onSettingsSelected:
+                  (value) => _handleMenuSelection(value, cubit, state, context),
+              showAppBar: false,
               body: bodyContent,
               floatingActionButton: floatingBtn,
             );

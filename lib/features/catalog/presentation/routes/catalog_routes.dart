@@ -8,8 +8,10 @@ import 'package:inventory_store_app/features/catalog/presentation/screens/admin/
 import 'package:inventory_store_app/features/catalog/presentation/screens/product_detail_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_loader.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/full_screen_gallery.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_cubit.dart';
 
 class CatalogRoutes {
   static List<RouteBase> topLevelRoutes(AuthCubit authCubit) => [
@@ -35,38 +37,24 @@ class CatalogRoutes {
     ),
     GoRoute(
       path: 'attributes',
-      builder:
-          (context, state) => const AdminLayout(
-            title: 'Atributos de Variantes',
-            showBackButton: true,
-            body: AttributesManagementScreen(),
-          ),
+      builder: (context, state) => const AttributesManagementScreen(),
     ),
     GoRoute(
       path: 'categories',
-      builder:
-          (context, state) => const AdminLayout(
-            title: 'Categorías',
-            showBackButton: true,
-            body: CategoriesManagementScreen(),
-          ),
+      builder: (context, state) => BlocProvider(
+        create: (_) => sl<CategoriesCubit>()..loadCategories(),
+        child: const CategoriesManagementScreen(),
+      ),
     ),
     GoRoute(
       path: 'product-form',
       builder: (context, state) {
         final args = state.extra as Map<String, dynamic>? ?? {};
-        return AdminLayout(
-          title:
-              args['productToEdit'] != null
-                  ? 'Editar Producto'
-                  : 'Nuevo Producto',
-          showBackButton: true,
-          body: ProductFormScreen(
-            productToEdit:
-                args['productToEdit'] is ProductEntity
-                    ? args['productToEdit']
-                    : null,
-          ),
+        return ProductFormScreen(
+          productToEdit:
+              args['productToEdit'] is ProductEntity
+                  ? args['productToEdit']
+                  : null,
         );
       },
     ),

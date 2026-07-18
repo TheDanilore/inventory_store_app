@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/categorie
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/categories_state.dart';
 
 class CategoryFormSheet extends StatefulWidget {
   final CategoryEntity? category;
@@ -63,7 +64,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isEditing = widget.category != null;
-    final cubit = context.watch<CategoriesCubit>();
+    final cubit = context.read<CategoriesCubit>();
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Material(
@@ -158,36 +159,40 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                 ),
 
                 const SizedBox(height: 24),
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: cubit.state.isSaving ? null : _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                BlocBuilder<CategoriesCubit, CategoriesState>(
+                  builder: (context, state) {
+                    return SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: state.isSaving ? null : _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child:
+                            state.isSaving
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : const Text(
+                                  'Guardar Categoría',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                       ),
-                    ),
-                    child:
-                        cubit.state.isSaving
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                            : const Text(
-                              'Guardar Categoría',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                  ),
+                    );
+                  }
                 ),
               ],
             ),

@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class CategoriesManagementScreen extends StatefulWidget {
   const CategoriesManagementScreen({super.key});
@@ -68,7 +69,9 @@ class _CategoriesManagementScreenState
   }
 
   void _showCategoryForm([CategoryEntity? category]) {
+    final cubit = context.read<CategoriesCubit>();
     final isTablet = MediaQuery.of(context).size.width >= 600;
+    
     if (isTablet) {
       showDialog(
         context: context,
@@ -80,7 +83,10 @@ class _CategoriesManagementScreenState
               insetPadding: const EdgeInsets.all(24),
               child: SizedBox(
                 width: 480,
-                child: CategoryFormSheet(category: category),
+                child: BlocProvider.value(
+                  value: cubit,
+                  child: CategoryFormSheet(category: category),
+                ),
               ),
             ),
       );
@@ -89,7 +95,10 @@ class _CategoriesManagementScreenState
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => CategoryFormSheet(category: category),
+        builder: (context) => BlocProvider.value(
+          value: cubit,
+          child: CategoryFormSheet(category: category),
+        ),
       );
     }
   }
@@ -117,8 +126,9 @@ class _CategoriesManagementScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
+    return AdminLayout(
+      title: 'Categorías',
+      showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCategoryForm(),
         backgroundColor: AppColors.primary,

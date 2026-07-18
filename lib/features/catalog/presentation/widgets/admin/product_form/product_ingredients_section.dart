@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -68,11 +69,15 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ProductFormCubit>();
-    final state = context.watch<ProductFormCubit>().state;
 
-    _syncControllers(state.ingredientRows);
+    return BlocBuilder<ProductFormCubit, ProductFormState>(
+      buildWhen: (p, c) => 
+          p.ingredientsEnabled != c.ingredientsEnabled || 
+          p.ingredientRows != c.ingredientRows,
+      builder: (context, state) {
+        _syncControllers(state.ingredientRows);
 
-    return Container(
+        return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -367,6 +372,8 @@ class _ProductIngredientsSectionState extends State<ProductIngredientsSection> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

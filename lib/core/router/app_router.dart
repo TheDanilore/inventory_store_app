@@ -26,7 +26,6 @@ import 'package:inventory_store_app/features/purchases/presentation/routes/purch
 import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/customer/customer_catalog_screen.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/customer_layout.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
@@ -145,20 +144,16 @@ class AppRouter {
             GoRoute(
               path: '/admin',
               builder:
-                  (context, state) => AdminLayout(
-                    title: 'Catálogo',
-                    showAppBar: false,
-                    body: AdminCatalogScreen(
-                      floatingActionButton: const PosCartFab(),
-                      onProfileAvatarTap: () {
-                        final auth = context.read<AuthCubit>();
-                        if (auth.state.currentUser == null) {
-                          context.go('/login');
-                        } else {
-                          context.push('/admin/profile');
-                        }
-                      },
-                    ),
+                  (context, state) => AdminCatalogScreen(
+                    floatingActionButton: const PosCartFab(),
+                    onProfileAvatarTap: () {
+                      final auth = context.read<AuthCubit>();
+                      if (auth.state.currentUser == null) {
+                        context.go('/login');
+                      } else {
+                        context.push('/admin/profile');
+                      }
+                    },
                   ),
               routes: [
                 ...AuthRoutes.adminRoutes,

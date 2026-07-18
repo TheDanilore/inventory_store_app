@@ -7,6 +7,8 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attribute_value_dialog.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attributes_skeleton.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class AttributesManagementScreen extends StatefulWidget {
   const AttributesManagementScreen({super.key});
@@ -68,20 +70,35 @@ class _AttributesManagementScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: BlocBuilder<AttributesCubit, AttributesState>(
-        builder: (context, state) {
-          final cubit = context.read<AttributesCubit>();
-          return RefreshIndicator(
-            onRefresh: () => cubit.loadAttributes(),
-            color: AppColors.primary,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _buildContent(state, cubit),
-            ),
-          );
+    return AdminLayout(
+      title: 'Atributos de Variantes',
+      showBackButton: true,
+      body: BlocListener<AttributesCubit, AttributesState>(
+        listenWhen: (previous, current) =>
+            current.errorMessage != null &&
+            current.errorMessage != previous.errorMessage,
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.errorMessage!,
+              type: SnackbarType.error,
+            );
+          }
         },
+        child: BlocBuilder<AttributesCubit, AttributesState>(
+          builder: (context, state) {
+            final cubit = context.read<AttributesCubit>();
+            return RefreshIndicator(
+              onRefresh: () => cubit.loadAttributes(),
+              color: AppColors.primary,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _buildContent(state, cubit),
+              ),
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
@@ -158,7 +175,16 @@ class _AttributesManagementScreenState
         return _AttributeCard(
           attribute: attr,
           onEdit: () => _showAttributeForm(attr),
-          onDelete: () => cubit.deleteAttribute(attr['id']),
+          onDelete: () async {
+            final success = await cubit.deleteAttribute(attr['id']);
+            if (success && context.mounted) {
+              AppSnackbar.show(
+                context,
+                message: 'Propiedad "${attr['name']}" eliminada',
+                type: SnackbarType.success,
+              );
+            }
+          },
           onAddValue: () => _showAddValueForm(attr['id'], attr['name']),
         );
       },
@@ -335,9 +361,16 @@ class _ValueChipState extends State<_ValueChip> {
 
   void _handleDelete() async {
     setState(() => _isDeleting = true);
-    await context.read<AttributesCubit>().deleteAttributeValue(
+    final success = await context.read<AttributesCubit>().deleteAttributeValue(
       widget.value['id'],
     );
+    if (success && mounted) {
+      AppSnackbar.show(
+        context,
+        message: 'Valor eliminado',
+        type: SnackbarType.success,
+      );
+    }
     if (mounted) {
       setState(() => _isDeleting = false);
     }

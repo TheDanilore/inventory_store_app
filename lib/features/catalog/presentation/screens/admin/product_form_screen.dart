@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 // Secciones modulares
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_card.dart';
@@ -181,9 +182,14 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               final shouldPop = await _onWillPop();
               if (shouldPop && context.mounted) Navigator.pop(context);
             },
-            child: Scaffold(
-              backgroundColor: Colors.transparent,
-              body:
+            child: AdminLayout(
+              title: isEdit ? 'Editar Producto' : 'Nuevo Producto',
+              showBackButton: true,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body: Scaffold(
+                backgroundColor: Colors.transparent,
+                body:
                   !_initialized || state.isInitializingData
                       ? const _ProductFormSkeleton()
                       : state.hasErrorLoading
@@ -437,6 +443,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                             ),
                         ],
                       ),
+              ),
             ),
           );
         },

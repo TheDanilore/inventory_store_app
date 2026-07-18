@@ -43,50 +43,51 @@ class ProductImagesSection extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(
             height: 120,
-            child: Row(
-              children: [
-                InkWell(
-                  onTap:
-                      context.watch<ProductFormCubit>().isSaving
-                          ? null
-                          : () => context.read<ProductFormCubit>().pickImages(),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 100,
-                    height: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.05),
+            child: BlocBuilder<ProductFormCubit, ProductFormState>(
+              buildWhen: (p, c) => p.isSaving != c.isSaving || p.formImages != c.formImages,
+              builder: (context, state) {
+                final cubit = context.read<ProductFormCubit>();
+                return Row(
+                  children: [
+                    InkWell(
+                      onTap:
+                          state.isSaving
+                              ? null
+                              : () => cubit.pickImages(),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.add_photo_alternate_rounded,
-                          color: AppColors.primary,
-                          size: 32,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Agregar',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
+                      child: Container(
+                        width: 100,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3),
                           ),
                         ),
-                      ],
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_rounded,
+                              color: AppColors.primary,
+                              size: 32,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Agregar',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: BlocBuilder<ProductFormCubit, ProductFormState>(
-                    builder: (context, state) {
-                      final cubit = context.read<ProductFormCubit>();
-                      return ReorderableListView.builder(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ReorderableListView.builder(
                         scrollDirection: Axis.horizontal,
                         buildDefaultDragHandles: false,
                         proxyDecorator: (child, index, animation) {
@@ -253,11 +254,11 @@ class ProductImagesSection extends StatelessWidget {
                             ),
                           );
                         },
-                      );
-                    },
-                  ),
-                ),
-              ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
