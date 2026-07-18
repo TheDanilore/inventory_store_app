@@ -14,7 +14,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/inve
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/kardex_screen.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/warehouses_management_screen.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+
 
 class InventoryRoutes {
   static List<RouteBase> get adminRoutes => [
@@ -74,12 +74,7 @@ class InventoryRoutes {
     ),
     GoRoute(
       path: 'warehouses',
-      builder:
-          (context, state) => const AdminLayout(
-            title: 'Almacenes',
-            showBackButton: true,
-            body: WarehousesManagementScreen(),
-          ),
+      builder: (context, state) => const WarehousesManagementScreen(),
     ),
   ];
 }

@@ -368,17 +368,32 @@ class _WarehousesManagementScreenState
             ),
           ),
 
-          if (state.warehouses.isNotEmpty && state.totalPages > 1)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-              child: AdminPageBlocks(
-                currentPage: state.currentPage,
-                totalPages: state.totalPages,
-                onPageChanged: (page) => cubit.changePage(page),
-              ),
-            ),
         ],
       ),
+      bottomNavigationBar:
+          state.warehouses.isNotEmpty && state.totalPages > 1
+              ? Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: AdminPageBlocks(
+                    currentPage: state.currentPage,
+                    totalPages: state.totalPages,
+                    onPageChanged: (page) => cubit.changePage(page),
+                  ),
+                ),
+              )
+              : null,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showWarehouseForm(context, cubit),
         backgroundColor: AppColors.primary,
