@@ -149,6 +149,17 @@ class ProductDetailState extends Equatable {
 
   int get effectiveStock {
     if (product?.stockControl != true) return 999;
+    
+    if (variants.isNotEmpty && selectedVariant == null) {
+      int total = 0;
+      for (final row in warehouseStocks) {
+        if (row['variant_id'] != null) {
+          total += (row['available_quantity'] as num?)?.toInt() ?? 0;
+        }
+      }
+      return total;
+    }
+
     final v = selectedVariant;
     if (v == null) return 0;
     int s = 0;
@@ -160,7 +171,7 @@ class ProductDetailState extends Equatable {
     return s;
   }
 
-  bool get canBuy => isActive && effectiveStock > 0 && selectedVariant != null;
+  bool get canBuy => isActive && effectiveStock > 0;
 
   String? variantImageUrl(ProductVariantEntity v) {
     if (v.images.isNotEmpty) {

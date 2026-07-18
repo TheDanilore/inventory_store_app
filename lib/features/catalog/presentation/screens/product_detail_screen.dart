@@ -15,6 +15,9 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
+import 'package:inventory_store_app/features/pos/domain/entities/cart_item_entity.dart';
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail_state.dart';
@@ -192,14 +195,32 @@ class _ProductDetailScreenContentState
             : widget.product.primaryImageUrl);
 
     if (variants.isNotEmpty && selectedVariant == null) {
-      widget.onAddToCart?.call(
-        context,
-        widget.product,
-        qty,
-        selectedVariant,
-        effectiveImageUrl,
-        effectivePrice,
-      );
+      if (widget.onAddToCart != null) {
+        widget.onAddToCart?.call(
+          context,
+          widget.product,
+          qty,
+          selectedVariant,
+          effectiveImageUrl,
+          effectivePrice,
+        );
+      } else {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder:
+              (_) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: CartVariantPickerSheet(
+                  cartCubit: context.read<CartCubit>(),
+                  product: widget.product,
+                ),
+              ),
+        );
+      }
       return;
     }
 
@@ -212,14 +233,35 @@ class _ProductDetailScreenContentState
       return;
     }
 
-    widget.onAddToCart?.call(
-      context,
-      widget.product,
-      qty,
-      selectedVariant,
-      effectiveImageUrl,
-      effectivePrice,
-    );
+    if (widget.onAddToCart != null) {
+      widget.onAddToCart?.call(
+        context,
+        widget.product,
+        qty,
+        selectedVariant,
+        effectiveImageUrl,
+        effectivePrice,
+      );
+    } else {
+      context.read<CartCubit>().addItem(
+        CartItemEntity(
+          productId: widget.product.id,
+          productName: widget.product.name,
+          cartKey: CartItemEntity.buildKey(
+            widget.product.id,
+            selectedVariant?.id,
+          ),
+          quantity: qty,
+          unitPrice: effectivePrice,
+          unitCost: selectedVariant?.unitCost ?? widget.product.unitCost,
+          availableStock: stock,
+          usesBatches: widget.product.usesBatches,
+          imageUrl: effectiveImageUrl,
+          variantLabel: selectedVariant?.label,
+        ),
+      );
+    }
+
     // Solo vibrar si no es web para evitar MissingPluginException
     if (!kIsWeb) {
       Vibration.vibrate(duration: 50, amplitude: 128);
@@ -835,14 +877,37 @@ class _ProductDetailScreenContentState
                           (state.images.isNotEmpty
                               ? state.images[0].imageUrl
                               : widget.product.primaryImageUrl);
-                      widget.onAddToCart?.call(
-                        context,
-                        widget.product,
-                        state.selectedQty,
-                        null, // null = mostrar selector de variante en el caller
-                        effectiveImageUrl,
-                        state.effectivePrice,
-                      );
+                      if (widget.onAddToCart != null) {
+                        widget.onAddToCart?.call(
+                          context,
+                          widget.product,
+                          state.selectedQty,
+                          null, // null = mostrar selector de variante en el caller
+                          effectiveImageUrl,
+                          state.effectivePrice,
+                        );
+                      } else {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder:
+                              (_) => Padding(
+                                padding: EdgeInsets.only(
+                                  bottom:
+                                      MediaQuery.of(context).viewInsets.bottom,
+                                ),
+                                child: CartVariantPickerSheet(
+                                  cartCubit: context.read<CartCubit>(),
+                                  product: widget.product,
+                                  onVariantSelected: (variant) {
+                                    context.read<ProductDetailCubit>().setVariant(variant.id);
+                                    context.read<ProductDetailCubit>().selectVariantImage(variant.id);
+                                  },
+                                ),
+                              ),
+                        );
+                      }
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),

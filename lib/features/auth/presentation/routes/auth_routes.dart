@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 class AuthRoutes {
   static List<RouteBase> get topLevelRoutes => [
     GoRoute(
-      path: '/',
+      path: '/splash',
       builder:
           (context, state) => SplashScreen(
             onInitialize: (ctx) async {

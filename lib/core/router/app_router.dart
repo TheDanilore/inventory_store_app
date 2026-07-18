@@ -40,7 +40,7 @@ class AppRouter {
     try {
       final uri = Uri.base;
       final path = uri.path;
-      if (path.isNotEmpty && path != '/' && path != '/login') {
+      if (path.isNotEmpty && path != '/splash' && path != '/login') {
         _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
         debugPrint('AppRouter: deep link capturado -> $_pendingDeepLink');
       }
@@ -51,7 +51,7 @@ class AppRouter {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
       restorationScopeId: 'router',
-      initialLocation: '/',
+      initialLocation: '/splash',
       refreshListenable: GoRouterRefreshStream(authCubit.stream),
       errorBuilder:
           (context, state) => Scaffold(
@@ -88,15 +88,16 @@ class AppRouter {
       redirect: (context, state) {
         final authState = authCubit.state;
         final currentPath = state.uri.path;
-        final isSplash = currentPath == '/';
+        final isSplash = currentPath == '/splash';
         final isLogin = currentPath == '/login';
 
         if (authState.authStatus == AuthStatus.initial) {
-          return isSplash ? null : '/';
+          return isSplash ? null : '/splash';
         }
 
         if (authState.authStatus == AuthStatus.unauthenticated) {
           if (currentPath.startsWith('/admin')) return '/';
+          if (isSplash) return '/';
           return null;
         }
 
