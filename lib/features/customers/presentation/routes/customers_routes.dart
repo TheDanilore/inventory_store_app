@@ -8,7 +8,6 @@ import 'package:inventory_store_app/features/customers/presentation/screens/cust
 import 'package:inventory_store_app/features/customers/presentation/screens/customers_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/location_management_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/wishlist_screen.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -63,27 +62,7 @@ class CustomersRoutes {
     ),
     GoRoute(
       path: 'customer-credits',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<CustomerCreditListCubit>()..loadAccounts(),
-            child: Builder(
-              builder: (context) {
-                return AdminLayout(
-                  title: 'Cuentas por Cobrar',
-                  showBackButton: true,
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () {
-                        context.read<CustomerCreditListCubit>().loadAccounts();
-                      },
-                    ),
-                  ],
-                  body: const CustomerCreditsScreen(),
-                );
-              },
-            ),
-          ),
+      builder: (context, state) => const CustomerCreditsScreen(),
     ),
     GoRoute(
       path: 'customer-credit-movements/:creditId',

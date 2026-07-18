@@ -1,8 +1,9 @@
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_list_result_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 
 abstract class CustomerCreditsRepository {
-  Future<List<CustomerCreditEntity>> getCreditAccounts({
+  Future<CustomerCreditListResultEntity> getCreditAccounts({
     required int limit,
     required int offset,
     String? query,

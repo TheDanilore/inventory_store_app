@@ -1,18 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customers_cubit.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customers_state.dart';
+import 'package:inventory_store_app/models/customer_credit_models.dart';
+import 'package:inventory_store_app/services/admin/customer_credits_service.dart';
+import 'package:inventory_store_app/shared/theme/app_colors.dart';
+import 'package:inventory_store_app/shared/widgets/app_snackbar.dart';
 
-class CreditAccountModal extends StatelessWidget {
+class CreditAccountModal extends StatefulWidget {
   final VoidCallback onSaved;
-  final CustomerCreditEntity? accountToEdit;
+  final CreditAccountModel? accountToEdit;
 
   const CreditAccountModal({
     super.key,
@@ -21,36 +17,19 @@ class CreditAccountModal extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<CustomersCubit>(),
-      child: _CreditAccountModalView(
-        onSaved: onSaved,
-        accountToEdit: accountToEdit,
-      ),
-    );
-  }
+  State<CreditAccountModal> createState() => _CreditAccountModalState();
 }
 
-class _CreditAccountModalView extends StatefulWidget {
-  final VoidCallback onSaved;
-  final CustomerCreditEntity? accountToEdit;
-
-  const _CreditAccountModalView({
-    required this.onSaved,
-    this.accountToEdit,
-  });
-
-  @override
-  State<_CreditAccountModalView> createState() => _CreditAccountModalViewState();
-}
-
-class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
+class _CreditAccountModalState extends State<CreditAccountModal> {
+  final _service = CustomerCreditsService();
   final _searchCtrl = TextEditingController();
   final _limitCtrl = TextEditingController();
   Timer? _debounce;
 
+  bool _isSearching = false;
   bool _isSaving = false;
+  List<Map<String, dynamic>> _matches = [];
+
   String? _selectedProfileId;
   String? _selectedProfileName;
 
@@ -61,8 +40,8 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
     super.initState();
     if (_isEditing) {
       _selectedProfileId = widget.accountToEdit!.profileId;
-      _selectedProfileName = widget.accountToEdit!.customerName;
-      _searchCtrl.text = _selectedProfileName ?? '';
+      _selectedProfileName = widget.accountToEdit!.partnerName;
+      _searchCtrl.text = _selectedProfileName!;
       _limitCtrl.text = widget.accountToEdit!.creditLimit.toStringAsFixed(2);
     }
   }
@@ -85,15 +64,45 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(
       const Duration(milliseconds: 400),
-      () => context.read<CustomersCubit>().search(query),
+      () => _searchClients(query),
     );
   }
 
-  void _selectClient(String id, String name) {
+  Future<void> _searchClients(String query) async {
+    final text = query.trim();
+    if (text.isEmpty) {
+      setState(() {
+        _matches = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    try {
+      final excludeId = _isEditing ? widget.accountToEdit!.profileId : null;
+      final existingIds = await _service.getExistingCreditProfileIds(
+        excludeProfileId: excludeId,
+      );
+      final filtered = await _service.searchClients(text, existingIds);
+
+      if (mounted) {
+        setState(() {
+          _matches = filtered;
+          _isSearching = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isSearching = false);
+    }
+  }
+
+  void _selectClient(Map<String, dynamic> client) {
     setState(() {
-      _selectedProfileId = id;
-      _selectedProfileName = name;
+      _selectedProfileId = client['id'] as String;
+      _selectedProfileName = client['full_name'] as String;
       _searchCtrl.text = _selectedProfileName!;
+      _matches = [];
       FocusScope.of(context).unfocus();
     });
   }
@@ -132,24 +141,22 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
 
     setState(() => _isSaving = true);
     try {
-      final cubit = context.read<CustomerCreditListCubit>();
+      final adminProfileId = await _service.getAdminProfileId();
 
-      if (_isEditing) {
-        // Asumiendo que agregaste updateCreditLimit al cubit
-        // await cubit.updateCreditLimit(widget.accountToEdit!.id, limitVal);
-      } else {
-        await cubit.createCreditAccount(
-          _selectedProfileId!,
-          limitVal,
-        );
-      }
+      await _service.saveAccount(
+        creditId: _isEditing ? widget.accountToEdit!.creditId : null,
+        profileId: _selectedProfileId!,
+        creditLimit: limitVal,
+        adminProfileId: adminProfileId,
+      );
 
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: _isEditing
-              ? 'Límite de crédito actualizado.'
-              : 'Línea de crédito aprobada.',
+          message:
+              _isEditing
+                  ? 'Límite de crédito actualizado.'
+                  : 'Línea de crédito aprobada.',
           type: SnackbarType.success,
         );
         widget.onSaved();
@@ -182,6 +189,7 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Handle
           Center(
             child: Container(
               width: 36,
@@ -193,8 +201,11 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               ),
             ),
           ),
+
           Text(
-            _isEditing ? 'Editar límite de crédito' : 'Aprobar línea de crédito',
+            _isEditing
+                ? 'Editar límite de crédito'
+                : 'Aprobar línea de crédito',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -202,6 +213,8 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
             ),
           ),
           const SizedBox(height: 20),
+
+          // ── Buscador de cliente ──
           const Text(
             'Cliente',
             style: TextStyle(
@@ -216,9 +229,10 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               color: _isEditing ? Colors.grey.shade100 : AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _selectedProfileId != null
-                    ? AppColors.primary
-                    : AppColors.border,
+                color:
+                    _selectedProfileId != null
+                        ? AppColors.teal
+                        : AppColors.border,
               ),
             ),
             child: TextField(
@@ -226,7 +240,8 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               onChanged: _onSearchChanged,
               enabled: !_isEditing,
               style: TextStyle(
-                color: _isEditing ? Colors.grey.shade600 : AppColors.textPrimary,
+                color:
+                    _isEditing ? Colors.grey.shade600 : AppColors.textPrimary,
               ),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, DNI o teléfono...',
@@ -234,74 +249,76 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
                   _selectedProfileId != null
                       ? Icons.check_circle_rounded
                       : Icons.search_rounded,
-                  color: _selectedProfileId != null
-                      ? AppColors.primary
-                      : AppColors.textMuted,
+                  color:
+                      _selectedProfileId != null
+                          ? AppColors.teal
+                          : AppColors.textMuted,
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
-          if (!_isEditing && _selectedProfileId == null)
-            BlocBuilder<CustomersCubit, CustomersState>(
-              builder: (context, state) {
-                if (state is CustomersLoading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+
+          // Resultados de búsqueda
+          if (_isSearching)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else if (_matches.isNotEmpty && _selectedProfileId == null)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              constraints: const BoxConstraints(maxHeight: 160),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _matches.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final client = _matches[index];
+                  final docType = client['document_type'] as String? ?? 'Doc';
+                  final docNum = client['document_number'] as String?;
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppColors.tealLight,
+                      child: Text(
+                        (client['full_name'] as String)
+                            .substring(0, 1)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.tealDark,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  );
-                } else if (state is CustomersLoaded &&
-                    state.customers.isNotEmpty) {
-                  return Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    constraints: const BoxConstraints(maxHeight: 160),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
+                    title: Text(
+                      client['full_name'] ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: state.customers.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final client = state.customers[index];
-                        return ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.primaryLight,
-                            child: Text(
-                              client.fullName.substring(0, 1).toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.primaryDark,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            client.fullName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text('Doc: ${client.documentNumber}'),
-                          onTap: () => _selectClient(client.id, client.fullName),
-                        );
-                      },
-                    ),
+                    subtitle: docNum != null ? Text('$docType: $docNum') : null,
+                    onTap: () => _selectClient(client),
                   );
-                }
-                return const SizedBox.shrink();
-              },
+                },
+              ),
             ),
+
           const SizedBox(height: 16),
+
+          // ── Límite de crédito ──
           const Text(
             'Límite de crédito (S/)',
             style: TextStyle(
@@ -341,6 +358,8 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               ),
             ),
           ),
+
+          // Nota: deuda actual al editar
           if (_isEditing && widget.accountToEdit!.currentDebt > 0) ...[
             const SizedBox(height: 8),
             Row(
@@ -362,35 +381,38 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               ],
             ),
           ],
+
           const SizedBox(height: 24),
+
           ElevatedButton(
             onPressed: _isSaving ? null : _saveAccount,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: AppColors.teal,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+            child:
+                _isSaving
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : Text(
+                      _isEditing
+                          ? 'Actualizar límite'
+                          : 'Crear cuenta de crédito',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  )
-                : Text(
-                    _isEditing
-                        ? 'Actualizar límite'
-                        : 'Crear cuenta de crédito',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
           ),
         ],
       ),

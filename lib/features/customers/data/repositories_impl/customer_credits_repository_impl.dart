@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_model.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_list_result_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
 
@@ -13,29 +14,69 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
   CustomerCreditsRepositoryImpl() : _supabase = Supabase.instance.client;
 
   @override
-  Future<List<CustomerCreditEntity>> getCreditAccounts({
+  Future<CustomerCreditListResultEntity> getCreditAccounts({
     required int limit,
     required int offset,
     String? query,
     bool showOnlyWithDebt = false,
   }) async {
     var queryBuilder = _supabase.from('customer_credits_summary').select();
+    var countBuilder = _supabase.from('customer_credits_summary').select('credit_id');
 
     if (query != null && query.isNotEmpty) {
-      queryBuilder = queryBuilder.or(
-        'partner_name.ilike.%$query%,partner_document.ilike.%$query%,partner_phone.ilike.%$query%',
-      );
+      final orStr = 'partner_name.ilike.%$query%,partner_document.ilike.%$query%,partner_phone.ilike.%$query%';
+      queryBuilder = queryBuilder.or(orStr);
+      countBuilder = countBuilder.or(orStr);
     }
 
     if (showOnlyWithDebt) {
       queryBuilder = queryBuilder.gt('current_debt', 0);
+      countBuilder = countBuilder.gt('current_debt', 0);
     }
+
+    final countRes = await countBuilder;
+    final totalCount = (countRes as List).length;
 
     final response = await queryBuilder.range(offset, offset + limit - 1);
 
-    return (response as List)
+    final accounts = (response as List)
         .map((e) => CreditAccountModel.fromView(e).toEntity())
         .toList();
+
+    // Stats
+    final statsResponse = await _supabase
+        .from('customer_credits')
+        .select('current_debt, is_active, credit_limit');
+
+    double totalDebt = 0;
+    int activeAccounts = 0;
+    int suspendedAccounts = 0;
+    int maxedOutAccounts = 0;
+
+    for (var row in (statsResponse as List)) {
+      final debt = (row['current_debt'] as num).toDouble();
+      final creditLimit = (row['credit_limit'] as num).toDouble();
+      final isActive = row['is_active'] as bool;
+
+      totalDebt += debt;
+      if (isActive) {
+        activeAccounts++;
+        if (creditLimit > 0 && debt >= creditLimit) {
+          maxedOutAccounts++;
+        }
+      } else {
+        suspendedAccounts++;
+      }
+    }
+
+    return CustomerCreditListResultEntity(
+      accounts: accounts,
+      totalCount: totalCount,
+      totalDebt: totalDebt,
+      activeAccounts: activeAccounts,
+      suspendedAccounts: suspendedAccounts,
+      maxedOutAccounts: maxedOutAccounts,
+    );
   }
 
   @override

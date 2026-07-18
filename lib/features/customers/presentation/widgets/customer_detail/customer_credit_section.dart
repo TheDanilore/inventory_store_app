@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/register_payment_modal.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_section_card.dart';
 
@@ -31,7 +34,23 @@ class CustomerCreditSection extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => RegisterPaymentModal(onSaved: onPaymentRegistered),
+      builder: (_) => RegisterPaymentModal(
+        onSaved: onPaymentRegistered,
+        account: CustomerCreditEntity(
+          id: creditId,
+          profileId: customer.id,
+          currentDebt: debt,
+          creditLimit: limit,
+          isActive: isActive,
+        ),
+        onSavePayment: (amount, method, notes) async {
+          await context.read<CustomerCreditsCubit>().registerPayment(
+            amount: amount,
+            paymentMethod: method,
+            notes: notes,
+          );
+        },
+      ),
     );
   }
 

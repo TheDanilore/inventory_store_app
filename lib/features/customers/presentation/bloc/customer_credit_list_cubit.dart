@@ -1,78 +1,132 @@
-﻿import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_ucs.dart';
-
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit_list_state.dart';
 
 @injectable
 class CustomerCreditListCubit extends Cubit<CustomerCreditListState> {
   final GetCreditAccountsUseCase _getCreditAccountsUseCase;
-  static const int _limit = 20;
+  final ToggleCreditStatusUseCase _toggleCreditStatusUseCase;
+  final CreateCreditAccountUseCase _createCreditAccountUseCase;
+  final RegisterCreditPaymentUseCase _registerCreditPaymentUseCase;
 
-  CustomerCreditListCubit(this._getCreditAccountsUseCase)
-    : super(CustomerCreditListInitial());
+  CustomerCreditListCubit(
+    this._getCreditAccountsUseCase,
+    this._toggleCreditStatusUseCase,
+    this._createCreditAccountUseCase,
+    this._registerCreditPaymentUseCase,
+  ) : super(const CustomerCreditListState());
 
-  Future<void> loadAccounts({
-    String? query,
-    bool showOnlyWithDebt = false,
-    int page = 1,
-  }) async {
-    emit(CustomerCreditListLoading());
+  void init() {
+    loadData(page: 1);
+  }
+
+  Future<void> loadData({int? page, String? query, bool? withDebtOnly}) async {
+    final newPage = page ?? state.currentPage;
+    final newQuery = query ?? state.searchQuery;
+    final newWithDebtOnly = withDebtOnly ?? state.withDebtOnly;
+
+    emit(state.copyWith(
+      isLoading: true,
+      errorMessage: '',
+      currentPage: newPage,
+      searchQuery: newQuery,
+      withDebtOnly: newWithDebtOnly,
+    ));
+
     try {
-      final offset = (page - 1) * _limit;
-      final accounts = await _getCreditAccountsUseCase(
-        limit: _limit,
+      final offset = (newPage - 1) * state.pageSize;
+      
+      final result = await _getCreditAccountsUseCase(
+        limit: state.pageSize,
         offset: offset,
-        query: query,
-        showOnlyWithDebt: showOnlyWithDebt,
+        query: newQuery,
+        showOnlyWithDebt: newWithDebtOnly,
       );
-      // Asumimos que totalPages es 1 por ahora o se calcula con un count que no tenemos
-      emit(
-        CustomerCreditListLoaded(
-          accounts: accounts,
-          currentPage: page,
-          totalPages:
-              accounts.length == _limit
-                  ? page + 1
-                  : page, // simple pagination logic
-          query: query,
-          showOnlyWithDebt: showOnlyWithDebt,
-        ),
-      );
+
+      emit(state.copyWith(
+        isLoading: false,
+        accounts: result.accounts,
+        totalAccounts: result.totalCount,
+        totalDebt: result.totalDebt,
+        activeAccounts: result.activeAccounts,
+        suspendedAccounts: result.suspendedAccounts,
+        maxedOutAccounts: result.maxedOutAccounts,
+      ));
     } catch (e) {
-      emit(CustomerCreditListError(e.toString()));
+      String errorMessage = 'Error al cargar los créditos.';
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        errorMessage = 'Sin conexión a internet.';
+      }
+      
+      emit(state.copyWith(
+        isLoading: false,
+        errorMessage: errorMessage,
+      ));
     }
   }
 
   void setPage(int page) {
-    if (state is CustomerCreditListLoaded) {
-      final s = state as CustomerCreditListLoaded;
-      loadAccounts(
-        query: s.query,
-        showOnlyWithDebt: s.showOnlyWithDebt,
-        page: page,
-      );
+    if (page >= 1 && page <= state.totalPages) {
+      loadData(page: page);
     }
   }
 
-  void search(String query) {
-    if (state is CustomerCreditListLoaded) {
-      final s = state as CustomerCreditListLoaded;
-      loadAccounts(query: query, showOnlyWithDebt: s.showOnlyWithDebt, page: 1);
-    } else {
-      loadAccounts(query: query, page: 1);
+  void setSearch(String query) {
+    if (state.searchQuery != query) {
+      loadData(query: query, page: 1);
     }
   }
 
   void setTab(int index) {
-    bool onlyDebt = index == 0;
-    if (state is CustomerCreditListLoaded) {
-      final s = state as CustomerCreditListLoaded;
-      if (s.showOnlyWithDebt != onlyDebt) {
-        loadAccounts(query: s.query, showOnlyWithDebt: onlyDebt, page: 1);
+    bool nextDebtOnly = index == 1;
+    if (state.withDebtOnly != nextDebtOnly) {
+      loadData(withDebtOnly: nextDebtOnly, page: 1);
+    }
+  }
+
+  Future<void> toggleAccountStatus(String creditId, bool isActive) async {
+    try {
+      await _toggleCreditStatusUseCase(creditId, isActive);
+      await loadData();
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socketexception') || errStr.contains('clientexception') || errStr.contains('failed host lookup')) {
+        throw Exception('Sin conexión a internet.');
       }
-    } else {
-      loadAccounts(showOnlyWithDebt: onlyDebt, page: 1);
+      throw Exception('Error al cambiar el estado del crédito.');
+    }
+  }
+
+  Future<void> createCreditAccount(String customerId, double limit) async {
+    try {
+      await _createCreditAccountUseCase(
+        customerId: customerId,
+        creditLimit: limit,
+      );
+      await loadData(page: 1);
+    } catch (e) {
+      throw Exception('Error al crear la cuenta de crédito.');
+    }
+  }
+
+  Future<void> registerPayment({
+    required String creditId,
+    required double amount,
+    String? paymentMethod,
+    String? notes,
+  }) async {
+    try {
+      await _registerCreditPaymentUseCase(
+        creditId: creditId,
+        amount: amount,
+        paymentMethod: paymentMethod,
+        notes: notes,
+      );
+      await loadData();
+    } catch (e) {
+      throw Exception('Error al registrar el pago.');
     }
   }
 }

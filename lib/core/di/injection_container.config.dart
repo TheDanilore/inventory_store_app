@@ -1086,6 +1086,14 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i561.AccountMovementsRepository>(),
       ),
     );
+    gh.factory<_i315.CustomerCreditListCubit>(
+      () => _i315.CustomerCreditListCubit(
+        gh<_i580.GetCreditAccountsUseCase>(),
+        gh<_i580.ToggleCreditStatusUseCase>(),
+        gh<_i580.CreateCreditAccountUseCase>(),
+        gh<_i580.RegisterCreditPaymentUseCase>(),
+      ),
+    );
     gh.factory<_i963.InventoryExitFormCubit>(
       () => _i963.InventoryExitFormCubit(
         getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
@@ -1298,9 +1306,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i263.DeleteCustomerLocationUseCase>(),
         gh<_i263.SetDefaultCustomerLocationUseCase>(),
       ),
-    );
-    gh.factory<_i315.CustomerCreditListCubit>(
-      () => _i315.CustomerCreditListCubit(gh<_i580.GetCreditAccountsUseCase>()),
     );
     gh.factory<_i332.AdminCatalogCubit>(
       () => _i332.AdminCatalogCubit(

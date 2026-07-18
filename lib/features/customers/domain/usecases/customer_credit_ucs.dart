@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_list_result_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
 
@@ -9,7 +10,7 @@ class GetCreditAccountsUseCase {
 
   GetCreditAccountsUseCase(this.repository);
 
-  Future<List<CustomerCreditEntity>> call({
+  Future<CustomerCreditListResultEntity> call({
     required int limit,
     required int offset,
     String? query,
