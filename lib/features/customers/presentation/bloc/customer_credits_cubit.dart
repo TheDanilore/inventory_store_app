@@ -40,7 +40,7 @@ class CustomerCreditsCubit extends Cubit<CustomerCreditsState> {
       } else {
         // No account
         emit(
-          const CustomerCreditsError("El cliente no tiene línea de crédito."),
+          const CustomerCreditsError('El cliente no tiene línea de crédito.'),
         );
       }
     } catch (e) {

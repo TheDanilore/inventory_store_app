@@ -1001,7 +1001,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                       fontSize: 16,
                     ),
                     decoration: const InputDecoration(
-                      hintText: "0.00",
+                      hintText: '0.00',
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1052,7 +1052,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              "S/",
+                              'S/',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color:

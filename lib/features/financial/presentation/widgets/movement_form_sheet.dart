@@ -138,7 +138,7 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
           color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: const Center(child: Text("Cargando cuentas...")),
+        child: const Center(child: Text('Cargando cuentas...')),
       );
     }
 

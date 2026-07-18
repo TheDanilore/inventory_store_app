@@ -105,7 +105,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
       } else {
         // Modo Valor
         if (widget.parentAttributeId == null) {
-          throw Exception("No se puede crear un valor sin un atributo padre.");
+          throw Exception('No se puede crear un valor sin un atributo padre.');
         }
 
         final exist =
