@@ -17,10 +17,10 @@ class ProductBatchesCard extends StatelessWidget {
             .where((row) => row['variant_id'] == state.selectedVariantId)
             .toList();
 
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        decoration: AppColors.card(),
+    return Container(
+      decoration: AppColors.card(),
+      child: Material(
+        color: Colors.transparent,
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
