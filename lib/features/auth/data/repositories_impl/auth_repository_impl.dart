@@ -191,7 +191,7 @@ class AuthRepositoryImpl implements AuthRepository {
       String? finalAvatarUrl = user.avatarUrl;
 
       if (imageBytes != null) {
-        final fileName = '_.jpg';
+        final fileName = '${authUserId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
         await _supabase.storage.from('avatars').uploadBinary(
           fileName,
           imageBytes,

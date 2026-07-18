@@ -1,5 +1,4 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vibration/vibration.dart';
@@ -199,18 +198,15 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child:
+                  child:
                     imageUrl != null
-                        ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                          placeholder:
-                              (_, _) => const _ImgPlaceholder(size: 72),
-                          errorWidget:
-                              (_, _, _) => const _ImgPlaceholder(size: 72),
-                        )
+                        ? Image.network(
+                            imageUrl,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const _ImgPlaceholder(size: 72),
+                          )
                         : const _ImgPlaceholder(size: 72),
               ),
               const SizedBox(width: 16),

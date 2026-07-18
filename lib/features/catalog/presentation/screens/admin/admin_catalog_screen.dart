@@ -398,7 +398,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                 sliver: SliverGrid(
                                   gridDelegate:
                                       const SliverGridDelegateWithMaxCrossAxisExtent(
-                                        maxCrossAxisExtent: 220,
+                                        maxCrossAxisExtent: 300,
                                         mainAxisExtent: 280,
                                         crossAxisSpacing: 16,
                                         mainAxisSpacing: 16,

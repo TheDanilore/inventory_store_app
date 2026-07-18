@@ -13,6 +13,9 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/routes/catalog_routes.dart';
 import 'package:inventory_store_app/features/customers/presentation/routes/customers_routes.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_cart_fab.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/customer/cart/cart_variant_picker_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/cart/cart_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/routes/dashboard_routes.dart';
 import 'package:inventory_store_app/features/financial/presentation/routes/financial_routes.dart';
 import 'package:inventory_store_app/features/inventory/presentation/routes/inventory_routes.dart';
@@ -145,6 +148,7 @@ class AppRouter {
                     title: 'Catálogo',
                     showAppBar: false,
                     body: AdminCatalogScreen(
+                      floatingActionButton: const PosCartFab(),
                       onProfileAvatarTap: () {
                         final auth = context.read<AuthCubit>();
                         if (auth.state.currentUser == null) {
@@ -177,7 +181,12 @@ class AppRouter {
         StatefulShellRoute.indexedStack(
           builder:
               (context, state, navigationShell) =>
-                  CustomerLayout(title: '', body: navigationShell, showAppBar: false),
+                  CustomerLayout(
+                    title: '', 
+                    body: navigationShell, 
+                    showAppBar: false,
+                    currentIndex: navigationShell.currentIndex,
+                  ),
           branches: [
             StatefulShellBranch(
               routes: [
@@ -191,6 +200,22 @@ class AppRouter {
                       child: CustomerCatalogScreen(
                         businessName: config.businessName,
                         businessAddress: config.businessAddress,
+                        onAddToCart: (product) async {
+                          await showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => Padding(
+                              padding: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).viewInsets.bottom,
+                              ),
+                              child: CartVariantPickerSheet(
+                                cartCubit: context.read<CartCubit>(),
+                                product: product,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },

@@ -189,7 +189,7 @@ class _CustomerCartScreenState extends State<CustomerCartScreen> {
       title: 'Danilore Store',
       showBackButton: false,
       showProfileIcon: false,
-      showBottomNav: true,
+      showBottomNav: false,
       showCartIcon: false,
       showWalletChip: true,
       currentIndex: 1,

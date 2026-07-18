@@ -83,7 +83,7 @@ class CatalogGridScrollView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 220,
+              maxCrossAxisExtent: 300,
               mainAxisExtent: 280,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,

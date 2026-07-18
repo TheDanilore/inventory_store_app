@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/network/network_state.dart';
@@ -331,25 +330,12 @@ class AdminProfileAvatar extends StatelessWidget {
 
                   if (currentUser?.avatarUrl != null &&
                       currentUser!.avatarUrl!.isNotEmpty) {
-                    return CachedNetworkImage(
-                      imageUrl: currentUser.avatarUrl!,
+                    return Image.network(
+                      currentUser.avatarUrl!,
                       fit: BoxFit.cover,
                       width: 38,
                       height: 38,
-                      fadeInDuration: const Duration(milliseconds: 150),
-                      placeholder:
-                          (context, url) => const Center(
-                            child: SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                      errorWidget:
-                          (context, url, error) => _initialsWidget(currentUser),
+                      errorBuilder: (context, error, stackTrace) => _initialsWidget(currentUser),
                     );
                   }
                   return _initialsWidget(currentUser);

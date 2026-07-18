@@ -197,46 +197,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
             ),
             actions: [
-              if (user == null)
+              if (user != null)
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
-                    child:
-                        _isEditing
-                            ? IconButton(
-                              key: const ValueKey('cancelBtn'),
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                color: AppColors.error,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isEditing = false;
-                                  _selectedImage = null;
-                                  _populateFields();
-                                });
-                              },
-                            )
-                            : IconButton(
-                              key: const ValueKey('editBtn'),
-                              icon: const Icon(
-                                Icons.edit_rounded,
-                                color: AppColors.primary,
-                              ),
-                              onPressed: () {
-                                setState(() => _isEditing = true);
-                              },
+                    child: _isEditing
+                        ? IconButton(
+                            key: const ValueKey('cancelBtn'),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AppColors.error,
                             ),
+                            onPressed: () {
+                              setState(() {
+                                _isEditing = false;
+                                _selectedImage = null;
+                                _populateFields();
+                              });
+                            },
+                          )
+                        : IconButton(
+                            key: const ValueKey('editBtn'),
+                            icon: const Icon(
+                              Icons.edit_rounded,
+                              color: AppColors.primary,
+                            ),
+                            onPressed: () {
+                              setState(() => _isEditing = true);
+                            },
+                          ),
                   ),
                 ),
             ],
           ),
-          body:
-              user == null
+          body: (isLoading || state.authStatus == AuthStatus.initial)
+              ? const Center(child: CircularProgressIndicator())
+              : user == null
                   ? const Center(
-                    child: Text('Inicia sesión para ver tu perfil'),
-                  )
+                      child: Text('Inicia sesión para ver tu perfil'),
+                    )
                   : SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Column(

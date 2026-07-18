@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -26,8 +27,8 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
     required this.getProductsUC,
     required this.getProductStockUC,
     required CatalogSearchRepository catalogRepository,
-  })  : _catalogRepository = catalogRepository,
-        super(const CustomerCatalogState());
+  }) : _catalogRepository = catalogRepository,
+       super(const CustomerCatalogState());
 
   Future<void> loadInitialData() async {
     await _loadSearchHistory();
@@ -136,12 +137,18 @@ class CustomerCatalogCubit extends Cubit<CustomerCatalogState> {
         Map<String, int> stock = {};
         if (ids.isNotEmpty) {
           final stockResult = await getProductStockUC(productIds: ids);
-          stockResult.fold((_) {}, (s) => stock = s);
+          stockResult.fold(
+            (l) => debugPrint(
+              'CustomerCatalogCubit: error loading stock -> ${l.message}',
+            ),
+            (s) => stock = s,
+          );
         }
 
-        final enriched = data.products
-            .map((p) => p.copyWith(totalStock: stock[p.id] ?? p.totalStock))
-            .toList();
+        final enriched =
+            data.products
+                .map((p) => p.copyWith(totalStock: stock[p.id] ?? p.totalStock))
+                .toList();
 
         final updated = List<ProductEntity>.from(state.products)
           ..addAll(enriched);

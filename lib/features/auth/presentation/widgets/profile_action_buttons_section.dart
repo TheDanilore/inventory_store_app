@@ -82,7 +82,9 @@ class ProfileActionButtonsSection extends StatelessWidget {
                               if (ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Error al eliminar la cuenta'),
+                                    content: Text(
+                                      'Error al eliminar la cuenta',
+                                    ),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -119,38 +121,42 @@ class ProfileActionButtonsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (isAdmin) ...[
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isAdmin) ...[
+            _ProfileActionTile(
+              icon:
+                  openedFromAdmin
+                      ? Icons.storefront_rounded
+                      : Icons.admin_panel_settings_rounded,
+              label:
+                  openedFromAdmin
+                      ? 'Ver Tienda como Cliente'
+                      : 'Volver a Vista Admin',
+              color: AppColors.info,
+              onTap: onToggleView,
+            ),
+            const SizedBox(height: 10),
+          ],
           _ProfileActionTile(
-            icon:
-                openedFromAdmin
-                    ? Icons.storefront_rounded
-                    : Icons.admin_panel_settings_rounded,
-            label:
-                openedFromAdmin
-                    ? 'Ver Tienda como Cliente'
-                    : 'Volver a Vista Admin',
-            color: AppColors.info,
-            onTap: onToggleView,
+            icon: Icons.logout_rounded,
+            label: 'Cerrar Sesión',
+            color: AppColors.error,
+            onTap: onSignOut,
           ),
           const SizedBox(height: 10),
+          _ProfileActionTile(
+            icon: Icons.delete_forever_rounded,
+            label: 'Eliminar Cuenta',
+            color: Colors.red.shade700,
+            onTap: () => _showDeleteAccountDialog(context),
+          ),
+          const SizedBox(height: 30),
         ],
-        _ProfileActionTile(
-          icon: Icons.logout_rounded,
-          label: 'Cerrar Sesión',
-          color: AppColors.error,
-          onTap: onSignOut,
-        ),
-        const SizedBox(height: 10),
-        _ProfileActionTile(
-          icon: Icons.delete_forever_rounded,
-          label: 'Eliminar Cuenta',
-          color: Colors.red.shade700,
-          onTap: () => _showDeleteAccountDialog(context),
-        ),
-      ],
+      ),
     );
   }
 }
