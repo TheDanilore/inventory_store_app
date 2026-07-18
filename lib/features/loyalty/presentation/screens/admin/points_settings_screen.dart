@@ -449,6 +449,7 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                   ),
                 ],
               ),
+      bottomNavigationBar: _isInitialized ? _buildGlobalSaveButton() : null,
     );
   }
 
@@ -529,12 +530,6 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   Widget _buildSystemTab() {
-    final keys = [
-      _earningRateKey,
-      _pointsRatioKey,
-      _checkinRewardKey,
-      _checkinStreakStepKey,
-    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -571,23 +566,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        _buildSaveButton(0, keys),
       ],
     );
   }
 
   Widget _buildLimitsTab() {
-    final keys = [
-      _boxesDailyLimitKey,
-      _memoramaDailyLimitKey,
-      _catcherDailyLimitKey,
-      _pinataDailyLimitKey,
-      _jumpDailyLimitKey,
-      _clawDailyLimitKey,
-      _stackDailyLimitKey,
-      _dodgeDailyLimitKey,
-    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -610,30 +593,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             ]),
           ],
         ),
-        const SizedBox(height: 24),
-        _buildSaveButton(1, keys),
       ],
     );
   }
 
   Widget _buildPrizesTab() {
-    final keys = [
-      _boxesPrize1Key,
-      _boxesPrize2Key,
-      _boxesPrize3Key,
-      _pinataGrandPrizeKey,
-      _pinataConsolationPrizeKey,
-      _catcherCoinRewardKey,
-      _catcherGiftRewardKey,
-      _catcherBombPenaltyKey,
-      _memoramaMatchRewardKey,
-      _clawPrize1Key,
-      _clawPrize2Key,
-      _clawPrize3Key,
-      _clawPrize4Key,
-      _clawPrize5Key,
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -694,8 +658,6 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             ], crossAxisCount: 3),
           ],
         ),
-        const SizedBox(height: 24),
-        _buildSaveButton(2, keys),
       ],
     );
   }
@@ -742,16 +704,73 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
     );
   }
 
-  Widget _buildSaveButton(int tabIndex, List<String> keys) {
+  List<String> _getKeysForTab(int tabIndex) {
+    if (tabIndex == 0) {
+      return [
+        _earningRateKey,
+        _pointsRatioKey,
+        _checkinRewardKey,
+        _checkinStreakStepKey,
+      ];
+    } else if (tabIndex == 1) {
+      return [
+        _boxesDailyLimitKey,
+        _memoramaDailyLimitKey,
+        _catcherDailyLimitKey,
+        _pinataDailyLimitKey,
+        _jumpDailyLimitKey,
+        _clawDailyLimitKey,
+        _stackDailyLimitKey,
+        _dodgeDailyLimitKey,
+      ];
+    } else {
+      return [
+        _boxesPrize1Key,
+        _boxesPrize2Key,
+        _boxesPrize3Key,
+        _pinataGrandPrizeKey,
+        _pinataConsolationPrizeKey,
+        _catcherCoinRewardKey,
+        _catcherGiftRewardKey,
+        _catcherBombPenaltyKey,
+        _memoramaMatchRewardKey,
+        _clawPrize1Key,
+        _clawPrize2Key,
+        _clawPrize3Key,
+        _clawPrize4Key,
+        _clawPrize5Key,
+      ];
+    }
+  }
+
+  Widget _buildGlobalSaveButton() {
     final cubit = context.watch<AppConfigCubit>();
     final isSaving = cubit.saveState == ViewState.loading;
-    return Align(
-      alignment: Alignment.centerRight,
-      child: SizedBox(
-        width: 250,
-        child: AppPrimaryButton(
-          label: isSaving ? 'Guardando...' : 'Guardar Cambios',
-          onPressed: isSaving ? null : () => _saveSection(tabIndex, keys),
+    final keys = _getKeysForTab(_selectedIndex);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: 250,
+            child: AppPrimaryButton(
+              label: isSaving ? 'Guardando...' : 'Guardar Cambios',
+              onPressed: isSaving ? null : () => _saveSection(_selectedIndex, keys),
+            ),
+          ),
         ),
       ),
     );
