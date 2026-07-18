@@ -1,7 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog_cubit.dart';
@@ -174,163 +173,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
                   Widget mainContent = Builder(
                     builder: (context) {
-                      final topBarSliver = SliverAppBar(
-                        systemOverlayStyle: const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.dark,
-                          statusBarBrightness: Brightness.light,
-                        ),
-                        backgroundColor: const Color(0xFFF7F8FC),
-                        elevation: 0,
-                        shadowColor: Colors.black.withValues(alpha: 0.06),
-                        surfaceTintColor: Colors.transparent,
-                        titleSpacing: 0,
-                        floating: true,
-                        pinned: false,
-                        title: const Padding(
-                          padding: EdgeInsets.only(left: 4),
-                          child: Text(
-                            'Catálogo',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                        leadingWidth: 60,
-                        leading: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: widget.onProfileAvatarTap ?? () {},
-                                child: Tooltip(
-                                  message: 'Perfil',
-                                  child: Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF0EA5E9),
-                                          Color(0xFF0284C7),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF0284C7,
-                                          ).withValues(alpha: 0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.person_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        actions: [
-                          if (MediaQuery.of(context).size.width >= 900)
-                            ElevatedButton.icon(
-                              onPressed: () => context.go('/admin/pos'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1E293B),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.point_of_sale_rounded,
-                                size: 16,
-                              ),
-                              label: const Text(
-                                'Abrir Caja',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 8),
-                          PopupMenuButton<String>(
-                            tooltip: 'Opciones',
-                            offset: const Offset(0, 45),
-                            onSelected:
-                                (value) => _handleMenuSelection(
-                                  value,
-                                  cubit,
-                                  state,
-                                  context,
-                                ),
-                            itemBuilder: (_) => _buildMenuItems(state),
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.grey.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.more_vert_rounded,
-                                color: Color(0xFF64748B),
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Builder(
-                            builder:
-                                (context) => GestureDetector(
-                                  onTap:
-                                      () =>
-                                          Scaffold.of(context).openEndDrawer(),
-                                  child: Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: Colors.grey.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.menu_rounded,
-                                      color: Color(0xFF64748B),
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                      );
+                      // Removed SliverAppBar as it will be managed by AdminLayout
 
                       // Header colapsable: se reduce a solo el search bar al scrollear
                       final isDesktop =
@@ -424,7 +267,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           onRefresh: () async => cubit.refreshProducts(),
                           child: CustomScrollView(
                             slivers: [
-                              topBarSliver,
                               headerSliver,
                               if (chipsSliver != null) chipsSliver,
                               SliverPadding(
@@ -456,7 +298,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           onRefresh: () async => cubit.refreshProducts(),
                           child: CustomScrollView(
                             slivers: [
-                              topBarSliver,
                               headerSliver,
                               if (chipsSliver != null) chipsSliver,
                               SliverFillRemaining(
@@ -478,7 +319,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           onRefresh: () async => cubit.refreshProducts(),
                           child: CustomScrollView(
                             slivers: [
-                              topBarSliver,
                               headerSliver,
                               if (chipsSliver != null) chipsSliver,
                               SliverFillRemaining(
@@ -534,7 +374,6 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           searchByIngredient: state.searchByIngredient,
                           matchedIngredients: state.matchedIngredients,
                           bottomPadding: fabsBottomPadding,
-                          topBarSliver: topBarSliver,
                           headerSliver: headerSliver,
                           chipsSliver: chipsSliver,
                           onEdit: (product) async {
@@ -624,7 +463,33 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               settingsActions: _buildMenuItems(state),
               onSettingsSelected:
                   (value) => _handleMenuSelection(value, cubit, state, context),
-              showAppBar: false,
+              showAppBar: true,
+              actions: [
+                if (isDesktop)
+                  ElevatedButton.icon(
+                    onPressed: () => context.go('/admin/pos'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E293B),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                    label: const Text(
+                      'Abrir Caja',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+              ],
               body: bodyContent,
               floatingActionButton: floatingBtn,
             );
