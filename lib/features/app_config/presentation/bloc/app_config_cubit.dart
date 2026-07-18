@@ -74,7 +74,19 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   }
 
   Future<String?> uploadBusinessLogo(Uint8List bytes) async {
-    return null;
+    final result = await uploadLogoUseCase(bytes);
+    return result.fold(
+      (failure) {
+        emit(
+          state.copyWith(
+            saveStatus: ViewState.error,
+            errorMessage: failure.message,
+          ),
+        );
+        return null;
+      },
+      (url) => url,
+    );
   }
 
   Future<void> loadConfig() async {

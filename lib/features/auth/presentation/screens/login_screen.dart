@@ -73,6 +73,9 @@ class _LoginScreenState extends State<LoginScreen>
   // Removido _checkSession ya que GoRouter lo maneja globalmente
 
   void _authenticate(bool isLoginMode) {
+    final cubit = context.read<AuthCubit>();
+    if (cubit.state.viewState == ViewState.loading) return;
+
     if (!_formKey.currentState!.validate()) {
       AppSnackbar.show(
         context,
@@ -82,7 +85,6 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    final cubit = context.read<AuthCubit>();
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -106,6 +108,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
+      listenWhen: (previous, current) => previous.viewState != current.viewState,
       listener: (context, state) {
         if (state.viewState == ViewState.error && state.errorMessage != null) {
           AppSnackbar.show(

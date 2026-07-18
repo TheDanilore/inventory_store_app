@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +12,7 @@ import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class BusinessInfoScreen extends StatefulWidget {
   const BusinessInfoScreen({super.key});
@@ -54,20 +56,24 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
     final cubit = context.read<AppConfigCubit>();
     if (cubit.state.businessInfo != null) {
-      final info = cubit.state.businessInfo!;
-      _businessNameCtrl.text =
-          info.businessName == 'Sin configurar' ? '' : info.businessName;
-      _taxIdCtrl.text = info.taxId;
-      _addressCtrl.text = info.address;
-      _phoneCtrl.text = info.phone;
-      _logoUrlCtrl.text = info.logoUrl;
-      _loyaltyGlobalEnabled = info.loyaltyGlobalEnabled;
-      _loyaltyCustomerVisible = info.loyaltyCustomerVisible;
-
-      _previewName = _businessNameCtrl.text;
-      _previewAddress = _addressCtrl.text;
-      _logoUrl = _logoUrlCtrl.text;
+      _populateFields(cubit.state.businessInfo!);
     }
+  }
+
+  void _populateFields(BusinessInfoEntity info) {
+    if (_hasChanges) return;
+    _businessNameCtrl.text =
+        info.businessName == 'Sin configurar' ? '' : info.businessName;
+    _taxIdCtrl.text = info.taxId;
+    _addressCtrl.text = info.address;
+    _phoneCtrl.text = info.phone;
+    _logoUrlCtrl.text = info.logoUrl;
+    _loyaltyGlobalEnabled = info.loyaltyGlobalEnabled;
+    _loyaltyCustomerVisible = info.loyaltyCustomerVisible;
+
+    _previewName = _businessNameCtrl.text;
+    _previewAddress = _addressCtrl.text;
+    _logoUrl = _logoUrlCtrl.text;
   }
 
   @override
@@ -145,75 +151,94 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AppConfigCubit, AppConfigState>(
-      listenWhen:
-          (previous, current) => previous.saveStatus != current.saveStatus,
-      listener: (context, state) {
-        if (state.saveStatus == ViewState.success) {
-          setState(() => _hasChanges = false);
-          AppSnackbar.show(
-            context,
-            message: 'Información del negocio guardada.',
-            type: SnackbarType.success,
-          );
-        } else if (state.saveStatus == ViewState.error) {
-          AppSnackbar.show(
-            context,
-            message:
-                state.errorMessage ??
-                'No se pudo guardar la información. Intente nuevamente.',
-            type: SnackbarType.error,
-          );
-        }
-      },
-      builder: (context, state) {
-        final isTablet = MediaQuery.of(context).size.width >= 600;
-        final isSaving = state.saveStatus == ViewState.loading;
-        final isLoading =
-            state.status == ViewState.initial ||
-            state.status == ViewState.loading;
-        final hasError = state.status == ViewState.error;
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AppConfigCubit, AppConfigState>(
+          listenWhen: (previous, current) => previous.status != current.status,
+          listener: (context, state) {
+            if (state.status == ViewState.success &&
+                state.businessInfo != null) {
+              setState(() => _populateFields(state.businessInfo!));
+            }
+          },
+        ),
+        BlocListener<AppConfigCubit, AppConfigState>(
+          listenWhen:
+              (previous, current) => previous.saveStatus != current.saveStatus,
+          listener: (context, state) {
+            if (state.saveStatus == ViewState.success) {
+              setState(() => _hasChanges = false);
+              AppSnackbar.show(
+                context,
+                message: 'Información del negocio guardada.',
+                type: SnackbarType.success,
+              );
+            } else if (state.saveStatus == ViewState.error) {
+              AppSnackbar.show(
+                context,
+                message:
+                    state.errorMessage ??
+                    'No se pudo guardar la información. Intente nuevamente.',
+                type: SnackbarType.error,
+              );
+            }
+          },
+        ),
+      ],
+      child: BlocBuilder<AppConfigCubit, AppConfigState>(
+        builder: (context, state) {
+          final isTablet = MediaQuery.of(context).size.width >= 600;
+          final isSaving = state.saveStatus == ViewState.loading;
+          final isLoading =
+              state.status == ViewState.initial ||
+              state.status == ViewState.loading;
+          final hasError = state.status == ViewState.error;
 
-        final supabaseUrl = state.connectionUrl ?? 'Desconocida';
+          final supabaseUrl = state.connectionUrl ?? 'Desconocida';
 
-        return Scaffold(
-          appBar: AppBar(title: const Text('Información del Negocio')),
-          bottomNavigationBar:
-              (!isLoading && !hasError)
-                  ? SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: AppPrimaryButton(
-                          key: ValueKey(_hasChanges),
-                          label:
-                              _hasChanges ? 'Guardar cambios' : 'Todo guardado',
-                          loading: isSaving,
-                          icon: Icon(
-                            _hasChanges
-                                ? Icons.save_rounded
-                                : Icons.check_circle_outline_rounded,
-                            size: 18,
+          return AdminLayout(
+            title: 'Información del Negocio',
+            showBackButton: true,
+            bottomNavigationBar:
+                (!isLoading && !hasError)
+                    ? SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: AppPrimaryButton(
+                            key: ValueKey(_hasChanges),
+                            label:
+                                _hasChanges
+                                    ? 'Guardar cambios'
+                                    : 'Todo guardado',
+                            loading: isSaving,
+                            icon: Icon(
+                              _hasChanges
+                                  ? Icons.save_rounded
+                                  : Icons.check_circle_outline_rounded,
+                              size: 18,
+                            ),
+                            backgroundColor:
+                                _hasChanges ? null : Colors.grey.shade400,
+                            onPressed:
+                                (_hasChanges && !isSaving) ? _save : null,
                           ),
-                          backgroundColor:
-                              _hasChanges ? null : Colors.grey.shade400,
-                          onPressed: (_hasChanges && !isSaving) ? _save : null,
                         ),
                       ),
-                    ),
-                  )
-                  : null,
-          body:
-              isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : hasError
-                  ? _buildErrorState(context.read<AppConfigCubit>())
-                  : isTablet
-                  ? _buildTabletLayout(isSaving, supabaseUrl)
-                  : _buildMobileLayout(isSaving, supabaseUrl),
-        );
-      },
+                    )
+                    : null,
+            body:
+                isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : hasError
+                    ? _buildErrorState(context.read<AppConfigCubit>())
+                    : isTablet
+                    ? _buildTabletLayout(isSaving, supabaseUrl)
+                    : _buildMobileLayout(isSaving, supabaseUrl),
+          );
+        },
+      ),
     );
   }
 
