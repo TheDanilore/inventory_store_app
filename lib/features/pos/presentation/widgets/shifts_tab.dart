@@ -18,7 +18,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 
 class ShiftsTab extends StatefulWidget {
-  const ShiftsTab({super.key});
+  final bool showOpenShiftButton;
+
+  const ShiftsTab({
+    super.key,
+    this.showOpenShiftButton = true,
+  });
 
   @override
   State<ShiftsTab> createState() => _ShiftsTabState();
@@ -292,11 +297,12 @@ class _ShiftsTabState extends State<ShiftsTab> {
                   ),
               ],
             ),
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton.extended(
-                heroTag: 'fab_shifts',
+            if (widget.showOpenShiftButton)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  heroTag: 'fab_shifts',
                 onPressed:
                     isLoading
                         ? null

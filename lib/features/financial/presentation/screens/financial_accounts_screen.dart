@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/financi
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 // FINANCIAL ACCOUNTS SCREEN
 
@@ -52,9 +53,12 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
+    return AdminLayout(
+      title: 'Cuentas y Bancos',
+      showBackButton: true,
+      body: Column(
+        children: [
+          Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth >= 720) {
@@ -64,7 +68,8 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
             },
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -124,8 +129,11 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
             builder: (context, child) {
               return TabBarView(
                 controller: _mobileTabController,
-                physics: const BouncingScrollPhysics(),
-                children: const [AccountsTab(), MovementsTab(), ShiftsTab()],
+                children: const [
+                  AccountsTab(),
+                  MovementsTab(),
+                  ShiftsTab(showOpenShiftButton: false),
+                ],
               );
             },
           ),
@@ -195,8 +203,10 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
               Expanded(
                 child: TabBarView(
                   controller: _tabletTabController,
-                  physics: const BouncingScrollPhysics(),
-                  children: const [MovementsTab(), ShiftsTab()],
+                  children: const [
+                    MovementsTab(),
+                    ShiftsTab(showOpenShiftButton: false),
+                  ],
                 ),
               ),
             ],
