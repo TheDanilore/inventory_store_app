@@ -13,6 +13,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_location/location_card.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/services/geocoding_service.dart';
 
 class LocationManagementScreen extends StatelessWidget {
   final String customerId;
@@ -40,8 +41,18 @@ class _LocationManagementView extends StatelessWidget {
     final cubit = context.read<CustomerLocationsCubit>();
     final isFirst =
         state is CustomerLocationsLoaded ? state.locations.isEmpty : true;
+
+    final place = await Navigator.of(context).push<PlaceResult?>(
+      MaterialPageRoute(
+        builder: (_) => const CustomerLocationMapScreen(isPickerMode: true),
+      ),
+    );
+
+    if (place == null || !context.mounted) return;
+
     final res = await CustomerLocationFormSheet.show(
       context,
+      place: place,
       isFirstLocation: isFirst,
       onSave: (location) async {
         await cubit.addLocation(

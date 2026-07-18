@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
+import 'package:inventory_store_app/core/services/geocoding_service.dart';
 
 /// Bottom sheet para agregar o editar una ubicación de cliente.
-/// Retorna un [CustomerLocationEntity] parcial (sin id/profileId) vía Navigator.pop().
 class CustomerLocationFormSheet extends StatefulWidget {
-  final CustomerLocationEntity? existing; // null = nueva ubicación
+  final CustomerLocationEntity? existing;
+  final PlaceResult? place; // Viene del mapa en modo creación
   final bool isFirstLocation;
   final bool isDialog;
   final Future<void> Function(CustomerLocationEntity)? onSave;
@@ -17,6 +14,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
   const CustomerLocationFormSheet({
     super.key,
     this.existing,
+    this.place,
     this.isFirstLocation = false,
     this.isDialog = false,
     this.onSave,
@@ -25,6 +23,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
   static Future<bool?> show(
     BuildContext context, {
     CustomerLocationEntity? existing,
+    PlaceResult? place,
     bool isFirstLocation = false,
     Future<void> Function(CustomerLocationEntity)? onSave,
   }) async {
@@ -44,6 +43,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
                 ),
                 child: CustomerLocationFormSheet(
                   existing: existing,
+                  place: place,
                   isFirstLocation: isFirstLocation,
                   isDialog: true,
                   onSave: onSave,
@@ -60,6 +60,7 @@ class CustomerLocationFormSheet extends StatefulWidget {
       builder:
           (_) => CustomerLocationFormSheet(
             existing: existing,
+            place: place,
             isFirstLocation: isFirstLocation,
             isDialog: false,
             onSave: onSave,
@@ -78,28 +79,37 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
   final _addressCtrl = TextEditingController();
   final _referenceCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  final _latCtrl = TextEditingController();
-  final _lngCtrl = TextEditingController();
+
+  late double _lat;
+  late double _lng;
 
   String _selectedType = 'otro';
   bool _isDefault = false;
-  bool _isGettingGps = false;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
+    final p = widget.place;
+
     if (e != null) {
       _nameCtrl.text = e.name;
       _addressCtrl.text = e.addressLine ?? '';
       _referenceCtrl.text = e.reference ?? '';
       _notesCtrl.text = e.notes ?? '';
-      _latCtrl.text = e.latitude.toStringAsFixed(6);
-      _lngCtrl.text = e.longitude.toStringAsFixed(6);
+      _lat = e.latitude;
+      _lng = e.longitude;
       _selectedType = e.locationType;
       _isDefault = e.isDefault;
+    } else if (p != null) {
+      _addressCtrl.text = p.fullAddress;
+      _lat = p.latitude;
+      _lng = p.longitude;
+      _isDefault = widget.isFirstLocation;
     } else {
+      _lat = 0;
+      _lng = 0;
       _isDefault = widget.isFirstLocation;
     }
   }
@@ -110,107 +120,20 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
     _addressCtrl.dispose();
     _referenceCtrl.dispose();
     _notesCtrl.dispose();
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _getGpsLocation() async {
-    setState(() => _isGettingGps = true);
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Permiso de ubicación denegado.'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
-
-      if (mounted) {
-        setState(() {
-          _latCtrl.text = pos.latitude.toStringAsFixed(6);
-          _lngCtrl.text = pos.longitude.toStringAsFixed(6);
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al obtener GPS: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isGettingGps = false);
-    }
-  }
-
-  Future<void> _openMapPicker() async {
-    double? initLat = double.tryParse(_latCtrl.text);
-    double? initLng = double.tryParse(_lngCtrl.text);
-
-    final result = await Navigator.of(context).push<LatLng>(
-      MaterialPageRoute(
-        builder:
-            (_) => CustomerLocationMapScreen(
-              isPickerMode: true,
-              initialPickerPoint:
-                  (initLat != null && initLng != null)
-                      ? LatLng(initLat, initLng)
-                      : null,
-            ),
-      ),
-    );
-
-    if (result != null && mounted) {
-      setState(() {
-        _latCtrl.text = result.latitude.toStringAsFixed(6);
-        _lngCtrl.text = result.longitude.toStringAsFixed(6);
-      });
-    }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_isSaving) return;
 
-    final lat = double.tryParse(_latCtrl.text);
-    final lng = double.tryParse(_lngCtrl.text);
-
-    if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Las coordenadas no son válidas.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
     final result = CustomerLocationEntity(
       id: widget.existing?.id ?? '',
       profileId: widget.existing?.profileId ?? '',
       name: _nameCtrl.text.trim(),
       locationType: _selectedType,
-      latitude: lat,
-      longitude: lng,
+      latitude: _lat,
+      longitude: _lng,
       addressLine:
           _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
       reference:
@@ -261,7 +184,7 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar (solo en bottom sheet)
+          // Handle bar
           if (!widget.isDialog)
             Container(
               margin: const EdgeInsets.only(top: 12, bottom: 6),
@@ -292,7 +215,7 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
                 const SizedBox(width: 12),
                 Text(
                   widget.existing == null
-                      ? 'Nueva Ubicación'
+                      ? 'Detalles de la Ubicación'
                       : 'Editar Ubicación',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
@@ -319,7 +242,7 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Nombre
-                    _SectionLabel('Nombre de la ubicación'),
+                    _SectionLabel('Nombre corto para esta ubicación'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _nameCtrl,
@@ -345,137 +268,15 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Coordenadas GPS
-                    _SectionLabel('Coordenadas GPS'),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _latCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                              signed: true,
-                            ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[-0-9.]'),
-                              ),
-                            ],
-                            decoration: _inputDecoration(
-                              hint: 'Latitud',
-                              icon: Icons.my_location_rounded,
-                            ),
-                            validator:
-                                (v) =>
-                                    (v == null || double.tryParse(v) == null)
-                                        ? 'Inválida'
-                                        : null,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _lngCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                              signed: true,
-                            ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[-0-9.]'),
-                              ),
-                            ],
-                            decoration: _inputDecoration(
-                              hint: 'Longitud',
-                              icon: Icons.explore_rounded,
-                            ),
-                            validator:
-                                (v) =>
-                                    (v == null || double.tryParse(v) == null)
-                                        ? 'Inválida'
-                                        : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Botones GPS y mapa
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _isGettingGps ? null : _getGpsLocation,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.teal,
-                              side: BorderSide(
-                                color: AppColors.teal.withValues(alpha: 0.5),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
-                            icon:
-                                _isGettingGps
-                                    ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AppColors.teal,
-                                      ),
-                                    )
-                                    : const Icon(
-                                      Icons.gps_fixed_rounded,
-                                      size: 16,
-                                    ),
-                            label: Text(
-                              _isGettingGps ? 'Obteniendo...' : 'Usar GPS',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _openMapPicker,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.info,
-                              side: BorderSide(
-                                color: AppColors.info.withValues(alpha: 0.5),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
-                            icon: const Icon(Icons.map_rounded, size: 16),
-                            label: const Text(
-                              'Elegir en mapa',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Descripción libre
-                    _SectionLabel('Descripción (opcional)'),
+                    // Dirección (Pre-llenada)
+                    _SectionLabel('Dirección'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _addressCtrl,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: _inputDecoration(
                         hint: 'Ej: Km 12 carretera Casma, parcela 4',
-                        icon: Icons.text_snippet_rounded,
+                        icon: Icons.map_rounded,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -487,21 +288,21 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
                       controller: _referenceCtrl,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: _inputDecoration(
-                        hint: 'Ej: Frente al canal de riego',
+                        hint: 'Ej: Frente al canal de riego rojo',
                         icon: Icons.signpost_rounded,
                       ),
                     ),
                     const SizedBox(height: 12),
 
                     // Notas
-                    _SectionLabel('Notas (opcional)'),
+                    _SectionLabel('Notas adicionales (opcional)'),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _notesCtrl,
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: 2,
                       decoration: _inputDecoration(
-                        hint: 'Ej: Solo se puede llegar en mototaxi',
+                        hint: 'Ej: El portón es verde, cuidado con los perros',
                         icon: Icons.notes_rounded,
                       ),
                     ),

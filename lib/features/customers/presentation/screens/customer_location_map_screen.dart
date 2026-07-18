@@ -6,13 +6,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_location/map_markers.dart';
+import 'package:inventory_store_app/core/services/geocoding_service.dart';
 
-/// Pantalla de mapa compartida.
-///
-/// Modos:
-/// - [isPickerMode] = false → muestra ubicaciones existentes (solo vista)
-/// - [isPickerMode] = true  → mueve el mapa para elegir coordenadas;
-///   al confirmar retorna un [LatLng] via Navigator.pop().
+/// Pantalla de mapa.
+/// - Si [isPickerMode] = true, retorna un [PlaceResult] via Navigator.pop().
 class CustomerLocationMapScreen extends StatefulWidget {
   final List<CustomerLocationEntity> locations;
   final CustomerLocationEntity? focusedLocation;
@@ -34,12 +31,14 @@ class CustomerLocationMapScreen extends StatefulWidget {
 
 class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
   final MapController _mapController = MapController();
-  late final ValueNotifier<LatLng> _pickerPointNotifier;
-  StreamSubscription<MapEvent>? _mapEventSubscription;
+  final GeocodingService _geocodingService = GeocodingService();
 
-  // Throttle: actualizar coordenadas máximo una vez cada 200ms
-  // para no saturar el renderer de Flutter Web.
+  late final ValueNotifier<LatLng> _pickerPointNotifier;
+  final ValueNotifier<String?> _addressNotifier = ValueNotifier(null);
+
+  StreamSubscription<MapEvent>? _mapEventSubscription;
   Timer? _positionThrottle;
+  bool _isReverseGeocoding = false;
 
   @override
   void initState() {
@@ -49,12 +48,12 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
     );
 
     if (widget.isPickerMode) {
-      // Escuchar eventos del mapa para actualizar al TERMINAR el movimiento
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _mapEventSubscription = _mapController.mapEventStream.listen(
           _onMapEvent,
           cancelOnError: false,
         );
+        _fetchAddressForCenter();
       });
     }
   }
@@ -65,10 +64,9 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
     _mapEventSubscription?.cancel();
     _mapController.dispose();
     _pickerPointNotifier.dispose();
+    _addressNotifier.dispose();
     super.dispose();
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
 
   LatLng get _initialCenter {
     if (widget.isPickerMode && widget.initialPickerPoint != null) {
@@ -89,7 +87,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
           widget.locations.length;
       return LatLng(lat, lng);
     }
-    return const LatLng(-9.0853, -78.5783); // Default: Chimbote, Perú
+    return const LatLng(-9.0853, -78.5783); // Chimbote, Perú
   }
 
   double get _initialZoom {
@@ -129,10 +127,6 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
     }
   }
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  /// Escucha eventos específicos del mapa (solo fin de movimiento).
-  /// Mucho más eficiente que onPositionChanged (que dispara 60 veces/seg).
   void _onMapEvent(MapEvent event) {
     if (!mounted) return;
 
@@ -143,23 +137,61 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
         event is MapEventFlingAnimationEnd;
 
     if (isEndEvent) {
-      // Throttle extra: no actualizar si ya hay un timer pendiente
       _positionThrottle?.cancel();
-      _positionThrottle = Timer(const Duration(milliseconds: 150), () {
+      _positionThrottle = Timer(const Duration(milliseconds: 300), () {
         if (mounted) {
           _pickerPointNotifier.value = _mapController.camera.center;
+          _fetchAddressForCenter();
         }
       });
     }
   }
 
-  void _confirmPickerPoint() {
-    // Leer la posición actual del mapa en el momento de confirmar (más preciso)
-    final currentCenter = _mapController.camera.center;
-    Navigator.of(context).pop(currentCenter);
+  Future<void> _fetchAddressForCenter() async {
+    if (_isReverseGeocoding) return;
+    _isReverseGeocoding = true;
+    _addressNotifier.value = 'Buscando dirección...';
+
+    final center = _mapController.camera.center;
+    final address = await _geocodingService.reverseGeocode(
+      center.latitude,
+      center.longitude,
+    );
+
+    if (mounted) {
+      _addressNotifier.value = address ?? 'Dirección desconocida';
+      _isReverseGeocoding = false;
+    }
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────
+  void _confirmPickerPoint() {
+    final currentCenter = _mapController.camera.center;
+    final result = PlaceResult(
+      name: _addressNotifier.value ?? 'Ubicación',
+      latitude: currentCenter.latitude,
+      longitude: currentCenter.longitude,
+      city: null,
+      state: null,
+      country: null,
+    );
+    Navigator.of(context).pop(result);
+  }
+
+  Future<void> _openSearch() async {
+    final result = await showSearch<PlaceResult?>(
+      context: context,
+      delegate: _PlaceSearchDelegate(
+        _geocodingService,
+        _mapController.camera.center,
+      ),
+    );
+
+    if (result != null && mounted) {
+      _mapController.move(LatLng(result.latitude, result.longitude), 16.0);
+      _pickerPointNotifier.value = LatLng(result.latitude, result.longitude);
+      _addressNotifier.value = result.fullAddress;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,9 +227,8 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
             options: MapOptions(
               initialCenter: _initialCenter,
               initialZoom: _initialZoom,
-              // Rango seguro para OSM público — evita tiles 404 que crashean CanvasKit
               minZoom: 9.0,
-              maxZoom: 17.0,
+              maxZoom: 18.0,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
@@ -206,19 +237,14 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.inventorystore.app',
-                // keepBuffer bajo: menos tiles en memoria → menos crash en Web
                 keepBuffer: 1,
-                // Sin errorImage: evita cargar app_icon.png por cada tile 404
-                errorTileCallback: (tile, error, stackTrace) {
-                  // Silenciar errores de tiles individuales
-                  debugPrint('[Map] tile ignorado: $error');
-                },
+                errorTileCallback: (tile, error, stackTrace) {},
               ),
               MarkerLayer(markers: markers),
             ],
           ),
 
-          // ── Pin central fijo (Modo Uber) ─────────────────────────────
+          // ── Pin central fijo ─────────────────────────────
           if (widget.isPickerMode)
             const Align(
               alignment: Alignment.center,
@@ -232,188 +258,412 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
               ),
             ),
 
-          // ── Header Flotante (Reemplaza el AppBar) ─────────────────────
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 16,
-            left: 16,
-            right: 16,
-            child: Row(
-              children: [
-                // Botón Atrás
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+          // ── Buscador Flotante (Solo Picker) ─────────────────────
+          if (widget.isPickerMode)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 16,
+              left: 16,
+              right: 16,
+              child: GestureDetector(
+                onTap: _openSearch,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppColors.surface.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.surface.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: AppColors.border.withValues(alpha: 0.5),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
                           ),
                         ],
                       ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          color: AppColors.textPrimary,
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: AppColors.textPrimary,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.search_rounded,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Buscar calle o lugar...',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Título
-                Expanded(
-                  child: ClipRRect(
+              ),
+            )
+          else
+            // Header normal de vista
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 16,
+              left: 16,
+              right: 16,
+              child: Row(
+                children: [
+                  ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surface.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: AppColors.border.withValues(alpha: 0.5),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
-                        child: Text(
-                          widget.isPickerMode
-                              ? 'Mueve el mapa para elegir'
-                              : widget.focusedLocation?.name ?? 'Ubicaciones',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back_rounded,
                             color: AppColors.textPrimary,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          onPressed: () => Navigator.of(context).pop(),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.border.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Text(
+                            widget.focusedLocation?.name ?? 'Ubicaciones',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // ── Panel de Coordenadas Glassmorphism ────────────────────────
+          // ── Panel Inferior (Solo Picker) ────────────────────────
           if (widget.isPickerMode)
             Positioned(
-              bottom: 90, // Por encima del FAB
-              left: 16,
-              right: 16,
-              child: Align(
-                alignment: Alignment.center,
-                child: IgnorePointer(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.border.withValues(alpha: 0.5),
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  24,
+                  20,
+                  MediaQuery.paddingOf(context).bottom + 20,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Dirección
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.tealLight,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            color: AppColors.teal,
+                            size: 20,
+                          ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.my_location_rounded,
-                              color: AppColors.primary,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            ValueListenableBuilder<LatLng>(
-                              valueListenable: _pickerPointNotifier,
-                              builder:
-                                  (_, point, _) => Text(
-                                    'Lat: ${point.latitude.toStringAsFixed(5)}  •  Lng: ${point.longitude.toStringAsFixed(5)}',
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                            ),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ValueListenableBuilder<String?>(
+                            valueListenable: _addressNotifier,
+                            builder: (context, address, _) {
+                              return Text(
+                                address ??
+                                    'Mueve el mapa para encontrar la dirección',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Botón Confirmar
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _confirmPickerPoint,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'Confirmar Ubicación',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
 
-          // ── Créditos OSM (obligatorio por licencia) ───────────────────
-          Positioned(
-            bottom: 4,
-            right: 8,
-            child: IgnorePointer(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  '© OpenStreetMap contributors',
-                  style: TextStyle(fontSize: 10, color: Colors.black54),
+          // ── Créditos OSM ───────────────────
+          if (!widget.isPickerMode)
+            Positioned(
+              bottom: 4,
+              right: 8,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    '© OpenStreetMap contributors',
+                    style: TextStyle(fontSize: 10, color: Colors.black54),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton:
-          widget.isPickerMode
-              ? FloatingActionButton.extended(
-                onPressed: _confirmPickerPoint,
-                backgroundColor: AppColors.teal,
-                foregroundColor: Colors.white,
-                elevation: 4,
-                icon: const Icon(Icons.check_rounded),
-                label: const Text(
-                  'Confirmar Ubicación',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              )
-              : null,
+    );
+  }
+}
+
+class _PlaceSearchDelegate extends SearchDelegate<PlaceResult?> {
+  final GeocodingService service;
+  final LatLng currentCenter;
+
+  _PlaceSearchDelegate(this.service, this.currentCenter);
+
+  @override
+  String get searchFieldLabel => 'Buscar dirección...';
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear_rounded),
+          onPressed: () => query = '',
+        ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back_rounded),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildSearchResults(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildSearchResults(context);
+
+  Widget _buildSearchResults(BuildContext context) {
+    return _DebouncedSearchSuggestions(
+      query: query,
+      service: service,
+      currentCenter: currentCenter,
+      onSelected: (place) => close(context, place),
+    );
+  }
+}
+
+class _DebouncedSearchSuggestions extends StatefulWidget {
+  final String query;
+  final GeocodingService service;
+  final LatLng currentCenter;
+  final ValueChanged<PlaceResult> onSelected;
+
+  const _DebouncedSearchSuggestions({
+    required this.query,
+    required this.service,
+    required this.currentCenter,
+    required this.onSelected,
+  });
+
+  @override
+  State<_DebouncedSearchSuggestions> createState() => _DebouncedSearchSuggestionsState();
+}
+
+class _DebouncedSearchSuggestionsState extends State<_DebouncedSearchSuggestions> {
+  Timer? _debounce;
+  Future<List<PlaceResult>>? _searchFuture;
+  String _lastQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _triggerSearch(widget.query);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DebouncedSearchSuggestions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query != widget.query) {
+      _triggerSearch(widget.query);
+    }
+  }
+
+  void _triggerSearch(String query) {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchFuture = null;
+      });
+      return;
+    }
+    
+    if (query == _lastQuery && _searchFuture != null) return;
+    _lastQuery = query;
+
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _searchFuture = widget.service.searchPlaces(query, locationBias: widget.currentCenter);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.query.trim().isEmpty) {
+      return const Center(child: Text('Escribe para buscar...'));
+    }
+
+    if (_searchFuture == null) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.teal));
+    }
+
+    return FutureBuilder<List<PlaceResult>>(
+      future: _searchFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.teal),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No se encontraron resultados'));
+        }
+
+        final results = snapshot.data!;
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: results.length,
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final place = results[index];
+            return ListTile(
+              leading: const Icon(
+                Icons.location_on_rounded,
+                color: AppColors.textMuted,
+              ),
+              title: Text(
+                place.name,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(place.fullAddress),
+              onTap: () => widget.onSelected(place),
+            );
+          },
+        );
+      },
     );
   }
 }
