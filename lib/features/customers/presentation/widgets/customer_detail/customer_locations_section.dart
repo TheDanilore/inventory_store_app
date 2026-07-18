@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
-import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_cubit.dart';
+import 'package:inventory_store_app/features/customers/presentation/bloc/customer_locations_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_location_form_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_location/customer_location_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_section_card.dart';
 
 class CustomerLocationsSection extends StatelessWidget {
   final List<CustomerLocationEntity> locations;
+  final String customerId;
 
-  const CustomerLocationsSection({super.key, required this.locations});
+  const CustomerLocationsSection({
+    super.key,
+    required this.locations,
+    required this.customerId,
+  });
 
   Color _typeColor(String type) {
     switch (type) {
@@ -45,13 +50,23 @@ class CustomerLocationsSection extends StatelessWidget {
   }
 
   Future<void> _addLocation(BuildContext context) async {
-    final cubit = context.read<CustomerDetailCubit>();
+    final cubit = context.read<CustomerLocationsCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await CustomerLocationFormSheet.show(
       context,
       isFirstLocation: locations.isEmpty,
       onSave: (loc) async {
-        await cubit.addLocation(loc);
+        await cubit.addLocation(
+          customerId: customerId,
+          name: loc.name,
+          locationType: loc.locationType,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          addressLine: loc.addressLine,
+          reference: loc.reference,
+          notes: loc.notes,
+          isDefault: loc.isDefault,
+        );
       },
     );
 
@@ -68,13 +83,13 @@ class CustomerLocationsSection extends StatelessWidget {
     BuildContext context,
     CustomerLocationEntity loc,
   ) async {
-    final cubit = context.read<CustomerDetailCubit>();
+    final cubit = context.read<CustomerLocationsCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await CustomerLocationFormSheet.show(
       context,
       existing: loc,
       onSave: (updatedLoc) async {
-        await cubit.updateLocation(loc.id, updatedLoc);
+        await cubit.updateLocation(customerId, loc.id, updatedLoc);
       },
     );
 
@@ -91,7 +106,7 @@ class CustomerLocationsSection extends StatelessWidget {
     BuildContext context,
     CustomerLocationEntity loc,
   ) async {
-    final cubit = context.read<CustomerDetailCubit>();
+    final cubit = context.read<CustomerLocationsCubit>();
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await AppConfirmDialog.show(
       context,
@@ -102,7 +117,7 @@ class CustomerLocationsSection extends StatelessWidget {
     );
     if (confirmed != true) return;
     try {
-      await cubit.deleteLocation(loc.id);
+      await cubit.deleteLocation(customerId, loc.id);
       AppSnackbar.showMessenger(
         messenger,
         message: 'Ubicación eliminada.',

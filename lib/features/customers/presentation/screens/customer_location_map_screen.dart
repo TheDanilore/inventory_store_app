@@ -5,7 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/map_markers.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_location/map_markers.dart';
 
 /// Pantalla de mapa compartida.
 ///

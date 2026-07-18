@@ -3,8 +3,6 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_ucs.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_recent_orders_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/get_customer_top_products_usecase.dart';
-import 'package:inventory_store_app/features/customers/domain/usecases/customer_location_ucs.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_detail_state.dart';
 
 @injectable
@@ -13,18 +11,12 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
   final UpdateCustomerUseCase _updateCustomerUseCase;
   final GetCustomerRecentOrdersUseCase _getRecentOrdersUseCase;
   final GetCustomerTopProductsUseCase _getTopProductsUseCase;
-  final AddCustomerLocationUseCase _addLocationUseCase;
-  final UpdateCustomerLocationUseCase _updateLocationUseCase;
-  final DeleteCustomerLocationUseCase _deleteLocationUseCase;
 
   CustomerDetailCubit(
     this._getCustomerDetailUseCase,
     this._updateCustomerUseCase,
     this._getRecentOrdersUseCase,
     this._getTopProductsUseCase,
-    this._addLocationUseCase,
-    this._updateLocationUseCase,
-    this._deleteLocationUseCase,
   ) : super(CustomerDetailInitial());
 
   Future<void> loadCustomer(String customerId) async {
@@ -79,65 +71,5 @@ class CustomerDetailCubit extends Cubit<CustomerDetailState> {
     }
   }
 
-  Future<void> addLocation(CustomerLocationEntity location) async {
-    final previousState = state;
-    if (previousState is CustomerDetailLoaded) {
-      try {
-        await _addLocationUseCase(
-          customerId: previousState.customer.id,
-          name: location.name,
-          locationType: location.locationType,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          addressLine: location.addressLine,
-          reference: location.reference,
-          notes: location.notes,
-          isDefault: location.isDefault,
-        );
-        await loadCustomer(previousState.customer.id);
-      } catch (e) {
-        emit(CustomerDetailError(e.toString()));
-        emit(previousState);
-      }
-    }
-  }
 
-  Future<void> updateLocation(
-    String locationId,
-    CustomerLocationEntity location,
-  ) async {
-    final previousState = state;
-    if (previousState is CustomerDetailLoaded) {
-      try {
-        await _updateLocationUseCase(
-          locationId: locationId,
-          name: location.name,
-          locationType: location.locationType,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          addressLine: location.addressLine,
-          reference: location.reference,
-          notes: location.notes,
-          isDefault: location.isDefault,
-        );
-        await loadCustomer(previousState.customer.id);
-      } catch (e) {
-        emit(CustomerDetailError(e.toString()));
-        emit(previousState);
-      }
-    }
-  }
-
-  Future<void> deleteLocation(String locationId) async {
-    final previousState = state;
-    if (previousState is CustomerDetailLoaded) {
-      try {
-        await _deleteLocationUseCase(locationId);
-        await loadCustomer(previousState.customer.id);
-      } catch (e) {
-        emit(CustomerDetailError(e.toString()));
-        emit(previousState);
-      }
-    }
-  }
 }

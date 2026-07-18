@@ -969,6 +969,14 @@ extension GetItInjectableX on _i174.GetIt {
         getActiveCashShiftUseCase: gh<_i1008.GetActiveCashShiftUseCase>(),
       ),
     );
+    gh.factory<_i685.CustomerDetailCubit>(
+      () => _i685.CustomerDetailCubit(
+        gh<_i36.GetCustomerDetailUseCase>(),
+        gh<_i36.UpdateCustomerUseCase>(),
+        gh<_i690.GetCustomerRecentOrdersUseCase>(),
+        gh<_i528.GetCustomerTopProductsUseCase>(),
+      ),
+    );
     gh.factory<_i832.ChangePasswordUseCase>(
       () => _i832.ChangePasswordUseCase(gh<_i787.AuthRepository>()),
     );
@@ -1100,17 +1108,6 @@ extension GetItInjectableX on _i174.GetIt {
         getActiveProductsAndVariantsUseCase:
             gh<_i753.GetActiveProductsAndVariantsUseCase>(),
         createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
-      ),
-    );
-    gh.factory<_i685.CustomerDetailCubit>(
-      () => _i685.CustomerDetailCubit(
-        gh<_i36.GetCustomerDetailUseCase>(),
-        gh<_i36.UpdateCustomerUseCase>(),
-        gh<_i690.GetCustomerRecentOrdersUseCase>(),
-        gh<_i528.GetCustomerTopProductsUseCase>(),
-        gh<_i263.AddCustomerLocationUseCase>(),
-        gh<_i263.UpdateCustomerLocationUseCase>(),
-        gh<_i263.DeleteCustomerLocationUseCase>(),
       ),
     );
     gh.factory<_i971.PurchaseOrdersCubit>(

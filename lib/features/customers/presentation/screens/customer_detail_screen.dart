@@ -10,6 +10,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credits_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_header_card.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_kpi_row.dart';
@@ -83,9 +84,12 @@ class _CustomerDetailContent extends StatelessWidget {
         final error = state is CustomerDetailError ? state.message : null;
         final c = state is CustomerDetailLoaded ? state.customer : null;
 
-        return RefreshIndicator(
-          color: Theme.of(context).colorScheme.primary,
-          onRefresh: () async => _refreshData(context),
+        return AdminLayout(
+          title: c?.fullName ?? 'Detalles del Cliente',
+          showBackButton: true,
+          body: RefreshIndicator(
+            color: Theme.of(context).colorScheme.primary,
+            onRefresh: () async => _refreshData(context),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isTablet = constraints.maxWidth > 750;
@@ -111,6 +115,7 @@ class _CustomerDetailContent extends StatelessWidget {
                 c,
               );
             },
+          ),
           ),
         );
       },
@@ -190,6 +195,7 @@ class _CustomerDetailContent extends StatelessWidget {
                   if (locState is CustomerLocationsLoaded) {
                     return CustomerLocationsSection(
                       locations: locState.locations,
+                      customerId: c.id,
                     );
                   }
                   return const SizedBox.shrink();
@@ -309,6 +315,7 @@ class _CustomerDetailContent extends StatelessWidget {
                           if (locState is CustomerLocationsLoaded) {
                             return CustomerLocationsSection(
                               locations: locState.locations,
+                              customerId: c!.id,
                             );
                           }
                           return const SizedBox.shrink();
